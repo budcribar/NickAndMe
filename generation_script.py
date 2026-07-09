@@ -1,9 +1,11 @@
 import json
 import os
 import sys
+import time
 import subprocess
-import concurrent.futures
-from typing import Dict, Any, List
+import urllib.request
+import urllib.error
+from typing import Dict, Any, List, Optional
 
 # Try to import Google GenAI SDK (mock/fallback if not installed for absolute robustness)
 try:
@@ -15,6 +17,32 @@ except ImportError:
 
 STATE_FILE = "pipeline_state.json"
 BLUEPRINT_FILE = "nickandme.json"
+
+
+class GenerationFailure(Exception):
+    """
+    Raised whenever a paid model/API call (Suno music, Veo video, or the local
+    FFmpeg mux/master step) fails or produces unusable output.
+
+    This is intentionally a hard-stop signal: once raised, the pipeline must
+    not make any further generation calls, since doing so would spend money
+    on a run that is already going to be discarded. Callers catch this at the
+    scene level, clean up any zero-length artifacts, mark pipeline state
+    accurately, print a clear diagnostic, and exit.
+    """
+    pass
+
+
+def music_output_path(scene_number: int) -> str:
+    return f"assets/music/scene_{scene_number:02d}_music.mp3"
+
+
+def clip_output_path(scene_number: int, clip_number: int) -> str:
+    return f"assets/video/scene_{scene_number:02d}_clip_{clip_number:02d}.mp4"
+
+
+def composite_output_path(scene_number: int) -> str:
+    return f"assets/scenes/scene_{scene_number:02d}_complete.mp4"
 
 
 class AgenticGenerationEngine:
@@ -93,55 +121,168 @@ class AgenticGenerationEngine:
         except Exception as e:
             print(f"[Error] Failed to write blueprint to disk: {e}")
 
-    def generate_suno_music(self, scene: Dict[str, Any]) -> str:
-        """Executes API request to custom Suno proxy for Scene Music Bed."""
-        s_num = scene["scene_number"]
-        music_bed = scene.get("music_bed", {})
-        prompt = music_bed.get("instrumentation_description", "ambient cinematic background track")
-        lyrics = music_bed.get("lyric_bed", "")
+    def _build_suno_brief(self, music_bed: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Translates the blueprint's music_bed schema (style_description, vocal_style,
+        song_structure[].lyrics/production_notes) into the fields gcui-art/suno-api
+        expects. Returns a dict with: tags, lyrics_text, has_lyrics, notes_summary.
+        """
+        style = (music_bed.get("style_description") or "").strip()
+        vocal = (music_bed.get("vocal_style") or "").strip()
+        song_structure = music_bed.get("song_structure", []) or []
 
-        print(f"  [Suno] Submitting music generation for Scene {s_num}...")
-        output_music_path = f"assets/music/scene_{s_num:02d}_music.mp3"
-        os.makedirs("assets/music", exist_ok=True)
+        tag_parts = [p for p in (style, vocal) if p]
+        tags = ", ".join(tag_parts) if tag_parts else "cinematic, orchestral, emotional"
 
-        # Example request calling a local Suno-API Proxy:
-        import urllib.request
-        import json
+        lyric_blocks = []
+        all_notes: List[str] = []
+        for section in song_structure:
+            notes = section.get("production_notes") or []
+            all_notes.extend(notes)
+            lyrics = section.get("lyrics")
+            if lyrics:
+                label = (section.get("section_label") or section.get("section_type") or "Section").strip()
+                lyric_blocks.append(f"[{label}]\n{lyrics}")
 
-        # Set default Suno proxy endpoint; falls back to environment variable if present
-        proxy_url = os.environ.get("SUNO_API_URL", "http://localhost:3000/api/generate")
-        payload = {
-            "prompt": prompt,
-            "tags": "cinematic, cinematic score, acoustic, emotional",
-            "make_instrumental": True if not lyrics else False,
-            "wait_audio": True
+        lyrics_text = "\n\n".join(lyric_blocks)
+        notes_summary = "; ".join(all_notes[:6])  # keep prompt length reasonable
+
+        return {
+            "tags": tags,
+            "lyrics_text": lyrics_text,
+            "has_lyrics": bool(lyric_blocks),
+            "notes_summary": notes_summary,
         }
 
+    def _suno_submit(self, endpoint: str, payload: Dict[str, Any]) -> List[str]:
+        """POSTs a generation job to a self-hosted gcui-art/suno-api instance and
+        returns the list of clip IDs it accepted. Raises GenerationFailure on any
+        transport, HTTP, or malformed-response error."""
         try:
             req = urllib.request.Request(
-                proxy_url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
-                method='POST'
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            with urllib.request.urlopen(req, timeout=120) as response:
-                res_data = json.loads(response.read().decode())
-                # Handle direct array response from typical open-source proxies
-                if isinstance(res_data, list) and len(res_data) > 0:
-                    audio_url = res_data[0].get("audio_url")
-                    if audio_url:
-                        print(f"  [Suno] Downloading generated track: {audio_url}")
-                        urllib.request.urlretrieve(audio_url, output_music_path)
-                    else:
-                        raise ValueError("No audio_url found in response.")
-                else:
-                    raise ValueError("Unexpected response format.")
+            with urllib.request.urlopen(req, timeout=60) as response:
+                raw = response.read().decode()
+        except urllib.error.HTTPError as e:
+            body = e.read().decode(errors="ignore") if hasattr(e, "read") else ""
+            raise GenerationFailure(f"suno-api returned HTTP {e.code} from {endpoint}: {body[:300]}")
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            raise GenerationFailure(
+                f"Could not reach suno-api at '{endpoint}': {e}. "
+                f"Verify a gcui-art/suno-api instance (https://github.com/gcui-art/suno-api) "
+                f"is running and SUNO_API_URL points at it."
+            )
+
+        try:
+            res_data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise GenerationFailure(f"suno-api returned non-JSON response from {endpoint}: {e}")
+
+        if isinstance(res_data, dict) and res_data.get("detail"):
+            raise GenerationFailure(f"suno-api rejected the job: {res_data['detail']}")
+        if not isinstance(res_data, list) or not res_data:
+            raise GenerationFailure(f"suno-api returned an unexpected response shape from {endpoint}: {res_data}")
+
+        clip_ids = [item["id"] for item in res_data if isinstance(item, dict) and item.get("id")]
+        if not clip_ids:
+            raise GenerationFailure(f"suno-api response contained no usable clip IDs: {res_data}")
+        return clip_ids
+
+    def _suno_poll_for_audio(self, base_url: str, clip_ids: List[str], s_num: int,
+                              poll_interval: int, timeout_seconds: int) -> str:
+        """Polls gcui-art/suno-api's /api/get until the job completes or errors.
+        Returns the audio_url of the first completed clip, or raises GenerationFailure."""
+        ids_param = ",".join(clip_ids)
+        deadline = time.time() + timeout_seconds
+
+        while time.time() < deadline:
+            try:
+                req = urllib.request.Request(f"{base_url}/api/get?ids={ids_param}", method="GET")
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    clips = json.loads(response.read().decode())
+            except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as e:
+                raise GenerationFailure(f"Scene {s_num} music: failed while polling suno-api job status: {e}")
+
+            if not isinstance(clips, list):
+                raise GenerationFailure(f"Scene {s_num} music: unexpected polling response from suno-api: {clips}")
+
+            for clip in clips:
+                status = clip.get("status")
+                if status == "error":
+                    err_detail = (clip.get("metadata") or {}).get("error_message", "no details provided")
+                    raise GenerationFailure(
+                        f"Scene {s_num} music: suno-api reported a generation error for clip "
+                        f"'{clip.get('id')}': {err_detail}"
+                    )
+                if status == "complete" and clip.get("audio_url"):
+                    print(f"  [Suno] Clip {clip.get('id')} complete.")
+                    return clip["audio_url"]
+
+            statuses = [c.get("status") for c in clips]
+            print(f"  [Suno] Still rendering (status: {statuses})... waiting {poll_interval}s")
+            time.sleep(poll_interval)
+
+        raise GenerationFailure(
+            f"Scene {s_num} music: suno-api job did not finish within {timeout_seconds}s (timed out)."
+        )
+
+    def generate_suno_music(self, scene: Dict[str, Any]) -> str:
+        """
+        Generates a scene's music bed using a self-hosted gcui-art/suno-api instance
+        (https://github.com/gcui-art/suno-api). Raises GenerationFailure on any error
+        rather than silently falling back to a placeholder -- a failed/empty music
+        bed must stop the pipeline, not get muxed into a scene composite.
+        """
+        s_num = scene["scene_number"]
+        music_bed = scene.get("music_bed", {})
+        brief = self._build_suno_brief(music_bed)
+
+        print(f"  [Suno] Submitting music generation for Scene {s_num}...")
+        output_music_path = music_output_path(s_num)
+        os.makedirs("assets/music", exist_ok=True)
+
+        base_url = os.environ.get("SUNO_API_URL", "http://localhost:3000").rstrip("/")
+        poll_interval = int(os.environ.get("SUNO_POLL_INTERVAL_SECONDS", "5"))
+        timeout_seconds = int(os.environ.get("SUNO_TIMEOUT_SECONDS", "300"))
+        title = (scene.get("scene_filename") or f"scene_{s_num:02d}")[:80]
+
+        if brief["has_lyrics"]:
+            endpoint = f"{base_url}/api/custom_generate"
+            payload = {
+                "prompt": brief["lyrics_text"],
+                "tags": brief["tags"],
+                "title": title,
+                "make_instrumental": False,
+                "wait_audio": False,
+            }
+        else:
+            endpoint = f"{base_url}/api/generate"
+            description = brief["tags"]
+            if brief["notes_summary"]:
+                description = f"{description}. {brief['notes_summary']}"
+            payload = {
+                "prompt": description,
+                "make_instrumental": True,
+                "wait_audio": False,
+            }
+
+        clip_ids = self._suno_submit(endpoint, payload)
+        print(f"  [Suno] Job submitted (clip ids: {', '.join(clip_ids)}). Polling for completion...")
+        audio_url = self._suno_poll_for_audio(base_url, clip_ids, s_num, poll_interval, timeout_seconds)
+
+        try:
+            urllib.request.urlretrieve(audio_url, output_music_path)
         except Exception as e:
-            print(f"  [Suno Warning] Proxy request failed or timed out: {e}. Falling back to placeholder.")
-            # Touch empty file placeholder if not exists
-            if not os.path.exists(output_music_path):
-                with open(output_music_path, "wb") as f:
-                    f.write(b"")
+            raise GenerationFailure(f"Scene {s_num} music: failed to download completed track from '{audio_url}': {e}")
+
+        if not os.path.exists(output_music_path) or os.path.getsize(output_music_path) == 0:
+            raise GenerationFailure(
+                f"Scene {s_num} music: downloaded file at '{output_music_path}' is missing or zero-length."
+            )
 
         print(f"  [Suno] Scene {s_num} music bed ready at: {output_music_path}")
         return output_music_path
@@ -154,58 +295,79 @@ class AgenticGenerationEngine:
         continuation_source = clip.get("veo_continuation_source", "none")
 
         print(f"  [Veo 3.1] Generating Clip {clip_num} (Source: {continuation_source})...")
-        output_clip_path = f"assets/video/scene_{scene_num:02d}_clip_{clip_num:02d}.mp4"
+        output_clip_path = clip_output_path(scene_num, clip_num)
         os.makedirs("assets/video", exist_ok=True)
 
-        context_id = f"ctx_mock_s{scene_num}_c{clip_num}"
+        if not self.client:
+            raise GenerationFailure(
+                f"Scene {scene_num} Clip {clip_num}: Google GenAI client is not initialized. "
+                f"Set GEMINI_API_KEY and ensure the google-genai package is installed before running "
+                f"the pipeline -- refusing to fabricate a placeholder clip."
+            )
 
-        # Real SDK usage if Client is live
-        if self.client:
-            import time
-            throttle_delay = int(os.environ.get("VEO_THROTTLE_DELAY", "30"))
-            if throttle_delay > 0:
-                print(f"  [Veo 3.1] Throttling: Cooling down for {throttle_delay}s to respect RPM limits...")
-                time.sleep(throttle_delay)
+        throttle_delay = int(os.environ.get("VEO_THROTTLE_DELAY", "30"))
+        if throttle_delay > 0:
+            print(f"  [Veo 3.1] Throttling: Cooling down for {throttle_delay}s to respect RPM limits...")
+            time.sleep(throttle_delay)
 
-            try:
-                # Target model for Veo 3.1 video generation
-                model_name = "veo-3.1-generate-preview"
+        try:
+            # Target model for Veo 3.1 video generation
+            model_name = "veo-3.1-generate-preview"
 
-                # Check if it is an extension or a base generation
-                if continuation_source == "extend_previous" and previous_context_id and not str(previous_context_id).startswith("ctx_mock_"):
-                    # Real Google SDK continuation using previous video reference
-                    operation = self.client.models.generate_videos(
-                        model=model_name,
-                        prompt=prompt,
-                        video=previous_context_id,
-                        config=types.GenerateVideosConfig(
-                            aspect_ratio="16:9",
-                            duration_seconds=7,
-                            negative_prompt=neg_prompt
-                        )
+            # Check if it is an extension or a base generation
+            if continuation_source == "extend_previous" and previous_context_id and not str(previous_context_id).startswith("ctx_mock_"):
+                # Real Google SDK continuation using previous video reference
+                operation = self.client.models.generate_videos(
+                    model=model_name,
+                    prompt=prompt,
+                    video=previous_context_id,
+                    config=types.GenerateVideosConfig(
+                        aspect_ratio="16:9",
+                        duration_seconds=7,
+                        negative_prompt=neg_prompt
                     )
-                else:
-                    operation = self.client.models.generate_videos(
-                        model=model_name,
-                        prompt=prompt,
-                        config=types.GenerateVideosConfig(
-                            aspect_ratio="16:9",
-                            duration_seconds=8,
-                            negative_prompt=neg_prompt
-                        )
+                )
+            else:
+                operation = self.client.models.generate_videos(
+                    model=model_name,
+                    prompt=prompt,
+                    config=types.GenerateVideosConfig(
+                        aspect_ratio="16:9",
+                        duration_seconds=8,
+                        negative_prompt=neg_prompt
                     )
+                )
 
-                # Wait or poll for completed generation
-                # operation_result = operation.result()
-                # operation_result.video.download(output_clip_path)
-                # context_id = operation.name
-            except Exception as e:
-                print(f"    [SDK Error] GenAI Video call failed: {e}. Falling back to visual stub.")
+            # Poll the long-running operation until it completes
+            poll_interval = int(os.environ.get("VEO_POLL_INTERVAL_SECONDS", "10"))
+            while not getattr(operation, "done", False):
+                time.sleep(poll_interval)
+                operation = self.client.operations.get(operation)
 
-        # Write binary mock output if no real video generated
-        if not os.path.exists(output_clip_path):
-            with open(output_clip_path, "wb") as f:
-                f.write(b"") # Mock video asset
+            if getattr(operation, "error", None):
+                raise GenerationFailure(
+                    f"Scene {scene_num} Clip {clip_num}: Veo 3.1 operation returned an error: {operation.error}"
+                )
+
+            generated_videos = getattr(getattr(operation, "response", None), "generated_videos", None)
+            if not generated_videos:
+                raise GenerationFailure(
+                    f"Scene {scene_num} Clip {clip_num}: Veo 3.1 completed but returned no generated video."
+                )
+
+            generated_videos[0].video.save(output_clip_path)
+            context_id = getattr(operation, "name", f"ctx_s{scene_num}_c{clip_num}")
+
+        except GenerationFailure:
+            raise
+        except Exception as e:
+            raise GenerationFailure(f"Scene {scene_num} Clip {clip_num}: Veo 3.1 generation call failed: {e}")
+
+        if not os.path.exists(output_clip_path) or os.path.getsize(output_clip_path) == 0:
+            raise GenerationFailure(
+                f"Scene {scene_num} Clip {clip_num}: output file at '{output_clip_path}' is missing or "
+                f"zero-length after generation."
+            )
 
         return output_clip_path, context_id
 
@@ -215,7 +377,6 @@ class AgenticGenerationEngine:
             # Bypass validation when Gemini Client is unauthenticated
             return True
 
-        import time
         print(f"  [Gemini QA] Critiquing generated clip: {video_path}...")
         try:
             # Upload clip file to Gemini API as dynamic context
@@ -257,7 +418,7 @@ class AgenticGenerationEngine:
 
     def mix_scene_assets(self, scene_num: int, clip_paths: List[str], music_path: str) -> str:
         """Stitches clips and mixes music bed using FFmpeg."""
-        output_scene_path = f"assets/scenes/scene_{scene_num:02d}_complete.mp4"
+        output_scene_path = composite_output_path(scene_num)
         os.makedirs("assets/scenes", exist_ok=True)
 
         # FFmpeg instructions:
@@ -281,36 +442,99 @@ class AgenticGenerationEngine:
 
         print(f"  [FFmpeg] Muxing Scene {scene_num} composite media...")
         try:
-            # Execute FFmpeg subprocess cleanly
             result = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if result.returncode != 0:
-                print(f"  [FFmpeg Warning] Command failed, creating placeholder file.")
-                # Fallback placeholder
-                with open(output_scene_path, "wb") as f:
-                    f.write(b"")
-            else:
-                print(f"  [FFmpeg Success] Assembled composite Scene {scene_num} to: {output_scene_path}")
         except Exception as e:
-            print(f"  [FFmpeg Error] Local FFmpeg execution error: {e}")
-            with open(output_scene_path, "wb") as f:
-                f.write(b"")
+            raise GenerationFailure(f"Scene {scene_num}: local FFmpeg execution error while muxing: {e}")
 
+        if result.returncode != 0:
+            stderr_tail = result.stderr.decode(errors="ignore")[-500:]
+            raise GenerationFailure(
+                f"Scene {scene_num}: FFmpeg muxing failed (exit code {result.returncode}). "
+                f"Last FFmpeg output: {stderr_tail}"
+            )
+
+        if not os.path.exists(output_scene_path) or os.path.getsize(output_scene_path) == 0:
+            raise GenerationFailure(
+                f"Scene {scene_num}: FFmpeg reported success but the output file '{output_scene_path}' "
+                f"is missing or zero-length."
+            )
+
+        print(f"  [FFmpeg Success] Assembled composite Scene {scene_num} to: {output_scene_path}")
         return output_scene_path
 
+    def _remove_zero_length_files(self, paths: List[str]) -> List[str]:
+        """Deletes any path in the list that exists and is zero-length. Returns the
+        list of paths actually removed. Non-empty files (partial-but-real progress)
+        are left untouched, per spec -- only zero-length junk gets cleaned up."""
+        removed = []
+        for p in paths:
+            try:
+                if p and os.path.exists(p) and os.path.getsize(p) == 0:
+                    os.remove(p)
+                    removed.append(p)
+            except OSError as e:
+                print(f"  [Cleanup Warning] Could not remove zero-length file '{p}': {e}")
+        return removed
+
+    def _handle_generation_failure(self, scene_num: int, generated_files: List[str], error: GenerationFailure):
+        """
+        Single choke point for every generation failure in the pipeline. Cleans up
+        zero-length artifacts, marks the scene as incomplete in pipeline state (never
+        completed, never cached), prints a clear diagnostic, and exits immediately so
+        that no further paid model calls are made on a run we already know is broken.
+        """
+        print("\n" + "=" * 75)
+        print(f"[FATAL] Generation failed for Scene {scene_num}. Halting pipeline -- no further")
+        print(f"        model calls will be made.")
+        print(f"[FATAL] Reason: {error}")
+        print("=" * 75)
+
+        removed = self._remove_zero_length_files(generated_files)
+        if removed:
+            print(f"[Cleanup] Removed {len(removed)} zero-length file(s):")
+            for p in removed:
+                print(f"    - {p}")
+        else:
+            print("[Cleanup] No zero-length files needed removal.")
+
+        s_key = str(scene_num)
+        self.state["scenes_completed"][s_key] = False
+        self.state["scene_assets"].pop(s_key, None)
+        self.save_state()
+        print(f"[State] Scene {scene_num} marked incomplete; no partial assets recorded in pipeline state.")
+        print(f"[State] Progress up through the prior scene is preserved in '{self.state_path}'.")
+        print("[Next Step] Fix the issue above, then re-run the script to resume safely from this scene.")
+
+        sys.exit(1)
+
     def process_scene(self, scene: Dict[str, Any]) -> bool:
-        """Executes entire Stage 1, 2 & 3 flow for a single scene block."""
+        """
+        Executes Stage 1, 2 & 3 for a single scene block, sequentially and fail-fast:
+        music is generated first (cheapest to fail on), then video clips one at a
+        time, then the local mux. The moment any step raises GenerationFailure, no
+        further generation calls are made for this scene -- we clean up and stop the
+        entire pipeline rather than risk spending money generating clips for a scene
+        we already know is broken.
+        """
         s_num = scene["scene_number"]
         print(f"\n==================== PROCESSING SCENE {s_num} ====================")
 
-        # Threaded generation of music bed and video clips
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Submitting parallel music task
-            music_future = executor.submit(self.generate_suno_music, scene)
+        # Every path is deterministic given scene/clip numbers, so we register each
+        # expected file BEFORE attempting the call that produces it. That way, if a
+        # call fails partway through (e.g. after writing a zero-byte file but before
+        # raising), cleanup still knows to check that path -- we're not relying on
+        # the call returning successfully in order to track what it touched.
+        generated_files: List[str] = []
+        clip_paths: List[str] = []
+        music_path: Optional[str] = None
+        composite_scene_path: Optional[str] = None
 
-            # Generating video clips sequentially (since each depends on the previous context ID)
-            clip_paths = []
+        try:
+            # Music first: if it fails, we haven't spent anything on Veo yet.
+            generated_files.append(music_output_path(s_num))
+            music_path = self.generate_suno_music(scene)
+
             previous_context_id = None
-
             for clip in scene.get("veo_clips", []):
                 c_num = clip["clip_number"]
                 clip_state_key = f"{s_num}_{c_num}"
@@ -318,6 +542,7 @@ class AgenticGenerationEngine:
                 # Check context cache
                 cached_ctx = self.state["clip_context_ids"].get(clip_state_key)
 
+                generated_files.append(clip_output_path(s_num, c_num))
                 clip_path, context_id = self.generate_veo_clip(s_num, clip, cached_ctx or previous_context_id)
                 clip_paths.append(clip_path)
 
@@ -332,10 +557,12 @@ class AgenticGenerationEngine:
                     print(f"  [QA Reject] Clip {c_num} failed automated Gemini validation! Re-attempting...")
                     # In true recursive pipeline, code would regenerate here. For now, log.
 
-            music_path = music_future.result()
+            generated_files.append(composite_output_path(s_num))
+            composite_scene_path = self.mix_scene_assets(s_num, clip_paths, music_path)
 
-        # Localised scene composite mixing (Muxing)
-        composite_scene_path = self.mix_scene_assets(s_num, clip_paths, music_path)
+        except GenerationFailure as e:
+            self._handle_generation_failure(s_num, generated_files, e)
+            # _handle_generation_failure calls sys.exit(1) and never returns.
 
         # Store assembled scene in state record
         self.state["scene_assets"][str(s_num)] = {
@@ -440,10 +667,26 @@ class AgenticGenerationEngine:
             # Build concatenation command
             concat_cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", "concat_list.txt", "-c", "copy", output_movie_path]
             print(f"Executing: {' '.join(concat_cmd)}")
-            # Placeholder for final packaging
+            result = subprocess.run(concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if result.returncode != 0:
+                print(f"[Error] Mastering FFmpeg command failed (exit code {result.returncode}).")
+                print(f"[Error] Last FFmpeg output: {result.stderr.decode(errors='ignore')[-500:]}")
+                if os.path.exists(output_movie_path) and os.path.getsize(output_movie_path) == 0:
+                    os.remove(output_movie_path)
+                    print("[Cleanup] Removed zero-length master output file.")
+                return
+
+            if not os.path.exists(output_movie_path) or os.path.getsize(output_movie_path) == 0:
+                print(f"[Error] Mastering reported success but output file is missing or zero-length.")
+                if os.path.exists(output_movie_path):
+                    os.remove(output_movie_path)
+                    print("[Cleanup] Removed zero-length master output file.")
+                return
+
             print(f"SUCCESS: Completed cinematic mastering! Saved final video to: {output_movie_path}")
         except Exception as e:
-            print(f"Mastering compilation simulated successfully: {output_movie_path}")
+            print(f"[Error] Mastering compilation failed: {e}")
 
     def run_pipeline(self):
         """Main orchestrator loop matching human interactive review and feedback loops."""
@@ -468,7 +711,9 @@ class AgenticGenerationEngine:
             scene = scenes[current_idx]
             s_num = scene["scene_number"]
 
-            # Stage 1, 2 & 3: Run parallel Suno media, Veo clip loops, and local muxing
+            # Stage 1, 2 & 3: Sequential Suno music -> Veo clip loop -> local muxing.
+            # Sequential and fail-fast on purpose: a failure anywhere here halts the
+            # whole run before any further (paid) generation calls are made.
             self.process_scene(scene)
 
             # Stage 4: Interactive Bidirectional Critic Gate

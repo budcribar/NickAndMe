@@ -1,19 +1,9 @@
 {
   "current_scene_index": 0,
-  "scenes_completed": {},
-  "scene_assets": {
-    "1": {
-      "video_clips": [
-        "assets/video/scene_01_clip_01.mp4",
-        "assets/video/scene_01_clip_02.mp4",
-        "assets/video/scene_01_clip_03.mp4",
-        "assets/video/scene_01_clip_04.mp4",
-        "assets/video/scene_01_clip_05.mp4"
-      ],
-      "music_bed": "assets/music/scene_01_music.mp3",
-      "composite": "assets/scenes/scene_01_complete.mp4"
-    }
+  "scenes_completed": {
+    "1": false
   },
+  "scene_assets": {},
   "clip_context_ids": {
     "1_1": "ctx_mock_s1_c1",
     "1_2": "ctx_mock_s1_c2",
