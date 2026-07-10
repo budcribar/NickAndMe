@@ -1,5 +1,5 @@
 {
-  "model_name": "veo-3.1-fast-generate-preview",
+  "model_name": "veo-3.1-generate-preview",
   "use_video_audio_for_music": true,
   "aspect_ratio": "16:9",
   "duration_seconds": 8

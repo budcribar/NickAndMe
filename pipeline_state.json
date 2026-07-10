@@ -5,10 +5,10 @@
   },
   "scene_assets": {},
   "clip_context_ids": {
-    "1_1": "ctx_mock_s1_c1",
-    "1_2": "ctx_mock_s1_c2",
-    "1_3": "ctx_mock_s1_c3",
-    "1_4": "ctx_mock_s1_c4",
+    "1_1": "models/veo-3.1-generate-preview/operations/1t6omv7o3pqr",
+    "1_2": "models/veo-3.1-generate-preview/operations/uipf4o5stl4h",
+    "1_3": "models/veo-3.1-generate-preview/operations/xoj7ef7qf5ps",
+    "1_4": "models/veo-3.1-generate-preview/operations/yygoubegd2rt",
     "1_5": "ctx_mock_s1_c5"
   }
 }

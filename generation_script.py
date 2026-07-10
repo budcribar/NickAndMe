@@ -69,8 +69,8 @@ class AgenticGenerationEngine:
         if not os.path.exists(self.config_path):
             print(f"[Info] Config file not found. Generating default '{self.config_path}'...")
             self.config = {
-                "model_name": "veo-3.1-fast-generate-preview", # Fast loop default
-                "use_video_audio_for_music": False,             # Set to True to bypass Suno and use Veo native audio
+                "model_name": "veo-3.1-fast-generate-preview",
+                "use_video_audio_for_music": False,             
                 "aspect_ratio": "16:9",
                 "duration_seconds": 8
             }
@@ -122,6 +122,7 @@ class AgenticGenerationEngine:
     def initialize_fresh_state(self):
         """Initializes empty/default pipeline state metadata."""
         self.state = {
+            "characters_designed": False,
             "current_scene_index": 0,
             "scenes_completed": {},  
             "scene_assets": {},      
@@ -150,6 +151,100 @@ class AgenticGenerationEngine:
             print(f"[Success] Persisted blueprint updates to '{self.blueprint_path}'")
         except Exception as e:
             print(f"[Error] Failed to write blueprint to disk: {e}")
+
+    def pre_production_character_design(self):
+        """STAGE 0: Interactively generates 3 version options per character using Imagen 3 and prompts user validation choice."""
+        print("\n==================== STAGE 0: PRE-PRODUCTION CHARACTER DESIGN GATE ====================")
+        os.makedirs("assets/characters", exist_ok=True)
+        
+        char_seeds = self.blueprint.get("global_production_variables", {}).get("character_seed_tokens", {})
+        if not char_seeds:
+            print("[Info] No upfront character seed tokens found in blueprint. Skipping Phase 0.")
+            return
+
+        if not self.client:
+            print("[Warning] API client not configured. Bypassing automatic character generation.")
+            return
+
+        for char_key, seed_info in char_seeds.items():
+            local_image_name = seed_info.get("reference_image_placeholder", f"{char_key.lower()}_ref.png")
+            final_path = f"assets/characters/{local_image_name}"
+
+            # Check if this character has already been locked in from a previous execution
+            if os.path.exists(final_path):
+                print(f"[Anchor Locked] Character reference asset already locked at: {final_path}")
+                continue
+
+            satisfied = False
+            while not satisfied:
+                print(f"\n[Designing] Launching Imagen 3 variants for {char_key}...")
+                description = seed_info.get("description", "")
+                
+                # Formulate structural design template prompt matching film parameters
+                treatment = self.blueprint.get("global_production_variables", {}).get("directorial_treatment", "cinematic lighting")
+                imagen_prompt = (
+                    f"A detailed portrait model-sheet photograph of {char_key}: {description}. "
+                    f"Character centered in frame, look straight at camera, neutral expression, {treatment}. "
+                    f"High texture realism, isolated plain dark concrete studio studio background."
+                )
+
+                option_paths = []
+                for idx in range(1, 4):
+                    try:
+                        print(f"  Generating Option variant {idx}/3...")
+                        result = self.client.models.generate_images(
+                            model="imagen-3.0-generate-002",
+                            prompt=imagen_prompt,
+                            config=types.GenerateImagesConfig(
+                                numberOfImages=1,
+                                outputMimeType="image/png",
+                                aspectRatio="1:1"
+                            )
+                        )
+                        
+                        opt_path = f"assets/characters/{char_key.lower()}_variant_0{idx}.png"
+                        # Extract the binary payload out of the generated image response container
+                        for generated_img in result.generated_images:
+                            with open(opt_path, "wb") as f:
+                                f.write(generated_img.image.image_bytes)
+                        option_paths.append(opt_path)
+                    except Exception as e:
+                        print(f"  [Error] Variant generation failed: {e}")
+
+                if len(option_paths) < 3:
+                    print("[Error] Failed to generate all 3 variants due to backend timeouts. Retrying entire batch...")
+                    continue
+
+                print(f"\n*** INTERACTIVE SELECTION FOR {char_key} ***")
+                print(f"Option 1 saved to: {option_paths[0]}")
+                print(f"Option 2 saved to: {option_paths[1]}")
+                print(f"Option 3 saved to: {option_paths[2]}")
+                
+                user_choice = ""
+                while user_choice not in ["1", "2", "3", "R"]:
+                    user_choice = input(f"Please inspect the character images. Select [1], [2], [3] to Lock character look, or [R] to Regenerate fresh options: ").strip().upper()
+
+                if user_choice in ["1", "2", "3"]:
+                    selected_index = int(user_choice) - 1
+                    chosen_variant_path = option_paths[selected_index]
+                    
+                    # Promote chosen temporary variant image file to the master locked anchor file path
+                    os.replace(chosen_variant_path, final_path)
+                    print(f"[Success] Locked {char_key} design choice! Saved to master reference slot: {final_path}")
+                    
+                    # Clean up other trailing variants to keep directories clean
+                    for p in option_paths:
+                        if os.path.exists(p):
+                            os.remove(p)
+                    satisfied = True
+                elif user_choice == "R":
+                    print(f"Flushing variant cache and rerolling seed space layout for {char_key}...")
+                    for p in option_paths:
+                        if os.path.exists(p):
+                            os.remove(p)
+
+        self.state["characters_designed"] = True
+        self.save_state()
 
     def _build_suno_brief(self, music_bed: Dict[str, Any]) -> Dict[str, Any]:
         style = (music_bed.get("style_description") or "").strip()
@@ -302,42 +397,55 @@ class AgenticGenerationEngine:
             print(f"  [Veo 3.1] Throttling: Cooling down for {throttle_delay}s...")
             time.sleep(throttle_delay)
 
-        # --- MODEL SELECTION SECTIONS ---
-        # Read setting from dynamic config JSON
         model_name = self.config.get("model_name", "veo-3.1-fast-generate-preview")
-        
-        # Reference Options for Developer adjustments:
-        # model_name = "veo-3.1-fast-generate-preview"  # Default - Faster iterations for human review gating
-        # model_name = "veo-3.1-generate-preview"       # Cinematic Quality preview target
-        # model_name = "veo-3.1-generate-001"           # GA Production pipeline standard
-        # model_name = "veo-3.1-fast-generate-001"      # GA Fast optimization standard
-        # ---------------------------------
 
-        # Setup standard video config constraints (always standard intervals: 4, 6, 8s)
         generation_config = types.GenerateVideosConfig(
             aspect_ratio=self.config.get("aspect_ratio", "16:9"),
-            duration_seconds=self.config.get("duration_seconds", 8),
-            negative_prompt=neg_prompt
+            duration_seconds=self.config.get("duration_seconds", 8)
         )
 
-        # Overwrite native configuration parameters if flag dictates native background audio generation
         if self.config.get("use_video_audio_for_music", False):
             if "with audio" not in prompt.lower():
                 prompt = f"{prompt}, high quality atmospheric stereo background cinematic sound and matching environment audio"
 
         try:
-            if continuation_source == "extend_previous" and previous_context_id and not str(previous_context_id).startswith("ctx_mock_"):
+            # 🎬 IF A CAMERA JUMP CUT HAPPENS, ATTACH STAGE 0 PORTRAIT AS BASELINE LOCK
+            if continuation_source == "none" or not previous_context_id or str(previous_context_id).startswith("ctx_mock_"):
+                image_reference = None
+                
+                # Scan prompt context to verify which primary character token is under focus
+                char_seeds = self.blueprint.get("global_production_variables", {}).get("character_seed_tokens", {})
+                for char_key, seed_info in char_seeds.items():
+                    if char_key in prompt:
+                        local_image_name = seed_info.get("reference_image_placeholder", f"{char_key.lower()}_ref.png")
+                        local_image_path = f"assets/characters/{local_image_name}"
+                        
+                        if os.path.exists(local_image_path):
+                            print(f"  [Character Anchor] Found upfront character map image for {char_key}. Injecting into canvas input layer...")
+                            image_reference = self.client.files.upload(file=local_image_path)
+                            break
+
+                if image_reference:
+                    operation = self.client.models.generate_videos(
+                        model=model_name,
+                        prompt=prompt,
+                        video=image_reference, # Forces face/outfit alignment consistency acrosscuts
+                        config=generation_config
+                    )
+                else:
+                    operation = self.client.models.generate_videos(
+                        model=model_name,
+                        prompt=prompt,
+                        config=generation_config
+                    )
+            
+            # 🔄 CONTINUOUS EXTENSION MODE
+            else:
                 operation = self.client.models.generate_videos(
                     model=model_name,
                     prompt=prompt,
                     video=previous_context_id,
                     config=generation_config 
-                )
-            else:
-                operation = self.client.models.generate_videos(
-                    model=model_name,
-                    prompt=prompt,
-                    config=generation_config
                 )
 
             poll_interval = int(os.environ.get("VEO_POLL_INTERVAL_SECONDS", "10"))
@@ -352,7 +460,6 @@ class AgenticGenerationEngine:
             if not generated_videos:
                 raise GenerationFailure(f"Scene {scene_num} Clip {clip_num}: Veo 3.1 returned no generated video.")
 
-            # FIXED: Explicitly fetch file contents from the remote reference before attempting local file system write routines
             self.client.files.download(file=generated_videos[0].video)
             generated_videos[0].video.save(output_clip_path)
             
@@ -418,7 +525,6 @@ class AgenticGenerationEngine:
             for p in clip_paths:
                 f.write(f"file '../../{p}'\n")
 
-        # Determine if we are muxing an independent external music track or using native video track lines
         if music_path and os.path.exists(music_path):
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
@@ -429,7 +535,6 @@ class AgenticGenerationEngine:
                 output_scene_path
             ]
         else:
-            # If skipping Suno, copy the video tracks alongside their native internal audio tracks
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
                 "-f", "concat", "-safe", "0", "-i", concat_list,
@@ -486,7 +591,6 @@ class AgenticGenerationEngine:
         composite_scene_path: Optional[str] = None
 
         try:
-            # Check dynamic background configuration flag rule
             if not self.config.get("use_video_audio_for_music", False):
                 generated_files.append(music_output_path(s_num))
                 music_path = self.generate_suno_music(scene)
@@ -588,6 +692,10 @@ class AgenticGenerationEngine:
             print(f"[Error] Mastering compilation failed: {e}")
 
     def run_pipeline(self):
+        # Fire Stage 0 Design Sequence prior to running film operational scene timelines
+        if not self.state.get("characters_designed", False):
+            self.pre_production_character_design()
+
         scenes = self.blueprint.get("scenes", [])
         total_scenes = len(scenes)
 
@@ -643,7 +751,7 @@ class AgenticGenerationEngine:
 
 if __name__ == "__main__":
     print("=========================================================================")
-    print("         AGENTIC GENERATION SCRIPT ENGINE (V8) - RUNNING                 ")
+    print("         AGENTIC GENERATION SCRIPT ENGINE (V8.5) - RUNNING               ")
     print("=========================================================================")
     engine = AgenticGenerationEngine()
     engine.run_pipeline()
