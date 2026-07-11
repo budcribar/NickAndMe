@@ -1,0 +1,16 @@
+{
+  "characters_designed": true,
+  "current_scene_index": 0,
+  "scenes_completed": {},
+  "scene_assets": {},
+  "clip_context_ids": {},
+  "clip_jobs": {},
+  "music_jobs": {},
+  "character_revisions": {},
+  "stale_clips": {},
+  "scene_variants": {},
+  "scene_hero": {},
+  "wip_movie": {},
+  "blueprint_file": "nickandme.clips.grok.json",
+  "reset_reason": "start over with Stage 2 Grok clip plan"
+}

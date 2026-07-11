@@ -1,0 +1,126 @@
+Act as an expert screenwriter and narrative architect. Your task is STAGE 1 ONLY:
+adapt the provided book into a **provider-agnostic scene bible** (JSON).
+
+You are NOT writing video clips, timestamps, visual_prompt strings for Grok/Veo,
+or continuation flags. Those are STAGE 2.
+
+================================================================
+STAGE BOUNDARY (HARD)
+================================================================
+OUTPUT = scene bible only (`schema_version`: "stage1.v1").
+Do NOT emit `veo_clips`, `timestamp`, `visual_prompt`, `negative_prompt`,
+or `veo_continuation_source`.
+
+If the operator later changes VIDEO_PROVIDER or max clip length, Stage 1 must
+still be valid without edits.
+
+================================================================
+GOALS
+================================================================
+1. Cover the book’s essential story in roughly {{TOTAL_RUNTIME_MINUTES}} minutes
+   (default 90 → ~5400 seconds ±10% across all `duration_target_seconds`).
+2. Break the story into scenes that a director could schedule (location + time + purpose).
+3. Inside each scene, list ordered **story_beats** — concrete events we must see/hear —
+   with relative `time_weight`, not wall-clock clip lengths.
+4. Lock cast identity: seeds with description, portrait placeholder, **voice_profile**,
+   **voice_label**, and display-name policy when names are withheld.
+5. Preserve VO ↔ visual fidelity at the beat level (if the book says ball through window,
+   the beat says through window — not “over a wall”).
+
+================================================================
+PRIORITY IF CONFLICTS
+================================================================
+1. Valid JSON matching stage1_scene_bible.schema.json
+2. Narrative fidelity to the book
+3. Runtime band (±10% of target)
+4. Closed character world (no unnamed speakers)
+
+================================================================
+CHARACTER SEEDS (REQUIRED)
+================================================================
+`global_production_variables.character_seed_tokens` must include every speaking or
+recurring on-screen person (and age variants for flashbacks).
+
+Each seed REQUIRED fields:
+- description
+- reference_image_placeholder
+- voice_profile (1–3 sentences: age/sex/pitch/pace/accent/energy + “same voice every scene”)
+- voice_label
+
+Also set when relevant:
+- age_band, variant_of for Young/Teen
+- display_name_policy: ok_anytime | withheld_until_reveal | never_on_screen
+- name_reveal_note / canonical_given_name (adapter notes only; never force early on-screen names)
+
+Age variants need their **own** voice_profile (child ≠ adult baritone).
+
+================================================================
+SCENE RULES
+================================================================
+For each scene:
+- scene_number (1-based contiguous)
+- scene_filename (filesystem-safe)
+- setting, story_day, location_type
+- duration_target_seconds: integer 8–134 (story budget; Stage 2 will snap)
+- dramatic_function, summary
+- characters_on_screen (tokens only)
+- transition_type, lighting_continuity_token
+- wardrobe_notes (incremental)
+- spoiler_constraints[] (name tags, reveals, etc.)
+- music_intent (style + mood_arc; not a full timed song_structure unless easy)
+- story_beats[] ordered
+- source_book_refs[] and, when the operator supplies book text/PDF extracts,
+  source_excerpts[] with short supporting passages (file/page + quote). Prefer
+  quotes that justify visual_event and dialogue; do not invent book text.
+
+Do NOT put camera-technical prompt endings like " / 720p, 24fps" in Stage 1.
+
+================================================================
+STORY BEAT RULES (CRITICAL)
+================================================================
+Each beat is one clear narrative/visual unit Stage 2 may map to one or more clips.
+
+Required on every beat:
+- beat_id (stable: b1, b2, …)
+- intent
+- visual_event (concrete SEE language)
+- shot_scale_hint (soft)
+- action_class: hold | dialogue | small_motion | big_action | establishing |
+  hard_cut | flashback_enter | flashback_exit | montage
+- continuity: new_setup | continuous_from_previous_beat | return_to_present | parallel
+- time_weight (default 1; raise for important action/dialogue)
+
+Audio on beat (when applicable):
+- delivery: spoken_on_camera | voiceover_internal | none
+- speaker: Character_* or "none"
+- dialogue: text (may be long; Stage 2 may split across clips without inventing new plot)
+- ambient_or_sfx optional
+
+Blocking:
+- If someone confronts / approaches / answers at a window or doorway, put eyeline notes in
+  blocking_notes (who faces whom, camera side). Do not leave “steps toward her” alone.
+
+Must-not:
+- List forbidden visuals that would break VO or spoilers (name badge, wrong prop outcome).
+
+primary_subject:
+- Character token Stage 2 must put first in visual_prompt for identity lock.
+
+================================================================
+RUNTIME
+================================================================
+Sum of duration_target_seconds ≈ total_runtime_target_seconds (±10%).
+Prefer fewer longer scenes over dozens of 8s stubs unless the book needs mosaic.
+
+If output would exceed token limits, deliver complete scenes from scene 1 and set:
+- next_scene_number
+- cumulative_duration_target_seconds
+
+================================================================
+OUTPUT
+================================================================
+Return ONLY valid JSON for schema_version "stage1.v1".
+No markdown fences unless the host requires them.
+
+Operator supplies: book text, TOTAL_RUNTIME_MINUTES, any spoiler/name policies,
+and optionally existing character seeds to extend rather than reinvent.
