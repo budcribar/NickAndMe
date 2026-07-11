@@ -1,0 +1,108 @@
+{
+  "schema_version": "stage1.v1",
+  "movie_title": "Nick and Me (minimal example)",
+  "source_book_title": "Nick and Me",
+  "adaptation_notes": "Illustrative Stage 1 only — not full film.",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "35mm anamorphic, high-contrast winter daylight, film grain",
+    "total_runtime_target_seconds": 5400,
+    "character_seed_tokens": {
+      "Character_P": {
+        "description": "Adult man, 28, thin wiry frame, short dark hair, pizza polo without name tag.",
+        "reference_image_placeholder": "character_p_ref.png",
+        "voice_label": "P (narrator / younger brother)",
+        "voice_profile": "American male late 20s, soft mid baritone, tired Midwestern, measured pace; same voice every scene.",
+        "display_name_policy": "withheld_until_reveal"
+      },
+      "Character_N_Young": {
+        "description": "Boy about 12, sturdy, reddish-brown hair, dirty t-shirt, child proportions.",
+        "reference_image_placeholder": "character_n_young_ref.png",
+        "voice_label": "Nick as child (~12)",
+        "voice_profile": "American preteen boy, not adult baritone; confident kid energy; same voice in flashbacks.",
+        "age_band": "child_12",
+        "variant_of": "Character_N"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "scene_number": 2,
+      "scene_filename": "Scene_02_Day1_Alley_Flashback",
+      "setting": "Day 1 — Kirk Street alley flashback, summer daylight",
+      "story_day": "Flashback summer, Nick ~12 / P ~8",
+      "location_type": "flashback",
+      "duration_target_seconds": 43,
+      "dramatic_function": "Show Nick taking blame for broken window",
+      "summary": "Kids play kickball; Mark smashes Mrs. Engel's window; young Nick steps up and claims fault.",
+      "source_book_refs": ["early memory / Mrs. Engel window"],
+      "characters_on_screen": ["Character_N_Young", "Character_P_Young"],
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "Bright dusty summer alley daylight",
+      "wardrobe_notes": "Dirty kid clothes; not adult gym bodies",
+      "spoiler_constraints": [
+        "No adult bodybuilder Nick",
+        "No name tags"
+      ],
+      "music_intent": {
+        "style_description": "Nostalgic slightly whimsical acoustic folk",
+        "vocal_style": "Airy female chorus optional",
+        "mood_arc": "Playful → shock → defiant pride"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Establish alley kickball world",
+          "visual_event": "Wide alley: kids play kickball; garbage-can bases; N_Young ready; P_Young watches.",
+          "shot_scale_hint": "ws",
+          "primary_subject": "Character_N_Young",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "audio": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_P",
+            "dialogue": "The thing about Nick was, he was a real-life Viking…"
+          },
+          "must_not": ["adult Nick body"]
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Window smash",
+          "visual_event": "Mark kicks red kickball; ball smashes Mrs. Engel kitchen window; glass shatters.",
+          "shot_scale_hint": "ms",
+          "primary_subject": "Character_N_Young",
+          "action_class": "big_action",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "blocking_notes": "Clear flight path into brick house window — not over a wall.",
+          "audio": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_P",
+            "dialogue": "One time little Mark Conner kicked a ball right through old Mrs. Engel's kitchen…"
+          },
+          "must_not": ["ball goes over wall instead of through window"]
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Nick takes the blame",
+          "visual_event": "Mrs. Engel yells from shattered window; Nick steps toward house looking up at her.",
+          "shot_scale_hint": "ots",
+          "primary_subject": "Character_N_Young",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "blocking_notes": "Camera behind Nick; he faces house/window; back to camera; never faces viewer only.",
+          "audio": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_P",
+            "dialogue": "But Nick stepped right up to her and said he was the one who did it…"
+          },
+          "must_not": ["Nick facing camera with house behind him"]
+        }
+      ]
+    }
+  ]
+}

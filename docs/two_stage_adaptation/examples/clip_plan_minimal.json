@@ -1,0 +1,104 @@
+{
+  "schema_version": "stage2.v1",
+  "movie_title": "Nick and Me (minimal example)",
+  "source_book_title": "Nick and Me",
+  "video_provider_profile": "grok",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "35mm anamorphic, high-contrast winter daylight, film grain",
+    "total_runtime_target_seconds": 5400,
+    "character_seed_tokens": {
+      "Character_P": {
+        "description": "Adult man, 28, thin wiry frame, short dark hair, pizza polo without name tag.",
+        "reference_image_placeholder": "character_p_ref.png",
+        "voice_label": "P (narrator / younger brother)",
+        "voice_profile": "American male late 20s, soft mid baritone, tired Midwestern, measured pace; same voice every scene.",
+        "display_name_policy": "withheld_until_reveal"
+      },
+      "Character_N_Young": {
+        "description": "Boy about 12, sturdy, reddish-brown hair, dirty t-shirt, child proportions.",
+        "reference_image_placeholder": "character_n_young_ref.png",
+        "voice_label": "Nick as child (~12)",
+        "voice_profile": "American preteen boy, not adult baritone; confident kid energy; same voice in flashbacks.",
+        "age_band": "child_12",
+        "variant_of": "Character_N"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "scene_number": 2,
+      "stage1_scene_number": 2,
+      "setting": "Day 1 — Kirk Street alley flashback, summer daylight",
+      "scene_filename": "Scene_02_Day1_Alley_Flashback",
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "Bright dusty summer alley daylight",
+      "total_estimated_duration_seconds": 24,
+      "stage1_beat_map": ["b1", "b2", "b3"],
+      "music_bed": {
+        "style_description": "Nostalgic slightly whimsical acoustic folk",
+        "vocal_style": "Airy female chorus optional",
+        "song_structure": [
+          {
+            "section_label": "Play",
+            "section_type": "instrumental",
+            "duration_seconds": 8,
+            "production_notes": ["Light acoustic"]
+          },
+          {
+            "section_label": "Smash",
+            "section_type": "instrumental",
+            "duration_seconds": 8,
+            "production_notes": ["Sharp accent on impact"]
+          },
+          {
+            "section_label": "Defiant",
+            "section_type": "instrumental",
+            "duration_seconds": 8,
+            "production_notes": ["Resolve proud"]
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:08",
+          "veo_continuation_source": "none",
+          "visual_prompt": "FLASHBACK summer alley daylight. Wide shot: kids kickball; Character_N_Young (about 12, reddish-brown hair, dirty t-shirt, child NOT adult) ready near home; Character_P_Young watches side, lips closed, internal monologue not spoken to another person / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, adult bodybuilder child",
+          "audio_payload": {
+            "speaker": "Character_P",
+            "dialogue": "The thing about Nick was, he was a real-life Viking…",
+            "delivery": "voiceover_internal"
+          }
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:08-00:16",
+          "veo_continuation_source": "none",
+          "visual_prompt": "FLASHBACK alley: Mark (~10) sprints and kicks red kickball; ball SMASHES Mrs. Engel kitchen window on brick house — glass shatters. Character_N_Young and Character_P_Young flinch. Clear kick, flight, window impact / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, ball over wall",
+          "audio_payload": {
+            "speaker": "Character_P",
+            "dialogue": "One time little Mark Conner kicked a ball right through old Mrs. Engel's kitchen…",
+            "delivery": "voiceover_internal"
+          }
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:16-00:24",
+          "veo_continuation_source": "none",
+          "visual_prompt": "FLASHBACK alley OTS: camera behind Character_N_Young (12, reddish-brown hair, dirty t-shirt, child NOT adult). He faces brick house; Mrs. Engel yells from shattered kitchen window above. Nick steps toward her looking up. Back to camera, face to house / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Nick facing camera, boy looking at viewer, back to house, adult bodybuilder",
+          "audio_payload": {
+            "speaker": "Character_P",
+            "dialogue": "But Nick stepped right up to her and said he was the one who did it…",
+            "delivery": "voiceover_internal"
+          }
+        }
+      ]
+    }
+  ]
+}
