@@ -3911,40 +3911,91 @@ class AgenticGenerationEngine:
         os.replace(tmp_out, output_path)
         return output_path
 
-    def rebuild_wip_movie(self, reason: str = "") -> Optional[str]:
+    def rebuild_wip_movie(
+        self,
+        reason: str = "",
+        *,
+        approved_only: Optional[bool] = None,
+        force: bool = False,
+    ) -> Optional[str]:
         """
-        Rebuild the work-in-progress film from all currently approved scene composites.
-        Controlled by pipeline_config:
-          rebuild_wip_movie_after_scene (bool)
-          wip_movie_path (str)
+        Rebuild the work-in-progress film from scene composites.
+
+        approved_only:
+          True  — only scenes marked approved (default for post-Approve)
+          False — any scene with a composite on disk (use after clip/cascade regen)
+          None  — True unless config wip_include_unapproved_composites is set
+        force: rebuild even if rebuild_wip_movie_after_scene is false (manual refresh)
         """
-        if not self.config.get("rebuild_wip_movie_after_scene", True):
+        if not force and not self.config.get("rebuild_wip_movie_after_scene", True):
             return None
+
+        if approved_only is None:
+            approved_only = not bool(
+                self.config.get("wip_include_unapproved_composites", False)
+            )
 
         output_path = self.config.get("wip_movie_path", "assets/movie_wip.mp4")
-        scene_files = self._collect_scene_composites(approved_only=True)
+        scene_files = self._collect_scene_composites(approved_only=approved_only)
         if not scene_files:
-            print("  [WIP Movie] No approved scene composites yet — skip.")
-            return None
+            # Fallback: if nothing is marked approved, still stitch whatever composites exist
+            if approved_only:
+                scene_files = self._collect_scene_composites(approved_only=False)
+                if scene_files:
+                    print(
+                        "  [WIP Movie] No approved scenes; using all composites on disk."
+                    )
+                    approved_only = False
+            if not scene_files:
+                print("  [WIP Movie] No scene composites yet — skip.")
+                return None
 
         note = f" ({reason})" if reason else ""
-        print(f"\n==================== WIP MOVIE UPDATE{note} ====================")
+        mode = "approved" if approved_only else "all composites"
+        print(f"\n==================== WIP MOVIE UPDATE{note} [{mode}] ====================")
         try:
             path = self._concat_videos(scene_files, output_path, label="wip_movie")
             print(
-                f"  [WIP Movie] Updated {path} with {len(scene_files)} approved scene(s). "
+                f"  [WIP Movie] Updated {path} with {len(scene_files)} scene(s) ({mode}). "
                 f"Open this anytime to review the film so far."
             )
             self.state["wip_movie"] = {
                 "path": path,
                 "scene_count": len(scene_files),
+                "approved_only": approved_only,
                 "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "reason": reason or "",
             }
             self.save_state()
             return path
         except GenerationFailure as e:
             print(f"  [WIP Movie Warning] {e}")
             return None
+
+    def remux_scenes_and_rebuild_wip(
+        self,
+        scene_nums: List[int],
+        reason: str = "",
+    ) -> Optional[str]:
+        """
+        Force-remux each scene from current on-disk clips, then rebuild movie_wip.mp4
+        from all available composites (not only approved). Used after cascade/clip regen.
+        """
+        unique = sorted({int(s) for s in scene_nums})
+        for sn in unique:
+            try:
+                path = self.remux_scene_from_disk(sn)
+                if path:
+                    print(f"  [Remux] Scene {sn} -> {path}")
+                else:
+                    print(f"  [Remux] Scene {sn}: no clips on disk")
+            except Exception as e:
+                print(f"  [Remux Warning] Scene {sn}: {e}")
+        return self.rebuild_wip_movie(
+            reason=reason or f"after remux scenes {unique}",
+            approved_only=False,
+            force=True,
+        )
 
     def run_mastering(self):
         print("\n==================== PIPELINE STAGE 5: GLOBAL FILM MASTERING ====================")

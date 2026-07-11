@@ -286,6 +286,7 @@ def regen_clip(
     feedback: str = "",
     apply_to_prompt: bool = True,
     run_qa: bool = True,
+    rebuild_wip: bool = True,
 ) -> str:
     eng = get_engine()
     old_vp = ""
@@ -302,15 +303,20 @@ def regen_clip(
         if row["clip_number"] == clip_num:
             new_vp = row["visual_prompt"]
             break
+    wip_path = None
+    if rebuild_wip:
+        wip_path = eng.remux_scenes_and_rebuild_wip(
+            [scene_num], reason=f"after regen S{scene_num}C{clip_num}"
+        )
     edit_log.add_entry(
         "clip_regen",
         user_note=feedback or "Regenerate without prompt change",
         scene=scene_num,
         clip=clip_num,
-        action_taken=f"Wiped and regenerated → {path}",
+        action_taken=f"Wiped and regenerated → {path}; WIP={wip_path or 'skipped'}",
         before=old_vp,
         after=new_vp,
-        targets=["nickandme.json", "ClaudeAdaptationPromptV16.txt", "generation_script"],
+        targets=["nickandme.json", "assets/video", "assets/movie_wip.mp4"],
     )
     return path
 
@@ -328,6 +334,23 @@ def approve_scene(scene_num: int) -> None:
 
 def remux_scene(scene_num: int) -> Optional[str]:
     return get_engine().remux_scene_from_disk(scene_num)
+
+
+def rebuild_wip_movie(
+    reason: str = "manual refresh",
+    *,
+    approved_only: bool = False,
+) -> Optional[str]:
+    """Rebuild assets/movie_wip.mp4. Default includes all scene composites on disk."""
+    return get_engine().rebuild_wip_movie(
+        reason=reason, approved_only=approved_only, force=True
+    )
+
+
+def remux_scenes_and_rebuild_wip(
+    scene_nums: List[int], reason: str = ""
+) -> Optional[str]:
+    return get_engine().remux_scenes_and_rebuild_wip(scene_nums, reason=reason)
 
 
 # ---------- Characters ----------
@@ -454,6 +477,7 @@ def cascade_regen_character(
     dry_run: bool = False,
     only_existing: bool = True,
     selected: Optional[List[Tuple[int, int]]] = None,
+    rebuild_wip: bool = True,
 ) -> List[Tuple[int, int]]:
     """
     Regenerate clips that use this character.
@@ -461,6 +485,7 @@ def cascade_regen_character(
     Defaults:
       only_existing=True  — only wipe/regen clips already on disk (no new first-time renders)
       selected=None       — all matching hits after filters; or pass explicit (scene, clip) list
+      rebuild_wip=True    — remux affected scenes and rebuild assets/movie_wip.mp4
     """
     eng = get_engine()
     if selected is not None:
@@ -474,16 +499,28 @@ def cascade_regen_character(
         return hits
     for sn, cn in hits:
         eng.regenerate_clip(sn, cn, feedback=feedback or None, run_qa=True)
+
+    wip_path = None
+    if rebuild_wip and hits:
+        scenes = sorted({sn for sn, _ in hits})
+        wip_path = eng.remux_scenes_and_rebuild_wip(
+            scenes, reason=f"after cascade regen {char_key}"
+        )
+
     edit_log.add_entry(
         "character_cascade_regen",
         user_note=feedback or f"Cascade regen for {char_key}",
         character=char_key,
-        action_taken=f"Regenerated {len(hits)} clip(s): {hits[:20]}",
-        targets=["nickandme.json", "assets/video"],
+        action_taken=(
+            f"Regenerated {len(hits)} clip(s): {hits[:20]}; "
+            f"remux+WIP={wip_path or 'skipped'}"
+        ),
+        targets=["nickandme.json", "assets/video", "assets/scenes", "assets/movie_wip.mp4"],
         extra={
             "clips": hits,
             "only_existing": only_existing,
             "only_scene": only_scene,
+            "wip_path": wip_path,
         },
     )
     return hits

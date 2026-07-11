@@ -73,7 +73,37 @@ if wip:
     st.success(f"WIP movie: `{wip}`")
     st.video(wip)
 else:
-    st.info("No WIP movie yet — approve a scene after clips exist.")
+    st.info("No WIP movie yet — remux scenes or run **Rebuild WIP** after clips exist.")
+
+rw1, rw2 = st.columns(2)
+with rw1:
+    if st.button("🔄 Rebuild WIP from scene composites", help="Remux is not re-run; stitches existing scene_XX_complete.mp4 files"):
+        with st.spinner("Building movie_wip.mp4…"):
+            try:
+                path = api.rebuild_wip_movie(reason="home manual rebuild")
+                if path:
+                    st.success(f"Updated `{path}`")
+                    st.rerun()
+                else:
+                    st.warning("No scene composites found to stitch.")
+            except Exception as e:
+                st.error(str(e))
+with rw2:
+    if st.button(
+        "🔄 Remux all scenes with clips + rebuild WIP",
+        help="Rebuild each scene_XX_complete.mp4 from clips, then stitch WIP",
+    ):
+        with st.spinner("Remux + WIP… can take a minute"):
+            try:
+                scenes = api.list_scenes()
+                nums = [s["scene_number"] for s in scenes if s.get("clips_on_disk")]
+                path = api.remux_scenes_and_rebuild_wip(
+                    nums, reason="home remux all + WIP"
+                )
+                st.success(path or "Done (check console if path empty)")
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
 
 st.divider()
 st.markdown(

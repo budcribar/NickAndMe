@@ -212,6 +212,15 @@ with a2:
             except Exception as e:
                 st.error(str(e))
 with a3:
+    if st.button("Remux scene + rebuild WIP"):
+        with st.spinner("Remux + movie_wip.mp4…"):
+            try:
+                path = api.remux_scenes_and_rebuild_wip(
+                    [sn], reason=f"scene {sn} remux + WIP"
+                )
+                st.success(path or "Remux done")
+            except Exception as e:
+                st.error(str(e))
     composite = next((s for s in api.list_scenes() if s["scene_number"] == sn), None)
     if composite and composite.get("composite_path"):
         st.caption(composite["composite_path"])

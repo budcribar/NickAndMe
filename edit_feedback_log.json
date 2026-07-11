@@ -2,6 +2,71 @@
   "version": 1,
   "entries": [
     {
+      "id": "9cabd954",
+      "ts": "2026-07-11T10:27:33",
+      "type": "character_cascade_regen",
+      "scene": null,
+      "clip": null,
+      "character": "Character_P",
+      "user_note": "Cascade regen for Character_P",
+      "action_taken": "Regenerated 9 clip(s): [(1, 1), (1, 2), (1, 4), (1, 5), (2, 1), (2, 2), (2, 4), (2, 5), (2, 6)]",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Cascade regen for Character_P (character Character_P)",
+      "targets": [
+        "nickandme.json",
+        "assets/video"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false
+      },
+      "extra": {
+        "clips": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            5
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            5
+          ],
+          [
+            2,
+            6
+          ]
+        ],
+        "only_existing": true,
+        "only_scene": null
+      }
+    },
+    {
       "id": "ef5451a5",
       "ts": "2026-07-11T09:15:55",
       "type": "character_lock",
