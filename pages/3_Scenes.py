@@ -434,9 +434,9 @@ else:
         "then **Generate variant for comparison** with another model."
     )
 
-if composite and composite.get("composite_path"):
+if scene_meta.get("composite_path"):
     with st.expander("Play scene composite", expanded=False):
-        st.video(composite["composite_path"])
+        st.video(scene_meta["composite_path"])
 
 st.divider()
 
