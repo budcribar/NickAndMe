@@ -46,7 +46,10 @@
           "type": "string",
           "description": "Delivery target (e.g. 720p). Draft res may differ in pipeline_config."
         },
-        "frame_rate": { "type": "integer" },
+        "frame_rate": {
+          "type": ["integer", "string"],
+          "description": "Prefer integer 24; string forms like \"24fps\" accepted for legacy extracts."
+        },
         "directorial_treatment": { "type": "string" },
         "total_runtime_target_seconds": {
           "type": "integer",

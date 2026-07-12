@@ -1,0 +1,1242 @@
+{
+  "schema_version": "stage1.v1",
+  "project_title": "Nick and Me",
+  "source_chunk": "1/10",
+  "total_runtime_target_seconds": 5400,
+  "cumulative_duration_target_seconds": 780,
+  "next_scene_number": 9,
+  "global_production_variables": {
+    "story_world_summary": "Working-class Milwaukee present day. Nick is a feared, scarred older brother; Character_P (younger brother, given name withheld) lives with aging Ma in a fifth-floor Kirk Street walk-up, works pizza, and begins a strange connection with Sionna while Ma’s mind slips.",
+    "tone": "Gritty Midwestern realism with quiet mythic undertow (Viking pride, fate-like attraction); intimate VO-driven character study.",
+    "era_and_place": "Contemporary Milwaukee, Wisconsin; Kirk Street brick walk-up, neighborhood gym, pizza joint, Joe’s bar, public library.",
+    "character_seed_tokens": {
+      "Character_P": {
+        "description": "Adult male, late 20s–early 30s, Nick’s younger brother; ordinary working-class build, not flashy; lives with Ma; pizza-job clothes; introspective eyes; director label only—never a personal given name on screen until late-book reveal.",
+        "reference_image_placeholder": "assets/characters/character_p_ref.png",
+        "voice_profile": "Male, late 20s to early 30s, Midwestern Milwaukee working-class accent, medium pitch, conversational pace with reflective pauses when narrating, low-to-moderate energy, same voice every scene.",
+        "voice_label": "P_younger_brother",
+        "age_band": "adult",
+        "display_name_policy": "withheld_until_reveal",
+        "canonical_given_name": null,
+        "name_reveal_note": "Given name withheld until late book; on-screen and dialogue use only little brother / Nick’s brother / Character_P. No name tags, mail, ID, or spoken first name.",
+        "name_reveal_scene": null
+      },
+      "Character_Nick": {
+        "description": "Older brother; tall, muscular, imposing; face like a puzzle held with glue-gun scars—chin and over left eyebrow; reddish-brown messy hair as if he forgot to comb it; not ugly, rough from brawls; moves like people should clear a path.",
+        "reference_image_placeholder": "assets/characters/character_nick_ref.png",
+        "voice_profile": "Male, early-to-mid 30s, deeper Midwestern baritone, confident clipped pace, commanding energy with occasional warmth for family, same voice every scene.",
+        "voice_label": "Nick_big_brother",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Nick_Young": {
+        "description": "Nick at about age 12: already tough kid, reddish-brown hair, smaller frame but same facial structure and early scar potential; alley/kickball era.",
+        "reference_image_placeholder": "assets/characters/character_nick_young_ref.png",
+        "voice_profile": "Male child ~12, higher pitch than adult Nick, Midwestern, bold and protective energy, same young voice in all flashback scenes.",
+        "voice_label": "Nick_age12",
+        "age_band": "child",
+        "variant_of": "Character_Nick",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_P_Young": {
+        "description": "Character_P as a child ~8–10 in alley kickball memory; smaller, ordinary kid clothes; watches Nick with pride.",
+        "reference_image_placeholder": "assets/characters/character_p_young_ref.png",
+        "voice_profile": "Male child, higher pitch, Midwestern, quieter than young Nick, same child voice in flashbacks only.",
+        "voice_label": "P_child",
+        "age_band": "child",
+        "variant_of": "Character_P",
+        "display_name_policy": "withheld_until_reveal",
+        "name_reveal_note": "Even as child, no given name on screen."
+      },
+      "Character_Ma": {
+        "description": "Aging mother; tired face, vision trouble, moves carefully around furniture; retired school janitor; often in house clothes; can look glassy-eyed when confused.",
+        "reference_image_placeholder": "assets/characters/character_ma_ref.png",
+        "voice_profile": "Female, elderly, softer Midwestern voice, slower pace, can thin or empty when confused, same voice every scene.",
+        "voice_label": "Ma",
+        "age_band": "elderly",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Sionna": {
+        "description": "Young woman; short brown hair; skinny but pretty; very pale skin; striking light blue eyes (pre-dawn sky); black short-sleeve V-neck shirt; fish-symbol necklace; jeans; blue tennis shoes; large backpack; moves with boneless smooth wave-like grace.",
+        "reference_image_placeholder": "assets/characters/character_sionna_ref.png",
+        "voice_profile": "Female, mid-20s, calm cool measured delivery, light Midwestern or soft neutral American, unhurried energy, same voice every scene.",
+        "voice_label": "Sionna",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Gym_Guy": {
+        "description": "Adult male gym-goer at Moxie’s; mid-set on preacher curls; yields bench immediately when Nick approaches.",
+        "reference_image_placeholder": "assets/characters/character_gym_guy_ref.png",
+        "voice_profile": "Male adult, Midwestern, brief deferential energy if he speaks; same voice if reused.",
+        "voice_label": "Gym_Guy",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Mark_Conner": {
+        "description": "Neighborhood kid in alley kickball flashback; scared after ball goes through window.",
+        "reference_image_placeholder": "assets/characters/character_mark_conner_ref.png",
+        "voice_profile": "Male child, Midwestern, frightened energy in flashback only.",
+        "voice_label": "Mark_kid",
+        "age_band": "child",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Mrs_Engel": {
+        "description": "Older neighborhood woman; furious about kitchen window broken by kickball.",
+        "reference_image_placeholder": "assets/characters/character_mrs_engel_ref.png",
+        "voice_profile": "Female elderly, sharp angry Midwestern, flashback only.",
+        "voice_label": "Mrs_Engel",
+        "age_band": "elderly",
+        "display_name_policy": "ok_anytime"
+      },
+      "Character_Librarian": {
+        "description": "Adult woman at library front desk; moving books; practical neighborhood-library look.",
+        "reference_image_placeholder": "assets/characters/character_librarian_ref.png",
+        "voice_profile": "Female adult, Midwestern, helpful neutral desk energy, same if reused.",
+        "voice_label": "Librarian",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime"
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Kirk_Apt": {
+        "display_name": "Kirk Street fifth-floor apartment",
+        "description": "Downtown Milwaukee big brick walk-up apartment; modest working-class interior; Ma and Character_P’s home.",
+        "visual_lock": "Aging brick-building apartment: worn wood or linoleum floors, lived-in furniture Ma can bump into, kitchen counter where pill bottles can line up, bedroom doorway visible from living area, game-show TV glow possible; no luxury; fifth-floor walk-up feel via stairwell when shown.",
+        "reference_image_placeholder": "assets/locations/loc_kirk_apt_ref.png"
+      },
+      "Loc_Kirk_Street_Exterior": {
+        "display_name": "Kirk Street brick apartment exterior",
+        "description": "Milwaukee downtown street; large brick apartment building; alley access behind.",
+        "visual_lock": "Big brick multi-story walk-up facade, urban Milwaukee street, working-class neighborhood signage, alley mouth with garbage cans behind building.",
+        "reference_image_placeholder": "assets/locations/loc_kirk_street_ext_ref.png"
+      },
+      "Loc_Kirk_Alley": {
+        "display_name": "Alley behind Kirk Street building",
+        "description": "Alley where kids play kickball; garbage-can-lid bases; Mrs. Engel’s kitchen window faces alley.",
+        "visual_lock": "Narrow brick alley, dented metal garbage cans and lids as bases, residential kitchen window low enough for a ball to smash through, Milwaukee overcast or late-day light.",
+        "reference_image_placeholder": "assets/locations/loc_kirk_alley_ref.png"
+      },
+      "Loc_Moxie_Gym": {
+        "display_name": "Moxie’s gym (corner)",
+        "description": "Neighborhood gym down on the corner; free weights, curl bench, local toughs.",
+        "visual_lock": "No-frills corner gym: free-weight area, preacher curl bench, chalk and iron smell suggested by plates and bars; patrons notice when Nick enters; 40–50 lb curl bars visible.",
+        "reference_image_placeholder": "assets/locations/loc_moxie_gym_ref.png"
+      },
+      "Loc_Pizza_Place": {
+        "display_name": "Neighborhood pizza place (Character_P’s work)",
+        "description": "Local pizza joint; sidewalk approach and front door where Sionna trips.",
+        "visual_lock": "Modest pizza storefront, cement sidewalk lip that can trip a walker, glass front door, warm interior light spill; working-class Milwaukee strip.",
+        "reference_image_placeholder": "assets/locations/loc_pizza_place_ref.png"
+      },
+      "Loc_Joes_Bar": {
+        "display_name": "Joe’s bar",
+        "description": "Local bar; Mondays football on TV; pool/darts; Nick and Character_P hangout.",
+        "visual_lock": "Dim neighborhood bar, TV with Packers game, bar stools, pool table or darts in background, working-class Milwaukee regulars; Nick’s entrance parts attention.",
+        "reference_image_placeholder": "assets/locations/loc_joes_bar_ref.png"
+      },
+      "Loc_Library": {
+        "display_name": "Neighborhood public library",
+        "description": "Large older library open till 9; wood floors, hanging lights, stairs to second floor, front desk.",
+        "visual_lock": "Century-old public library: big windows, wood floors, metal-chain hanging lights over tables and aisles, newspaper/magazine tables, front desk with books, stairs to another floor; old-paper smell suggested by stacks.",
+        "reference_image_placeholder": "assets/locations/loc_library_ref.png"
+      },
+      "Loc_Street_Milwaukee": {
+        "display_name": "Milwaukee neighborhood streets",
+        "description": "Cold sidewalks between apartment, Joe’s, library; bike-to-work routes.",
+        "visual_lock": "Midwest city sidewalks, cold weather breath possible, library visible across street, ordinary cars and brick storefronts; no sunny resort look.",
+        "reference_image_placeholder": "assets/locations/loc_street_milwaukee_ref.png"
+      },
+      "Loc_Nick_TransAm": {
+        "display_name": "Nick’s 1980 Pontiac Trans Am",
+        "description": "Burnt orange Trans Am with yellow flames, T-top, hood eagle; V8 presence at lights.",
+        "visual_lock": "1980 Pontiac Trans Am: burnt orange paint, yellow side flames, big eagle on hood, T-top, exhaust splitters; people look when it pulls up.",
+        "reference_image_placeholder": "assets/locations/loc_nick_transam_ref.png"
+      },
+      "Loc_Ocean_Memory": {
+        "display_name": "New Jersey ocean memory (flashback)",
+        "description": "Single family-vacation memory: beach, tides coming in, waves on sand.",
+        "visual_lock": "Atlantic shore memory: sand under feet, incoming tide, wave sound and foam; brief lyrical contrast to Milwaukee grit; not a present-day location.",
+        "reference_image_placeholder": "assets/locations/loc_ocean_memory_ref.png"
+      }
+    },
+    "spoiler_register": [
+      {
+        "id": "sp1",
+        "kind": "name",
+        "summary": "Younger brother’s legal/given first name is withheld for late-book reveal; early materials use Character_P / little brother only.",
+        "allowed_from_scene": null,
+        "characters": [
+          "Character_P",
+          "Character_P_Young"
+        ]
+      },
+      {
+        "id": "sp2",
+        "kind": "plot",
+        "summary": "Nature of the ‘weird’ connection with Sionna is only beginning; do not invent supernatural payoffs not yet in source.",
+        "allowed_from_scene": null,
+        "characters": [
+          "Character_P",
+          "Character_Sionna"
+        ]
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "scene_filename": "sc01_kirk_intro_nick_world",
+      "setting": "Day — Kirk Street apartment / street / Moxie’s gym (multi-place intro)",
+      "story_day": 1,
+      "location_type": "interior_exterior_mix",
+      "location_ids": [
+        "Loc_Kirk_Apt",
+        "Loc_Kirk_Street_Exterior",
+        "Loc_Moxie_Gym",
+        "Loc_Nick_TransAm"
+      ],
+      "primary_location_id": "Loc_Kirk_Apt",
+      "duration_target_seconds": 110,
+      "dramatic_function": "Establish narrator, Nick’s mythic toughness, home, and Milwaukee world.",
+      "summary": "Character_P’s VO introduces real Big Brother Nick—scarred, feared, Viking-blood pride—while we see the Kirk Street walk-up, Nick’s presence in the neighborhood, and Nick claiming the curl bench at Moxie’s.",
+      "characters_on_screen": [
+        "Character_P",
+        "Character_Nick",
+        "Character_Gym_Guy",
+        "Character_Ma"
+      ],
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "day_milwaukee_overcast_to_gym_fluorescent",
+      "continuity_notes": "First image of family world; Nick’s scars and reddish-brown messy hair locked; Character_P has no name props.",
+      "spoiler_constraints": [
+        "No personal given name for Character_P on clothing, mail, ID, dialogue, or graphics (withheld_until_reveal).",
+        "Prefer Character_P / little brother labels only."
+      ],
+      "music_intent": {
+        "style": "sparse industrial-folk underscore",
+        "mood_arc": "gritty pride rising under VO, then iron-gym pulse"
+      },
+      "source_book_refs": [
+        "pages 1-3"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 1",
+          "quote": "Big brother was mine. ... Nick was the guy everybody was scared of. ... His face looked like a puzzle with the pieces held together with sticky stuff from a glue gun."
+        },
+        {
+          "ref": "page 1",
+          "quote": "We lived downtown in a big brick apartment building on Kirk Street. A fifth-floor walk-up..."
+        },
+        {
+          "ref": "page 1",
+          "quote": "when we went into Moxie’s, the gym down on the corner, one of those guys ... dropped that sucker right down on the ground and offered it up."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Open on Character_P’s claim of Nick as real Big Brother; establish Nick’s scarred, feared presence.",
+          "visual_event": "Nick walks into a Milwaukee bar or street frame; people notice and shift out of his way; close details of scars on chin and over left eyebrow, messy reddish-brown hair.",
+          "shot_scale_hint": "medium then close detail",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Big brother was mine. I’m not talking about that stupid book we had to read in junior high. No—my real Big Brother. Nick was the guy everybody was scared of.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Street_Exterior",
+          "must_not": [
+            "any on-screen given name for Character_P",
+            "pretty-boy unscarred Nick"
+          ]
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Home base: fifth-floor Kirk Street walk-up with Ma and Character_P.",
+          "visual_event": "Exterior big brick apartment building; cut inside modest fifth-floor apartment; Character_P and Ma in lived-in rooms; stairs imply walk-up pain.",
+          "shot_scale_hint": "wide establishing to medium interior",
+          "action_class": "establishing",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "I lived with him and Ma after dad took off when I was about eight. Downtown, Kirk Street. Fifth-floor walk-up—real pain in the ass to haul up the groceries.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Kirk_Apt",
+          "blocking_notes": "Ma may be background in living room; Character_P near window or kitchen."
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Nick’s strength myth—grocery bags like world’s strongest man.",
+          "visual_event": "Nick climbs stairs loaded with about six shopping bags in one trip; Character_P follows with the rest.",
+          "shot_scale_hint": "medium full",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "When I went to the store with Nick, he could load up about six of those shopping bags and take them up in one trip—like world’s strongest man.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Apt",
+          "ambient_or_sfx": "stairwell footsteps, bag rustle"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Moxie’s: gym guy yields preacher curls the moment Nick approaches.",
+          "visual_event": "Inside Moxie’s, a guy mid-set preacher curls a 40-pound bar; sees Nick moving toward him; drops the bar and offers the bench; Nick nods, takes over, switches to a 50-pound bar for warm-ups.",
+          "shot_scale_hint": "medium two-shot then Nick detail",
+          "action_class": "big_action",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "One time at Moxie’s, a guy was doin’ preacher curls with a forty-pound bar. Mid-set he sees Nick, drops that sucker, offers it up. Nick just nodded. Had to have fifty for warm-ups.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Moxie_Gym",
+          "blocking_notes": "Gym guy faces Nick’s approach; yields space; Character_P watches from side.",
+          "must_not": [
+            "Nick politely waiting in line",
+            "fancy modern boutique gym"
+          ]
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Brother loyalty under VO; Character_P won’t curl fifty.",
+          "visual_event": "Character_P on lighter weights nearby; Nick owns the rack; brief look of trust between brothers.",
+          "shot_scale_hint": "medium",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "I ain’t gonna curl no fifty pounds as a warm-up. That’s okay though. Nick is my brother. I know he’ll stand up for me no matter what.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Moxie_Gym"
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Optional glint of Nick’s Trans Am as status symbol.",
+          "visual_event": "Burnt-orange 1980 Trans Am with yellow flames and hood eagle pulls up or sits at curb; heads turn.",
+          "shot_scale_hint": "wide to medium car beauty",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Milwaukee is where we live. All our lives. Nick’s got a cool car—people always look up when he pulls up to the lights.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Nick_TransAm"
+        }
+      ]
+    },
+    {
+      "scene_number": 2,
+      "scene_filename": "sc02_alley_kickball_window",
+      "setting": "Day — alley behind Kirk Street (childhood flashback)",
+      "story_day": 0,
+      "location_type": "exterior",
+      "location_ids": [
+        "Loc_Kirk_Alley"
+      ],
+      "primary_location_id": "Loc_Kirk_Alley",
+      "duration_target_seconds": 75,
+      "dramatic_function": "Flashback proof of Nick’s code: takes the blame for broken window.",
+      "summary": "Kids play kickball with garbage-can-lid bases; Mark Conner kicks the ball through Mrs. Engel’s kitchen window; scared Mark freezes; young Nick steps up and claims he did it; later implication Ma pays and Nick covers the cash.",
+      "characters_on_screen": [
+        "Character_Nick_Young",
+        "Character_P_Young",
+        "Character_Mark_Conner",
+        "Character_Mrs_Engel"
+      ],
+      "transition_type": "flashback_dissolve",
+      "lighting_continuity_token": "day_alley_memory",
+      "continuity_notes": "Age variants only; adult Character_P VO over kids; ball goes THROUGH kitchen window glass—not over a wall.",
+      "spoiler_constraints": [
+        "No given name for Character_P / Character_P_Young on screen or dialogue."
+      ],
+      "music_intent": {
+        "style": "thin nostalgic percussion",
+        "mood_arc": "playful to sharp break to proud hush"
+      },
+      "source_book_refs": [
+        "page 2"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 2",
+          "quote": "We used to play kick ball in the alley behind the building and set up bases with dented-in garbage can lids. One time little Mark Conner kicked a ball right through old Mrs. Engel’s kitchen."
+        },
+        {
+          "ref": "page 2",
+          "quote": "Nick stepped right up to her and said he was the one who did it. ... Somehow Nick gave her cash to pay for it about a week later."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Establish alley kickball with garbage-can-lid bases.",
+          "visual_event": "Kids in alley; dented garbage can lids as bases; Character_P_Young and Character_Nick_Young among them; ball kicked between bases.",
+          "shot_scale_hint": "wide",
+          "action_class": "flashback_enter",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "We used to play kickball in the alley behind the building. Bases were dented-in garbage can lids.",
+          "primary_subject": "Character_P_Young",
+          "location_id": "Loc_Kirk_Alley"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Mark’s kick smashes through Mrs. Engel’s kitchen window.",
+          "visual_event": "Mark Conner kicks hard; ball flies and crashes through Mrs. Engel’s kitchen window glass; shards; Mrs. Engel appears furious at the broken window.",
+          "shot_scale_hint": "medium action to window impact",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "none",
+          "speaker": "none",
+          "dialogue": "",
+          "primary_subject": "Character_Mark_Conner",
+          "location_id": "Loc_Kirk_Alley",
+          "ambient_or_sfx": "glass shatter",
+          "must_not": [
+            "ball going over a wall instead of through the window",
+            "soft bounce without break"
+          ]
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Mark terrified; young Nick claims responsibility to Mrs. Engel.",
+          "visual_event": "Mark frozen in fear; young Nick steps forward to Mrs. Engel at the window/door line and clearly takes the blame; Character_P_Young watches with pride.",
+          "shot_scale_hint": "medium two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick_Young",
+          "dialogue": "It was me. I did it.",
+          "primary_subject": "Character_Nick_Young",
+          "location_id": "Loc_Kirk_Alley",
+          "blocking_notes": "Nick faces Mrs. Engel; Mark behind Nick; eyeline Nick to Mrs. Engel.",
+          "must_not": [
+            "Nick pointing at Mark"
+          ]
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Aftermath pride: Nick later covers the money; secret kept.",
+          "visual_event": "Brief adult-memory bridge: young Nick with cash implied, or kids silent pact; return-to-present cue as alley softens.",
+          "shot_scale_hint": "close on young Nick then dissolve",
+          "action_class": "flashback_exit",
+          "continuity": "return_to_present",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "She called Ma. Ma had to pay for the window. Somehow a twelve-year-old Nick came up with sixty bucks a week later. He never told Ma it was really Mark. None of us did. I was sure proud of him.",
+          "primary_subject": "Character_Nick_Young",
+          "location_id": "Loc_Kirk_Alley"
+        }
+      ]
+    },
+    {
+      "scene_number": 3,
+      "scene_filename": "sc03_viking_pride_nick_life",
+      "setting": "Day/Night — streets, bars, factory implication, Werner-area car",
+      "story_day": 1,
+      "location_type": "montage_mix",
+      "location_ids": [
+        "Loc_Street_Milwaukee",
+        "Loc_Joes_Bar",
+        "Loc_Nick_TransAm",
+        "Loc_Kirk_Apt"
+      ],
+      "primary_location_id": "Loc_Street_Milwaukee",
+      "duration_target_seconds": 80,
+      "dramatic_function": "Mythologize Nick as modern Viking; sketch job, car, independence, care for family.",
+      "summary": "VO on Viking ancestry and warrior respect; Nick enters bars first, bouncers wary; Trans Am glory; metal-factory livelihood implied; he lives nearby on Werner Street but still shows up for Ma and Character_P.",
+      "characters_on_screen": [
+        "Character_Nick",
+        "Character_P",
+        "Character_Ma"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "day_to_neon_bar_night",
+      "continuity_notes": "Montage may be multi-place; no invented plot beyond book claims.",
+      "spoiler_constraints": [
+        "No given name for Character_P."
+      ],
+      "music_intent": {
+        "style": "low war-drum modern rock pulse",
+        "mood_arc": "proud, swaggering, then domestic settle"
+      },
+      "source_book_refs": [
+        "pages 2-4"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 2-3",
+          "quote": "The thing about Nick was, he was a real-life Viking ... tall, strong people who survived in the middle of winter..."
+        },
+        {
+          "ref": "page 3",
+          "quote": "When we go downtown to the bars, Nick always goes in first to check out the place. The bouncers are even scared of him."
+        },
+        {
+          "ref": "page 3-4",
+          "quote": "It’s a 1980 Pontiac Trans Am all decked out. ... sweet burnt orange with yellow flames on the side, and the big eagle still on the hood."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Viking ancestry pride over Nick’s physical presence.",
+          "visual_event": "Nick walks cold Milwaukee street like a warrior; optional brief symbolic cold/wind; Character_P watching with pride.",
+          "shot_scale_hint": "hero medium walk",
+          "action_class": "montage",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Nick was a real-life Viking. Ancestors from Norway or Sweden—Viking land—stayed in Wisconsin. Tall strong people who survived winter while others froze. Modern-day warrior.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Street_Milwaukee"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Nick enters bar first; space clears; bouncers wary.",
+          "visual_event": "Nick pushes into a bar doorway first; patrons and bouncer register him; path opens; Character_P follows.",
+          "shot_scale_hint": "doorway medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "When we go downtown to the bars, Nick always goes in first. Bouncers are even scared of him. He likes places where everybody is running out.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Joes_Bar",
+          "blocking_notes": "Nick leads; Character_P half a step behind."
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Trans Am as crown jewel.",
+          "visual_event": "Detail pass on burnt orange paint, yellow flames, T-top, hood eagle; Nick driving or parked; Character_P riding shotgun smiling.",
+          "shot_scale_hint": "detail montage",
+          "action_class": "montage",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "1980 Pontiac Trans Am—V8, power everything, T-top, exhaust splitters. Burnt orange with yellow flames and the big eagle on the hood. I love riding in that thing.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Nick_TransAm"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Factory money and nearby apartment; still cares for Ma.",
+          "visual_event": "Nick arrives at Kirk Apt to check on family; Ma in background; Character_P lets him in; sense he lives five blocks away but belongs here.",
+          "shot_scale_hint": "medium interior",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "He runs an assembly line at the metal factory—sometimes the big crane. Easy money for him. Cool apartment on Werner Street, five blocks away. But he comes over a lot. Feels like he still lives here.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Apt"
+        }
+      ]
+    },
+    {
+      "scene_number": 4,
+      "scene_filename": "sc04_nick_visit_ma_school_talk",
+      "setting": "Day — Kirk Street apartment",
+      "story_day": 2,
+      "location_type": "interior",
+      "location_ids": [
+        "Loc_Kirk_Apt"
+      ],
+      "primary_location_id": "Loc_Kirk_Apt",
+      "duration_target_seconds": 100,
+      "dramatic_function": "Family pressure: Ma declining; Character_P trapped by caretaking and Nick’s anti-school gospel.",
+      "summary": "Nick visits, questions Ma sleeping midday, lectures Character_P to watch her; VO on Ma’s janitor past and money stress; Nick dismisses college and won’t get Character_P a factory job.",
+      "characters_on_screen": [
+        "Character_Nick",
+        "Character_P",
+        "Character_Ma"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "day_apt_flat_light",
+      "continuity_notes": "Ma may be off in bedroom then living room; pill/TV lifestyle seeds for later confusion scene.",
+      "spoiler_constraints": [
+        "No given name for Character_P on props or dialogue."
+      ],
+      "music_intent": {
+        "style": "minimal domestic drone",
+        "mood_arc": "concern to frustration to resigned trap"
+      },
+      "source_book_refs": [
+        "pages 4-5"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 4",
+          "quote": "“What’s Ma doin’ back in the bedroom at this time of day?” he says. ... “You got to keep an eye on her. She shouldn’t be sleeping in the middle of the day like that."
+        },
+        {
+          "ref": "page 4-5",
+          "quote": "Ma worked for years being a janitor for the school system. ... Between her and me with my pizza job money, we make ends meet."
+        },
+        {
+          "ref": "page 5",
+          "quote": "“You don’t need a degree to get a good job. ... You’re not gonna be a doctor or lawyer ... Hell, you’re too old anyway.”"
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Nick arrives and questions Ma in bedroom midday.",
+          "visual_event": "Nick in apartment doorway/living room; glances toward bedroom; Character_P present; Ma not visible or silhouette in bedroom.",
+          "shot_scale_hint": "medium",
+          "action_class": "dialogue",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "What’s Ma doin’ back in the bedroom at this time of day?",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Apt",
+          "blocking_notes": "Nick faces Character_P; eyeline toward bedroom then to brother."
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Character_P shrugs; Nick lectures on old people going downhill.",
+          "visual_event": "Character_P uncertain; Nick steps in, intense but familial; living-room space between them.",
+          "shot_scale_hint": "two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "I don’t know, why?",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Kirk_Apt",
+          "ambient_or_sfx": "muffled TV from other room optional"
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Nick’s warning speech; Character_P accepts responsibility.",
+          "visual_event": "Nick gestures toward bedroom; Character_P nods, chastened.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "You got to keep an eye on her. She shouldn’t be sleeping in the middle of the day like that. That’s how old people go downhill. They start sleepin’ all day, and pretty soon they don’t want to go outside, or eat, or go to the store or nothing.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Apt"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "VO: Ma’s hard life, janitor work, pizza-and-macaroni survival.",
+          "visual_event": "Inserts: Ma watching game shows/cooking channel bored; fridge with cheap food; Character_P in pizza-work shirt counting thin cash; Ma moves carefully, poor vision.",
+          "shot_scale_hint": "montage inserts",
+          "action_class": "montage",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Ma worked years as a janitor for the school system—kids’ snot and puke. Back problems, retirement, social security. Between her and my pizza job we make ends meet. Lot of pizza and macaroni. Someone has to be here with Ma. She’s getting older. Hard for her to see.",
+          "primary_subject": "Character_Ma",
+          "location_id": "Loc_Kirk_Apt"
+        },
+        {
+          "beat_id": "b5",
+          "intent": "School vs real world; Nick refuses factory help.",
+          "visual_event": "Brothers in kitchen/living room; Nick dismissive; Character_P frustrated but silent on the deeper hurt.",
+          "shot_scale_hint": "two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "You don’t need a degree to get a good job. All you need is to know somebody. What kind of shit do you want to take at school anyway? Bunch of nerds talking to hear themselves talk. The real world is here—where we live. You’re not gonna be a doctor or lawyer. Hell, you’re too old anyway.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Kirk_Apt",
+          "must_not": [
+            "Nick offering the factory job"
+          ]
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Character_P internal surrender; secret love of reading.",
+          "visual_event": "Character_P alone after Nick leaves or turns away; quiet look toward a hidden paperback or just empty hands.",
+          "shot_scale_hint": "close",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Nick is right. I am too old. Haven’t got the brains. Besides, I have to take care of Ma. I do like reading though. I don’t tell nobody that.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Kirk_Apt"
+        }
+      ]
+    },
+    {
+      "scene_number": 5,
+      "scene_filename": "sc05_meet_sionna_pizza",
+      "setting": "Day — sidewalk and front of pizza place",
+      "story_day": 3,
+      "location_type": "exterior",
+      "location_ids": [
+        "Loc_Pizza_Place",
+        "Loc_Street_Milwaukee",
+        "Loc_Ocean_Memory"
+      ],
+      "primary_location_id": "Loc_Pizza_Place",
+      "duration_target_seconds": 130,
+      "dramatic_function": "Inciting encounter: Sionna collides into Character_P’s life; uncanny recognition.",
+      "summary": "Character_P bikes/walks to pizza work; Sionna trips on cement and brushes his shoulder; names, fish necklace, light-blue eyes; she declines pizza, offers coffee and number; he feels he already knows her; her walk is ocean-wave smooth; brief tide memory.",
+      "characters_on_screen": [
+        "Character_P",
+        "Character_Sionna"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "day_sidewalk_soft",
+      "continuity_notes": "Sionna wardrobe lock: black V-neck, fish necklace, jeans, blue tennis shoes, backpack; eyes light blue pre-dawn.",
+      "spoiler_constraints": [
+        "No given name for Character_P; he may not speak a first name for himself.",
+        "Do not invent supernatural effects beyond subjective ‘knew her’ feeling."
+      ],
+      "music_intent": {
+        "style": "hushed ambient with distant wave texture",
+        "mood_arc": "ordinary day → startled intimacy → tidal pull"
+      },
+      "source_book_refs": [
+        "pages 6-8"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 6",
+          "quote": "this girl tripped over the cement while she was walking toward me. She kind of fell into me. ... “Sionna” she said."
+        },
+        {
+          "ref": "page 6",
+          "quote": "She said, “No thanks, I don’t eat pizza, but if you want to go have a cup of coffee sometime, you can call me.”"
+        },
+        {
+          "ref": "page 7-8",
+          "quote": "It was like I “knew” her or something. ... She moved real smooth. It was like there wasn’t any bones in her body. It reminded me of the waves..."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Arrive at work; ordinary sidewalk before collision.",
+          "visual_event": "Character_P locks or leaves bike, walks sidewalk toward pizza front door.",
+          "shot_scale_hint": "wide to medium",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Something weird is happening to me. I can’t really tell Nick, or Ma, or Bobby down at the pizza joint.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Pizza_Place"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Sionna trips on cement and brushes into him.",
+          "visual_event": "Sionna walking toward him trips on cement lip; falls/brushes shoulder into Character_P; she looks down and brushes off black V-neck shirt; fish-symbol necklace visible.",
+          "shot_scale_hint": "medium two-shot",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "Are you okay?",
+          "primary_subject": "Character_Sionna",
+          "location_id": "Loc_Pizza_Place",
+          "blocking_notes": "Collision on sidewalk center; both face each other after; backpack on Sionna.",
+          "must_not": [
+            "comic pratfall exaggeration that undercuts intensity"
+          ]
+        },
+        {
+          "beat_id": "b3",
+          "intent": "She says yes; first look; names.",
+          "visual_event": "She answers, brushes shirt; they look at each other not knowing what to say; he works here; she gives name Sionna.",
+          "shot_scale_hint": "close two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Sionna",
+          "dialogue": "Yes.",
+          "primary_subject": "Character_Sionna",
+          "location_id": "Loc_Pizza_Place"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Name exchange and Irish goddess / River Shannon (he barely listens—eyes).",
+          "visual_event": "Extreme close on her light blue eyes; lips move about name meaning; he is lost in eye color like pre-dawn sky.",
+          "shot_scale_hint": "ECU eyes then medium",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "I work here, I’m just going to work. What is your name?",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Pizza_Place"
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Sionna names herself and origin; coffee invite instead of pizza.",
+          "visual_event": "Sionna speaks calmly; declines pizza; offers coffee sometime; he is freaked she initiated; she gives phone number (on paper or phone).",
+          "shot_scale_hint": "medium",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Sionna",
+          "dialogue": "Sionna. My mom and dad named me after an Irish goddess—something about the River Shannon. No thanks, I don’t eat pizza, but if you want to go have a cup of coffee sometime, you can call me.",
+          "primary_subject": "Character_Sionna",
+          "location_id": "Loc_Pizza_Place",
+          "blocking_notes": "She faces him; cool blue delivery; he takes number."
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Uncanny recognition; she looks back over shoulder.",
+          "visual_event": "She walks away smooth, boneless; glances back over shoulder as if memorizing him; he stands fixed, weird feeling of being seen through.",
+          "shot_scale_hint": "medium long following her then on him",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "She was not cute—she was pretty. Pale like an old English story. When she walked away she looked back over her shoulder like she was trying to remember what I was going to look like tomorrow. It was like I knew her. Intense.",
+          "primary_subject": "Character_Sionna",
+          "location_id": "Loc_Pizza_Place"
+        },
+        {
+          "beat_id": "b7",
+          "intent": "Ocean memory simile: tides covering his feet; he doesn’t want to move.",
+          "visual_event": "Brief flashback: Character_P as younger self feet in New Jersey sand, tide washing in; smash cut back to him on Milwaukee sidewalk watching her go.",
+          "shot_scale_hint": "lyric wide beach then return medium",
+          "action_class": "flashback_enter",
+          "continuity": "parallel",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "She moved like the waves out by New Jersey—the only vacation I remember. Tides coming in… pretty soon you move or get covered. That was Sionna—except she was washing up on me, and I didn’t want to move my feet. I just wanted her to cover me completely.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Ocean_Memory",
+          "must_not": [
+            "extended vacation subplot",
+            "dad on screen if not needed"
+          ]
+        }
+      ]
+    },
+    {
+      "scene_number": 6,
+      "scene_filename": "sc06_ma_pills_confusion",
+      "setting": "Day — Kirk Street apartment kitchen/living",
+      "story_day": 3,
+      "location_type": "interior",
+      "location_ids": [
+        "Loc_Kirk_Apt"
+      ],
+      "primary_location_id": "Loc_Kirk_Apt",
+      "duration_target_seconds": 90,
+      "dramatic_function": "Domestic crisis seed: Ma’s confusion after Sionna day.",
+      "summary": "Home after meeting Sionna; Ma rummages for pain pills already lined on counter; asks about church and Mrs. Canasta; glassy empty eyes; snaps back apologetic; Character_P realizes she is losing it and must tell Nick.",
+      "characters_on_screen": [
+        "Character_P",
+        "Character_Ma"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "late_day_apt_kitchen",
+      "continuity_notes": "Pill bottles in a straight line system on counter; today’s box visible.",
+      "spoiler_constraints": [
+        "No given name for Character_P."
+      ],
+      "music_intent": {
+        "style": "uneasy low strings",
+        "mood_arc": "post-romance warmth into dread"
+      },
+      "source_book_refs": [
+        "pages 8-9"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 8",
+          "quote": "Ma was in a crazy mood. She was looking around the house mumbling to herself about trying to find her pain pills."
+        },
+        {
+          "ref": "page 8",
+          "quote": "“Did we go to church today? Did you see Mrs. Canasta there?”"
+        },
+        {
+          "ref": "page 9",
+          "quote": "Her eyes were all glassy and looked really empty. It was like she didn’t know who I was or something."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Enter home; Ma searching and mumbling about pain pills.",
+          "visual_event": "Character_P enters; Ma rummages counters/drawers; pill bottles already lined in a row on counter; she doesn’t register the system.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "Ma, what’s the matter?",
+          "primary_subject": "Character_Ma",
+          "location_id": "Loc_Kirk_Apt"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Ma’s confused questions: church, Mrs. Canasta.",
+          "visual_event": "Ma turns, lost; asks about church and Mrs. Canasta; Character_P stunned.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Ma",
+          "dialogue": "I can’t find my pain pills, I know I put them here somewhere. Did we go to church today? Did you see Mrs. Canasta there?",
+          "primary_subject": "Character_Ma",
+          "location_id": "Loc_Kirk_Apt",
+          "blocking_notes": "Ma faces Character_P but eyes unfocused."
+        },
+        {
+          "beat_id": "b3",
+          "intent": "He grounds reality; points to today’s pills.",
+          "visual_event": "He gently shows the lined bottles and today’s box right in front of her.",
+          "shot_scale_hint": "over-shoulder to pills",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "Ma, what are you talking about? We don’t go to church anymore. Mrs. Canasta lives down one level—all you have to do is walk down there if you want. Your pills are right in front of you in the box for today.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Kirk_Apt"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Glassy empty look—doesn’t know him—then snap back.",
+          "visual_event": "Close on Ma’s glassy empty eyes; beat of non-recognition; then she softens, apologizes, sees the pills.",
+          "shot_scale_hint": "ECU eyes to medium",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Ma",
+          "dialogue": "Oh, right, I am so sorry. I see them right here. I don’t know what got into me.",
+          "primary_subject": "Character_Ma",
+          "location_id": "Loc_Kirk_Apt",
+          "must_not": [
+            "comedic dementia gag"
+          ]
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Character_P decides he must tell Nick; needs to escape apartment.",
+          "visual_event": "He watches her take a pill correctly; his face tight; grabs jacket to leave.",
+          "shot_scale_hint": "close on Character_P",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "Wow. She was losing it. I would have to tell Nick. I’m sure he’ll get mad—like it was my fault. I had to get out of the apartment.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Kirk_Apt"
+        }
+      ]
+    },
+    {
+      "scene_number": 7,
+      "scene_filename": "sc07_joes_bar_packers_nick",
+      "setting": "Night — Joe’s bar (Monday football)",
+      "story_day": 3,
+      "location_type": "interior",
+      "location_ids": [
+        "Loc_Joes_Bar"
+      ],
+      "primary_location_id": "Loc_Joes_Bar",
+      "duration_target_seconds": 100,
+      "dramatic_function": "Brother confrontation: Ma’s decline becomes Nick’s anger and control.",
+      "summary": "Character_P at Joe’s watching Packers vs Bears; Nick slaps his back, reads him, hears Ma story, rages about nursing-home costs and Character_P’s duty; scary punch-ready look; Character_P pays and leaves promising to walk Ma tomorrow; private VO: sometimes he hates Nick’s shit.",
+      "characters_on_screen": [
+        "Character_P",
+        "Character_Nick"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "bar_night_tv_glow",
+      "continuity_notes": "Monday football; Packers-Bears on TV; pool/darts background.",
+      "spoiler_constraints": [
+        "No given name for Character_P; Nick may say ‘little brother’ only."
+      ],
+      "music_intent": {
+        "style": "bar TV crowd bed, music low under tension",
+        "mood_arc": "casual Monday → pressure cooker → cold exit"
+      },
+      "source_book_refs": [
+        "pages 9-10"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 9",
+          "quote": "“Hey, little brother. What’s shakin’?” ... I told him the story of Ma being all confused."
+        },
+        {
+          "ref": "page 9",
+          "quote": "“Why don’t you take her to the store or something? ... Do you know how expensive that is?"
+        },
+        {
+          "ref": "page 10",
+          "quote": "He gave me that look like he wanted to punch me in the face. ... God, sometimes I really hate Nick inside."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Establish Joe’s Monday: Packers-Bears, Character_P alone at bar.",
+          "visual_event": "Character_P on bar stool, beer, TV Packers vs Bears; pool/darts ambient; Monday regulars.",
+          "shot_scale_hint": "wide to medium",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "I went down to Joe’s for a beer. Chances are I’d see Nick. Mondays he watched football. Made Mondays not seem so bad.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Joes_Bar",
+          "ambient_or_sfx": "bar murmur, game broadcast"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Nick enters; brother greeting; senses something hidden.",
+          "visual_event": "Nick enters, slaps Character_P on the back, sits; reads his face.",
+          "shot_scale_hint": "medium two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "Hey, little brother. What’s shakin’?",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Joes_Bar",
+          "blocking_notes": "Nick at Character_P’s side/back; dominant posture."
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Character_P deflects; Nick pushes.",
+          "visual_event": "Character_P stares at TV; Nick leans in.",
+          "shot_scale_hint": "close two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "I don’t know. Nothin’.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Joes_Bar"
+        },
+        {
+          "beat_id": "b4",
+          "intent": "Nick extracts the Ma story; anger rises.",
+          "visual_event": "Character_P tells Ma confusion story (compressed); Nick’s face hardens, pissed.",
+          "shot_scale_hint": "medium",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "What’s the matter? I can tell you’re hidin’ something. What’s goin’ on?",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Joes_Bar"
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Nick’s nursing-home cost tirade and blame.",
+          "visual_event": "Nick jabbing words; Character_P shrinks slightly; game noise continues behind tension.",
+          "shot_scale_hint": "medium close Nick",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 3,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "I knew she would start going crazy cooped up in that place all day. Why don’t you take her to the store or something? Holy Christ, do something with her before she turns into some demented old fart and we have to pay for a nursing home. I don’t have the money for that shit. They take every last dime out of these old people, then leave the family in debt after they die. Is that what you want to happen?",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Joes_Bar",
+          "blocking_notes": "Nick faces Character_P square; punch-threat energy without contact."
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Character_P yields; Nick’s almost-punch look; promise to go home.",
+          "visual_event": "Character_P pays for beer; Nick gives look like he wants to punch him; Character_P promises walk with Ma tomorrow.",
+          "shot_scale_hint": "two-shot",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "Of course not. I just needed to get away from her for a while, that’s all. I’ll watch the game at home with her. I’ll get her out tomorrow. At least take a walk.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Joes_Bar"
+        },
+        {
+          "beat_id": "b7",
+          "intent": "Nick approves; Character_P’s secret resentment VO.",
+          "visual_event": "Nick nods ‘that’s more like it’; Character_P exits into cold; face conflicted.",
+          "shot_scale_hint": "medium then exit",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Nick",
+          "dialogue": "That’s more like it.",
+          "primary_subject": "Character_Nick",
+          "location_id": "Loc_Joes_Bar",
+          "ambient_or_sfx": "door open cold air"
+        },
+        {
+          "beat_id": "b8",
+          "intent": "Internal hate he would never speak.",
+          "visual_event": "Outside bar threshold or first cold steps; Character_P walks faster; private face.",
+          "shot_scale_hint": "close walking",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "God, sometimes I really hate Nick inside. He’s done so much for us—but I get tired of his shit. I would never tell anybody that.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Joes_Bar"
+        }
+      ]
+    },
+    {
+      "scene_number": 8,
+      "scene_filename": "sc08_cold_walk_library",
+      "setting": "Night — cold Milwaukee street to public library",
+      "story_day": 3,
+      "location_type": "interior_exterior_mix",
+      "location_ids": [
+        "Loc_Street_Milwaukee",
+        "Loc_Library"
+      ],
+      "primary_location_id": "Loc_Library",
+      "duration_target_seconds": 95,
+      "dramatic_function": "Secret self: Character_P chooses books over immediate obedience; threshold of change.",
+      "summary": "Cold walk home; library across the street open till 9; he ducks in where Ma won’t remember and Nick won’t know; awe at wood floors, chain lights, endless stacks; asks desk lady how to take a book home.",
+      "characters_on_screen": [
+        "Character_P",
+        "Character_Librarian"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night_cold_street_to_warm_library",
+      "continuity_notes": "Library open till 9; large old building; stairs to second floor; hanging lights on metal chains.",
+      "spoiler_constraints": [
+        "No given name for Character_P on library card process if shown; card may be blanked or hands-only.",
+        "Keep reading habit secretive—no triumphant public announcement."
+      ],
+      "music_intent": {
+        "style": "quiet wonder, soft piano or harmonic pads",
+        "mood_arc": "cold guilt → curiosity → open door of mind"
+      },
+      "source_book_refs": [
+        "page 10"
+      ],
+      "source_excerpts": [
+        {
+          "ref": "page 10",
+          "quote": "When I looked up, I saw the library across the street and just halfway down the block. I should go in there, I thought. Who’s gonna know anyway?"
+        },
+        {
+          "ref": "page 10",
+          "quote": "The windows were really big and the floors must have been wood from a hundred years ago. ... Old lights hung down on metal chains from the ceiling"
+        },
+        {
+          "ref": "page 10",
+          "quote": "“How do I take a book home from here?” I asked the lady at the desk."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Cold fast walk; library spotted across the street.",
+          "visual_event": "Character_P walks faster than normal in cold; looks up; library building across street halfway down the block; open-hours sign implies till 9.",
+          "shot_scale_hint": "walking medium to wide library",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "It was freakin’ cold. I walked faster. Then I saw the library across the street. Who’s gonna know? Ma can barely remember what’s going on. Nick won’t know.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Street_Milwaukee",
+          "ambient_or_sfx": "cold wind, distant traffic"
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Enter library; scale and old beauty.",
+          "visual_event": "He enters; big windows; wood floors; tables with people reading newspapers/magazines; stairs to another floor; lights on metal chains over tables and aisles; old attractive smell of paper.",
+          "shot_scale_hint": "wide establishing interior",
+          "action_class": "establishing",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_P",
+          "dialogue": "What do people do in here? This place was much bigger than I thought. Floors from a hundred years ago. Old lights on metal chains. You probably couldn’t read all this stuff in a million years. It would make people smarter though.",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Library"
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Desk lady moving books; he approaches.",
+          "visual_event": "Front desk; librarian moving books behind desk; Character_P approaches awkward but determined.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "none",
+          "speaker": "none",
+          "dialogue": "",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Library",
+          "blocking_notes": "He faces librarian across desk; eyeline polite, slightly shy."
+        },
+        {
+          "beat_id": "b4",
+          "intent": "First step into secret literacy: how to take a book home.",
+          "visual_event": "He asks the question; librarian looks up ready to help; hold on his face—threshold moment—end chunk on the ask.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_P",
+          "dialogue": "How do I take a book home from here?",
+          "primary_subject": "Character_P",
+          "location_id": "Loc_Library",
+          "must_not": [
+            "spoken given name at desk",
+            "comedic mockery of him for not knowing"
+          ]
+        }
+      ]
+    }
+  ]
+}

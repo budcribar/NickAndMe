@@ -41,6 +41,14 @@ python scripts/inventory_locations.py
 
 # 2) Apply pins into Stage 1 + Stage 2 JSON (location_seed_tokens, location_ids, clip.location_id)
 python scripts/two_stage_adaptation/apply_location_pins.py
+
+# 3) Verify Stage 1 schema/prompt still accept current + legacy bibles
+python scripts/two_stage_adaptation/verify_stage1.py
+
+# 4) Run Stage 1 LLM on the book (requires XAI_API_KEY) → nickandme.scenes.json
+#    First extract PDF text if needed (book_full.txt)
+python scripts/two_stage_adaptation/run_stage1_from_book.py
+python scripts/two_stage_adaptation/run_stage1_from_book.py --chunk-pages 12 --resume
 ```
 
 Writes / updates under `projects/<active>/`:
