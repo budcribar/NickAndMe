@@ -1,0 +1,893 @@
+{
+  "schema_version": "stage2.v1",
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "video_provider_profile": "grok",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "Warm children's picture-book live-action/CG hybrid: soft practical lighting, gentle camera moves, playful physical comedy for a small black-and-white dog, cozy domestic bedtime palette, rhyme-friendly pacing with clear cause-and-effect staging.",
+    "total_runtime_target_seconds": 420,
+    "spoiler_register": [],
+    "character_seed_tokens": {
+      "Character_Narrator": {
+        "description": "Off-screen storyteller who delivers the book's rhyming narration; never appears on camera.",
+        "reference_image_placeholder": "assets/characters/narrator_ref.png",
+        "voice_profile": "Warm adult storyteller, medium pitch, unhurried friendly pace, clear diction for rhymes, gentle smile in the voice; same voice every scene.",
+        "voice_label": "Narrator_WarmStory",
+        "display_name_policy": "never_on_screen"
+      },
+      "Character_Buster": {
+        "description": "Buster the Noodle Head Dog: small black-and-white dog, playful and bouncy like a frog, not very bright, expressive face, wears black-and-white pajamas later; beloved family pet.",
+        "reference_image_placeholder": "assets/characters/buster_ref.png",
+        "voice_profile": "Small dog energy: light playful yips, soft whines, and happy pants rather than human speech; bright, quick, slightly goofy cadence; same voice every scene.",
+        "voice_label": "Buster_DogYips",
+        "age_band": "adult_dog",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          1,
+          3,
+          5
+        ],
+        "design_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.png",
+          "assets/characters/character_buster_bookref_3.png"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.png",
+          "assets/characters/character_buster_bookref_3.png"
+        ]
+      },
+      "Character_Mom": {
+        "description": "Momma/Mom: kind adult caregiver in a cozy home, patient bedtime parent who guides Buster outside, gives treats and water, and pets him while he sleeps.",
+        "reference_image_placeholder": "assets/characters/mom_ref.png",
+        "voice_profile": "Adult woman, warm medium pitch, calm gentle pace, soft maternal accent-neutral English, reassuring energy; same voice every scene.",
+        "voice_label": "Mom_WarmGentle",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          4,
+          8,
+          14
+        ],
+        "design_reference_images": [
+          "assets/characters/character_mom_bookref_1.png",
+          "assets/characters/character_mom_bookref_2.png",
+          "assets/characters/character_mom_bookref_3.png"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_mom_bookref_1.png",
+          "assets/characters/character_mom_bookref_2.png",
+          "assets/characters/character_mom_bookref_3.png"
+        ]
+      },
+      "Character_Daddy": {
+        "description": "Daddy: adult partner in Mom and Daddy's bedroom; mostly present as a sleeping/settled figure in the shared bed during Buster's bedtime climb-in.",
+        "reference_image_placeholder": "assets/characters/daddy_ref.png",
+        "voice_profile": "Adult man, low-medium pitch, quiet sleepy energy if any sound; minimal dialogue; same voice every scene.",
+        "voice_label": "Daddy_QuietLow",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          10,
+          11
+        ],
+        "design_reference_images": [
+          "assets/characters/character_daddy_bookref_1.png",
+          "assets/characters/character_daddy_bookref_2.png"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_daddy_bookref_1.png",
+          "assets/characters/character_daddy_bookref_2.png"
+        ]
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Home_Interior": {
+        "display_name": "Buster family home interior",
+        "description": "Cozy family house living/entry/treat area with soft rugs, dog bowls, and warm evening lamps.",
+        "visual_lock": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that opens to the yard, lived-in family clutter kept gentle and child-safe; no harsh neon.",
+        "reference_image_placeholder": "assets/locations/loc_home_interior_ref.png"
+      },
+      "Loc_Yard_Bushes": {
+        "display_name": "Backyard with bushes",
+        "description": "Small residential outdoor yard at evening with bushes where Buster can potty.",
+        "visual_lock": "Evening outdoor light, green bushes along a fence or path, grass or dirt patch for potty, house exterior door visible for exit/return; soft twilight, not full daylight noon.",
+        "reference_image_placeholder": "assets/locations/loc_yard_bushes_ref.png"
+      },
+      "Loc_Stairs": {
+        "display_name": "Home staircase",
+        "description": "Indoor staircase leading up toward the parents' bedroom.",
+        "visual_lock": "Carpeted or wood stairs with a simple banister, warm hallway lighting, upward climb toward a bedroom landing; same staircase whenever Buster goes up.",
+        "reference_image_placeholder": "assets/locations/loc_stairs_ref.png"
+      },
+      "Loc_Parents_Bedroom": {
+        "display_name": "Mom and Daddy's bedroom",
+        "description": "Parents' bedroom with a large bed where Buster jumps in to sleep.",
+        "visual_lock": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog to jump onto the bed; cozy 'home sweet home' feeling.",
+        "reference_image_placeholder": "assets/locations/loc_parents_bedroom_ref.png"
+      },
+      "Loc_Dreamscape": {
+        "display_name": "Buster dreamscape",
+        "description": "Soft dream space of fluffy snow and a yard with running bunnies for Buster to chase.",
+        "visual_lock": "Slightly softer, brighter, floating dream look; fluffy snow drifts and an open yard with bunnies; Buster remains the same small black-and-white dog; no hard real-world furniture.",
+        "reference_image_placeholder": "assets/locations/loc_dreamscape_ref.png"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "setting": "Evening - family home interior",
+      "location_ids": [
+        "Loc_Home_Interior"
+      ],
+      "primary_location_id": "Loc_Home_Interior",
+      "scene_filename": "sc01_meet_buster",
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "home_evening_warm_A",
+      "total_estimated_duration_seconds": 30,
+      "music_bed": {
+        "style_description": "Light playful children's underscore with soft piano and pizzicato strings.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Curious bounce into affectionate humor."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Curious bounce into affectionate humor."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Curious bounce into affectionate humor."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Evening - family home interior. Small black-and-white dog Buster stands proudly in the warm living area, tail wagging, looking straight toward camera energy without breaking kid-film naturalism / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b1",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Buster springs and hops around the room in silly frog-like jumps, paws landing soft on the rug. Buster hops in a loose circle of the living space; keep face readable on landings. ONE continuous take no cut; unbroken cause-to-effect motion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b2",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Close on Buster's small black-and-white face as he tilts his head with a blank, cheerful, not-very-bright expression / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b3",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 1,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 1-3"
+      ]
+    },
+    {
+      "scene_number": 2,
+      "setting": "Evening - family home interior",
+      "location_ids": [
+        "Loc_Home_Interior"
+      ],
+      "primary_location_id": "Loc_Home_Interior",
+      "scene_filename": "sc02_time_for_bed_potty_rule",
+      "transition_type": "cut",
+      "lighting_continuity_token": "home_evening_warm_A",
+      "total_estimated_duration_seconds": 40,
+      "music_bed": {
+        "style_description": "Gentle bedtime cue with soft woodwinds under light comic beats.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Cozy call to bed, then mild comic confusion."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Cozy call to bed, then mild comic confusion."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Cozy call to bed, then mild comic confusion."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Mom. Mom stands in the living area, leaning gently toward Buster, speaking clearly that it is time for bed. Mom faces Buster at dog height; Buster looks up at her / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b4",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Buster lowers his furry head toward a soft spot as if to sleep, then perks up with a potty need; he glances at the floor and is steered away from it. must not: Buster actually pottying on the indoor floor / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b5",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Mom. Mom points toward the exterior door and speaks the outside rule; Buster cocks his head with a blank noodle-head look that shows it makes no sense to him. Mom's eyeline to Buster then to the door; Buster's eyeline follows door then back to Mom with confusion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b6",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:30-00:40",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Hold on Buster's confused face as he processes Mom's rule / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b7",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 2,
+      "stage1_beat_map": [
+        "b4",
+        "b5",
+        "b6",
+        "b7"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 4"
+      ]
+    },
+    {
+      "scene_number": 3,
+      "setting": "Evening - yard bushes then home entry",
+      "location_ids": [
+        "Loc_Yard_Bushes",
+        "Loc_Home_Interior"
+      ],
+      "primary_location_id": "Loc_Yard_Bushes",
+      "scene_filename": "sc03_outside_potty_and_spin",
+      "transition_type": "cut",
+      "lighting_continuity_token": "yard_twilight_to_home_warm_B",
+      "total_estimated_duration_seconds": 30,
+      "music_bed": {
+        "style_description": "Light outdoor stroll motif returning to cozy indoor reward feel.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Task focus then proud little triumph."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Task focus then proud little triumph."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Task focus then proud little triumph."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Yard_Bushes",
+          "visual_prompt": "Evening outdoor light, green bushes along a fence or path, grass or dirt patch for potty, house exterior door…. Character_Buster. Evening - yard bushes then home entry. Buster trots out the door into the evening yard and walks around where bushes can be found / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, facing camera only, boy looking at viewer, back to house",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b8",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Yard_Bushes",
+          "visual_prompt": "Evening outdoor light, green bushes along a fence or path, grass or dirt patch for potty, house exterior door…. Character_Buster. At the bushes, Buster stops and does his potty job in a child-appropriate, non-graphic way, then looks satisfied. must not: graphic potty detail; indoor floor accident / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b9",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Buster comes back through the door into the home and does a little proud spin in front of Mom. Mom faces Buster near the entry; Buster spins in place for her approval; Mom smiles down at him. ONE continuous take no cut; unbroken cause-to-effect motion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b10",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 3,
+      "stage1_beat_map": [
+        "b8",
+        "b9",
+        "b10"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 6-7"
+      ]
+    },
+    {
+      "scene_number": 4,
+      "setting": "Evening - home treat area",
+      "location_ids": [
+        "Loc_Home_Interior"
+      ],
+      "primary_location_id": "Loc_Home_Interior",
+      "scene_filename": "sc04_treat_and_water",
+      "transition_type": "cut",
+      "lighting_continuity_token": "home_evening_warm_A",
+      "total_estimated_duration_seconds": 20,
+      "music_bed": {
+        "style_description": "Sweet simple reward cue, soft glockenspiel and piano.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Pleased, calm, nurturing."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Pleased, calm, nurturing."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Buster spins again expectantly; Mom holds a small dog treat and gently lays it on the floor by his front feet. Mom kneels or bends; treat placed by Buster's feet, not tossed wildly; Buster eats from the floor / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b11",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Buster moves to his water bowl and drinks; Mom watches approvingly / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b12",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 4,
+      "stage1_beat_map": [
+        "b11",
+        "b12"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 8-9"
+      ]
+    },
+    {
+      "scene_number": 5,
+      "setting": "Evening - home, stairs, parents' bedroom",
+      "location_ids": [
+        "Loc_Home_Interior",
+        "Loc_Stairs",
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "scene_filename": "sc05_pajamas_stairs_jump_in_bed",
+      "transition_type": "cut",
+      "lighting_continuity_token": "home_to_bedroom_night_C",
+      "total_estimated_duration_seconds": 30,
+      "music_bed": {
+        "style_description": "Ascending soft march into lullaby-adjacent bedroom theme.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Playful climb resolving into snug arrival."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Playful climb resolving into snug arrival."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Playful climb resolving into snug arrival."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Home_Interior",
+          "visual_prompt": "Warm wood or painted walls, soft evening practical lamps, dog water bowl visible near treat area, front door that…. Character_Buster. Evening - home, stairs, parents' bedroom. Buster now wears black-and-white dog pajamas matching his coat; he stands ready for bed in the home interior / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b13",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Stairs",
+          "visual_prompt": "Carpeted or wood stairs with a simple banister, warm hallway lighting, upward climb toward a bedroom landing; same…. Character_Buster. Buster climbs the staircase step by step, pajamas on, determined little bedtime mission. Upward travel; optional Mom following behind at a distance. ONE continuous take no cut; unbroken cause-to-effect motion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b14",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Buster enters Mom and Daddy's bedroom and jumps up onto the big bed where Daddy is settled and Mom is near; he lands in the covers none too soon. Bed is the landing target; Daddy already in bed; Mom can be sitting or standing bedside; Buster jumps onto mattress into soft covers. ONE continuous take no cut; unbroken cause-to-effect motion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b15",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 5,
+      "stage1_beat_map": [
+        "b13",
+        "b14",
+        "b15"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 10-11"
+      ]
+    },
+    {
+      "scene_number": 6,
+      "setting": "Night - dream of snow and bunnies",
+      "location_ids": [
+        "Loc_Parents_Bedroom",
+        "Loc_Dreamscape"
+      ],
+      "primary_location_id": "Loc_Dreamscape",
+      "scene_filename": "sc06_buster_dreams",
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "dream_soft_glow_D",
+      "total_estimated_duration_seconds": 30,
+      "music_bed": {
+        "style_description": "Dreamy lullaby with airy pads and light playful chase motif for bunnies.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Floaty wonder into gentle chase joy, then settle."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Floaty wonder into gentle chase joy, then settle."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 12,
+            "production_notes": [
+              "Floaty wonder into gentle chase joy, then settle."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Dreamscape",
+          "visual_prompt": "Slightly softer, brighter, floating dream look; fluffy snow drifts and an open yard with bunnies; Buster remains the…. Character_Buster. Night - dream of snow and bunnies. Buster's eyes grow heavy in the parents' bed; the image softens into a dream of fluffy snow where pajama-clad Buster bounds through soft white drifts / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b16",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Dreamscape",
+          "visual_prompt": "Slightly softer, brighter, floating dream look; fluffy snow drifts and an open yard with bunnies; Buster remains the…. Character_Buster. In the dream yard, bunnies run across the open space; Buster chases them very hard with joyful full-speed runs and leaps. ONE continuous take no cut; unbroken cause-to-effect motion. must not: real harm to bunnies; keep playful dream chase / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b17",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Dream chase slows; Buster's dream self eases as we dissolve back toward him resting in the real bed, accepting sleep / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b18",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 6,
+      "stage1_beat_map": [
+        "b16",
+        "b17",
+        "b18"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 12-13"
+      ]
+    },
+    {
+      "scene_number": 7,
+      "setting": "Night - parents' bedroom",
+      "location_ids": [
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "scene_filename": "sc07_asleep_loved_for_keeps",
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "bedroom_night_lamps_low_E",
+      "total_estimated_duration_seconds": 40,
+      "music_bed": {
+        "style_description": "Soft lullaby resolution, sparse piano and warm pads fading to silence.",
+        "vocal_style": "",
+        "song_structure": [
+          {
+            "section_label": "A",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Tender, secure, final rest."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "B",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Tender, secure, final rest."
+            ],
+            "lyrics": null
+          },
+          {
+            "section_label": "C",
+            "section_type": "instrumental",
+            "is_repeat_of": null,
+            "duration_seconds": 16,
+            "production_notes": [
+              "Tender, secure, final rest."
+            ],
+            "lyrics": null
+          }
+        ]
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:10",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Buster nestles deeper into the bed covers, still faintly frog-jump energy settling out of his body as he prepares to sleep / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b19",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:10-00:20",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Buster lays down his head on the bedding, body soft and warm, clearly full and safe, eyes closing / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b20",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:20-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Mom sits or leans at the bedside and gently pets sleeping Buster; Daddy rests nearby in the bed; the family tableau is peaceful. Mom's hand gently strokes Buster's head/back; Buster stays asleep; warm eyeline of care from Mom to dog / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b21",
+          "duration_seconds": 10
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:30-00:40",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Large shared bed with soft bedding, bedside lamps on low warm glow, calm night interior, enough room for a small dog…. Character_Buster. Hold on Buster fully asleep in the cozy bed as the room stays still; peaceful final image of the noodle head dog at rest / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "speaker": "none",
+            "dialogue": "",
+            "delivery": "none"
+          },
+          "stage1_beat_id": "b22",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 7,
+      "stage1_beat_map": [
+        "b19",
+        "b20",
+        "b21",
+        "b22"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 14-15"
+      ]
+    }
+  ],
+  "stage2_meta": {
+    "source_stage1": "scenes.json",
+    "resolution": "720p",
+    "scene_filter": "all",
+    "clip_duration_policy": {
+      "default": 6,
+      "prefer_min": 6,
+      "prefer_max": 10,
+      "min": 1,
+      "max": 15
+    },
+    "prompt_soft_max": 500,
+    "prompt_hard_max": 800,
+    "total_duration_seconds": 220,
+    "total_clips": 22,
+    "clip_duration_hard_cap_sec": 10,
+    "duration_cap_note": "capped to 10s for Grok reference-to-video API"
+  }
+}

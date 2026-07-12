@@ -8,11 +8,75 @@ from review_app import pipeline_api as api
 
 st.title("🎞️ Scenes & Clips")
 
+# ---- Stage 2 gate: empty blueprint needs clip plan from Stage 1 ----
+try:
+    s2 = api.stage2_status()
+except Exception:
+    s2 = {}
+
+if not s2.get("stage2_ready"):
+    st.warning(
+        "No Stage 2 clip plan yet — this page lists **blueprint** scenes/clips, "
+        "not the Stage 1 bible alone."
+    )
+    if s2.get("stage1_exists"):
+        st.info(
+            f"Stage 1 is ready (**{s2.get('stage1_scenes', 0)}** scenes). "
+            "Generate the Grok clip plan to populate Scenes & Clips."
+        )
+        if st.button(
+            "▶ Generate Stage 2 plan",
+            type="primary",
+            key="scenes_gen_stage2",
+            help="Converts Stage 1 beats → clip durations, visual prompts, audio payloads",
+        ):
+            try:
+                with st.spinner("Building Stage 2 clip plan…"):
+                    summary = api.run_stage2_from_stage1()
+                st.success(
+                    f"Stage 2 written: **{summary.get('scenes')}** scenes · "
+                    f"**{summary.get('clips')}** clips · "
+                    f"~{int(summary.get('duration_sec') or 0)}s"
+                )
+                if summary.get("validation_issues"):
+                    with st.expander("Validation notes (non-blocking)"):
+                        st.code("\n".join(summary["validation_issues"][:30]))
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
+    else:
+        st.error(
+            "Stage 1 is missing. Go to **Adaptation** → Import book → Run Stage 1, "
+            "then return here to generate Stage 2."
+        )
+    st.caption(
+        "CLI: `python scripts/two_stage_adaptation/stage2_plan_grok.py "
+        "--stage1 projects/<id>/scenes.json --out projects/<id>/blueprint.clips.grok.json`"
+    )
+    st.stop()
+
 try:
     # Light list for navigation (no per-scene cost math × 90)
     scenes = api.list_scenes(light=True)
 except Exception as e:
     st.error(str(e))
+    st.stop()
+
+if not scenes:
+    st.info(
+        "Blueprint reports Stage 2 ready but list is empty — try **Generate Stage 2** again "
+        "or reload the app."
+    )
+    if st.button("▶ Re-generate Stage 2 plan", key="scenes_regen_stage2_empty"):
+        try:
+            with st.spinner("Building Stage 2 clip plan…"):
+                summary = api.run_stage2_from_stage1()
+            st.success(
+                f"{summary.get('scenes')} scenes · {summary.get('clips')} clips"
+            )
+            st.rerun()
+        except Exception as e:
+            st.error(str(e))
     st.stop()
 
 if "scene_num" not in st.session_state:
@@ -24,6 +88,26 @@ if "clip_num" not in st.session_state:
 # ---- Scene picker ----
 if st.session_state.clip_num is None:
     st.subheader("All scenes")
+    with st.expander("Stage 2 plan", expanded=False):
+        st.caption(
+            f"{s2.get('stage2_scenes', 0)} scenes · {s2.get('stage2_clips', 0)} clips "
+            f"from Stage 1 ({s2.get('stage1_scenes', 0)} bible scenes)."
+        )
+        if st.button(
+            "🔁 Re-generate Stage 2 plan",
+            key="scenes_regen_stage2",
+            help="Replaces blueprint clip plans from current Stage 1 (backs up previous file)",
+        ):
+            try:
+                with st.spinner("Rebuilding Stage 2 clip plan…"):
+                    summary = api.run_stage2_from_stage1()
+                st.success(
+                    f"Updated: **{summary.get('scenes')}** scenes · "
+                    f"**{summary.get('clips')}** clips"
+                )
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
     if "playing_scene" not in st.session_state:
         st.session_state.playing_scene = None
 
@@ -117,422 +201,439 @@ if st.session_state.clip_num is None:
 sn = int(st.session_state.scene_num)
 cn = st.session_state.clip_num
 
-if st.button("← Back to scene list"):
-    st.session_state.clip_num = None
-    st.rerun()
-
 scene = api.get_scene(sn)
 if not scene:
     st.error(f"Scene {sn} not found")
     st.stop()
 
-st.header(f"Scene {sn}: {scene.get('setting', '')}")
-st.caption(
-    f"`{scene.get('scene_filename', '')}` · "
-    f"{scene.get('total_estimated_duration_seconds')}s · "
-    f"transition={scene.get('transition_type')}"
-)
-
-dirty = api.get_scene_dirty(sn)
-if dirty and (dirty.get("stage1") or dirty.get("stage2")):
-    cascade = "stage1→stage2" if dirty.get("stage1") else "stage2"
-    st.warning(
-        f"**Needs replan ({cascade})** — {dirty.get('reason') or 'marked dirty'}. "
-        f"Updated {dirty.get('updated_at') or '—'}. "
-        "Phase A: re-run Stage scripts / edit JSON, then clear the flag."
-    )
-    with st.expander("Cascade checklist", expanded=True):
-        from review_app import learning as learning_mod
-
-        steps = (
-            learning_mod.CASCADE_CHECKLIST["stage1"]
-            if dirty.get("stage1")
-            else learning_mod.CASCADE_CHECKLIST["stage2"]
-        )
-        for step in steps:
-            st.markdown(f"- {step}")
-    c_clear1, c_clear2 = st.columns(2)
-    with c_clear1:
-        if st.button("Clear Stage 2 dirty only", key=f"clr_s2_{sn}"):
-            api.clear_scene_replan_flag(sn, keys=["stage2"])
-            st.rerun()
-    with c_clear2:
-        if st.button("Clear all dirty flags", key=f"clr_all_{sn}"):
-            api.clear_scene_replan_flag(sn)
-            st.rerun()
-
 clips = api.list_clips(sn)
-
-# Cost breakdown for this scene only (not full-film list_scenes)
 scene_meta = next((x for x in scenes if x["scene_number"] == sn), {})
-with st.expander("Estimated regen cost", expanded=False):
-    c_all = api.scene_cost_estimate(sn, mode="all") or {}
-    c_ex = api.scene_cost_estimate(sn, mode="existing") or {}
-    c_st = api.scene_cost_estimate(sn, mode="stale") or {}
-    k1, k2, k3 = st.columns(3)
-    k1.metric("All clips", f"${float(c_all.get('total_usd') or 0):.2f}", f"{c_all.get('clip_count', 0)} clips")
-    k2.metric("On disk only", f"${float(c_ex.get('total_usd') or 0):.2f}", f"{c_ex.get('clip_count', 0)} clips")
-    k3.metric("Stale only", f"${float(c_st.get('total_usd') or 0):.2f}", f"{c_st.get('clip_count', 0)} clips")
+on_disk_n = sum(1 for r in clips if r.get("on_disk"))
+total_n = len(clips)
+missing_n = total_n - on_disk_n
+draft_res = str(api.get_config().get("resolution", "480p"))
+
+# =====================================================================
+# SCENE OVERVIEW — simple path first; advanced tools collapsed
+# =====================================================================
+if cn is None or cn == 0:
+    if st.button("← All scenes"):
+        st.session_state.clip_num = None
+        st.rerun()
+
+    st.header(f"Scene {sn}: {scene.get('setting', '')}")
     st.caption(
-        f"Model `{c_all.get('model_name')}` @ {c_all.get('resolution')} · "
-        f"~${float(c_all.get('output_rate_per_sec') or 0):.2f}/sec video out · "
-        f"{c_all.get('total_duration_sec')}s total (all). "
-        f"{c_all.get('notes') or ''}"
+        f"{total_n} clips · {on_disk_n} on disk · "
+        f"~{scene.get('total_estimated_duration_seconds')}s · draft **{draft_res}**"
     )
-    if c_all.get("per_clip"):
-        st.dataframe(
-            [
-                {
-                    "clip": p["clip_number"],
-                    "timestamp": p.get("timestamp"),
-                    "sec": p.get("duration_sec"),
-                    "est_usd": p.get("total_usd"),
-                }
-                for p in c_all["per_clip"]
-            ],
-            hide_index=True,
-            width="stretch",
+
+    dirty = api.get_scene_dirty(sn)
+    if dirty and (dirty.get("stage1") or dirty.get("stage2")):
+        cascade = "stage1→stage2" if dirty.get("stage1") else "stage2"
+        st.warning(
+            f"Needs replan ({cascade}): {dirty.get('reason') or 'marked dirty'}"
         )
 
-# Scene-level actions
-a1, a2, a3 = st.columns(3)
-with a1:
-    if st.button("Approve scene (draft)", type="primary", help="Editorial OK — keeps current resolution (e.g. 480p)"):
+    # ---- Primary: generate video ----
+    st.subheader("Generate video")
+    if missing_n > 0:
+        st.info(
+            f"**{missing_n} of {total_n}** clips have no video yet. "
+            "Click the button below to call Grok and create them (needs `XAI_API_KEY`)."
+        )
+    else:
+        st.success(f"All **{total_n}** clips are on disk. Open a clip to review or re-generate one.")
+
+    gcol1, gcol2 = st.columns([2, 1])
+    with gcol1:
+        gen_missing = st.checkbox(
+            "Only missing clips (skip ones already on disk)",
+            value=True,
+            key=f"gen_missing_{sn}",
+        )
+        run_qa_scene = st.checkbox(
+            "Run QA after each clip",
+            value=True,
+            key=f"gen_qa_{sn}",
+        )
+    with gcol2:
         try:
-            api.approve_scene(sn)
-            st.success("Scene approved (draft); WIP updated if enabled.")
-        except Exception as e:
-            st.error(str(e))
-with a2:
-    if st.button("Remux scene from disk"):
-        with st.spinner("FFmpeg remux…"):
+            est = api.scene_cost_estimate(
+                sn, mode="all" if not gen_missing else "missing"
+            ) or {}
+        except Exception:
+            # older cost helper may not have mode=missing
             try:
-                path = api.remux_scene(sn)
-                st.success(path or "No clips to remux")
-            except Exception as e:
-                st.error(str(e))
-with a3:
-    if st.button("Remux scene + rebuild WIP"):
-        with st.spinner("Remux + movie_wip.mp4…"):
-            try:
-                path = api.remux_scenes_and_rebuild_wip(
-                    [sn], reason=f"scene {sn} remux + WIP"
-                )
-                st.success(path or "Remux done")
-            except Exception as e:
-                st.error(str(e))
-    if scene_meta.get("composite_path"):
-        st.caption(scene_meta["composite_path"])
-
-# ---- Learning cascade (Phase A: mark dirty + checklist) ----
-st.divider()
-st.subheader("Learning cascade")
-st.caption(
-    "Mark this scene for replan when the failure is not clip-only. "
-    "Phase A does not auto-run Stage 1/2 LLMs — use the checklist, then clear dirty."
-)
-d1, d2 = st.columns(2)
-with d1:
-    if st.button("🔁 Needs Stage 2 replan", key=f"dirty_s2_{sn}", width="stretch"):
-        try:
-            api.mark_scene_needs_replan(
-                sn, cascade="stage2", reason=f"Manual Stage 2 replan for scene {sn}"
+                est = api.scene_cost_estimate(sn, mode="all") or {}
+            except Exception:
+                est = {}
+        if est:
+            st.caption(
+                f"Est. ~**${float(est.get('total_usd') or 0):.2f}** · "
+                f"{est.get('clip_count', '?')} clips @ {est.get('resolution') or draft_res}"
             )
-            st.success("Scene marked dirty (stage2).")
-            st.rerun()
-        except Exception as e:
-            st.error(str(e))
-with d2:
+
+    gen_label = (
+        f"▶ Generate missing clips ({missing_n})"
+        if gen_missing and missing_n > 0
+        else (
+            f"▶ Generate all {total_n} clips"
+            if not gen_missing
+            else "▶ Generate scene clips"
+        )
+    )
+    gen_disabled = total_n == 0 or (gen_missing and missing_n == 0)
     if st.button(
-        "📖 Needs Stage 1→2 re-bible",
-        key=f"dirty_s1_{sn}",
-        width="stretch",
-        help="Story/bible wrong — re-extract Stage 1 for this scene, then Stage 2",
-    ):
-        try:
-            api.mark_scene_needs_replan(
-                sn, cascade="stage1", reason=f"Manual Stage 1→2 cascade for scene {sn}"
-            )
-            st.success("Scene marked dirty (stage1→stage2).")
-            st.rerun()
-        except Exception as e:
-            st.error(str(e))
-
-# ---- Hero / delivery pass ----
-st.divider()
-st.subheader("Hero / delivery pass")
-hero_info = scene_meta.get("hero") or api.get_engine().get_scene_hero(sn)
-draft_res = str(api.get_config().get("resolution", "720p"))
-if hero_info:
-    st.success(
-        f"⭐ **Hero locked** @ **{hero_info.get('resolution')}** "
-        f"({hero_info.get('clip_count')} clips) · {hero_info.get('at')}"
-    )
-else:
-    st.caption(
-        f"Draft config resolution is **{draft_res}**. "
-        "Hero regen re-renders on-disk clips at delivery resolution, then restores draft config."
-    )
-
-h1, h2, h3, h4 = st.columns([1.2, 1.2, 1.2, 1.5])
-with h1:
-    hero_res = st.selectbox(
-        "Hero resolution",
-        options=["720p", "1080p", "480p"],
-        index=0,
-        key=f"hero_res_{sn}",
-    )
-with h2:
-    hero_only_disk = st.checkbox(
-        "Only clips on disk",
-        value=True,
-        key=f"hero_disk_{sn}",
-        help="Recommended — same as draft clips you already reviewed",
-    )
-with h3:
-    hero_qa = st.checkbox("Run QA", value=True, key=f"hero_qa_{sn}")
-with h4:
-    hero_approve = st.checkbox(
-        "Approve after success",
-        value=True,
-        key=f"hero_appr_{sn}",
-        help="Marks scene approved and rebuilds WIP if all hero clips succeed",
-    )
-
-try:
-    hero_est = api.hero_cost_note(sn, resolution=hero_res)
-    est_usd = float(hero_est.get("total_usd") or 0)
-    est_n = int(hero_est.get("clip_count") or 0)
-    est_sec = hero_est.get("total_duration_sec")
-    st.info(
-        f"Estimated hero cost @ **{hero_res}**: **${est_usd:.2f}** "
-        f"({est_n} clips · ~{est_sec}s video). Snapshot of current main is saved first."
-    )
-except Exception:
-    st.caption("Could not compute hero cost estimate.")
-
-hb1, hb2 = st.columns(2)
-with hb1:
-    if st.button(
-        f"⭐ Hero regen at {hero_res}",
+        gen_label,
         type="primary",
-        key=f"hero_go_{sn}",
-        help="Snapshot draft → regen at hero res → remux → optional approve. Global draft res unchanged.",
+        key=f"gen_scene_{sn}",
+        disabled=gen_disabled,
+        help="Creates Grok video for each clip in order, then stitches the scene.",
     ):
-        with st.spinner(
-            f"Hero regen Scene {sn} @ {hero_res} — this can take a long time and costs API usage…"
-        ):
-            try:
-                meta = api.hero_regen_scene(
-                    sn,
-                    resolution=hero_res,
-                    only_existing=hero_only_disk,
-                    run_qa=hero_qa,
-                    approve_after=hero_approve,
-                )
-                failed = meta.get("failed") or []
-                if failed:
-                    st.warning(
-                        f"Hero partial: {meta.get('clip_count')} ok, "
-                        f"{len(failed)} failed: {failed}"
-                    )
-                else:
-                    st.success(
-                        f"Hero complete @ {meta.get('resolution')}: "
-                        f"clips {meta.get('clip_numbers')} · "
-                        f"draft res restored to {meta.get('draft_resolution_restored')}"
-                    )
-                st.rerun()
-            except Exception as e:
-                st.error(str(e))
-with hb2:
-    if hero_info and st.button(
-        "Clear hero flag (back to draft)",
-        key=f"hero_clear_{sn}",
-        help="Does not delete 720 files — only removes the ⭐ hero marker so you can re-edit freely",
-    ):
-        try:
-            api.clear_scene_hero(sn)
-            st.success("Hero flag cleared — scene is draft again.")
-            st.rerun()
-        except Exception as e:
-            st.error(str(e))
+        prog = st.progress(0.0, text="Starting…")
+        log_box = st.empty()
+        lines: list[str] = []
 
-st.caption(
-    "Workflow: iterate at draft resolution (e.g. 480) → **Approve scene (draft)** → "
-    "when happy, **Hero regen at 720p**. Single-clip regen after hero clears the hero flag."
-)
-
-# ---- Model comparison / variants ----
-st.divider()
-st.subheader("Model comparison")
-pref = api.scene_video_settings(sn)
-models = api.available_video_models()
-model_labels = [
-    f"{m.get('label') or m.get('model_name')} ({m.get('provider')}/{m.get('model_name')})"
-    for m in models
-]
-label_to_model = dict(zip(model_labels, models))
-
-st.caption(
-    f"Preferred for this scene: **{pref.get('provider')}** / `{pref.get('model_name')}` "
-    f"(override stored on scene in the active blueprint; blank = global config)."
-)
-
-pc1, pc2, pc3 = st.columns([2, 2, 1])
-with pc1:
-    pick = st.selectbox(
-        "Set preferred model",
-        options=["(use global default)"] + model_labels,
-        key=f"pref_model_{sn}",
-    )
-with pc2:
-    if st.button("Save preferred model", key=f"save_pref_{sn}"):
-        try:
-            if pick.startswith("(use"):
-                api.set_scene_video_settings(sn, clear=True)
-                st.success("Cleared scene override — using global config.")
+        def _on_prog(ev: dict) -> None:
+            total = max(1, int(ev.get("total") or 1))
+            idx = int(ev.get("index") or 0)
+            event = ev.get("event") or ""
+            if event == "done":
+                frac = 1.0
+            elif event in ("clip_done", "clip_error"):
+                frac = min(1.0, idx / total)
+            elif event == "clip_start":
+                frac = min(0.99, max(0.0, (idx - 1) / total))
             else:
-                m = label_to_model[pick]
-                api.set_scene_video_settings(
-                    sn, provider=m.get("provider"), model_name=m.get("model_name")
+                frac = 0.02
+            msg = ev.get("message") or event
+            prog.progress(frac, text=msg)
+            lines.append(msg)
+            log_box.code("\n".join(lines[-20:]), language="text")
+
+        try:
+            with st.spinner(
+                "Generating — each clip can take several minutes. Keep this tab open."
+            ):
+                summary = api.generate_scene_clips(
+                    sn,
+                    only_missing=bool(gen_missing),
+                    run_qa=bool(run_qa_scene),
+                    remux=True,
+                    progress_cb=_on_prog,
                 )
-                st.success(f"Saved {m.get('provider')}/{m.get('model_name')}")
-            st.rerun()
-        except Exception as e:
-            st.error(str(e))
-with pc3:
-    if st.button("Snapshot main", key=f"snap_{sn}", help="Copy current main into variants/ for comparison"):
-        try:
-            vid = api.snapshot_main_variant(sn)
-            st.success(vid or "Nothing to snapshot")
-            st.rerun()
-        except Exception as e:
-            st.error(str(e))
-
-st.markdown("**Generate alternate render** (writes to `assets/variants/…`, keeps main intact)")
-g1, g2, g3 = st.columns([2, 1, 1])
-with g1:
-    gen_pick = st.selectbox(
-        "Model for new variant",
-        options=model_labels,
-        key=f"gen_model_{sn}",
-    )
-with g2:
-    only_exist = st.checkbox("Only clips already on disk", value=True, key=f"var_exist_{sn}")
-with g3:
-    run_qa_var = st.checkbox("Run QA", value=False, key=f"var_qa_{sn}")
-
-if st.button("Generate variant for comparison", type="primary", key=f"gen_var_{sn}"):
-    m = label_to_model[gen_pick]
-    with st.spinner(
-        f"Generating scene {sn} with {m.get('provider')}/{m.get('model_name')} — can take a long time…"
-    ):
-        try:
-            meta = api.generate_scene_variant(
-                sn,
-                provider=str(m.get("provider")),
-                model_name=str(m.get("model_name")),
-                only_existing=only_exist,
-                run_qa=run_qa_var,
-                label=m.get("label"),
-            )
-            st.success(
-                f"Variant ready: {meta.get('label')} · {meta.get('clip_count')} clips · "
-                f"{meta.get('composite_path') or 'no composite'}"
-            )
+            done = summary.get("done") or []
+            failed = summary.get("failed") or []
+            if done and not failed:
+                st.success(
+                    f"Generated {len(done)} clip(s)"
+                    + (
+                        f" · remuxed `{summary.get('composite_path')}`"
+                        if summary.get("composite_path")
+                        else ""
+                    )
+                )
+            elif done and failed:
+                st.warning(
+                    f"Partial: {len(done)} ok, {len(failed)} failed — "
+                    f"{failed[0].get('error') if failed else ''}"
+                )
+            elif failed:
+                st.error(failed[0].get("error") if failed else "Generation failed")
+            else:
+                st.info("Nothing to generate (all clips already on disk).")
+            if summary.get("remux_error"):
+                st.warning(f"Remux: {summary['remux_error']}")
             st.rerun()
         except Exception as e:
             st.error(str(e))
 
-vinfo = api.list_scene_variants(sn)
-variants = vinfo.get("variants") or {}
-playable = {
-    vid: meta
-    for vid, meta in variants.items()
-    if meta.get("composite_path")
-}
-st.markdown(f"**Available variants:** {len(variants)} · playable composites: {len(playable)}")
+    # Play composite if any
+    if scene_meta.get("composite_path") or scene_meta.get("play_path"):
+        play_p = scene_meta.get("composite_path") or scene_meta.get("play_path")
+        with st.expander("Play scene composite", expanded=on_disk_n == total_n and total_n > 0):
+            st.video(play_p)
 
-if len(playable) >= 1:
-    ids = list(playable.keys())
-    default_a = "main" if "main" in ids else ids[0]
-    default_b = next((i for i in ids if i != default_a), default_a)
-    cmp1, cmp2 = st.columns(2)
-    with cmp1:
-        left_id = st.selectbox(
-            "A",
-            options=ids,
-            index=ids.index(default_a) if default_a in ids else 0,
-            format_func=lambda i: playable[i].get("label") or i,
-            key=f"cmp_a_{sn}",
-        )
-        left = playable[left_id]
-        st.caption(f"{left.get('provider')}/{left.get('model_name')} · `{left_id}`")
-        st.video(left["composite_path"])
-        if left_id != "main" and st.button("Promote A → main", key=f"promo_a_{sn}"):
-            try:
-                api.promote_scene_variant(sn, left_id)
-                st.success("Promoted A to main timeline")
-                st.rerun()
-            except Exception as e:
-                st.error(str(e))
-    with cmp2:
-        right_id = st.selectbox(
-            "B",
-            options=ids,
-            index=ids.index(default_b) if default_b in ids else 0,
-            format_func=lambda i: playable[i].get("label") or i,
-            key=f"cmp_b_{sn}",
-        )
-        right = playable[right_id]
-        st.caption(f"{right.get('provider')}/{right.get('model_name')} · `{right_id}`")
-        st.video(right["composite_path"])
-        if right_id != "main" and st.button("Promote B → main", key=f"promo_b_{sn}"):
-            try:
-                api.promote_scene_variant(sn, right_id)
-                st.success("Promoted B to main timeline")
-                st.rerun()
-            except Exception as e:
-                st.error(str(e))
-else:
-    st.info(
-        "No composites to compare yet. Generate the scene (main), click **Snapshot main**, "
-        "then **Generate variant for comparison** with another model."
-    )
-
-if scene_meta.get("composite_path"):
-    with st.expander("Play scene composite", expanded=False):
-        st.video(scene_meta["composite_path"])
-
-st.divider()
-
-# Clip grid when cn == 0
-if cn == 0:
+    # ---- Clip list (main navigation) ----
     st.subheader("Clips")
+    st.caption("Open a clip to review, edit prompts, or re-generate just that one.")
     for row in clips:
         cnum = row["clip_number"]
-        disk = "🟢" if row["on_disk"] else "⚪"
+        disk = "🟢 ready" if row["on_disk"] else "⚪ not generated"
         rev = row.get("review_status") or "pending"
         if row.get("stale"):
-            rev_icon = "⚠️"
+            rev_s = "stale"
         else:
-            rev_icon = {"pass": "✅", "fail": "❌", "pending": "·", "stale": "⚠️"}.get(rev, "·")
-        preview = (row.get("visual_prompt") or "")[:70].replace("\n", " ")
-        stale_bit = ""
-        if row.get("stale"):
-            chars = ",".join(row.get("stale_characters") or []) or "character"
-            stale_bit = f" OUT OF DATE ({chars})"
-        label = f"{disk}{rev_icon} Clip {cnum}{stale_bit}  [{row.get('delivery') or '—'}]  {preview}"
-        if st.button(label, key=f"open_c{cnum}", width="stretch"):
-            st.session_state.clip_num = cnum
-            st.rerun()
+            rev_s = {"pass": "pass", "fail": "fail", "pending": "pending"}.get(rev, rev)
+        preview = (row.get("visual_prompt") or "")[:64].replace("\n", " ")
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            if st.button(
+                f"Clip {cnum} · {disk} · {rev_s} — {preview}",
+                key=f"open_c{cnum}",
+                width="stretch",
+            ):
+                st.session_state.clip_num = cnum
+                st.rerun()
+        with c2:
+            if not row["on_disk"]:
+                if st.button("▶ Gen", key=f"quick_gen_{sn}_{cnum}", help=f"Generate clip {cnum} only"):
+                    with st.spinner(f"Generating S{sn:02d} C{cnum}…"):
+                        try:
+                            path = api.regen_clip(
+                                sn, int(cnum), run_qa=True, rebuild_wip=False
+                            )
+                            st.success(path)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(str(e))
+
+    # ---- Secondary: finish scene ----
+    st.divider()
+    st.subheader("When clips look good")
+    a1, a2, a3 = st.columns(3)
+    with a1:
+        if st.button(
+            "Approve scene",
+            type="primary" if on_disk_n == total_n and total_n else "secondary",
+            key=f"approve_{sn}",
+            help="Mark draft scene OK for the WIP timeline",
+        ):
+            try:
+                api.approve_scene(sn)
+                st.success("Scene approved.")
+            except Exception as e:
+                st.error(str(e))
+    with a2:
+        if st.button("Remux scene", key=f"remux_{sn}"):
+            with st.spinner("FFmpeg remux…"):
+                try:
+                    path = api.remux_scene(sn)
+                    st.success(path or "No clips to remux")
+                except Exception as e:
+                    st.error(str(e))
+    with a3:
+        if st.button("Remux + WIP movie", key=f"wip_{sn}"):
+            with st.spinner("Remux + movie_wip.mp4…"):
+                try:
+                    path = api.remux_scenes_and_rebuild_wip(
+                        [sn], reason=f"scene {sn} remux + WIP"
+                    )
+                    st.success(path or "Done")
+                except Exception as e:
+                    st.error(str(e))
+
+    # ---- Advanced (collapsed) ----
+    with st.expander("Cost estimate", expanded=False):
+        c_all = api.scene_cost_estimate(sn, mode="all") or {}
+        c_ex = api.scene_cost_estimate(sn, mode="existing") or {}
+        k1, k2 = st.columns(2)
+        k1.metric("All clips", f"${float(c_all.get('total_usd') or 0):.2f}")
+        k2.metric("On disk only", f"${float(c_ex.get('total_usd') or 0):.2f}")
+        st.caption(
+            f"`{c_all.get('model_name')}` @ {c_all.get('resolution')} · "
+            f"{c_all.get('total_duration_sec')}s"
+        )
+
+    with st.expander("Learning cascade (replan flags)", expanded=False):
+        st.caption(
+            "Mark for Stage 1/2 replan when the failure is not a single bad take. "
+            "Does not auto-run planners."
+        )
+        d1, d2 = st.columns(2)
+        with d1:
+            if st.button("Needs Stage 2 replan", key=f"dirty_s2_{sn}", width="stretch"):
+                try:
+                    api.mark_scene_needs_replan(
+                        sn, cascade="stage2", reason=f"Manual Stage 2 replan for scene {sn}"
+                    )
+                    st.success("Marked dirty (stage2).")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        with d2:
+            if st.button("Needs Stage 1→2 re-bible", key=f"dirty_s1_{sn}", width="stretch"):
+                try:
+                    api.mark_scene_needs_replan(
+                        sn, cascade="stage1", reason=f"Manual Stage 1→2 for scene {sn}"
+                    )
+                    st.success("Marked dirty (stage1→stage2).")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        if dirty and (dirty.get("stage1") or dirty.get("stage2")):
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Clear Stage 2 dirty", key=f"clr_s2_{sn}"):
+                    api.clear_scene_replan_flag(sn, keys=["stage2"])
+                    st.rerun()
+            with c2:
+                if st.button("Clear all dirty", key=f"clr_all_{sn}"):
+                    api.clear_scene_replan_flag(sn)
+                    st.rerun()
+
+    with st.expander("Hero / delivery pass (later)", expanded=False):
+        hero_info = scene_meta.get("hero") or api.get_engine().get_scene_hero(sn)
+        if hero_info:
+            st.success(
+                f"Hero locked @ **{hero_info.get('resolution')}** "
+                f"({hero_info.get('clip_count')} clips)"
+            )
+        else:
+            st.caption(
+                f"Draft is **{draft_res}**. After you like the scene, hero regen "
+                "re-renders on-disk clips at delivery resolution."
+            )
+        h1, h2, h3 = st.columns(3)
+        with h1:
+            hero_res = st.selectbox(
+                "Hero resolution",
+                options=["720p", "1080p", "480p"],
+                index=0,
+                key=f"hero_res_{sn}",
+            )
+        with h2:
+            hero_only_disk = st.checkbox(
+                "Only clips on disk", value=True, key=f"hero_disk_{sn}"
+            )
+        with h3:
+            hero_qa = st.checkbox("Run QA", value=True, key=f"hero_qa_{sn}")
+        hero_approve = st.checkbox(
+            "Approve after success", value=True, key=f"hero_appr_{sn}"
+        )
+        try:
+            hero_est = api.hero_cost_note(sn, resolution=hero_res)
+            st.caption(
+                f"Est. @ {hero_res}: ${float(hero_est.get('total_usd') or 0):.2f} "
+                f"({hero_est.get('clip_count')} clips)"
+            )
+        except Exception:
+            pass
+        hb1, hb2 = st.columns(2)
+        with hb1:
+            if st.button(f"Hero regen at {hero_res}", key=f"hero_go_{sn}"):
+                with st.spinner(f"Hero regen @ {hero_res}…"):
+                    try:
+                        meta = api.hero_regen_scene(
+                            sn,
+                            resolution=hero_res,
+                            only_existing=hero_only_disk,
+                            run_qa=hero_qa,
+                            approve_after=hero_approve,
+                        )
+                        failed = meta.get("failed") or []
+                        if failed:
+                            st.warning(f"Partial failures: {failed}")
+                        else:
+                            st.success(f"Hero complete @ {meta.get('resolution')}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(str(e))
+        with hb2:
+            if hero_info and st.button("Clear hero flag", key=f"hero_clear_{sn}"):
+                try:
+                    api.clear_scene_hero(sn)
+                    st.success("Hero flag cleared.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+
+    with st.expander("Model comparison / variants (optional)", expanded=False):
+        pref = api.scene_video_settings(sn)
+        models = api.available_video_models()
+        model_labels = [
+            f"{m.get('label') or m.get('model_name')} ({m.get('provider')}/{m.get('model_name')})"
+            for m in models
+        ]
+        label_to_model = dict(zip(model_labels, models))
+        st.caption(
+            f"Preferred: **{pref.get('provider')}** / `{pref.get('model_name')}`"
+        )
+        pick = st.selectbox(
+            "Set preferred model",
+            options=["(use global default)"] + model_labels,
+            key=f"pref_model_{sn}",
+        )
+        if st.button("Save preferred model", key=f"save_pref_{sn}"):
+            try:
+                if pick.startswith("(use"):
+                    api.set_scene_video_settings(sn, clear=True)
+                else:
+                    m = label_to_model[pick]
+                    api.set_scene_video_settings(
+                        sn, provider=m.get("provider"), model_name=m.get("model_name")
+                    )
+                st.success("Saved.")
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
+        if st.button("Snapshot main", key=f"snap_{sn}"):
+            try:
+                vid = api.snapshot_main_variant(sn)
+                st.success(vid or "Nothing to snapshot")
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
+        gen_pick = st.selectbox(
+            "Model for new variant", options=model_labels, key=f"gen_model_{sn}"
+        )
+        only_exist = st.checkbox(
+            "Only clips already on disk", value=True, key=f"var_exist_{sn}"
+        )
+        if st.button("Generate variant for comparison", key=f"gen_var_{sn}"):
+            m = label_to_model[gen_pick]
+            with st.spinner("Generating variant…"):
+                try:
+                    meta = api.generate_scene_variant(
+                        sn,
+                        provider=str(m.get("provider")),
+                        model_name=str(m.get("model_name")),
+                        only_existing=only_exist,
+                        run_qa=False,
+                        label=m.get("label"),
+                    )
+                    st.success(f"Variant: {meta.get('label')}")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        vinfo = api.list_scene_variants(sn)
+        variants = vinfo.get("variants") or {}
+        playable = {
+            vid: meta
+            for vid, meta in variants.items()
+            if meta.get("composite_path")
+        }
+        if len(playable) >= 1:
+            ids = list(playable.keys())
+            left_id = st.selectbox(
+                "Compare A",
+                options=ids,
+                format_func=lambda i: playable[i].get("label") or i,
+                key=f"cmp_a_{sn}",
+            )
+            st.video(playable[left_id]["composite_path"])
+            right_id = st.selectbox(
+                "Compare B",
+                options=ids,
+                index=min(1, len(ids) - 1),
+                format_func=lambda i: playable[i].get("label") or i,
+                key=f"cmp_b_{sn}",
+            )
+            st.video(playable[right_id]["composite_path"])
+        else:
+            st.caption("No variant composites yet.")
+
     st.stop()
 
-# ---- Single clip ----
-if st.button("← Back to scene clips"):
+# =====================================================================
+# SINGLE CLIP — no scene-level clutter
+# =====================================================================
+if st.button("← Back to scene"):
     st.session_state.clip_num = 0
     st.rerun()
+
+st.header(f"Scene {sn} · Clip {cn}")
+st.caption(scene.get("setting") or "")
 
 row = api.get_clip(sn, int(cn))
 if not row:
@@ -554,13 +655,29 @@ if row.get("stale"):
         "Regenerate to clear; CLI/pipeline will not treat this file as reusable “done.”"
     )
 
+if not row["on_disk"]:
+    st.warning("No video yet for this clip.")
+    if st.button(
+        f"▶ Generate clip {cn}",
+        type="primary",
+        key=f"gen_one_{sn}_{cn}",
+        help="Calls Grok Imagine video (needs XAI_API_KEY). Can take several minutes.",
+    ):
+        with st.spinner(f"Generating S{sn:02d} C{cn}…"):
+            try:
+                path = api.regen_clip(sn, int(cn), run_qa=True, rebuild_wip=False)
+                st.success(f"Done: {path}")
+                st.rerun()
+            except Exception as e:
+                st.error(str(e))
+
 left, right = st.columns([1, 1])
 with left:
     if row["on_disk"]:
         st.video(row["path"])
         st.caption(row["path"])
     else:
-        st.warning("No video file yet.")
+        st.caption("Video will appear here after generate.")
 
 with right:
     st.markdown("**Dialogue**")

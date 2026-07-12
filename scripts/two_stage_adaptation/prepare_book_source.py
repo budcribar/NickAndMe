@@ -57,20 +57,55 @@ def decide_text_strategy(
     """
     Pure decision: what to do with book text before Stage 1.
 
-    Vision only when readability is poor/empty (or thin sparse with little real text).
-    Illustration-heavy picture books with *clean* wording are ready as-is.
+    Picture books with page images: prefer Grok vision whenever the API key is
+    set — embedded PDF text is often OCR soup that invents wrong character names
+    (e.g. "Duster" instead of "Buster").
     """
     quality = str(analysis.get("text_quality") or "unknown")
     density = str(analysis.get("text_density") or "normal")
     kind = str(analysis.get("book_kind") or "unknown")
     words = int(analysis.get("text_words") or 0)
+    garbage = float(analysis.get("garbage_score") or 0)
 
-    if quality == "good":
+    # Picture book + plates → vision (when key present) unless text is clearly clean
+    picture = kind == "picture_book" or density == "sparse"
+    text_clearly_clean = (
+        quality == "good" and garbage < 0.2 and words >= 80 and density != "sparse"
+    )
+    if picture and has_images and has_xai and not text_clearly_clean:
+        return {
+            "action": "grok_vision_transcribe",
+            "reason": (
+                f"Picture book / sparse text (quality={quality}, garbage={garbage:.2f}). "
+                "Rebuilding book_full.txt with Grok vision from page images so character "
+                "names and dialogue match the art."
+            ),
+            "ready_for_stage1": False,
+            "needs_user": False,
+        }
+
+    if picture and has_images and not has_xai and not text_clearly_clean:
+        return {
+            "action": "need_xai_for_vision",
+            "reason": (
+                "Picture book page images are ready, but embedded PDF text is unreliable. "
+                "Set XAI_API_KEY and re-import so vision can rebuild book_full.txt "
+                "(required for correct character names)."
+            ),
+            "ready_for_stage1": False,
+            "needs_user": True,
+            "user_hint": (
+                "export XAI_API_KEY=… then Re-import book "
+                "(or paste a clean transcript into source/book_full.txt)."
+            ),
+        }
+
+    if quality == "good" and garbage < 0.25:
         note = "Text looks clean enough for Stage 1."
         if density == "sparse" or kind == "picture_book":
             note = (
-                f"Picture-book layout ({density} density) with clean wording — "
-                "ready for Stage 1 (short runtime suggested)."
+                f"Picture-book layout with clean wording — ready for Stage 1 "
+                f"(~{analysis.get('suggested_total_minutes')} min)."
             )
         return {
             "action": "use_embedded_text",
@@ -79,10 +114,7 @@ def decide_text_strategy(
             "needs_user": False,
         }
 
-    # Needs better text: poor OCR, empty, or sparse-with-almost-no-words
-    needs_better = quality in ("poor", "empty") or (
-        quality == "sparse" and words < 40
-    )
+    needs_better = quality in ("poor", "empty", "sparse") or garbage >= 0.25
     if not needs_better:
         return {
             "action": "use_embedded_text",
@@ -99,7 +131,7 @@ def decide_text_strategy(
                 "Page images exist and XAI_API_KEY is set — "
                 "will rebuild book_full.txt with Grok vision."
             ),
-            "ready_for_stage1": False,  # after vision
+            "ready_for_stage1": False,
             "needs_user": False,
         }
 
@@ -114,8 +146,8 @@ def decide_text_strategy(
             "ready_for_stage1": False,
             "needs_user": True,
             "user_hint": (
-                "export XAI_API_KEY=… then click Prepare book again "
-                "(auto vision), or paste clean text into source/book_full.txt."
+                "export XAI_API_KEY=… then re-import "
+                "(or paste clean text into source/book_full.txt)."
             ),
         }
 
@@ -128,7 +160,7 @@ def decide_text_strategy(
         ),
         "ready_for_stage1": False,
         "needs_user": True,
-        "user_hint": "Upload PDF → Prepare book (extract images) or paste book_full.txt.",
+        "user_hint": "Upload PDF → Import book (extract images) or paste book_full.txt.",
     }
 
 

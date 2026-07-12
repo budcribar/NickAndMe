@@ -182,15 +182,16 @@ def analyze_book_text(text: str, *, pages_hint: Optional[int] = None) -> Dict[st
 
     # Heuristic garbage: OCR noise / broken words (not merely short picture-book text)
     garbage_score = 0.0
-    if chars > 80:
-        weird = len(re.findall(r"[^\w\s'.,!?;:\-\"()…]", plain))
-        garbage_score += min(1.0, weird / max(chars, 1) * 8)
+    word_list = plain.split() if plain else []
+    if chars > 40:
+        weird = len(re.findall(r"[^\w\s'.,!?;:\-\"()…°]", plain))
+        garbage_score += min(1.0, weird / max(chars, 1) * 10)
         if letter_ratio < 0.55:
             garbage_score += 0.35
         if letter_ratio < 0.4:
             garbage_score += 0.35
         bad_tokens = len(re.findall(r"\b\w*[0-9]\w*\b", plain))
-        garbage_score += min(0.3, bad_tokens / max(words, 1))
+        garbage_score += min(0.35, bad_tokens / max(words, 1))
         # classic OCR garble: mixed case junk mid-token, punctuation salad
         garble_hits = len(
             re.findall(
@@ -198,7 +199,35 @@ def analyze_book_text(text: str, *, pages_hint: Optional[int] = None) -> Dict[st
                 plain,
             )
         )
-        garbage_score += min(0.35, garble_hits / max(words, 1) * 3)
+        garbage_score += min(0.4, garble_hits / max(words, 1) * 4)
+        # High share of short nonsense / non-vowel-heavy tokens (OCR soup)
+        if word_list:
+            junk = 0
+            for w in word_list:
+                wl = re.sub(r"[^A-Za-z]", "", w)
+                if len(wl) < 2:
+                    continue
+                vowels = len(re.findall(r"[aeiouAEIOU]", wl))
+                if vowels == 0 and len(wl) >= 3:
+                    junk += 1
+                elif re.search(r"[;:°•]|[A-Z]{3,}[a-z]+[A-Z]", w):
+                    junk += 1
+            garbage_score += min(0.45, junk / max(len(word_list), 1) * 2.5)
+        # Clear PDF OCR failure markers only (do NOT use real book words like potty/haughty)
+        if re.search(
+            r"\bNOOPLE\b|HEAP\s+POG|Noodle\s+Head\s+Dos\b|Duster\s+the\s+Noodle|"
+            r"Junin\s+arouhd|\bwhrte\b|IMIShil|Pebra\s+McG|111,AI-rated|UPIliaty|"
+            r"Goihg\s+oh|°Aide|Moirtra",
+            plain,
+            re.I,
+        ):
+            garbage_score = max(garbage_score, 0.75)
+        # Only treat non-ASCII soup as garbage when dense (vision text is usually clean ASCII)
+        non_ascii = len(re.findall(r"[^\x00-\x7F]", plain))
+        if non_ascii > 8 and non_ascii / max(chars, 1) > 0.02:
+            garbage_score += 0.15
+
+    garbage_score = min(1.0, garbage_score)
 
     # Density (layout) vs quality (readability)
     if empty_ratio >= 0.35 and avg_chars < 500:
@@ -208,18 +237,20 @@ def analyze_book_text(text: str, *, pages_hint: Optional[int] = None) -> Dict[st
 
     if chars < 40 and not content_bodies:
         text_quality = "empty"
-    elif garbage_score >= 0.55 or (letter_ratio < 0.45 and chars > 100):
+    elif garbage_score >= 0.45 or (letter_ratio < 0.45 and chars > 100):
         text_quality = "poor"
-    elif words >= 30 and letter_ratio >= 0.55 and garbage_score < 0.45:
-        # Clean short verse / picture-book transcript is good even if many pages are art-only
+    elif words >= 40 and letter_ratio >= 0.55 and garbage_score < 0.35:
+        # Clean short verse / vision transcript is good even with illustration-only pages
         text_quality = "good"
-    elif words >= 15 and letter_ratio >= 0.65 and garbage_score < 0.35:
+    elif words >= 25 and letter_ratio >= 0.65 and garbage_score < 0.3:
         text_quality = "good"
-    elif text_density == "sparse" and (words < 15 or letter_ratio < 0.5):
-        # Weak sparse extract with little real content — still may need vision
-        text_quality = "poor" if words < 10 else "sparse"
+    elif text_density == "sparse" and words >= 40 and garbage_score < 0.35:
+        # Picture book with real dialogue + many art-only pages
+        text_quality = "good"
+    elif text_density == "sparse" and (words < 20 or garbage_score >= 0.35):
+        text_quality = "poor" if garbage_score >= 0.4 or words < 15 else "sparse"
     else:
-        text_quality = "good" if garbage_score < 0.4 else "poor"
+        text_quality = "good" if garbage_score < 0.35 else "poor"
 
     # Book kind → runtime suggestion
     if pages <= 40 and (
@@ -367,6 +398,68 @@ def extract_text(
     return text, n, engine, analysis
 
 
+# PDF embeds can be 10k+ px covers — Streamlit/PIL on WSL segfaults on those.
+_EMBED_MAX_EDGE = 2500
+_EMBED_MAX_PIXELS = 12_000_000
+
+
+def _normalize_embed_image(
+    im: "Image.Image", max_edge: int = _EMBED_MAX_EDGE
+) -> "Image.Image":
+    """Downscale huge embeds before write (keeps orientation work cheap downstream)."""
+    from PIL import Image
+
+    w, h = im.size
+    if w * h > _EMBED_MAX_PIXELS or max(w, h) > max_edge:
+        im = im.copy()
+        im.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
+    return im
+
+
+def _apply_page_rotation_to_image_bytes(
+    image_bytes: bytes, page_rotation: int, ext: str
+) -> Tuple[bytes, str, int, int]:
+    """
+    PDF pages may have rotation=90/180/270 while extract_image returns raw pixels.
+    Apply the page rotation so saved plates match on-screen orientation.
+    Always caps very large embeds so GUI/WSL do not load 100MP+ rasters.
+    Returns (bytes, ext, width, height).
+    """
+    rot = int(page_rotation or 0) % 360
+    try:
+        from PIL import Image
+        import io
+
+        Image.MAX_IMAGE_PIXELS = max(
+            getattr(Image, "MAX_IMAGE_PIXELS", None) or 0,
+            200_000_000,
+        )
+        im = Image.open(io.BytesIO(image_bytes))
+        if rot:
+            # PDF rotation is clockwise; PIL rotate is counter-clockwise → use negative
+            im = im.rotate(-rot, expand=True)
+        im = _normalize_embed_image(im)
+        buf = io.BytesIO()
+        out_ext = ext if ext in ("png", "jpg", "jpeg", "webp") else "png"
+        # Prefer JPEG for large plates after normalize
+        if max(im.size) >= 1200 and out_ext in ("png", "jpg", "jpeg", "webp"):
+            if im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            im.save(buf, format="JPEG", quality=90, optimize=True)
+            out_ext = "jpg"
+        elif out_ext in ("jpg", "jpeg"):
+            if im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            im.save(buf, format="JPEG", quality=92, optimize=True)
+            out_ext = "jpg"
+        else:
+            im.save(buf, format="PNG", optimize=True)
+            out_ext = "png"
+        return buf.getvalue(), out_ext, im.size[0], im.size[1]
+    except Exception:
+        return image_bytes, ext, 0, 0
+
+
 def extract_embedded_images(pdf_path: Path, out_dir: Path) -> List[Dict[str, Any]]:
     """Extract embedded raster images via PyMuPDF. Returns manifest rows."""
     try:
@@ -379,6 +472,8 @@ def extract_embedded_images(pdf_path: Path, out_dir: Path) -> List[Dict[str, Any
     rows: List[Dict[str, Any]] = []
     seen_xrefs: set = set()
     for page_index in range(doc.page_count):
+        page = doc.load_page(page_index)
+        page_rot = int(getattr(page, "rotation", 0) or 0)
         for img in doc.get_page_images(page_index, full=True):
             xref = img[0]
             if xref in seen_xrefs:
@@ -397,9 +492,14 @@ def extract_embedded_images(pdf_path: Path, out_dir: Path) -> List[Dict[str, Any
             # Skip tiny icons
             if (w or 0) < 64 or (h or 0) < 64:
                 continue
+            raw = base["image"]
+            fixed, ext2, w2, h2 = _apply_page_rotation_to_image_bytes(raw, page_rot, ext)
+            if w2 and h2:
+                w, h = w2, h2
+            ext = ext2 or ext
             name = f"embedded_p{page_index + 1:03d}_x{xref}.{ext}"
             path = out_dir / name
-            path.write_bytes(base["image"])
+            path.write_bytes(fixed)
             rows.append(
                 {
                     "kind": "embedded",
@@ -408,6 +508,7 @@ def extract_embedded_images(pdf_path: Path, out_dir: Path) -> List[Dict[str, Any
                     "width": w,
                     "height": h,
                     "xref": xref,
+                    "page_rotation": page_rot,
                     "relevance": "embedded_figure",
                 }
             )

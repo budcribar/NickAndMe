@@ -1,0 +1,177 @@
+{
+  "characters_designed": true,
+  "current_scene_index": 0,
+  "scenes_completed": {
+    "1": false
+  },
+  "scene_assets": {},
+  "clip_context_ids": {},
+  "clip_jobs": {
+    "1_1": {
+      "status": "failed",
+      "last_error": "xAI API returned HTTP 400 from https://api.x.ai/v1/videos/generations: {\"code\":\"invalid-argument\",\"error\":\"Duration 12s exceeds the maximum allowed for reference-to-video, which is 10s.\"}",
+      "path": "assets/video/scene_01_clip_01.mp4",
+      "scene_number": 1,
+      "clip_number": 1,
+      "updated_at": "2026-07-12T17:49:03"
+    }
+  },
+  "music_jobs": {},
+  "character_revisions": {
+    "Character_Buster": {
+      "revision": 2,
+      "updated_at": "2026-07-12T17:11:43",
+      "reason": "Locked reference from character_buster_variant_02.png"
+    },
+    "Character_Daddy": {
+      "revision": 1,
+      "updated_at": "2026-07-12T17:13:07",
+      "reason": "Locked reference from character_daddy_variant_01.png"
+    },
+    "Character_Mom": {
+      "revision": 1,
+      "updated_at": "2026-07-12T17:14:18",
+      "reason": "Locked reference from character_mom_variant_03.png"
+    },
+    "Character_Narrator": {
+      "revision": 1,
+      "updated_at": "2026-07-12T17:14:53",
+      "reason": "Locked reference from character_narrator_bookref_1.png"
+    }
+  },
+  "stale_clips": {},
+  "scene_variants": {
+    "1": {
+      "active": "main",
+      "variants": {}
+    }
+  },
+  "scene_hero": {},
+  "ui_progress": {
+    "configuration": {
+      "done": true,
+      "at": "2026-07-12T16:30:53",
+      "detail": ""
+    },
+    "characters": {
+      "done": true,
+      "at": "2026-07-12T17:14:54",
+      "detail": "3/3 on-screen locked"
+    }
+  },
+  "cost_ledger": [
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897853_0000",
+      "ts": "2026-07-12T17:10:53"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897862_0001",
+      "ts": "2026-07-12T17:11:02"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897874_0002",
+      "ts": "2026-07-12T17:11:14"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897958_0003",
+      "ts": "2026-07-12T17:12:38"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897964_0004",
+      "ts": "2026-07-12T17:12:44"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783897971_0005",
+      "ts": "2026-07-12T17:12:51"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783898036_0006",
+      "ts": "2026-07-12T17:13:56"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783898042_0007",
+      "ts": "2026-07-12T17:14:02"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1783898049_0008",
+      "ts": "2026-07-12T17:14:09"
+    }
+  ],
+  "cost_totals": {
+    "usd": 0.45,
+    "events": 9,
+    "updated_at": "2026-07-12T17:14:09"
+  }
+}

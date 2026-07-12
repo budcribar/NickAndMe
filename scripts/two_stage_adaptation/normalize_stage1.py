@@ -119,8 +119,15 @@ def _clean_nulls(obj: Any) -> Any:
 def normalize(data: Dict[str, Any]) -> Dict[str, Any]:
     data = _clean_nulls(data)
     data["schema_version"] = "stage1.v1"
-    data.setdefault("movie_title", "Nick and Me")
-    data.setdefault("source_book_title", "Nick and Me")
+    data.setdefault("movie_title", data.get("source_book_title") or "Untitled")
+    data.setdefault("source_book_title", data.get("movie_title") or "Untitled")
+    # Strip accidental legacy default when another title is present elsewhere
+    if data.get("movie_title") == "Nick and Me" and data.get("source_book_title") not in (
+        None,
+        "",
+        "Nick and Me",
+    ):
+        data["movie_title"] = data["source_book_title"]
 
     gpv = data.setdefault("global_production_variables", {})
     gpv.setdefault("target_aspect_ratio", "16:9")
@@ -148,11 +155,26 @@ def normalize(data: Dict[str, Any]) -> Dict[str, Any]:
         seed.setdefault("voice_profile", "Consistent character voice every scene.")
         seed.setdefault("voice_label", key)
         # remove empty optional nulls already gone; ensure strings not None
-        for opt in ("canonical_given_name", "name_reveal_note", "age_band", "variant_of"):
+        for opt in (
+            "canonical_given_name",
+            "name_reveal_note",
+            "age_band",
+            "variant_of",
+        ):
             if opt in seed and seed[opt] is None:
                 del seed[opt]
         if seed.get("name_reveal_scene") is None and "name_reveal_scene" in seed:
             del seed["name_reveal_scene"]
+        # Keep book likeness fields when present
+        pages = seed.get("source_image_pages")
+        if pages is not None and not isinstance(pages, list):
+            try:
+                seed["source_image_pages"] = [int(pages)]
+            except (TypeError, ValueError):
+                seed.pop("source_image_pages", None)
+        for img_key in ("design_reference_images", "book_reference_images"):
+            if img_key in seed and seed[img_key] is None:
+                del seed[img_key]
 
     for key, seed in list((gpv.get("location_seed_tokens") or {}).items()):
         if not isinstance(seed, dict):

@@ -82,7 +82,7 @@ DEFAULT_CONFIG = {
                     "grok-imagine-video-1.5": {
                         "default": 8,
                         "prefer_min": 6,
-                        "prefer_max": 12,
+                        "prefer_max": 10,
                     },
                 },
                 "resolutions": {
@@ -1772,6 +1772,57 @@ class AgenticGenerationEngine:
         # Unlock alone does not bump revision (no new look yet); lock will mark stale.
         return removed
 
+    def lock_character_from_path(self, char_key: str, source_path: str) -> str:
+        """
+        Copy any image (book plate, variant, etc.) to the locked character ref path.
+        Keeps the source file. Bumps character revision for cascade.
+        """
+        import shutil
+
+        seed_info = self._character_seed(char_key)
+        if not seed_info:
+            raise GenerationFailure(f"Unknown character seed: {char_key}")
+        src = source_path
+        if not os.path.isfile(src):
+            # try project-relative
+            if os.path.isfile(os.path.normpath(source_path)):
+                src = os.path.normpath(source_path)
+            else:
+                raise GenerationFailure(f"Image not found: {source_path}")
+        final_path = self.character_ref_path(char_key)
+        # Normalize locked ref to .png name from seed, but allow any source format
+        ensure_parent_dir(final_path)
+        # If source is not png and final is .png, convert via PIL when needed
+        try:
+            src_l = src.lower()
+            final_l = final_path.lower()
+            if src_l.endswith((".jpg", ".jpeg", ".webp")) and final_l.endswith(".png"):
+                from PIL import Image
+
+                im = Image.open(src)
+                if im.mode not in ("RGB", "RGBA"):
+                    im = im.convert("RGBA")
+                im.save(final_path, format="PNG", optimize=True)
+            else:
+                shutil.copy2(src, final_path)
+        except Exception:
+            shutil.copy2(src, final_path)
+        # Clear open variants so UI shows the lock clearly
+        for p in self.character_variant_paths(char_key):
+            if os.path.isfile(p):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+        self.state["characters_designed"] = True
+        self.mark_character_changed(
+            char_key,
+            reason=f"Locked reference from {os.path.basename(src)}",
+            only_existing=True,
+        )
+        self.save_state()
+        return final_path
+
     def lock_character_variant(self, char_key: str, variant_index: int) -> str:
         """
         Promote variant 1..3 to the locked reference path. Returns final ref path.
@@ -1785,23 +1836,7 @@ class AgenticGenerationEngine:
         variant_path = f"assets/characters/{char_key.lower()}_variant_0{variant_index}.png"
         if not os.path.isfile(variant_path):
             raise GenerationFailure(f"Variant not found: {variant_path}")
-        final_path = self.character_ref_path(char_key)
-        ensure_parent_dir(final_path)
-        os.replace(variant_path, final_path)
-        for p in self.character_variant_paths(char_key):
-            if os.path.isfile(p):
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
-        self.state["characters_designed"] = True
-        self.mark_character_changed(
-            char_key,
-            reason=f"Locked new reference (variant {variant_index})",
-            only_existing=True,
-        )
-        self.save_state()
-        return final_path
+        return self.lock_character_from_path(char_key, variant_path)
 
     def clips_using_character(self, char_key: str) -> List[Tuple[int, int]]:
         """Return (scene_number, clip_number) for every visual_prompt that mentions char_key."""
@@ -3402,10 +3437,15 @@ class AgenticGenerationEngine:
             model_name=resolved_model,
             resolution=resolved_res,
         )
-        # Prefer per-clip duration from timestamp when available ("00:00-00:08")
+        # Prefer explicit duration_seconds, then timestamp ("00:00-00:08")
+        if clip.get("duration_seconds") is not None:
+            try:
+                duration = int(clip.get("duration_seconds"))
+            except (TypeError, ValueError):
+                pass
         ts = str(clip.get("timestamp") or "")
         m_ts = re.match(r"^\s*(\d+):(\d{2})\s*-\s*(\d+):(\d{2})\s*$", ts)
-        if m_ts:
+        if m_ts and clip.get("duration_seconds") is None:
             a = int(m_ts.group(1)) * 60 + int(m_ts.group(2))
             b = int(m_ts.group(3)) * 60 + int(m_ts.group(4))
             if b > a:
@@ -3422,6 +3462,9 @@ class AgenticGenerationEngine:
         }
 
         self._check_shutdown(f"Grok generate Scene {scene_num} Clip {clip_num}")
+        # xAI: text-to-video allows longer; image-to-video / reference-to-video max is 10s
+        # (HTTP 400: "Duration Ns exceeds the maximum allowed for reference-to-video")
+        GROK_IMAGE_OR_REF_MAX_SEC = 10
         if use_continuation:
             frame_path = (
                 f"{os.path.splitext(output_clip_path)[0]}_seed_frame.png"
@@ -3432,6 +3475,12 @@ class AgenticGenerationEngine:
             print(f"  [Grok] True continuation: image-to-video from last frame of {prev_path}...")
             self._extract_last_frame(prev_path, frame_path)
             payload["image"] = {"url": self._file_to_data_uri(frame_path)}
+            if int(payload["duration"]) > GROK_IMAGE_OR_REF_MAX_SEC:
+                print(
+                    f"  [Grok] Clamping duration {payload['duration']}s → "
+                    f"{GROK_IMAGE_OR_REF_MAX_SEC}s (image-to-video max)"
+                )
+                payload["duration"] = GROK_IMAGE_OR_REF_MAX_SEC
         else:
             # Fresh shot: lock PRIMARY visual subject (first adult Character_* in visual_prompt).
             # Do NOT prefer VO speaker — narration is often off-screen / different person.
@@ -3441,6 +3490,12 @@ class AgenticGenerationEngine:
             if anchor_path:
                 print(f"  [Character Anchor] Primary subject ref: {anchor_path}")
                 payload["reference_images"] = [{"url": self._file_to_data_uri(anchor_path)}]
+                if int(payload["duration"]) > GROK_IMAGE_OR_REF_MAX_SEC:
+                    print(
+                        f"  [Grok] Clamping duration {payload['duration']}s → "
+                        f"{GROK_IMAGE_OR_REF_MAX_SEC}s (reference-to-video max)"
+                    )
+                    payload["duration"] = GROK_IMAGE_OR_REF_MAX_SEC
             else:
                 print(
                     "  [Character Anchor] No adult ref applied "

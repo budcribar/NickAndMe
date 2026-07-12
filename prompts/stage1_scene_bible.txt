@@ -57,6 +57,17 @@ Also set when relevant:
 - name_reveal_scene (integer scene_number where on-screen/spoken given name first becomes allowed;
   required when display_name_policy is withheld_until_reveal)
 
+**BOOK / PDF LIKENESS (when AVAILABLE_BOOK_IMAGES is provided in the user message):**
+- For every **on-screen** character, set `source_image_pages`: array of 1–3 **page numbers**
+  from AVAILABLE_BOOK_IMAGES where that character is clearly visible (cover + illustration
+  pages for picture books). Example: `"source_image_pages": [1, 2, 5]`
+- Prefer pages that show the face/body clearly over text-only pages.
+- Off-screen only (display_name_policy never_on_screen / pure narrator): omit source_image_pages
+  or use [].
+- Do NOT invent page numbers that are not listed in AVAILABLE_BOOK_IMAGES.
+- The pipeline will copy those pages into assets/characters/*_bookref_* and set
+  design_reference_images after Stage 1 — you only need correct page numbers.
+
 Age variants need their **own** voice_profile (child ≠ adult baritone).
 
 ================================================================

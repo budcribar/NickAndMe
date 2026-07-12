@@ -1,0 +1,2260 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "204b93c7",
+      "ts": "2026-07-12T17:49:03",
+      "type": "scene_generate",
+      "learning_layer": "clip",
+      "scene": 1,
+      "clip": null,
+      "character": null,
+      "user_note": "Generate scene 1: 0 ok, 1 failed, 0 skipped",
+      "action_taken": "done=[] failed=[{'clip': 1, 'error': 'xAI API returned HTTP 400 from https://api.x.ai/v1/videos/generations: {\"code\":\"invalid-argument\",\"error\":\"Duration 12s exceeds the maximum allowed for reference-to-video, which is 10s.\"}'}]",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Generate scene 1: 0 ok, 1 failed, 0 skipped",
+      "targets": [
+        "assets/video",
+        "assets/scenes"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "done": [],
+        "failed": [
+          {
+            "clip": 1,
+            "error": "xAI API returned HTTP 400 from https://api.x.ai/v1/videos/generations: {\"code\":\"invalid-argument\",\"error\":\"Duration 12s exceeds the maximum allowed for reference-to-video, which is 10s.\"}"
+          }
+        ],
+        "skipped": [],
+        "only_missing": true
+      }
+    },
+    {
+      "id": "b6d44c42",
+      "ts": "2026-07-12T17:46:56",
+      "type": "scene_generate",
+      "learning_layer": "clip",
+      "scene": 1,
+      "clip": null,
+      "character": null,
+      "user_note": "Generate scene 1: 0 ok, 1 failed, 0 skipped",
+      "action_taken": "done=[] failed=[{'clip': 1, 'error': 'xAI API returned HTTP 400 from https://api.x.ai/v1/videos/generations: {\"code\":\"invalid-argument\",\"error\":\"Duration 12s exceeds the maximum allowed for reference-to-video, which is 10s.\"}'}]",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Generate scene 1: 0 ok, 1 failed, 0 skipped",
+      "targets": [
+        "assets/video",
+        "assets/scenes"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "done": [],
+        "failed": [
+          {
+            "clip": 1,
+            "error": "xAI API returned HTTP 400 from https://api.x.ai/v1/videos/generations: {\"code\":\"invalid-argument\",\"error\":\"Duration 12s exceeds the maximum allowed for reference-to-video, which is 10s.\"}"
+          }
+        ],
+        "skipped": [],
+        "only_missing": true
+      }
+    },
+    {
+      "id": "0e8c27e3",
+      "ts": "2026-07-12T17:27:59",
+      "type": "stage2_run",
+      "learning_layer": "stage2",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 2 plan: 7 scenes · 22 clips",
+      "action_taken": "Wrote blueprint.clips.grok.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 2 plan: 7 scenes · 22 clips",
+      "targets": [
+        "blueprint.clips.grok.json",
+        "scripts/two_stage_adaptation/stage2_plan_grok.py"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "ok": true,
+        "scenes": 7,
+        "clips": 22,
+        "duration_sec": 264,
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/blueprint.clips.grok.json",
+        "source_stage1": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/blueprint.clips.grok.json.bak_pre_stage2_20260712_172759",
+        "scene_filter": "all",
+        "resolution": "720p"
+      }
+    },
+    {
+      "id": "46a76626",
+      "ts": "2026-07-12T17:15:03",
+      "type": "character_voice",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Narrator",
+      "user_note": "Updated voice for Character_Narrator",
+      "action_taken": "Saved voice_profile / voice_label on character seed",
+      "before": "",
+      "after": "",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (character Character_Narrator). Reviewer note: Updated voice for Character_Narrator",
+      "targets": [
+        "blueprint"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "voice_profile": "Warm adult storyteller, medium pitch, unhurried friendly pace, clear diction for rhymes, gentle smile in the voice; same voice every scene."
+      }
+    },
+    {
+      "id": "8d0e2fa4",
+      "ts": "2026-07-12T17:14:54",
+      "type": "character_lock",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Narrator",
+      "user_note": "Locked book plate character_narrator_bookref_1.png",
+      "action_taken": "Locked → assets/characters/assets/characters/narrator_ref.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Locked book plate character_narrator_bookref_1.png (character Character_Narrator)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "84ebbc18",
+      "ts": "2026-07-12T17:14:18",
+      "type": "character_lock",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Mom",
+      "user_note": "Locked generated variant 3",
+      "action_taken": "Locked → assets/characters/assets/characters/mom_ref.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Locked generated variant 3 (character Character_Mom)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "e3d29d44",
+      "ts": "2026-07-12T17:14:10",
+      "type": "character_variants",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Mom",
+      "user_note": "Generated 3 variants for Character_Mom (mode=book_edit)",
+      "action_taken": "assets/characters/character_mom_variant_01.png, assets/characters/character_mom_variant_02.png, assets/characters/character_mom_variant_03.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Generated 3 variants for Character_Mom (mode=book_edit) (character Character_Mom)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "mode": "book_edit",
+        "book_refs": [
+          "character_mom_bookref_1.png",
+          "character_mom_bookref_2.png",
+          "character_mom_bookref_3.png"
+        ]
+      }
+    },
+    {
+      "id": "fb30a4ef",
+      "ts": "2026-07-12T17:13:41",
+      "type": "character_voice",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Mom",
+      "user_note": "Updated voice for Character_Mom",
+      "action_taken": "Saved voice_profile / voice_label on character seed",
+      "before": "",
+      "after": "",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (character Character_Mom). Reviewer note: Updated voice for Character_Mom",
+      "targets": [
+        "blueprint"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "voice_profile": "Adult woman, warm medium pitch, calm gentle pace, soft maternal accent-neutral English, reassuring energy; same voice every scene."
+      }
+    },
+    {
+      "id": "a44113a9",
+      "ts": "2026-07-12T17:13:07",
+      "type": "character_lock",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Daddy",
+      "user_note": "Locked generated variant 1",
+      "action_taken": "Locked → assets/characters/assets/characters/daddy_ref.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Locked generated variant 1 (character Character_Daddy)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "1b4dbcdc",
+      "ts": "2026-07-12T17:12:51",
+      "type": "character_variants",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Daddy",
+      "user_note": "Generated 3 variants for Character_Daddy (mode=book_edit)",
+      "action_taken": "assets/characters/character_daddy_variant_01.png, assets/characters/character_daddy_variant_02.png, assets/characters/character_daddy_variant_03.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Generated 3 variants for Character_Daddy (mode=book_edit) (character Character_Daddy)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "mode": "book_edit",
+        "book_refs": [
+          "character_daddy_bookref_1.png",
+          "character_daddy_bookref_2.png",
+          "page_001_cover.png"
+        ]
+      }
+    },
+    {
+      "id": "d761941b",
+      "ts": "2026-07-12T17:12:03",
+      "type": "character_voice",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Buster",
+      "user_note": "Updated voice for Character_Buster",
+      "action_taken": "Saved voice_profile / voice_label on character seed",
+      "before": "",
+      "after": "",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (character Character_Buster). Reviewer note: Updated voice for Character_Buster",
+      "targets": [
+        "blueprint"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "voice_profile": "Small dog energy: light playful yips, soft whines, and happy pants rather than human speech; bright, quick, slightly goofy cadence; same voice every scene."
+      }
+    },
+    {
+      "id": "11d5af00",
+      "ts": "2026-07-12T17:11:43",
+      "type": "character_lock",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Buster",
+      "user_note": "Locked generated variant 2",
+      "action_taken": "Locked → assets/characters/assets/characters/buster_ref.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Locked generated variant 2 (character Character_Buster)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "31fb53e8",
+      "ts": "2026-07-12T17:11:14",
+      "type": "character_variants",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Buster",
+      "user_note": "Generated 3 variants for Character_Buster (mode=book_edit)",
+      "action_taken": "assets/characters/character_buster_variant_01.png, assets/characters/character_buster_variant_02.png, assets/characters/character_buster_variant_03.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Generated 3 variants for Character_Buster (mode=book_edit) (character Character_Buster)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "mode": "book_edit",
+        "book_refs": [
+          "character_buster_bookref_1.png",
+          "character_buster_bookref_2.png",
+          "character_buster_bookref_3.png"
+        ]
+      }
+    },
+    {
+      "id": "30185d84",
+      "ts": "2026-07-12T17:10:31",
+      "type": "character_lock",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": "Character_Buster",
+      "user_note": "Locked book plate character_buster_bookref_3.png",
+      "action_taken": "Locked → assets/characters/assets/characters/buster_ref.png",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Character design: Locked book plate character_buster_bookref_3.png (character Character_Buster)",
+      "targets": [
+        "assets/characters"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "844d286c",
+      "ts": "2026-07-12T17:00:32",
+      "type": "stage1_run",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 1 run complete: 7 scenes",
+      "action_taken": "Wrote /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 1 run complete: 7 scenes",
+      "targets": [
+        "nickandme.scenes.json",
+        "prompts/stage1_scene_bible.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json.bak_stage1_20260712_170026",
+        "scenes": 7,
+        "characters": 4,
+        "locations": 5,
+        "runtime_sec": 420,
+        "chunks": 1,
+        "verify_errors": [],
+        "hard_errors": [],
+        "character_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Narrator": {
+              "method": "heuristic",
+              "pages": [
+                1,
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.png",
+                "assets/characters/character_narrator_bookref_2.jpg",
+                "assets/characters/character_narrator_bookref_3.jpg"
+              ]
+            },
+            "Character_Buster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                3,
+                5
+              ],
+              "refs": [
+                "assets/characters/character_buster_bookref_1.jpg",
+                "assets/characters/character_buster_bookref_2.jpg",
+                "assets/characters/character_buster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Daddy": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                11
+              ],
+              "refs": [
+                "assets/characters/character_daddy_bookref_1.jpg",
+                "assets/characters/character_daddy_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        },
+        "ok": true,
+        "blueprint_seed_sync": {
+          "synced": true,
+          "reason": "copied_from_stage1",
+          "count": 4,
+          "keys": [
+            "Character_Narrator",
+            "Character_Buster",
+            "Character_Mom",
+            "Character_Daddy"
+          ],
+          "book_images": {
+            "ok": true,
+            "project": "Buster",
+            "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+            "attached": {
+              "Character_Narrator": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  1,
+                  2
+                ],
+                "refs": [
+                  "assets/characters/character_narrator_bookref_1.jpg",
+                  "assets/characters/character_narrator_bookref_2.jpg",
+                  "assets/characters/character_narrator_bookref_3.jpg"
+                ]
+              },
+              "Character_Buster": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  3,
+                  5
+                ],
+                "refs": [
+                  "assets/characters/character_buster_bookref_1.jpg",
+                  "assets/characters/character_buster_bookref_2.jpg",
+                  "assets/characters/character_buster_bookref_3.jpg"
+                ]
+              },
+              "Character_Mom": {
+                "method": "source_image_pages",
+                "pages": [
+                  4,
+                  8,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_mom_bookref_1.jpg",
+                  "assets/characters/character_mom_bookref_2.jpg",
+                  "assets/characters/character_mom_bookref_3.jpg"
+                ]
+              },
+              "Character_Daddy": {
+                "method": "source_image_pages",
+                "pages": [
+                  10,
+                  11
+                ],
+                "refs": [
+                  "assets/characters/character_daddy_bookref_1.jpg",
+                  "assets/characters/character_daddy_bookref_2.jpg"
+                ]
+              }
+            },
+            "count": 4,
+            "inventory": 30,
+            "blueprint_updated": true
+          }
+        },
+        "character_book_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Narrator": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.jpg",
+                "assets/characters/character_narrator_bookref_2.jpg",
+                "assets/characters/character_narrator_bookref_3.jpg"
+              ]
+            },
+            "Character_Buster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                3,
+                5
+              ],
+              "refs": [
+                "assets/characters/character_buster_bookref_1.jpg",
+                "assets/characters/character_buster_bookref_2.jpg",
+                "assets/characters/character_buster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Daddy": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                11
+              ],
+              "refs": [
+                "assets/characters/character_daddy_bookref_1.jpg",
+                "assets/characters/character_daddy_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        }
+      }
+    },
+    {
+      "id": "17b08cc4",
+      "ts": "2026-07-12T16:56:56",
+      "type": "book_extract",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "action_taken": "{'project': 'Buster', 'pdf': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_name': 'Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_bytes': 12659504, 'book_full': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt', 'images_dir': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images', 'ts': '2026-07-12T16:56:46', 'text_extracted': False, 'text_chars': 1602, 'pages': 15, 'text_words': 255, 'text_engine': 'existing_book_full', 'render_modes_upgraded': ['cover', 'sparse', 'all'], 'images': 30, 'embedded_images': 15, 'rendered_pages': 15, 'manifest': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json', 'text_quality': 'good', 'book_kind': 'picture_book', 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'analysis': {'pages': 15, 'text_chars': 1295, 'text_words': 255, 'avg_chars_per_page': 86.3, 'letter_ratio': 0.775, 'empty_page_ratio': 0.4, 'sparse_page_ratio': 0.533, 'garbage_score': 0.01, 'text_quality': 'good', 'text_density': 'sparse', 'book_kind': 'picture_book', 'ready_for_stage1': True, 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'notes': ['Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.', 'Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.', 'Auto-added page stills for all pages (picture book / weak text layer).']}, 'extract_meta': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json', 'ok': True}",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "targets": [
+        "source/book_full.txt",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_bytes": 12659504,
+        "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+        "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+        "ts": "2026-07-12T16:56:46",
+        "text_extracted": false,
+        "text_chars": 1602,
+        "pages": 15,
+        "text_words": 255,
+        "text_engine": "existing_book_full",
+        "render_modes_upgraded": [
+          "cover",
+          "sparse",
+          "all"
+        ],
+        "images": 30,
+        "embedded_images": 15,
+        "rendered_pages": 15,
+        "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+        "text_quality": "good",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "analysis": {
+          "pages": 15,
+          "text_chars": 1295,
+          "text_words": 255,
+          "avg_chars_per_page": 86.3,
+          "letter_ratio": 0.775,
+          "empty_page_ratio": 0.4,
+          "sparse_page_ratio": 0.533,
+          "garbage_score": 0.01,
+          "text_quality": "good",
+          "text_density": "sparse",
+          "book_kind": "picture_book",
+          "ready_for_stage1": true,
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "notes": [
+            "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+            "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+            "Auto-added page stills for all pages (picture book / weak text layer)."
+          ]
+        },
+        "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+        "ok": true
+      }
+    },
+    {
+      "id": "82343308",
+      "ts": "2026-07-12T16:51:23",
+      "type": "book_prepare",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Rebuilt book_full.txt via Grok vision (321 words, 0 page error(s)).",
+      "action_taken": "action=grok_vision_done ready=True runtime≈7min",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Rebuilt book_full.txt via Grok vision (321 words, 0 page error(s)).",
+      "targets": [
+        "source/book_full.txt",
+        "source/extract_meta.json",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "action": "grok_vision_done",
+        "ready_for_stage1": true,
+        "text_quality": "good",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "needs_user": false
+      }
+    },
+    {
+      "id": "52233f13",
+      "ts": "2026-07-12T16:46:38",
+      "type": "stage1_run",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 1 run complete: 6 scenes",
+      "action_taken": "Wrote /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 1 run complete: 6 scenes",
+      "targets": [
+        "nickandme.scenes.json",
+        "prompts/stage1_scene_bible.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json.bak_stage1_20260712_164633",
+        "scenes": 6,
+        "characters": 4,
+        "locations": 3,
+        "runtime_sec": 420,
+        "chunks": 1,
+        "verify_errors": [],
+        "hard_errors": [],
+        "character_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Buster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6,
+                8,
+                10
+              ],
+              "refs": [
+                "assets/characters/character_buster_bookref_1.jpg",
+                "assets/characters/character_buster_bookref_2.jpg",
+                "assets/characters/character_buster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "heuristic",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.png",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        },
+        "ok": true,
+        "blueprint_seed_sync": {
+          "synced": true,
+          "reason": "copied_from_stage1",
+          "count": 4,
+          "keys": [
+            "Character_Buster",
+            "Character_Mom",
+            "Character_Dad",
+            "Character_Narrator"
+          ],
+          "book_images": {
+            "ok": true,
+            "project": "Buster",
+            "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+            "attached": {
+              "Character_Buster": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2,
+                  6,
+                  8,
+                  10
+                ],
+                "refs": [
+                  "assets/characters/character_buster_bookref_1.jpg",
+                  "assets/characters/character_buster_bookref_2.jpg",
+                  "assets/characters/character_buster_bookref_3.jpg"
+                ]
+              },
+              "Character_Mom": {
+                "method": "source_image_pages",
+                "pages": [
+                  4,
+                  8,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_mom_bookref_1.jpg",
+                  "assets/characters/character_mom_bookref_2.jpg",
+                  "assets/characters/character_mom_bookref_3.jpg"
+                ]
+              },
+              "Character_Dad": {
+                "method": "source_image_pages",
+                "pages": [
+                  10,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_dad_bookref_1.jpg",
+                  "assets/characters/character_dad_bookref_2.jpg"
+                ]
+              },
+              "Character_Narrator": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2
+                ],
+                "refs": [
+                  "assets/characters/character_narrator_bookref_1.jpg",
+                  "assets/characters/character_narrator_bookref_2.jpg"
+                ]
+              }
+            },
+            "count": 4,
+            "inventory": 30,
+            "blueprint_updated": true
+          }
+        },
+        "character_book_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Buster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6,
+                8,
+                10
+              ],
+              "refs": [
+                "assets/characters/character_buster_bookref_1.jpg",
+                "assets/characters/character_buster_bookref_2.jpg",
+                "assets/characters/character_buster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.jpg",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        }
+      }
+    },
+    {
+      "id": "51fef088",
+      "ts": "2026-07-12T16:45:18",
+      "type": "book_extract",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "action_taken": "{'project': 'Buster', 'pdf': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_name': 'Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_bytes': 12659504, 'book_full': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt', 'images_dir': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images', 'ts': '2026-07-12T16:45:09', 'text_extracted': False, 'text_chars': 1545, 'pages': 15, 'text_words': 244, 'text_engine': 'existing_book_full', 'render_modes_upgraded': ['cover', 'sparse', 'all'], 'images': 30, 'embedded_images': 15, 'rendered_pages': 15, 'manifest': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json', 'text_quality': 'poor', 'book_kind': 'picture_book', 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'analysis': {'pages': 15, 'text_chars': 1263, 'text_words': 244, 'avg_chars_per_page': 84.2, 'letter_ratio': 0.735, 'empty_page_ratio': 0.467, 'sparse_page_ratio': 0.533, 'garbage_score': 0.85, 'text_quality': 'poor', 'text_density': 'sparse', 'book_kind': 'picture_book', 'ready_for_stage1': False, 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'notes': ['Text looks garbled (OCR noise). Prefer Grok vision on page images, Tesseract re-extract, or paste a clean transcript into book_full.txt.', 'Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.', 'Auto-added page stills for all pages (picture book / weak text layer).']}, 'extract_meta': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json', 'ok': True}",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "targets": [
+        "source/book_full.txt",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_bytes": 12659504,
+        "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+        "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+        "ts": "2026-07-12T16:45:09",
+        "text_extracted": false,
+        "text_chars": 1545,
+        "pages": 15,
+        "text_words": 244,
+        "text_engine": "existing_book_full",
+        "render_modes_upgraded": [
+          "cover",
+          "sparse",
+          "all"
+        ],
+        "images": 30,
+        "embedded_images": 15,
+        "rendered_pages": 15,
+        "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+        "text_quality": "poor",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "analysis": {
+          "pages": 15,
+          "text_chars": 1263,
+          "text_words": 244,
+          "avg_chars_per_page": 84.2,
+          "letter_ratio": 0.735,
+          "empty_page_ratio": 0.467,
+          "sparse_page_ratio": 0.533,
+          "garbage_score": 0.85,
+          "text_quality": "poor",
+          "text_density": "sparse",
+          "book_kind": "picture_book",
+          "ready_for_stage1": false,
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "notes": [
+            "Text looks garbled (OCR noise). Prefer Grok vision on page images, Tesseract re-extract, or paste a clean transcript into book_full.txt.",
+            "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+            "Auto-added page stills for all pages (picture book / weak text layer)."
+          ]
+        },
+        "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+        "ok": true
+      }
+    },
+    {
+      "id": "c881bca0",
+      "ts": "2026-07-12T16:41:59",
+      "type": "stage1_run",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 1 run complete: 7 scenes",
+      "action_taken": "Wrote /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 1 run complete: 7 scenes",
+      "targets": [
+        "nickandme.scenes.json",
+        "prompts/stage1_scene_bible.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json.bak_stage1_20260712_164156",
+        "scenes": 7,
+        "characters": 3,
+        "locations": 5,
+        "runtime_sec": 420,
+        "chunks": 1,
+        "verify_errors": [],
+        "hard_errors": [],
+        "character_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 3,
+          "inventory": 30,
+          "blueprint_updated": true
+        },
+        "ok": true,
+        "blueprint_seed_sync": {
+          "synced": true,
+          "reason": "copied_from_stage1",
+          "count": 3,
+          "keys": [
+            "Character_Duster",
+            "Character_Mom",
+            "Character_Dad"
+          ],
+          "book_images": {
+            "ok": true,
+            "project": "Buster",
+            "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+            "attached": {
+              "Character_Duster": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2,
+                  6
+                ],
+                "refs": [
+                  "assets/characters/character_duster_bookref_1.jpg",
+                  "assets/characters/character_duster_bookref_2.jpg",
+                  "assets/characters/character_duster_bookref_3.jpg"
+                ]
+              },
+              "Character_Mom": {
+                "method": "source_image_pages",
+                "pages": [
+                  4,
+                  8,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_mom_bookref_1.jpg",
+                  "assets/characters/character_mom_bookref_2.jpg",
+                  "assets/characters/character_mom_bookref_3.jpg"
+                ]
+              },
+              "Character_Dad": {
+                "method": "source_image_pages",
+                "pages": [
+                  10,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_dad_bookref_1.jpg",
+                  "assets/characters/character_dad_bookref_2.jpg"
+                ]
+              }
+            },
+            "count": 3,
+            "inventory": 30,
+            "blueprint_updated": true
+          }
+        },
+        "character_book_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 3,
+          "inventory": 30,
+          "blueprint_updated": true
+        }
+      }
+    },
+    {
+      "id": "0994ff02",
+      "ts": "2026-07-12T16:40:55",
+      "type": "book_extract",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "action_taken": "{'project': 'Buster', 'pdf': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_name': 'Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_bytes': 12659504, 'book_full': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt', 'images_dir': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images', 'ts': '2026-07-12T16:40:47', 'text_extracted': False, 'text_chars': 1545, 'pages': 15, 'text_words': 244, 'text_engine': 'existing_book_full', 'render_modes_upgraded': ['cover', 'sparse', 'all'], 'images': 30, 'embedded_images': 15, 'rendered_pages': 15, 'manifest': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json', 'text_quality': 'poor', 'book_kind': 'picture_book', 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'analysis': {'pages': 15, 'text_chars': 1263, 'text_words': 244, 'avg_chars_per_page': 84.2, 'letter_ratio': 0.735, 'empty_page_ratio': 0.467, 'sparse_page_ratio': 0.533, 'garbage_score': 0.85, 'text_quality': 'poor', 'text_density': 'sparse', 'book_kind': 'picture_book', 'ready_for_stage1': False, 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'notes': ['Text looks garbled (OCR noise). Prefer Grok vision on page images, Tesseract re-extract, or paste a clean transcript into book_full.txt.', 'Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.', 'Auto-added page stills for all pages (picture book / weak text layer).']}, 'extract_meta': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json', 'ok': True}",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "targets": [
+        "source/book_full.txt",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_bytes": 12659504,
+        "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+        "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+        "ts": "2026-07-12T16:40:47",
+        "text_extracted": false,
+        "text_chars": 1545,
+        "pages": 15,
+        "text_words": 244,
+        "text_engine": "existing_book_full",
+        "render_modes_upgraded": [
+          "cover",
+          "sparse",
+          "all"
+        ],
+        "images": 30,
+        "embedded_images": 15,
+        "rendered_pages": 15,
+        "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+        "text_quality": "poor",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "analysis": {
+          "pages": 15,
+          "text_chars": 1263,
+          "text_words": 244,
+          "avg_chars_per_page": 84.2,
+          "letter_ratio": 0.735,
+          "empty_page_ratio": 0.467,
+          "sparse_page_ratio": 0.533,
+          "garbage_score": 0.85,
+          "text_quality": "poor",
+          "text_density": "sparse",
+          "book_kind": "picture_book",
+          "ready_for_stage1": false,
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "notes": [
+            "Text looks garbled (OCR noise). Prefer Grok vision on page images, Tesseract re-extract, or paste a clean transcript into book_full.txt.",
+            "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+            "Auto-added page stills for all pages (picture book / weak text layer)."
+          ]
+        },
+        "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+        "ok": true
+      }
+    },
+    {
+      "id": "fa249a94",
+      "ts": "2026-07-12T16:36:38",
+      "type": "stage1_run",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 1 run complete: 7 scenes",
+      "action_taken": "Wrote /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 1 run complete: 7 scenes",
+      "targets": [
+        "nickandme.scenes.json",
+        "prompts/stage1_scene_bible.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json.bak_stage1_20260712_163634",
+        "scenes": 7,
+        "characters": 4,
+        "locations": 4,
+        "runtime_sec": 420,
+        "chunks": 1,
+        "verify_errors": [],
+        "hard_errors": [],
+        "character_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "heuristic",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.png",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        },
+        "ok": true,
+        "blueprint_seed_sync": {
+          "synced": true,
+          "reason": "copied_from_stage1",
+          "count": 4,
+          "keys": [
+            "Character_Duster",
+            "Character_Mom",
+            "Character_Dad",
+            "Character_Narrator"
+          ],
+          "book_images": {
+            "ok": true,
+            "project": "Buster",
+            "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+            "attached": {
+              "Character_Duster": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_duster_bookref_1.jpg",
+                  "assets/characters/character_duster_bookref_2.jpg",
+                  "assets/characters/character_duster_bookref_3.jpg"
+                ]
+              },
+              "Character_Mom": {
+                "method": "source_image_pages",
+                "pages": [
+                  4,
+                  8,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_mom_bookref_1.jpg",
+                  "assets/characters/character_mom_bookref_2.jpg",
+                  "assets/characters/character_mom_bookref_3.jpg"
+                ]
+              },
+              "Character_Dad": {
+                "method": "source_image_pages",
+                "pages": [
+                  10,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_dad_bookref_1.jpg",
+                  "assets/characters/character_dad_bookref_2.jpg"
+                ]
+              },
+              "Character_Narrator": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2
+                ],
+                "refs": [
+                  "assets/characters/character_narrator_bookref_1.jpg",
+                  "assets/characters/character_narrator_bookref_2.jpg"
+                ]
+              }
+            },
+            "count": 4,
+            "inventory": 30,
+            "blueprint_updated": true
+          }
+        },
+        "character_book_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.jpg",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        }
+      }
+    },
+    {
+      "id": "bba1d63d",
+      "ts": "2026-07-12T16:35:26",
+      "type": "book_extract",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "action_taken": "{'project': 'Buster', 'pdf': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_name': 'Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_bytes': 12659504, 'book_full': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt', 'images_dir': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images', 'ts': '2026-07-12T16:35:17', 'text_extracted': False, 'text_chars': 1545, 'pages': 15, 'text_words': 244, 'text_engine': 'existing_book_full', 'render_modes_upgraded': ['cover', 'sparse', 'all'], 'images': 30, 'embedded_images': 15, 'rendered_pages': 15, 'manifest': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json', 'text_quality': 'good', 'book_kind': 'picture_book', 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'analysis': {'pages': 15, 'text_chars': 1263, 'text_words': 244, 'avg_chars_per_page': 84.2, 'letter_ratio': 0.735, 'empty_page_ratio': 0.467, 'sparse_page_ratio': 0.533, 'garbage_score': 0.243, 'text_quality': 'good', 'text_density': 'sparse', 'book_kind': 'picture_book', 'ready_for_stage1': True, 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'notes': ['Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.', 'Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.', 'Auto-added page stills for all pages (picture book / weak text layer).']}, 'extract_meta': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json', 'ok': True}",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "targets": [
+        "source/book_full.txt",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_bytes": 12659504,
+        "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+        "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+        "ts": "2026-07-12T16:35:17",
+        "text_extracted": false,
+        "text_chars": 1545,
+        "pages": 15,
+        "text_words": 244,
+        "text_engine": "existing_book_full",
+        "render_modes_upgraded": [
+          "cover",
+          "sparse",
+          "all"
+        ],
+        "images": 30,
+        "embedded_images": 15,
+        "rendered_pages": 15,
+        "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+        "text_quality": "good",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "analysis": {
+          "pages": 15,
+          "text_chars": 1263,
+          "text_words": 244,
+          "avg_chars_per_page": 84.2,
+          "letter_ratio": 0.735,
+          "empty_page_ratio": 0.467,
+          "sparse_page_ratio": 0.533,
+          "garbage_score": 0.243,
+          "text_quality": "good",
+          "text_density": "sparse",
+          "book_kind": "picture_book",
+          "ready_for_stage1": true,
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "notes": [
+            "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+            "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+            "Auto-added page stills for all pages (picture book / weak text layer)."
+          ]
+        },
+        "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+        "ok": true
+      }
+    },
+    {
+      "id": "0f803a98",
+      "ts": "2026-07-12T16:33:06",
+      "type": "stage1_run",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Stage 1 run complete: 7 scenes",
+      "action_taken": "Wrote /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Stage 1 run complete: 7 scenes",
+      "targets": [
+        "nickandme.scenes.json",
+        "prompts/stage1_scene_bible.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "out_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+        "backup": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json.bak_stage1_20260712_163301",
+        "scenes": 7,
+        "characters": 4,
+        "locations": 4,
+        "runtime_sec": 420,
+        "chunks": 1,
+        "verify_errors": [],
+        "hard_errors": [],
+        "character_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "heuristic",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.png",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        },
+        "ok": true,
+        "blueprint_seed_sync": {
+          "synced": true,
+          "reason": "copied_from_stage1",
+          "count": 4,
+          "keys": [
+            "Character_Duster",
+            "Character_Mom",
+            "Character_Dad",
+            "Character_Narrator"
+          ],
+          "book_images": {
+            "ok": true,
+            "project": "Buster",
+            "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+            "attached": {
+              "Character_Duster": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2,
+                  6
+                ],
+                "refs": [
+                  "assets/characters/character_duster_bookref_1.jpg",
+                  "assets/characters/character_duster_bookref_2.jpg",
+                  "assets/characters/character_duster_bookref_3.jpg"
+                ]
+              },
+              "Character_Mom": {
+                "method": "source_image_pages",
+                "pages": [
+                  4,
+                  8,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_mom_bookref_1.jpg",
+                  "assets/characters/character_mom_bookref_2.jpg",
+                  "assets/characters/character_mom_bookref_3.jpg"
+                ]
+              },
+              "Character_Dad": {
+                "method": "source_image_pages",
+                "pages": [
+                  10,
+                  14
+                ],
+                "refs": [
+                  "assets/characters/character_dad_bookref_1.jpg",
+                  "assets/characters/character_dad_bookref_2.jpg"
+                ]
+              },
+              "Character_Narrator": {
+                "method": "source_image_pages",
+                "pages": [
+                  1,
+                  2
+                ],
+                "refs": [
+                  "assets/characters/character_narrator_bookref_1.jpg",
+                  "assets/characters/character_narrator_bookref_2.jpg"
+                ]
+              }
+            },
+            "count": 4,
+            "inventory": 30,
+            "blueprint_updated": true
+          }
+        },
+        "character_book_images": {
+          "ok": true,
+          "project": "Buster",
+          "scenes_json": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/scenes.json",
+          "attached": {
+            "Character_Duster": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2,
+                6
+              ],
+              "refs": [
+                "assets/characters/character_duster_bookref_1.jpg",
+                "assets/characters/character_duster_bookref_2.jpg",
+                "assets/characters/character_duster_bookref_3.jpg"
+              ]
+            },
+            "Character_Mom": {
+              "method": "source_image_pages",
+              "pages": [
+                4,
+                8,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_mom_bookref_1.jpg",
+                "assets/characters/character_mom_bookref_2.jpg",
+                "assets/characters/character_mom_bookref_3.jpg"
+              ]
+            },
+            "Character_Dad": {
+              "method": "source_image_pages",
+              "pages": [
+                10,
+                14
+              ],
+              "refs": [
+                "assets/characters/character_dad_bookref_1.jpg",
+                "assets/characters/character_dad_bookref_2.jpg"
+              ]
+            },
+            "Character_Narrator": {
+              "method": "source_image_pages",
+              "pages": [
+                1,
+                2
+              ],
+              "refs": [
+                "assets/characters/character_narrator_bookref_1.jpg",
+                "assets/characters/character_narrator_bookref_2.jpg"
+              ]
+            }
+          },
+          "count": 4,
+          "inventory": 30,
+          "blueprint_updated": true
+        }
+      }
+    },
+    {
+      "id": "6da0afe5",
+      "ts": "2026-07-12T16:31:54",
+      "type": "book_extract",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "action_taken": "{'project': 'Buster', 'pdf': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_name': 'Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf', 'pdf_bytes': 12659504, 'book_full': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt', 'images_dir': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images', 'ts': '2026-07-12T16:31:46', 'text_extracted': False, 'text_chars': 1545, 'pages': 15, 'text_words': 244, 'text_engine': 'existing_book_full', 'render_modes_upgraded': ['cover', 'sparse', 'all'], 'images': 30, 'embedded_images': 15, 'rendered_pages': 15, 'manifest': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json', 'text_quality': 'good', 'book_kind': 'picture_book', 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'analysis': {'pages': 15, 'text_chars': 1263, 'text_words': 244, 'avg_chars_per_page': 84.2, 'letter_ratio': 0.735, 'empty_page_ratio': 0.467, 'sparse_page_ratio': 0.533, 'garbage_score': 0.243, 'text_quality': 'good', 'text_density': 'sparse', 'book_kind': 'picture_book', 'ready_for_stage1': True, 'suggested_total_minutes': 7, 'suggested_chunk_pages': 15, 'notes': ['Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.', 'Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.', 'Auto-added page stills for all pages (picture book / weak text layer).']}, 'extract_meta': '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json', 'ok': True}",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Extracted PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+      "targets": [
+        "source/book_full.txt",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "pdf_bytes": 12659504,
+        "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+        "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+        "ts": "2026-07-12T16:31:46",
+        "text_extracted": false,
+        "text_chars": 1545,
+        "pages": 15,
+        "text_words": 244,
+        "text_engine": "existing_book_full",
+        "render_modes_upgraded": [
+          "cover",
+          "sparse",
+          "all"
+        ],
+        "images": 30,
+        "embedded_images": 15,
+        "rendered_pages": 15,
+        "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+        "text_quality": "good",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "analysis": {
+          "pages": 15,
+          "text_chars": 1263,
+          "text_words": 244,
+          "avg_chars_per_page": 84.2,
+          "letter_ratio": 0.735,
+          "empty_page_ratio": 0.467,
+          "sparse_page_ratio": 0.533,
+          "garbage_score": 0.243,
+          "text_quality": "good",
+          "text_density": "sparse",
+          "book_kind": "picture_book",
+          "ready_for_stage1": true,
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "notes": [
+            "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+            "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+            "Auto-added page stills for all pages (picture book / weak text layer)."
+          ]
+        },
+        "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+        "ok": true
+      }
+    },
+    {
+      "id": "6ec562e4",
+      "ts": "2026-07-12T16:31:21",
+      "type": "book_upload",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Uploaded PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf (12659504 bytes)",
+      "action_taken": "Saved /mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf; prepare=True",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Uploaded PDF Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf (12659504 bytes)",
+      "targets": [
+        "source/",
+        "source/book_full.txt"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "project": "Buster",
+        "original_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "bytes": 12659504,
+        "saved_path": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+        "kind": "pdf",
+        "prepare": {
+          "ok": true,
+          "project": "Buster",
+          "ts": "2026-07-12T16:31:09",
+          "steps": [
+            {
+              "step": "extract",
+              "ok": true,
+              "pages": 15,
+              "text_quality": "good",
+              "images": 30,
+              "engine": "pymupdf"
+            },
+            {
+              "step": "decide",
+              "action": "use_embedded_text",
+              "reason": "Picture-book layout (sparse density) with clean wording — ready for Stage 1 (short runtime suggested).",
+              "ready_for_stage1": true,
+              "needs_user": false,
+              "has_images": true,
+              "image_count": 15
+            }
+          ],
+          "has_xai_key": true,
+          "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+          "strategy": {
+            "action": "use_embedded_text",
+            "reason": "Picture-book layout (sparse density) with clean wording — ready for Stage 1 (short runtime suggested).",
+            "ready_for_stage1": true,
+            "needs_user": false
+          },
+          "ready_for_stage1": true,
+          "text_quality": "good",
+          "book_kind": "picture_book",
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+          "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+          "needs_user": false,
+          "user_hint": null,
+          "action": "use_embedded_text",
+          "message": "Picture-book layout (sparse density) with clean wording — ready for Stage 1 (short runtime suggested).",
+          "extract": {
+            "project": "Buster",
+            "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+            "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+            "pdf_bytes": 12659504,
+            "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+            "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+            "ts": "2026-07-12T16:31:09",
+            "text_extracted": true,
+            "text_engine": "pymupdf",
+            "pages": 15,
+            "text_chars": 1263,
+            "text_words": 244,
+            "render_modes_upgraded": [
+              "cover",
+              "sparse",
+              "all"
+            ],
+            "images": 30,
+            "embedded_images": 15,
+            "rendered_pages": 15,
+            "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+            "text_quality": "good",
+            "book_kind": "picture_book",
+            "suggested_total_minutes": 7,
+            "suggested_chunk_pages": 15,
+            "analysis": {
+              "pages": 15,
+              "text_chars": 1263,
+              "text_words": 244,
+              "avg_chars_per_page": 84.2,
+              "letter_ratio": 0.735,
+              "empty_page_ratio": 0.467,
+              "sparse_page_ratio": 0.533,
+              "garbage_score": 0.243,
+              "text_quality": "good",
+              "text_density": "sparse",
+              "book_kind": "picture_book",
+              "ready_for_stage1": true,
+              "suggested_total_minutes": 7,
+              "suggested_chunk_pages": 15,
+              "notes": [
+                "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+                "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+                "Auto-added page stills for all pages (picture book / weak text layer)."
+              ],
+              "text_engine": "pymupdf"
+            },
+            "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+            "ok": true
+          },
+          "vision": null,
+          "analysis": {
+            "pages": 15,
+            "text_chars": 1263,
+            "text_words": 244,
+            "avg_chars_per_page": 84.2,
+            "letter_ratio": 0.735,
+            "empty_page_ratio": 0.467,
+            "sparse_page_ratio": 0.533,
+            "garbage_score": 0.243,
+            "text_quality": "good",
+            "text_density": "sparse",
+            "book_kind": "picture_book",
+            "ready_for_stage1": true,
+            "suggested_total_minutes": 7,
+            "suggested_chunk_pages": 15,
+            "notes": [
+              "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+              "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+              "Auto-added page stills for all pages (picture book / weak text layer)."
+            ],
+            "text_engine": "pymupdf"
+          }
+        },
+        "extract": {
+          "project": "Buster",
+          "pdf": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+          "pdf_name": "Buster_Noodle_Head_Dog_Goes_to_Bed_merged.pdf",
+          "pdf_bytes": 12659504,
+          "book_full": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+          "images_dir": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images",
+          "ts": "2026-07-12T16:31:09",
+          "text_extracted": true,
+          "text_engine": "pymupdf",
+          "pages": 15,
+          "text_chars": 1263,
+          "text_words": 244,
+          "render_modes_upgraded": [
+            "cover",
+            "sparse",
+            "all"
+          ],
+          "images": 30,
+          "embedded_images": 15,
+          "rendered_pages": 15,
+          "manifest": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_images/manifest.json",
+          "text_quality": "good",
+          "book_kind": "picture_book",
+          "suggested_total_minutes": 7,
+          "suggested_chunk_pages": 15,
+          "analysis": {
+            "pages": 15,
+            "text_chars": 1263,
+            "text_words": 244,
+            "avg_chars_per_page": 84.2,
+            "letter_ratio": 0.735,
+            "empty_page_ratio": 0.467,
+            "sparse_page_ratio": 0.533,
+            "garbage_score": 0.243,
+            "text_quality": "good",
+            "text_density": "sparse",
+            "book_kind": "picture_book",
+            "ready_for_stage1": true,
+            "suggested_total_minutes": 7,
+            "suggested_chunk_pages": 15,
+            "notes": [
+              "Layout is illustration-heavy (normal for picture books) but the wording looks clean enough for Stage 1.",
+              "Treated as picture book (~15 pages). Suggested Stage 1 runtime 7 min — not a feature-length 90.",
+              "Auto-added page stills for all pages (picture book / weak text layer)."
+            ],
+            "text_engine": "pymupdf"
+          },
+          "extract_meta": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/extract_meta.json",
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "e5227402",
+      "ts": "2026-07-12T16:31:21",
+      "type": "book_prepare",
+      "learning_layer": "stage1",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Picture-book layout (sparse density) with clean wording — ready for Stage 1 (short runtime suggested).",
+      "action_taken": "action=use_embedded_text ready=True runtime≈7min",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Age variants: use Character_*_Young/_Teen tokens and child proportions; do not lock adult refs on flashback kids. Reviewer note: Picture-book layout (sparse density) with clean wording — ready for Stage 1 (short runtime suggested).",
+      "targets": [
+        "source/book_full.txt",
+        "source/extract_meta.json",
+        "source/book_images/"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "action": "use_embedded_text",
+        "ready_for_stage1": true,
+        "text_quality": "good",
+        "book_kind": "picture_book",
+        "suggested_total_minutes": 7,
+        "suggested_chunk_pages": 15,
+        "needs_user": false
+      }
+    },
+    {
+      "id": "29848881",
+      "ts": "2026-07-12T16:30:53",
+      "type": "config_change",
+      "learning_layer": "clip",
+      "scene": null,
+      "clip": null,
+      "character": null,
+      "user_note": "Updated 28 config key(s)",
+      "action_taken": "Saved pipeline_config.json",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Updated 28 config key(s)",
+      "targets": [
+        "pipeline_config.json"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "keys": [
+          "video_provider",
+          "character_design_provider",
+          "qa_provider",
+          "image_model_name",
+          "qa_model_name",
+          "model_name",
+          "use_video_audio_for_music",
+          "regenerate_silent_clips",
+          "merge_scene_after_each_clip",
+          "smart_continuation",
+          "qa_retry_on_fail",
+          "qa_max_retries",
+          "ensure_dialogue_audio",
+          "dialogue_audio_mode",
+          "rebuild_wip_movie_after_scene",
+          "wip_movie_path",
+          "aspect_ratio",
+          "duration_seconds",
+          "use_duration_defaults",
+          "duration_defaults",
+          "resolution",
+          "qa_frame_count",
+          "blueprint_file",
+          "dialogue_tts_volume",
+          "native_audio_mix_volume",
+          "composite_audio_gain_db",
+          "cost_estimates",
+          "available_video_models"
+        ]
+      }
+    }
+  ]
+}

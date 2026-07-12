@@ -137,7 +137,12 @@ def _allocate_durations(
     d_def = int(pol.get("default", GROK_DEFAULT))
     d_min = int(pol.get("prefer_min", GROK_MIN_CLIP))
     d_max = int(pol.get("prefer_max", GROK_MAX_CLIP))
-    d_abs = int(pol.get("max", GROK_ABS_MAX))
+    # Hard cap: Grok image/reference-to-video rejects >10s (HTTP 400).
+    # Never plan clips longer than that even if Stage 1 duration_target is large.
+    d_hard = min(int(pol.get("max", GROK_ABS_MAX)), GROK_MAX_CLIP, 10)
+    d_max = min(d_max, d_hard)
+    d_min = min(d_min, d_max)
+    d_def = max(d_min, min(d_max, d_def))
 
     n = len(beats)
     if n == 0:
@@ -153,9 +158,8 @@ def _allocate_durations(
     if target < min_total:
         target = min_total
     if target > max_total:
-        # allow a few longer clips up to abs max if scene budget is large
-        max_total = n * min(d_abs, d_max + 2)
-        target = min(target, max_total)
+        # Do NOT stretch past d_hard — more beats / shorter clips is safer than 12s API fails
+        target = max_total
 
     weights = [float(b.get("time_weight") or 1.0) for b in beats]
     wsum = sum(weights) or float(n)
@@ -178,19 +182,9 @@ def _allocate_durations(
             diff += 1
         else:
             i += 1
-            if i > n * 3 and diff != 0:
-                # relax max
-                if diff > 0 and durs[idx] < d_abs:
-                    durs[idx] += 1
-                    diff -= 1
-                elif diff < 0 and durs[idx] > 1:
-                    durs[idx] -= 1
-                    diff += 1
-                else:
-                    i += 1
-                    if i > n * 20:
-                        break
-                continue
+            if i > n * 20:
+                break
+            continue
         i += 1
     return durs
 

@@ -1,0 +1,744 @@
+{
+  "schema_version": "stage1.v1",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "Warm, gentle children's picture-book adaptation with soft practical lighting, playful dog-level camera energy, and cozy bedtime pacing. Keep Duster's black-and-white coat, small stature, and bouncy frog-like motion consistent. Favor clear storybook staging over cinematic grit; every beat should read as a page-turn moment a child can follow.",
+    "total_runtime_target_seconds": 420,
+    "spoiler_register": [],
+    "character_seed_tokens": {
+      "Character_Duster": {
+        "description": "Small black-and-white dog, soft fur, friendly non-mean face, slightly goofy 'noodle head' energy; jumps and spins like a frog; wears black-and-white pajamas later in the story.",
+        "reference_image_placeholder": "assets/characters/character_duster_ref.png",
+        "voice_profile": "Small dog character voice: light, playful, mid-to-high pitch with short excited breaths and soft whines; warm and silly, never scary. Same voice every scene.",
+        "voice_label": "Duster",
+        "age_band": "adult_dog",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          1,
+          2,
+          6
+        ],
+        "design_reference_images": [
+          "assets/characters/character_duster_bookref_1.jpg",
+          "assets/characters/character_duster_bookref_2.jpg",
+          "assets/characters/character_duster_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_duster_bookref_1.jpg",
+          "assets/characters/character_duster_bookref_2.jpg",
+          "assets/characters/character_duster_bookref_3.jpg"
+        ]
+      },
+      "Character_Mom": {
+        "description": "Gentle adult caregiver/mother figure in a cozy home setting; calm bedtime authority; pets Duster affectionately; offers treat and water; present at bedtime and while he sleeps.",
+        "reference_image_placeholder": "assets/characters/character_mom_ref.png",
+        "voice_profile": "Adult woman, warm mid pitch, unhurried gentle pace, soft American storybook accent, patient and loving energy. Same voice every scene.",
+        "voice_label": "Mom",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          4,
+          8,
+          14
+        ],
+        "design_reference_images": [
+          "assets/characters/character_mom_bookref_1.jpg",
+          "assets/characters/character_mom_bookref_2.jpg",
+          "assets/characters/character_mom_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_mom_bookref_1.jpg",
+          "assets/characters/character_mom_bookref_2.jpg",
+          "assets/characters/character_mom_bookref_3.jpg"
+        ]
+      },
+      "Character_Dad": {
+        "description": "Adult father figure sharing the big bed with Mom; mostly present as a quiet bedtime presence in the parents' bedroom.",
+        "reference_image_placeholder": "assets/characters/character_dad_ref.png",
+        "voice_profile": "Adult man, low-mid warm pitch, quiet soft delivery if any lines, calm bedtime energy. Same voice every scene.",
+        "voice_label": "Dad",
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": [
+          10,
+          14
+        ],
+        "design_reference_images": [
+          "assets/characters/character_dad_bookref_1.jpg",
+          "assets/characters/character_dad_bookref_2.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_dad_bookref_1.jpg",
+          "assets/characters/character_dad_bookref_2.jpg"
+        ]
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Home_Living": {
+        "display_name": "Cozy home living area",
+        "description": "Warm family living space where Duster plays and receives treat and water before bed.",
+        "visual_lock": "Soft household interior: carpet or rug, low furniture dog can spin near, water bowl area, warm lamp light, lived-in family clutter kept gentle and clean for a kids book.",
+        "reference_image_placeholder": "assets/locations/loc_home_living_ref.png"
+      },
+      "Loc_Yard_Bushes": {
+        "display_name": "Outside yard with bushes",
+        "description": "Nighttime or evening outdoor yard where Duster walks and potties near bushes.",
+        "visual_lock": "Exterior yard with visible bushes/shrubs, path or grass underfoot, house exterior nearby, cool evening outdoor light, safe suburban feel.",
+        "reference_image_placeholder": "assets/locations/loc_yard_bushes_ref.png"
+      },
+      "Loc_Tiny_Stairs": {
+        "display_name": "Tiny stairs to bedroom",
+        "description": "Indoor staircase Duster climbs in pajamas toward the parents' bedroom.",
+        "visual_lock": "Narrow residential staircase with soft runner or wood steps, handrail, warm upstairs glow at the top, intimate scale that reads as 'tiny stairs' for a small dog.",
+        "reference_image_placeholder": "assets/locations/loc_tiny_stairs_ref.png"
+      },
+      "Loc_Parents_Bed": {
+        "display_name": "Mom and Dad's big bed",
+        "description": "Parents' bedroom with large bed where Duster snuggles and sleeps.",
+        "visual_lock": "Large soft bed with pillows and blankets, dim bedtime lamps, calm bedroom walls, room for dog to climb in and be petted while sleeping.",
+        "reference_image_placeholder": "assets/locations/loc_parents_bed_ref.png"
+      },
+      "Loc_Dreamscape": {
+        "display_name": "Duster's dream yard",
+        "description": "Dream space of fluffy snow and bunnies running across a yard for chase fantasy.",
+        "visual_lock": "Soft dreamlike outdoor yard: fluffy snow drifts and/or open grass, bunnies in motion, slightly glowing storybook haze, playful not scary.",
+        "reference_image_placeholder": "assets/locations/loc_dreamscape_ref.png"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "scene_filename": "sc01_meet_duster",
+      "setting": "Day/Evening - Cozy home living area",
+      "story_day": "Bedtime Day 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Home_Living"
+      ],
+      "primary_location_id": "Loc_Home_Living",
+      "duration_target_seconds": 50,
+      "dramatic_function": "Introduce Duster's identity, look, and playful energy",
+      "summary": "We meet Duster the Noodle Head Dog: small, black and white, soft and friendly, bouncing around the living room like a frog.",
+      "characters_on_screen": [
+        "Character_Duster"
+      ],
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "warm_home_evening_A",
+      "continuity_notes": "Establish Duster's black-and-white coat, small size, and frog-like jumps as baseline identity for all later scenes.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Light playful children's underscore with soft piano and pizzicato strings",
+        "mood_arc": "Curious bounce into affectionate introduction"
+      },
+      "source_book_refs": [
+        "pages 1-2"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 2",
+          "excerpt": "He's Duster the Noodle Head Dog. He jumps around like a frog. He's small, black, and white... soft, not mean or vicious. He's Duster the Noodle Head Dog."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Title-card energy: present Duster in his home",
+          "visual_event": "Small black-and-white dog stands proudly in a cozy living room, tail ready, soft fur readable, looking toward camera with friendly eyes.",
+          "shot_scale_hint": "medium",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He's Duster the Noodle Head Dog.",
+          "ambient_or_sfx": "soft room tone, distant house creaks",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living",
+          "must_not": [
+            "mean or aggressive dog posture",
+            "wrong coat colors"
+          ]
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Show frog-like jumping personality",
+          "visual_event": "Duster hops and bounces around the living room furniture like a frog, paws springing, ears flopping, playful not destructive.",
+          "shot_scale_hint": "wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He jumps around like a frog.",
+          "ambient_or_sfx": "light paw thumps on floor",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living",
+          "blocking_notes": "Keep full body in frame so jumps read clearly."
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Lock physical description and gentle nature",
+          "visual_event": "Closer look: small black-and-white dog, soft fur, friendly face; he pauses, tongue soft, clearly not mean or vicious.",
+          "shot_scale_hint": "close",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He's small, black, and white. Soft, not mean or vicious. He's Duster the Noodle Head Dog.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        }
+      ]
+    },
+    {
+      "scene_number": 2,
+      "scene_filename": "sc02_time_for_bed",
+      "setting": "Evening - Cozy home living area",
+      "story_day": "Bedtime Day 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Home_Living"
+      ],
+      "primary_location_id": "Loc_Home_Living",
+      "duration_target_seconds": 65,
+      "dramatic_function": "Bedtime call and potty rule conflict",
+      "summary": "Mom says it is time for bed. Duster wants to rest but must potty first; Mom insists a doggy goes outside, which confuses him.",
+      "characters_on_screen": [
+        "Character_Mom",
+        "Character_Duster"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "warm_home_evening_A",
+      "continuity_notes": "Same living space as scene 1; evening light slightly softer as bedtime begins.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Gentle bedtime motif with light comic punctuation on Duster's confusion",
+        "mood_arc": "Calm parental lead-in to mild comic resistance"
+      },
+      "source_book_refs": [
+        "page 4"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 4",
+          "excerpt": "Mom says, \"It's time for bed\". He wants to rest his furry head. Before he goes, he has to potty. Going on the floor is naughty! \"A doggy goes outside\" Mom said. That makes no sense in Duster's head!"
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b4",
+          "intent": "Mom announces bedtime",
+          "visual_event": "Mom leans toward Duster in the living room and clearly says it is time for bed; Duster looks up at her.",
+          "shot_scale_hint": "two-shot medium",
+          "action_class": "dialogue",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Mom",
+          "dialogue": "It's time for bed.",
+          "blocking_notes": "Mom faces Duster; Duster's eyeline up to Mom.",
+          "primary_subject": "Character_Mom",
+          "location_id": "Loc_Home_Living"
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Duster wants rest but needs potty first",
+          "visual_event": "Duster yawns and lowers his furry head as if ready to rest, then perks with potty urgency; a glance at the floor is discouraged by Mom's firm gentle look.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He wants to rest his furry head. Before he goes, he has to potty. Going on the floor is naughty!",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living",
+          "must_not": [
+            "show Duster actually going on the floor"
+          ]
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Outside potty rule and Duster's confusion",
+          "visual_event": "Mom points toward the door/outside; Duster tilts his noodle head in comic confusion, ears cocked.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Mom",
+          "dialogue": "A doggy goes outside.",
+          "ambient_or_sfx": "soft comic head-tilt beat",
+          "blocking_notes": "Mom gestures to exterior door; Duster faces Mom then glances doorward.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        },
+        {
+          "beat_id": "b7",
+          "intent": "Punchline of confusion",
+          "visual_event": "Hold on Duster's puzzled face as the idea clearly makes no sense in his head.",
+          "shot_scale_hint": "close",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "That makes no sense in Duster's head!",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        }
+      ]
+    },
+    {
+      "scene_number": 3,
+      "scene_filename": "sc03_outside_potty",
+      "setting": "Evening - Outside yard with bushes",
+      "story_day": "Bedtime Day 1",
+      "location_type": "ext",
+      "location_ids": [
+        "Loc_Yard_Bushes",
+        "Loc_Home_Living"
+      ],
+      "primary_location_id": "Loc_Yard_Bushes",
+      "duration_target_seconds": 55,
+      "dramatic_function": "Obedient potty trip and return spin for Mom",
+      "summary": "Duster walks outside among bushes, does his job, comes back in, and does a little spin for Mom.",
+      "characters_on_screen": [
+        "Character_Duster",
+        "Character_Mom"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "cool_evening_yard_B",
+      "continuity_notes": "Exterior evening light; return to warm interior for spin. Multi-place: yard then living entry.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Soft outdoor night walk cue shifting to cheerful return jingle",
+        "mood_arc": "Duty walk into proud little triumph"
+      },
+      "source_book_refs": [
+        "page 6"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 6",
+          "excerpt": "Yet, off he goes to walk around outside where bushes can be found. He does his job, and then comes in. For Mom he does a little spin."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b8",
+          "intent": "Duster heads outside despite confusion",
+          "visual_event": "Duster trots out into the yard and walks around where bushes can be found under evening light.",
+          "shot_scale_hint": "wide",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "Yet, off he goes to walk around outside where bushes can be found.",
+          "ambient_or_sfx": "crickets, soft night air",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Yard_Bushes"
+        },
+        {
+          "beat_id": "b9",
+          "intent": "He does his potty job (tasteful)",
+          "visual_event": "Near the bushes, Duster stops and does his potty job in a discreet, child-appropriate way, then looks finished and relieved.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He does his job,",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Yard_Bushes",
+          "must_not": [
+            "graphic bathroom detail",
+            "comedy gross-out framing"
+          ]
+        },
+        {
+          "beat_id": "b10",
+          "intent": "Come inside and spin for Mom",
+          "visual_event": "Duster comes back through the door into the living area and does a little spin for Mom, who watches approvingly.",
+          "shot_scale_hint": "medium",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "and then comes in. For Mom he does a little spin.",
+          "ambient_or_sfx": "door close, collar jingle, spin whoosh",
+          "blocking_notes": "Mom stands just inside; Duster spins facing her for approval.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        }
+      ]
+    },
+    {
+      "scene_number": 4,
+      "scene_filename": "sc04_treat_and_water",
+      "setting": "Evening - Cozy home living area",
+      "story_day": "Bedtime Day 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Home_Living"
+      ],
+      "primary_location_id": "Loc_Home_Living",
+      "duration_target_seconds": 55,
+      "dramatic_function": "Reward routine: treat and water before bed",
+      "summary": "Duster spins for a treat; Mom gently lays it by his feet; he drinks water—healthy bedtime habits.",
+      "characters_on_screen": [
+        "Character_Duster",
+        "Character_Mom"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "warm_home_evening_A",
+      "continuity_notes": "Continues immediately after return spin; same living space.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Sweet reward motif, simple and bright",
+        "mood_arc": "Playful spin into calm hydration"
+      },
+      "source_book_refs": [
+        "page 8"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 8",
+          "excerpt": "He spins around to get a treat. She gently lays it by his feet. He has his drink of water too. This also would be good for you!"
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b11",
+          "intent": "Spin to earn treat",
+          "visual_event": "Duster spins around again eagerly, eyes on Mom, waiting for a treat.",
+          "shot_scale_hint": "medium",
+          "action_class": "big_action",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He spins around to get a treat.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        },
+        {
+          "beat_id": "b12",
+          "intent": "Mom places treat by his feet",
+          "visual_event": "Mom gently lays a dog treat on the floor by Duster's feet; he sniffs and eats it happily.",
+          "shot_scale_hint": "medium close",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "She gently lays it by his feet.",
+          "blocking_notes": "Mom's hand places treat near front paws; Duster's head lowers to treat.",
+          "primary_subject": "Character_Mom",
+          "location_id": "Loc_Home_Living"
+        },
+        {
+          "beat_id": "b13",
+          "intent": "Water drink and gentle lesson",
+          "visual_event": "Duster drinks from his water bowl; brief friendly aside energy that this is good for kids too.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He has his drink of water too. This also would be good for you!",
+          "ambient_or_sfx": "soft lapping water",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living"
+        }
+      ]
+    },
+    {
+      "scene_number": 5,
+      "scene_filename": "sc05_pajamas_and_stairs",
+      "setting": "Night - Living area to tiny stairs to parents' bed",
+      "story_day": "Bedtime Day 1",
+      "location_type": "mixed",
+      "location_ids": [
+        "Loc_Home_Living",
+        "Loc_Tiny_Stairs",
+        "Loc_Parents_Bed"
+      ],
+      "primary_location_id": "Loc_Tiny_Stairs",
+      "duration_target_seconds": 65,
+      "dramatic_function": "Transition into bedtime nest with Mom and Dad",
+      "summary": "Duster wears black-and-white pajamas, climbs the tiny stairs, and snuggles into Mom and Dad's big bed.",
+      "characters_on_screen": [
+        "Character_Duster",
+        "Character_Mom",
+        "Character_Dad"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "bedtime_lamps_C",
+      "continuity_notes": "Pajamas stay on for remaining night scenes. Multi-place climb from living to stairs to big bed.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Lullaby climb theme, soft celesta and warm pads",
+        "mood_arc": "Cute costume beat into cozy arrival"
+      },
+      "source_book_refs": [
+        "page 10"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 10",
+          "excerpt": "Pajamas, black and white he wears. And then he climbs the tiny stairs to get to Mom and Dad's big bed, and snuggle in, and home too soon."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b14",
+          "intent": "Pajamas reveal",
+          "visual_event": "Duster now wears black-and-white pajamas matching his coat; he stands proudly ready for bed.",
+          "shot_scale_hint": "medium full",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "Pajamas, black and white he wears.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Home_Living",
+          "must_not": [
+            "pajamas that break black-and-white motif"
+          ]
+        },
+        {
+          "beat_id": "b15",
+          "intent": "Climb the tiny stairs",
+          "visual_event": "Duster climbs the tiny residential stairs step by step in pajamas, determined and cute.",
+          "shot_scale_hint": "wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "And then he climbs the tiny stairs",
+          "ambient_or_sfx": "soft stair paw steps",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Tiny_Stairs"
+        },
+        {
+          "beat_id": "b16",
+          "intent": "Arrive at Mom and Dad's big bed and snuggle",
+          "visual_event": "At the top, Duster reaches Mom and Dad's big bed; Mom and Dad are in bed; Duster climbs in and snuggles into the blankets.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "to get to Mom and Dad's big bed, and snuggle in, and home too soon.",
+          "blocking_notes": "Mom and Dad already in bed; Duster approaches from foot of bed and settles between or beside them.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        }
+      ]
+    },
+    {
+      "scene_number": 6,
+      "scene_filename": "sc06_dreams_of_snow_and_bunnies",
+      "setting": "Night - Parents' bed into dream yard",
+      "story_day": "Bedtime Day 1",
+      "location_type": "dream",
+      "location_ids": [
+        "Loc_Parents_Bed",
+        "Loc_Dreamscape"
+      ],
+      "primary_location_id": "Loc_Dreamscape",
+      "duration_target_seconds": 70,
+      "dramatic_function": "Dream fantasy of snow and bunny chase; settle toward sleep",
+      "summary": "Not that smart but he knows he will dream of fluffy snows and bunnies across the yard that he will chase hard; he goes to sleep because tomorrow is another day.",
+      "characters_on_screen": [
+        "Character_Duster"
+      ],
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "dream_glow_D",
+      "continuity_notes": "Dream sequence from bed; return-to-present implied at end of scene for sleep decision.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Whimsical dream waltz with soft chimes and airy strings",
+        "mood_arc": "Playful fantasy into sleepy resolve"
+      },
+      "source_book_refs": [
+        "page 12"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 12",
+          "excerpt": "He's not that smart but still he knows he'll have a dream of fluffy snows, or bunnies running 'cross the yard and how he'll chase them very hard. He goes to sleep because they say tomorrow is another day."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b17",
+          "intent": "Settle on bed, not-that-smart but knowing",
+          "visual_event": "Duster lies on the big bed in pajamas, eyes half-closed, soft comic 'not that smart but still he knows' expression.",
+          "shot_scale_hint": "close",
+          "action_class": "hold",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He's not that smart but still he knows",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        },
+        {
+          "beat_id": "b18",
+          "intent": "Enter dream of fluffy snow",
+          "visual_event": "Dream dissolve: Duster runs through fluffy snow in a soft glowing yard, joyful leaps in powder.",
+          "shot_scale_hint": "wide",
+          "action_class": "flashback_enter",
+          "continuity": "new_setup",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "he'll have a dream of fluffy snows,",
+          "ambient_or_sfx": "soft wind, dream sparkle",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Dreamscape"
+        },
+        {
+          "beat_id": "b19",
+          "intent": "Bunny chase fantasy",
+          "visual_event": "Bunnies run across the dream yard; Duster chases them very hard with full playful sprint, never catching meanly—pure fun.",
+          "shot_scale_hint": "wide tracking",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "or bunnies running 'cross the yard and how he'll chase them very hard.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Dreamscape",
+          "must_not": [
+            "violence toward bunnies",
+            "scary nightmare tone"
+          ]
+        },
+        {
+          "beat_id": "b20",
+          "intent": "Choose sleep for tomorrow",
+          "visual_event": "Return to present: Duster on the bed closes eyes more fully, accepting sleep because tomorrow is another day.",
+          "shot_scale_hint": "medium close",
+          "action_class": "flashback_exit",
+          "continuity": "return_to_present",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He goes to sleep because they say tomorrow is another day.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        }
+      ]
+    },
+    {
+      "scene_number": 7,
+      "scene_filename": "sc07_loved_for_keeps",
+      "setting": "Night - Mom and Dad's big bed",
+      "story_day": "Bedtime Day 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Parents_Bed"
+      ],
+      "primary_location_id": "Loc_Parents_Bed",
+      "duration_target_seconds": 60,
+      "dramatic_function": "Emotional close: sleep, comfort, unconditional love",
+      "summary": "Another day awaits for silly dogs to run and jump like frogs, but now Duster falls asleep warm, soft, well-fed while Mommy pets him—loved for keeps.",
+      "characters_on_screen": [
+        "Character_Duster",
+        "Character_Mom",
+        "Character_Dad"
+      ],
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "bedtime_lamps_C",
+      "continuity_notes": "Final still-life of love; hold long enough for lullaby resolve. Dad may be quietly present asleep.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Full soft lullaby resolution, warm strings and gentle piano",
+        "mood_arc": "Contentment into deep affectionate close"
+      },
+      "source_book_refs": [
+        "page 14"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 14",
+          "excerpt": "Another day for silly dogs to run and play and jump like frogs. He falls asleep, lays down his head. He's warm and soft and quite well-fed. His Mommy pets him while he sleeps. This noodle head is loved for keeps..."
+        }
+      ],
+      "story_beats": [
+        {
+          "beat_id": "b21",
+          "intent": "Promise of another playful day",
+          "visual_event": "Brief soft mental image or gentle VO over sleeping Duster: silly dogs running, playing, jumping like frogs tomorrow.",
+          "shot_scale_hint": "medium",
+          "action_class": "montage",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "Another day for silly dogs to run and play and jump like frogs.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        },
+        {
+          "beat_id": "b22",
+          "intent": "Falls asleep, lays down head",
+          "visual_event": "Duster fully falls asleep, lays down his head on the soft bedding, body relaxed, warm and soft and clearly well-fed.",
+          "shot_scale_hint": "close",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "He falls asleep, lays down his head. He's warm and soft and quite well-fed.",
+          "ambient_or_sfx": "soft snore-breath, quiet room",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        },
+        {
+          "beat_id": "b23",
+          "intent": "Mommy pets him; loved for keeps",
+          "visual_event": "Mom gently pets sleeping Duster; Dad rests nearby; final tender hold on the loved noodle-head dog.",
+          "shot_scale_hint": "medium close",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 2,
+          "delivery": "voiceover_internal",
+          "speaker": "none",
+          "dialogue": "His Mommy pets him while he sleeps. This noodle head is loved for keeps...",
+          "blocking_notes": "Mom's hand strokes Duster's head/back; Duster remains asleep; warm family frame.",
+          "primary_subject": "Character_Duster",
+          "location_id": "Loc_Parents_Bed"
+        }
+      ]
+    }
+  ],
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "generation": {
+    "method": "run_stage1_from_book.py",
+    "model": "grok-4.5",
+    "book": "/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/source/book_full.txt",
+    "chunk_pages": 15,
+    "chunks": 1,
+    "ts": "2026-07-12T16:41:56"
+  },
+  "cumulative_duration_target_seconds": 420,
+  "character_images_attached_at": "2026-07-12T16:41:59"
+}

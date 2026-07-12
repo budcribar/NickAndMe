@@ -587,6 +587,158 @@ def regen_clip(
     return path
 
 
+def generate_scene_clips(
+    scene_num: int,
+    *,
+    only_missing: bool = True,
+    run_qa: bool = True,
+    remux: bool = True,
+    rebuild_wip: bool = False,
+    progress_cb=None,
+) -> Dict[str, Any]:
+    """
+    Generate video for all (or missing) clips in a scene — primary first-pass UI path.
+
+    only_missing=True: skip clips already on disk.
+    progress_cb(dict): optional {event, scene, clip, index, total, message, path?, error?}
+    """
+    eng = get_engine()
+    rows = list_clips(scene_num)
+    if not rows:
+        raise ValueError(f"Scene {scene_num} has no clips in the Stage 2 plan.")
+
+    todo: List[int] = []
+    for row in rows:
+        cn = int(row["clip_number"])
+        if only_missing and row.get("on_disk"):
+            continue
+        todo.append(cn)
+
+    summary: Dict[str, Any] = {
+        "scene": scene_num,
+        "only_missing": only_missing,
+        "planned": [int(r["clip_number"]) for r in rows],
+        "todo": list(todo),
+        "done": [],
+        "failed": [],
+        "paths": {},
+        "composite_path": None,
+        "wip_path": None,
+        "skipped_existing": [
+            int(r["clip_number"])
+            for r in rows
+            if only_missing and r.get("on_disk")
+        ],
+    }
+
+    total = len(todo)
+    if progress_cb:
+        progress_cb(
+            {
+                "event": "start",
+                "scene": scene_num,
+                "total": total,
+                "message": (
+                    f"Scene {scene_num}: {total} clip(s) to generate"
+                    if total
+                    else f"Scene {scene_num}: nothing to do (all on disk)"
+                ),
+            }
+        )
+
+    for i, cn in enumerate(todo, start=1):
+        if progress_cb:
+            progress_cb(
+                {
+                    "event": "clip_start",
+                    "scene": scene_num,
+                    "clip": cn,
+                    "index": i,
+                    "total": total,
+                    "message": f"Generating S{scene_num:02d} C{cn} ({i}/{total})…",
+                }
+            )
+        try:
+            path = eng.regenerate_clip(
+                scene_num, cn, feedback=None, run_qa=run_qa
+            )
+            summary["done"].append(cn)
+            summary["paths"][str(cn)] = path
+            if progress_cb:
+                progress_cb(
+                    {
+                        "event": "clip_done",
+                        "scene": scene_num,
+                        "clip": cn,
+                        "index": i,
+                        "total": total,
+                        "path": path,
+                        "message": f"Done S{scene_num:02d} C{cn}",
+                    }
+                )
+        except Exception as e:
+            summary["failed"].append({"clip": cn, "error": str(e)})
+            if progress_cb:
+                progress_cb(
+                    {
+                        "event": "clip_error",
+                        "scene": scene_num,
+                        "clip": cn,
+                        "index": i,
+                        "total": total,
+                        "error": str(e),
+                        "message": f"Failed S{scene_num:02d} C{cn}: {e}",
+                    }
+                )
+            # stop on first failure so user can fix API key / prompt before burning more
+            break
+
+    if remux and summary["done"]:
+        try:
+            if rebuild_wip:
+                summary["wip_path"] = eng.remux_scenes_and_rebuild_wip(
+                    [scene_num], reason=f"after generate scene {scene_num}"
+                )
+                summary["composite_path"] = eng.remux_scene_from_disk(scene_num)
+            else:
+                summary["composite_path"] = eng.remux_scene_from_disk(scene_num)
+        except Exception as e:
+            summary["remux_error"] = str(e)
+
+    edit_log.add_entry(
+        "scene_generate",
+        user_note=(
+            f"Generate scene {scene_num}: "
+            f"{len(summary['done'])} ok, {len(summary['failed'])} failed, "
+            f"{len(summary['skipped_existing'])} skipped"
+        ),
+        scene=scene_num,
+        action_taken=f"done={summary['done']} failed={summary['failed']}",
+        learning_layer="clip",
+        targets=["assets/video", "assets/scenes"],
+        extra={
+            "done": summary["done"],
+            "failed": summary["failed"],
+            "skipped": summary["skipped_existing"],
+            "only_missing": only_missing,
+        },
+    )
+    if progress_cb:
+        progress_cb(
+            {
+                "event": "done",
+                "scene": scene_num,
+                "total": total,
+                "message": (
+                    f"Finished: {len(summary['done'])} generated, "
+                    f"{len(summary['failed'])} failed"
+                ),
+                **{k: summary[k] for k in ("done", "failed", "composite_path")},
+            }
+        )
+    return summary
+
+
 def log_clip_feedback(
     scene_num: int,
     clip_num: int,
@@ -800,22 +952,27 @@ def character_display_name(key: str, info: Optional[Dict[str, Any]] = None) -> s
     if canonical:
         return _with_age(canonical)
 
-    # 2) Friendly voice_label
-    if label and not _is_technical_label(label):
-        return label
-
-    # 3) Character_P family — Nick's brother (not "Narrator")
-    if is_p_token:
-        return _with_age("Nick's brother")
-
-    # 4) Strip Character_ prefix
+    # 2) Strip Character_ prefix (prefer human id over SFX-style voice_label)
     if key.startswith("Character_"):
         rest = key[len("Character_") :]
         if rest.endswith("_Young"):
             return f"{rest[: -len('_Young')]} (young)"
         if rest.endswith("_Teen"):
             return f"{rest[: -len('_Teen')]} (teen)"
-        return rest
+        # Prefer seed key base over labels like "Buster_DogYips"
+        if rest and rest.lower() not in ("p", "narrator"):
+            return _with_age(rest.replace("_", " "))
+
+    # 3) Friendly voice_label (only if plain words, not Token_Style)
+    if label and not _is_technical_label(label) and "_" not in label:
+        return label
+
+    # 4) Character_P family — Nick's brother (not "Narrator")
+    if is_p_token:
+        return _with_age("Nick's brother")
+
+    if key.startswith("Character_"):
+        return key[len("Character_") :].replace("_", " ")
     return key
 
 
@@ -903,137 +1060,36 @@ def attach_book_images_to_character_seeds(
     """
     After Stage 1 / PDF extract: attach book page images to each character seed.
 
-    Sets design_reference_images on Stage 1 + Stage 2 seeds so Characters →
-    Generate variants can match the book art (not text-only inventing).
-
-    Optionally copies picks into assets/characters/*_bookref_* for a stable path.
+    Delegates to scripts/two_stage_adaptation/attach_character_images.py so CLI
+    and GUI share one implementation (LLM page picks + heuristic fallback).
     """
-    import shutil
+    import importlib.util
 
     proj = get_active_project_dir()
     if proj is None:
         return {"ok": False, "reason": "no_project"}
 
-    inventory = _book_image_inventory()
-    if not inventory:
-        return {"ok": False, "reason": "no_book_images", "attached": {}}
-
-    # Prefer cover / early embedded pages as hero likeness pool
-    by_page = sorted(
-        inventory,
-        key=lambda r: (
-            0 if "cover" in r["name"] else 1,
-            0 if r.get("kind") == "embedded" else 1,
-            r.get("page") or 99,
-            r["name"],
-        ),
+    script = workspace_root() / "scripts" / "two_stage_adaptation" / "attach_character_images.py"
+    if not script.is_file():
+        return {"ok": False, "reason": f"missing {script}"}
+    spec = importlib.util.spec_from_file_location("attach_character_images", script)
+    if spec is None or spec.loader is None:
+        return {"ok": False, "reason": "cannot_load_attach_character_images"}
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    result = mod.attach_character_images(
+        project_id=proj.name,
+        force=force,
+        copy_into_assets=copy_into_assets,
+        update_blueprint=True,
     )
-    pool = [r for r in by_page if r.get("page", 0) <= 6 or "cover" in r["name"]]
-    if not pool:
-        pool = by_page[:6]
-
-    s1 = load_stage1_document()
-    if not s1:
-        return {"ok": False, "reason": "no_stage1"}
-    gpv = s1.setdefault("global_production_variables", {})
-    seeds = gpv.get("character_seed_tokens") or {}
-    if not isinstance(seeds, dict) or not seeds:
-        return {"ok": False, "reason": "no_seeds"}
-
-    chars_dir = proj / "assets" / "characters"
-    if copy_into_assets:
-        chars_dir.mkdir(parents=True, exist_ok=True)
-
-    attached: Dict[str, List[str]] = {}
-    for i, (key, seed) in enumerate(seeds.items()):
-        if not isinstance(seed, dict):
-            continue
-        pol = str(seed.get("display_name_policy") or "").lower()
-        is_narr = (
-            "never" in pol
-            or key.endswith("_Narrator")
-            or key == "Character_Narrator"
-        )
-        if is_narr and not force:
-            # Off-screen narrator: skip portrait refs
-            continue
-        existing = seed.get("design_reference_images") or seed.get(
-            "book_reference_images"
-        )
-        if existing and not force:
-            attached[key] = list(existing) if isinstance(existing, list) else [existing]
-            continue
-
-        token = key.replace("Character_", "").lower()
-        name_hits = [
-            r
-            for r in inventory
-            if token in r["name"]
-            or str(seed.get("canonical_given_name") or "").lower() in r["name"]
-        ]
-        # Hero (first seed or dog): first 3 from pool; others: cover + 1 mid page
-        desc = str(seed.get("description") or "").lower()
-        is_hero = i == 0 or "dog" in desc or "buster" in token
-        if name_hits:
-            picks = name_hits[:3]
-        elif is_hero:
-            picks = pool[:3]
-        else:
-            picks = pool[:1] + pool[2:3]
-            picks = picks[:2] or pool[:1]
-
-        rel_paths: List[str] = []
-        for j, row in enumerate(picks):
-            src = Path(row["abs"])
-            if copy_into_assets and src.is_file():
-                dest_name = f"{key.lower()}_bookref_{j + 1}{src.suffix.lower()}"
-                dest = chars_dir / dest_name
-                try:
-                    shutil.copy2(src, dest)
-                    rel_paths.append(
-                        str(dest.relative_to(proj)).replace("\\", "/")
-                    )
-                except OSError:
-                    rel_paths.append(row["path"])
-            else:
-                rel_paths.append(row["path"])
-        seed["design_reference_images"] = rel_paths
-        seed["book_reference_images"] = rel_paths
-        attached[key] = rel_paths
-
-    gpv["character_seed_tokens"] = seeds
-    # Persist Stage 1
-    paths = stage1_paths()
-    scenes_path = Path(paths["scenes_json"])
-    if scenes_path.is_file():
-        scenes_path.write_text(
-            json.dumps(s1, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-
-    # Mirror onto Stage 2 blueprint seeds
-    eng = get_engine()
-    bgpv = eng.blueprint.setdefault("global_production_variables", {})
-    bseeds = bgpv.get("character_seed_tokens") or {}
-    if not isinstance(bseeds, dict) or not bseeds:
-        bseeds = {k: dict(v) if isinstance(v, dict) else v for k, v in seeds.items()}
-    else:
-        for k, v in seeds.items():
-            if isinstance(v, dict) and isinstance(bseeds.get(k), dict):
-                bseeds[k]["design_reference_images"] = v.get(
-                    "design_reference_images"
-                )
-                bseeds[k]["book_reference_images"] = v.get("book_reference_images")
-            elif isinstance(v, dict) and k not in bseeds:
-                bseeds[k] = dict(v)
-    bgpv["character_seed_tokens"] = bseeds
-    eng.save_blueprint_to_disk()
-
-    return {
-        "ok": True,
-        "attached": attached,
-        "count": len(attached),
-        "inventory": len(inventory),
-    }
+    # Reload engine blueprint if seeds were written
+    try:
+        if result.get("ok") and result.get("blueprint_updated"):
+            reload_engine()
+    except Exception:
+        pass
+    return result
 
 
 def ensure_blueprint_character_seeds_from_stage1(
@@ -1255,25 +1311,56 @@ def unlock_character(char_key: str) -> bool:
     return removed
 
 
-def lock_character_variant(char_key: str, variant_index: int) -> str:
-    eng = get_engine()
-    path = eng.lock_character_variant(char_key, variant_index)
+def _after_character_lock(char_key: str, path: str, note: str) -> str:
     edit_log.add_entry(
         "character_lock",
-        user_note=f"Locked variant {variant_index}",
+        user_note=note,
         character=char_key,
-        action_taken=f"Promoted to {path}",
+        action_taken=f"Locked → {path}",
         targets=["assets/characters"],
     )
     try:
         chars = list_characters(light=True)
-        if chars and all(c.get("locked") for c in chars):
-            mark_pipeline_step(
-                "characters", detail=f"{len(chars)}/{len(chars)} locked"
+        # Mark step complete when all on-screen (non-narrator) chars locked
+        need = [
+            c
+            for c in chars
+            if not (
+                str(c.get("key") or "").endswith("_Narrator")
+                or c.get("key") == "Character_Narrator"
+                or "never" in str(c.get("display_name_policy") or "").lower()
             )
+        ]
+        if need and all(c.get("locked") for c in need):
+            mark_pipeline_step(
+                "characters", detail=f"{len(need)}/{len(need)} on-screen locked"
+            )
+        try:
+            from review_app.pipeline_progress import invalidate_progress_cache
+
+            invalidate_progress_cache()
+        except Exception:
+            pass
     except Exception:
         pass
     return path
+
+
+def lock_character_variant(char_key: str, variant_index: int) -> str:
+    eng = get_engine()
+    path = eng.lock_character_variant(char_key, variant_index)
+    return _after_character_lock(
+        char_key, path, f"Locked generated variant {variant_index}"
+    )
+
+
+def lock_character_from_image(char_key: str, image_path: str) -> str:
+    """Lock a book plate (or any image path) as the character reference."""
+    eng = get_engine()
+    path = eng.lock_character_from_path(char_key, image_path)
+    return _after_character_lock(
+        char_key, path, f"Locked book plate {os.path.basename(image_path)}"
+    )
 
 
 def clips_using_character_detail(
@@ -1398,6 +1485,11 @@ def scene_cost_estimate(
     }
     if mode == "existing":
         return estimate_scene_cost(scene, eng.config, only_existing_paths=on_disk_map)
+    if mode == "missing":
+        missing_nums = [cn for cn, ok in on_disk_map.items() if not ok]
+        return estimate_scene_cost(
+            scene, eng.config, only_clip_numbers=missing_nums
+        )
     if mode == "stale":
         stale_nums = [
             r["clip"]
@@ -1684,7 +1776,8 @@ def book_source_meta() -> Dict[str, Any]:
     if not book.is_file() and not stored:
         return out
 
-    # Prefer cached extract_meta when book has not changed
+    # Prefer cached extract_meta when book has not changed — but always re-score
+    # if meta claims good while the text is still OCR soup (common after extract-only).
     try:
         book_newer = (
             book.is_file()
@@ -1694,14 +1787,9 @@ def book_source_meta() -> Dict[str, Any]:
     except OSError:
         book_newer = bool(book.is_file())
 
-    if stored and not book_newer:
-        out.update(stored)
-        out["present"] = True
-        out["source"] = "extract_meta.json"
-        if "ready_for_stage1" not in out and out.get("text_quality") == "good":
-            out["ready_for_stage1"] = True
-        return out
-
+    # Always score current book_full.txt (source of truth for Stage 1 unlock).
+    # extract_meta supplies strategy/history only — never override a clean vision transcript
+    # with a stale "poor" from an older OCR pass (or the reverse).
     try:
         import importlib.util
 
@@ -1713,14 +1801,25 @@ def book_source_meta() -> Dict[str, Any]:
                 spec.loader.exec_module(mod)
                 raw = book.read_text(encoding="utf-8", errors="ignore")
                 pages = len(re.findall(r"--- PAGE \d+ ---", raw))
-                analysis = mod.analyze_book_text(raw, pages_hint=pages or None)
+                live = mod.analyze_book_text(raw, pages_hint=pages or None)
                 out.update(stored)
-                out.update(analysis)
+                out.update(live)
                 out["present"] = True
-                out["source"] = "book_full.txt+extract_meta" if stored else "book_full.txt"
-                out["analysis"] = analysis
-                if "ready_for_stage1" in analysis:
-                    out["ready_for_stage1"] = analysis["ready_for_stage1"]
+                out["source"] = "live_book_full"
+                out["analysis"] = live
+                # Gate Stage 1 on live score only
+                out["ready_for_stage1"] = bool(
+                    live.get("text_quality") == "good"
+                    and float(live.get("garbage_score") or 0) < 0.45
+                )
+                # Keep prepare strategy note if present
+                if stored.get("strategy"):
+                    out["strategy"] = stored["strategy"]
+                if stored.get("text_engine"):
+                    out["text_engine"] = stored.get("text_engine")
+                # Prefer live engine tag when vision wrote the file more recently
+                if book_newer and stored.get("vision", {}).get("ran"):
+                    out["text_engine"] = stored.get("text_engine") or "grok_vision"
                 return out
     except Exception as e:
         if stored:
@@ -2031,7 +2130,9 @@ def run_stage1_from_book(
 ) -> Dict[str, Any]:
     """
     Run prompts/stage1_scene_bible.txt on the project book (requires XAI_API_KEY).
-    Auto-extracts PDF → book_full.txt + book_images when PDF is present/newer.
+
+    Uses existing clean book_full.txt when present. Does not re-extract PDF OCR
+    over a good vision transcript — prepare only runs if text is missing/garbled.
     progress_cb receives dict events: start, chunk_start, chunk_done, normalize, verify, done.
     """
     import importlib.util
@@ -2052,19 +2153,12 @@ def run_stage1_from_book(
     paths = stage1_paths()
     book = Path(paths["book_full"])
     pdf_ok = paths.get("pdf_exists") == "True"
-    if extract_pdf_if_needed and pdf_ok:
-        # run_stage1_job also extracts; ensure up front for clearer UI errors
-        try:
-            extract_book_from_pdf(force=False, progress_cb=progress_cb)
-        except Exception as e:
-            if not book.is_file():
-                raise FileNotFoundError(
-                    f"PDF extract failed and no book_full.txt: {e}"
-                ) from e
+    # Do NOT call extract_book_from_pdf here — that rewrites OCR over vision text.
+    # run_stage1_job prepares only when book text is missing or still garbled.
     if not book.is_file() and not pdf_ok:
         raise FileNotFoundError(
             f"Book text missing: {book}. Place a PDF under source/ "
-            "or write source/book_full.txt."
+            "or write source/book_full.txt (Adaptation → Import book)."
         )
 
     summary = mod.run_stage1_job(
@@ -2121,5 +2215,263 @@ def run_stage1_from_book(
         learning_layer="stage1",
         targets=["nickandme.scenes.json", "prompts/stage1_scene_bible.txt"],
         extra=summary,
+    )
+    return summary
+
+
+# ---------- Stage 2 (scene bible → Grok clip plan) ----------
+
+def stage2_status() -> Dict[str, Any]:
+    """Whether Stage 1 exists and Stage 2 blueprint has clip scenes."""
+    paths = stage1_paths()
+    s1 = load_stage1_document()
+    s1_n = len((s1 or {}).get("scenes") or []) if s1 else 0
+    proj = get_active_project_dir()
+    meta = load_project_meta(proj) if proj else {}
+    bp_name = meta.get("blueprint_file") or "blueprint.clips.grok.json"
+    bp_path = (proj / bp_name) if proj else Path(bp_name)
+    bp_scenes = 0
+    bp_clips = 0
+    if bp_path.is_file():
+        try:
+            bp = json.loads(bp_path.read_text(encoding="utf-8"))
+            scenes = bp.get("scenes") or []
+            if isinstance(scenes, list):
+                bp_scenes = len(scenes)
+                for sc in scenes:
+                    bp_clips += len((sc or {}).get("veo_clips") or [])
+        except (json.JSONDecodeError, OSError, TypeError):
+            pass
+    return {
+        "stage1_exists": bool(s1 and s1_n > 0),
+        "stage1_scenes": s1_n,
+        "blueprint_path": str(bp_path),
+        "blueprint_exists": bp_path.is_file(),
+        "stage2_scenes": bp_scenes,
+        "stage2_clips": bp_clips,
+        "stage2_ready": bp_scenes > 0,
+        "scenes_json": paths.get("scenes_json") or "",
+    }
+
+
+def run_stage2_from_stage1(
+    *,
+    scenes: str = "all",
+    resolution: str = "720p",
+    preserve_existing_seeds: bool = True,
+) -> Dict[str, Any]:
+    """
+    Convert Stage 1 scene bible → Stage 2 Grok clip plan (deterministic planner).
+
+    Writes the active project's blueprint_file (e.g. blueprint.clips.grok.json).
+    Preserves richer character_seed_tokens already on the blueprint when present.
+    No API key required for the default planner.
+    """
+    import importlib.util
+    import shutil
+    from datetime import datetime
+
+    ws = workspace_root()
+    script = ws / "scripts" / "two_stage_adaptation" / "stage2_plan_grok.py"
+    if not script.is_file():
+        raise FileNotFoundError(str(script))
+    spec = importlib.util.spec_from_file_location("stage2_plan_grok", script)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load {script}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    proj = get_active_project_dir()
+    if proj is None:
+        raise FileNotFoundError("No active project")
+    paths = stage1_paths()
+    stage1_path = Path(paths["scenes_json"])
+    if not stage1_path.is_file():
+        # Prefer project scenes.json when stage1_paths fell through to missing alt
+        alt = proj / "scenes.json"
+        if alt.is_file():
+            stage1_path = alt
+        else:
+            raise FileNotFoundError(
+                f"Stage 1 missing: {paths['scenes_json']}. "
+                "Run Adaptation → Stage 1 first."
+            )
+
+    stage1 = json.loads(stage1_path.read_text(encoding="utf-8"))
+    scenes_in = list(stage1.get("scenes") or [])
+    if not scenes_in:
+        raise ValueError("Stage 1 has zero scenes — re-run Stage 1 before Stage 2.")
+
+    want = mod.parse_scene_range(scenes)
+    if want is not None:
+        scenes_in = [s for s in scenes_in if int(s.get("scene_number") or 0) in set(want)]
+        if not scenes_in:
+            raise ValueError(f"No Stage 1 scenes match filter {scenes!r}")
+
+    gpv = dict(stage1.get("global_production_variables") or {})
+    loc_seeds = gpv.get("location_seed_tokens") or {}
+    res = (resolution or "720p").strip() or "720p"
+    planned_scenes = [
+        mod.plan_scene(s, resolution=res, location_seeds=loc_seeds) for s in scenes_in
+    ]
+
+    meta = load_project_meta(proj)
+    bp_name = meta.get("blueprint_file") or "blueprint.clips.grok.json"
+    # Prefer config blueprint_file if set
+    try:
+        cfg = json.loads((proj / (meta.get("config_file") or "pipeline_config.json")).read_text(encoding="utf-8"))
+        if isinstance(cfg, dict) and cfg.get("blueprint_file"):
+            bp_name = str(cfg["blueprint_file"])
+    except (json.JSONDecodeError, OSError, TypeError):
+        pass
+    out_path = proj / bp_name
+
+    existing_bp: Dict[str, Any] = {}
+    if out_path.is_file():
+        try:
+            existing_bp = json.loads(out_path.read_text(encoding="utf-8"))
+            if not isinstance(existing_bp, dict):
+                existing_bp = {}
+        except (json.JSONDecodeError, OSError):
+            existing_bp = {}
+
+    # Full rewrite when filter is all; merge selected scenes into existing blueprint
+    if want is None:
+        plan: Dict[str, Any] = {
+            "schema_version": "stage2.v1",
+            "movie_title": stage1.get("movie_title") or existing_bp.get("movie_title"),
+            "source_book_title": stage1.get("source_book_title")
+            or existing_bp.get("source_book_title"),
+            "video_provider_profile": "grok",
+            "global_production_variables": gpv,
+            "scenes": planned_scenes,
+            "stage2_meta": {
+                "source_stage1": stage1_path.name,
+                "resolution": res,
+                "scene_filter": scenes,
+                "clip_duration_policy": mod._duration_policy_from_config(),
+                "prompt_soft_max": getattr(mod, "GROK_PROMPT_SOFT", 500),
+                "prompt_hard_max": getattr(mod, "GROK_PROMPT_HARD", 800),
+            },
+        }
+        if preserve_existing_seeds:
+            old_seeds = (existing_bp.get("global_production_variables") or {}).get(
+                "character_seed_tokens"
+            ) or {}
+            new_seeds = dict(gpv.get("character_seed_tokens") or {})
+            if isinstance(old_seeds, dict) and old_seeds:
+                merged_seeds = dict(new_seeds)
+                for k, v in old_seeds.items():
+                    if not isinstance(v, dict):
+                        continue
+                    cur = merged_seeds.get(k) if isinstance(merged_seeds.get(k), dict) else {}
+                    # Prefer existing if it has design/book refs already attached
+                    if (v.get("design_reference_images") or v.get("book_reference_images")) or (
+                        not (cur.get("design_reference_images") or cur.get("book_reference_images"))
+                    ):
+                        merged = dict(cur)
+                        merged.update(v)
+                        # keep any newer keys from stage1 description if old empty
+                        for field in (
+                            "description",
+                            "voice_profile",
+                            "voice_label",
+                            "reference_image_placeholder",
+                        ):
+                            if not merged.get(field) and cur.get(field):
+                                merged[field] = cur[field]
+                        merged_seeds[k] = merged
+                plan["global_production_variables"] = dict(gpv)
+                plan["global_production_variables"]["character_seed_tokens"] = merged_seeds
+    else:
+        if not existing_bp:
+            raise FileNotFoundError(
+                f"Partial Stage 2 (--scenes {scenes}) needs an existing blueprint at {out_path}"
+            )
+        plan = mod.merge_into_blueprint(existing_bp, planned_scenes)
+        # If blueprint had zero scenes, merge_into only updates existing — append missing
+        existing_nums = {
+            int(s.get("scene_number") or 0) for s in (plan.get("scenes") or [])
+        }
+        extra = [
+            s
+            for s in planned_scenes
+            if int(s.get("scene_number") or 0) not in existing_nums
+        ]
+        if extra:
+            plan.setdefault("scenes", []).extend(extra)
+            plan["scenes"] = sorted(
+                plan["scenes"], key=lambda s: int(s.get("scene_number") or 0)
+            )
+        plan["schema_version"] = plan.get("schema_version") or "stage2.v1"
+        plan["video_provider_profile"] = plan.get("video_provider_profile") or "grok"
+        meta_s2 = dict(plan.get("stage2_meta") or {})
+        meta_s2.update(
+            {
+                "source_stage1": stage1_path.name,
+                "resolution": res,
+                "scene_filter": scenes,
+                "last_partial_at": datetime.now().isoformat(timespec="seconds"),
+            }
+        )
+        plan["stage2_meta"] = meta_s2
+
+    total_dur = sum(
+        int(s.get("total_estimated_duration_seconds") or 0)
+        for s in (plan.get("scenes") or [])
+    )
+    total_clips = sum(len(s.get("veo_clips") or []) for s in (plan.get("scenes") or []))
+    plan.setdefault("stage2_meta", {})
+    plan["stage2_meta"]["total_duration_seconds"] = total_dur
+    plan["stage2_meta"]["total_clips"] = total_clips
+
+    errs = mod.validate_plan(plan)
+
+    # Backup previous blueprint
+    if out_path.is_file():
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bak = out_path.with_suffix(out_path.suffix + f".bak_pre_stage2_{stamp}")
+        try:
+            shutil.copy2(out_path, bak)
+        except OSError:
+            bak = None
+    else:
+        bak = None
+
+    out_path.write_text(
+        json.dumps(plan, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+    # Reload engine so Scenes page sees new clips
+    try:
+        reload_engine()
+    except Exception:
+        pass
+    try:
+        from review_app.pipeline_progress import invalidate_progress_cache
+
+        invalidate_progress_cache()
+    except Exception:
+        pass
+
+    summary: Dict[str, Any] = {
+        "ok": not errs,
+        "scenes": len(plan.get("scenes") or []),
+        "clips": total_clips,
+        "duration_sec": total_dur,
+        "out_path": str(out_path),
+        "source_stage1": str(stage1_path),
+        "backup": str(bak) if bak else "",
+        "validation_issues": errs[:40],
+        "scene_filter": scenes,
+        "resolution": res,
+    }
+    edit_log.add_entry(
+        "stage2_run",
+        user_note=f"Stage 2 plan: {summary['scenes']} scenes · {total_clips} clips",
+        action_taken=f"Wrote {out_path.name}",
+        learning_layer="stage2",
+        targets=[out_path.name, "scripts/two_stage_adaptation/stage2_plan_grok.py"],
+        extra={k: v for k, v in summary.items() if k != "validation_issues"},
     )
     return summary

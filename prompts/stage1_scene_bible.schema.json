@@ -82,6 +82,22 @@
                 "type": "integer",
                 "minimum": 1,
                 "description": "First scene_number where given name may appear on screen/dialogue when policy is withheld_until_reveal"
+              },
+              "source_image_pages": {
+                "type": "array",
+                "description": "PDF/book page numbers (from AVAILABLE_BOOK_IMAGES) where this character is visible; pipeline copies those plates into design_reference_images",
+                "items": { "type": "integer", "minimum": 1 },
+                "maxItems": 6
+              },
+              "design_reference_images": {
+                "type": "array",
+                "description": "Filled by pipeline after Stage 1 from book_images / source_image_pages",
+                "items": { "type": "string" }
+              },
+              "book_reference_images": {
+                "type": "array",
+                "description": "Alias of design_reference_images for book plates",
+                "items": { "type": "string" }
               }
             }
           }

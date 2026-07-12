@@ -135,6 +135,7 @@ def build_user_message(
     total_minutes: int,
     prior: Optional[Dict[str, Any]],
     resume_scene: Optional[int],
+    book_images_inventory: str = "",
 ) -> str:
     lines = [
         f"TOTAL_RUNTIME_MINUTES = {total_minutes}",
@@ -154,8 +155,11 @@ def build_user_message(
         "- source_excerpts objects {source, excerpt} only — or omit",
         "- omit optional keys instead of null",
         "- always include full global_production_variables required fields",
+        "- for on-screen characters set source_image_pages from AVAILABLE_BOOK_IMAGES when listed",
         "",
     ]
+    if book_images_inventory:
+        lines += [book_images_inventory, ""]
     if prior and resume_scene:
         lines += [
             f"RESUME: Continue from scene_number >= {resume_scene}.",
@@ -307,44 +311,84 @@ def run_stage1_job(
     book_p = Path(book_path) if book_path else project / "source" / "book_full.txt"
     src = project / "source"
 
-    # Prefer PDF when present and newer than book_full.txt (or text missing)
+    # Book text policy:
+    # - If book_full.txt already looks clean (e.g. after Adaptation re-import + vision),
+    #   USE IT — do NOT re-extract PDF OCR (that overwrites good vision text with garbage).
+    # - Only run prepare (extract/vision) when text is missing or still garbled.
     try:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import prepare_book_source as prep_mod  # type: ignore
         import extract_book_source as book_src  # type: ignore
 
-        pdf = book_src.find_pdf(src)
-        need_extract = False
-        if pdf is not None:
-            if not book_p.is_file():
-                need_extract = True
-            elif pdf.stat().st_mtime > book_p.stat().st_mtime:
-                need_extract = True
-        if need_extract and pdf is not None:
+        need_prepare = True
+        if book_p.is_file():
+            analysis0 = book_src.analyze_book_text(
+                book_p.read_text(encoding="utf-8", errors="ignore")
+            )
+            if analysis0.get("text_quality") == "good" and float(
+                analysis0.get("garbage_score") or 0
+            ) < 0.45:
+                need_prepare = False
+                progress(
+                    "start",
+                    message=(
+                        "Using existing clean book_full.txt "
+                        f"({analysis0.get('text_words')} words) — skip re-extract"
+                    ),
+                    chunk=0,
+                    total=0,
+                )
+
+        if need_prepare:
             progress(
                 "start",
-                message=f"Extracting text/images from PDF {pdf.name}…",
+                message="Book text missing/garbled — prepare (extract + vision if needed)…",
                 chunk=0,
                 total=0,
             )
-            ex = book_src.extract_book_source(
+            prep = prep_mod.prepare_book_source(
                 project_id=project.name,
-                pdf_path=pdf,
-                write_text=True,
-                extract_images=True,
-                render_modes=("cover", "sparse"),
-                force=True,
+                force_extract=True,
+                force_vision=False,
+                render_pages="cover,sparse",
+                vision_model=model,
+                auto_vision=True,
+                progress_cb=progress_cb,
             )
             progress(
                 "start",
                 message=(
-                    f"PDF extract OK: pages={ex.get('pages')} chars={ex.get('text_chars')} "
-                    f"images={ex.get('images')}"
+                    f"Prepare: action={prep.get('action')} quality={prep.get('text_quality')} "
+                    f"ready={prep.get('ready_for_stage1')} xai={prep.get('has_xai_key')}"
                 ),
                 chunk=0,
                 total=0,
             )
+            if prep.get("needs_user") and not prep.get("ready_for_stage1"):
+                raise RuntimeError(
+                    (prep.get("message") or "Book text is not ready for Stage 1.")
+                    + "\n"
+                    + (prep.get("user_hint") or "")
+                    + "\n\nGarbled PDF OCR will invent wrong character names. "
+                    "Set XAI_API_KEY and re-import so vision rebuilds book_full.txt."
+                )
+
+        if book_p.is_file():
+            analysis = book_src.analyze_book_text(
+                book_p.read_text(encoding="utf-8", errors="ignore")
+            )
+            if analysis.get("text_quality") in ("poor", "empty") or float(
+                analysis.get("garbage_score") or 0
+            ) >= 0.45:
+                raise RuntimeError(
+                    "book_full.txt is still garbled OCR. "
+                    "Do not rely on Stage 1 to fix this — "
+                    "Adaptation → Re-import book (with XAI_API_KEY) first."
+                )
+    except RuntimeError:
+        raise
     except Exception as e:
-        progress("start", message=f"PDF extract skipped/failed: {e}", chunk=0, total=0)
+        progress("start", message=f"Book prepare check failed: {e}", chunk=0, total=0)
 
     if not book_p.is_file():
         files = sorted(src.glob("book_text_pages*.txt"))
@@ -367,6 +411,27 @@ def run_stage1_job(
         chunks = chunks[:max_chunks]
     n_chunks = len(chunks)
     progress("start", message=f"Chunks: {n_chunks} (pages/chunk≈{chunk_pages})", chunk=0, total=n_chunks)
+
+    # Book page inventory for character likeness (from PDF extract)
+    book_images_inventory = ""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import attach_character_images as char_imgs  # type: ignore
+
+        book_images_inventory = char_imgs.inventory_summary_for_prompt(project)
+        progress(
+            "start",
+            message="Book images inventory attached to Stage 1 prompts",
+            chunk=0,
+            total=n_chunks,
+        )
+    except Exception as e:
+        progress(
+            "start",
+            message=f"Book images inventory unavailable: {e}",
+            chunk=0,
+            total=n_chunks,
+        )
 
     partial: Optional[Dict[str, Any]] = None
     if resume and out_p.is_file():
@@ -396,6 +461,7 @@ def run_stage1_job(
             total_minutes=total_minutes,
             prior=partial,
             resume_scene=resume_scene,
+            book_images_inventory=book_images_inventory,
         )
         payload = {
             "model": model,
@@ -434,8 +500,25 @@ def run_stage1_job(
         raise RuntimeError("No Stage 1 output produced")
 
     partial["schema_version"] = "stage1.v1"
-    partial.setdefault("movie_title", "Nick and Me")
-    partial.setdefault("source_book_title", "Nick and Me")
+    # Prefer project title over legacy Nick-and-Me defaults
+    default_title = project.name
+    try:
+        meta_p = project / "project.json"
+        if meta_p.is_file():
+            meta = json.loads(meta_p.read_text(encoding="utf-8"))
+            default_title = (meta.get("title") or project.name).strip() or project.name
+    except (json.JSONDecodeError, OSError):
+        pass
+    # If the model omitted title or left a wrong default, use the project title
+    mt = (partial.get("movie_title") or "").strip()
+    if not mt or mt in ("Nick and Me", "Untitled", project.name):
+        # keep model title only when it looks intentional and not the old default
+        if not mt or mt == "Nick and Me":
+            partial["movie_title"] = default_title
+    if not (partial.get("source_book_title") or "").strip() or partial.get(
+        "source_book_title"
+    ) == "Nick and Me":
+        partial["source_book_title"] = partial.get("movie_title") or default_title
     partial["generation"] = {
         "method": "run_stage1_from_book.py",
         "model": model,
@@ -475,6 +558,45 @@ def run_stage1_job(
         errors=errs[:40],
     )
 
+    # Pull character plates out of PDF extract → assets/characters + seed fields
+    char_img_result: Dict[str, Any] = {}
+    try:
+        progress(
+            "character_images",
+            message="Attaching book/PDF images to character seeds…",
+            chunk=n_chunks,
+            total=n_chunks,
+        )
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import attach_character_images as char_imgs  # type: ignore
+
+        char_img_result = char_imgs.attach_character_images(
+            project_id=project.name,
+            force=True,
+            copy_into_assets=True,
+            update_blueprint=True,
+        )
+        # reload partial after attach rewrote scenes.json
+        if out_p.is_file():
+            partial = json.loads(out_p.read_text(encoding="utf-8"))
+        progress(
+            "character_images",
+            message=(
+                f"Character images: attached={char_img_result.get('count')} "
+                f"ok={char_img_result.get('ok')}"
+            ),
+            chunk=n_chunks,
+            total=n_chunks,
+        )
+    except Exception as e:
+        char_img_result = {"ok": False, "error": str(e)}
+        progress(
+            "character_images",
+            message=f"Character image attach skipped: {e}",
+            chunk=n_chunks,
+            total=n_chunks,
+        )
+
     summary = {
         "out_path": str(out_p),
         "backup": str(bak) if bak else None,
@@ -489,6 +611,7 @@ def run_stage1_job(
         "chunks": n_chunks,
         "verify_errors": errs,
         "hard_errors": hard,
+        "character_images": char_img_result,
         "ok": len(hard) == 0,
     }
     progress("done", message=f"Wrote {out_p}", chunk=n_chunks, total=n_chunks, **summary)

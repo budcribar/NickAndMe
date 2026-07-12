@@ -22,6 +22,19 @@ from review_app import pipeline_api as api
 from review_app.paths import project_label
 from review_app.pipeline_progress import pipeline_progress, render_sidebar_progress
 
+# PDF book embeds can exceed PIL's default ~89MP limit and crash the process
+# (DecompressionBomb → native segfault under WSL /mnt/c). Raise limit early;
+# UI always displays via thumbnails (see review_app.thumbnails).
+try:
+    from PIL import Image as _PIL_Image
+
+    _PIL_Image.MAX_IMAGE_PIXELS = max(
+        getattr(_PIL_Image, "MAX_IMAGE_PIXELS", None) or 0,
+        200_000_000,
+    )
+except Exception:
+    pass
+
 st.set_page_config(
     page_title="Film Review Console",
     page_icon="🎬",

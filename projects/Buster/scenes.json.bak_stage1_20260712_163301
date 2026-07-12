@@ -1,0 +1,14 @@
+{
+  "schema_version": "stage1.v1",
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "cinematic",
+    "total_runtime_target_seconds": 5400,
+    "character_seed_tokens": {}
+  },
+  "scenes": []
+}
