@@ -14,7 +14,17 @@
         "voice_label": "Buster Dog SFX",
         "age_band": "adult_dog",
         "display_name_policy": "ok_anytime",
-        "canonical_given_name": "Buster"
+        "canonical_given_name": "Buster",
+        "design_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ]
       },
       "Character_Mom": {
         "description": "Warm, patient mother in cozy evening home clothes (soft sweater or robe), kind face, gentle hands; the household adult who guides Buster's bedtime routine.",
@@ -23,7 +33,15 @@
         "voice_label": "Mom Warm",
         "age_band": "adult",
         "display_name_policy": "ok_anytime",
-        "canonical_given_name": "Mom"
+        "canonical_given_name": "Mom",
+        "design_reference_images": [
+          "assets/characters/character_mom_bookref_1.png",
+          "assets/characters/character_mom_bookref_2.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_mom_bookref_1.png",
+          "assets/characters/character_mom_bookref_2.jpg"
+        ]
       },
       "Character_Daddy": {
         "description": "Quiet father figure already in or near the parents' bed in evening clothes or sleepwear; soft presence, minimal dialogue, welcoming to the dog.",
@@ -32,7 +50,17 @@
         "voice_label": "Daddy Soft",
         "age_band": "adult",
         "display_name_policy": "ok_anytime",
-        "canonical_given_name": "Daddy"
+        "canonical_given_name": "Daddy",
+        "design_reference_images": [
+          "assets/characters/character_daddy_bookref_1.png",
+          "assets/characters/character_daddy_bookref_2.jpg",
+          "assets/characters/character_daddy_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_daddy_bookref_1.png",
+          "assets/characters/character_daddy_bookref_2.jpg",
+          "assets/characters/character_daddy_bookref_3.jpg"
+        ]
       },
       "Character_Narrator": {
         "description": "Off-screen storyteller presence only; not a visible on-screen person unless a brief title-card illustration style is used. Warm children's-book reader.",
@@ -40,7 +68,17 @@
         "voice_profile": "Adult storyteller, friendly mid pitch, clear playful cadence that can rhyme, gentle smile in the voice, unhurried children's-book energy; same voice every scene.",
         "voice_label": "Narrator Storybook",
         "age_band": "adult",
-        "display_name_policy": "never_on_screen"
+        "display_name_policy": "never_on_screen",
+        "design_reference_images": [
+          "assets/characters/character_narrator_bookref_1.jpg",
+          "assets/characters/character_narrator_bookref_2.jpg",
+          "assets/characters/character_narrator_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_narrator_bookref_1.jpg",
+          "assets/characters/character_narrator_bookref_2.jpg",
+          "assets/characters/character_narrator_bookref_3.jpg"
+        ]
       }
     },
     "location_seed_tokens": {
