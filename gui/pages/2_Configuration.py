@@ -94,34 +94,14 @@ with c4:
         "qa_frame_count", min_value=1, max_value=8, value=int(cfg.get("qa_frame_count", 4))
     )
 with c5:
-    ensure_dialogue_audio = st.checkbox(
-        "ensure_dialogue_audio (optional TTS override)",
-        bool(cfg.get("ensure_dialogue_audio", False)),
-        help=(
-            "OFF (recommended): keep Grok native speech for Mom dialogue and narrator VO. "
-            "ON: after download, replace/mix with edge-tts/SAPI — can speak the wrong voice "
-            "or read Mom's quoted words as robotic TTS. Prefer re-generate if Grok is silent."
-        ),
-    )
-
-    dialogue_audio_mode = st.selectbox(
-        "dialogue_audio_mode",
-        ["replace", "mix"],
-        index=_idx(["replace", "mix"], cfg.get("dialogue_audio_mode", "replace")),
-    )
     use_video_audio_for_music = st.checkbox(
         "use_video_audio_for_music", bool(cfg.get("use_video_audio_for_music", True))
     )
+    st.caption("Dialogue/narration is **Grok native audio only** (no TTS).")
 
 st.subheader("Audio & WIP")
 c6, c7 = st.columns(2)
 with c6:
-    dialogue_tts_volume = st.slider(
-        "dialogue_tts_volume", 0.0, 2.0, float(cfg.get("dialogue_tts_volume", 1.0)), 0.05
-    )
-    native_audio_mix_volume = st.slider(
-        "native_audio_mix_volume", 0.0, 1.0, float(cfg.get("native_audio_mix_volume", 0.12)), 0.01
-    )
     composite_audio_gain_db = st.number_input(
         "composite_audio_gain_db",
         min_value=-12.0,
@@ -269,11 +249,7 @@ if st.button("💾 Save configuration", type="primary"):
             "qa_retry_on_fail": qa_retry_on_fail,
             "qa_max_retries": int(qa_max_retries),
             "qa_frame_count": int(qa_frame_count),
-            "ensure_dialogue_audio": ensure_dialogue_audio,
-            "dialogue_audio_mode": dialogue_audio_mode,
             "use_video_audio_for_music": use_video_audio_for_music,
-            "dialogue_tts_volume": float(dialogue_tts_volume),
-            "native_audio_mix_volume": float(native_audio_mix_volume),
             "composite_audio_gain_db": float(composite_audio_gain_db),
             "rebuild_wip_movie_after_scene": rebuild_wip_movie_after_scene,
             "wip_movie_path": wip_movie_path,

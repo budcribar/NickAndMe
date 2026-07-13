@@ -221,8 +221,6 @@ def create_project(
         "smart_continuation": True,
         "qa_retry_on_fail": True,
         "qa_max_retries": 2,
-        "ensure_dialogue_audio": False,
-        "dialogue_audio_mode": "replace",
         "rebuild_wip_movie_after_scene": True,
         "wip_movie_path": "assets/movie_wip.mp4",
         "aspect_ratio": "16:9",

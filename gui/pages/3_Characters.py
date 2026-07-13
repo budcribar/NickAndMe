@@ -253,7 +253,7 @@ with col_main:
         vinfo = api.get_character_voice(key)
         st.caption(
             "This **voice_profile** is injected into Grok video prompts so the model "
-            "speaks as this character (narrator VO or on-camera). TTS is optional and off by default."
+            "speaks as this character (narrator VO or on-camera). Film audio is Grok-native only."
         )
 
         if is_voice_only:
@@ -301,7 +301,6 @@ with col_main:
                             voice_profile=pr.get("voice_profile"),
                             voice_label=pr.get("voice_label"),
                             voice_gender=pr.get("voice_gender"),
-                            tts_voice=pr.get("tts_voice") or "",
                         )
                         _cached_list_characters.clear()
                         st.success(
@@ -334,13 +333,6 @@ with col_main:
             value=vinfo.get("voice_label") or "",
             key=f"vl_{key}",
         )
-        with st.expander("Optional TTS voice id (only if TTS enabled in Configuration)", expanded=False):
-            st.text_input(
-                "tts_voice / edge neural id",
-                value=vinfo.get("tts_voice") or "",
-                key=f"tv_{key}",
-                help="e.g. en-US-JennyNeural — ignored when ensure_dialogue_audio is off",
-            )
         if st.button("Save voice", key=f"save_voice_{key}", type="primary"):
             try:
                 api.save_character_voice(
@@ -348,7 +340,6 @@ with col_main:
                     voice_profile=vp,
                     voice_label=vl,
                     voice_gender=None if vg == "auto" else vg,
-                    tts_voice=str(st.session_state.get(f"tv_{key}") or ""),
                 )
                 _cached_list_characters.clear()
                 st.success("Voice saved for Grok generation")

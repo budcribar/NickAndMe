@@ -151,7 +151,7 @@ Shot-writing quality bar:
   - **`voice_profile` (REQUIRED)** — locked vocal identity for native video audio (same role as the portrait; see Voice lock below)
   - **`voice_label` (REQUIRED)** — short speaker label for AUDIO prompts (e.g. `Nick (older brother)`)
   - optional `age_band`: e.g. `adult`, `child_8_9`, `child_12`, `teen_15`, `teen_16_18`
-  - do **not** add engine-specific TTS ids (e.g. `en-US-BrianNeural`) unless an operator explicitly uses a separate TTS post path; default film audio is **native** from the video model guided by `voice_profile` only
+  - do **not** add TTS ids; film audio is **native** from the video model guided by `voice_profile` only
   - optional `variant_of`: parent token for age variants (e.g. `"Character_N"`)
   - optional `display_name_policy`: `"ok_anytime"` | `"withheld_until_reveal"` | `"never_on_screen"`
   - optional `canonical_given_name`: real name for adapter notes only — **never** copy into early
@@ -180,8 +180,7 @@ Video models invent a new voice every clip unless locked. Treat voice like wardr
    with the same seed, treat as continuity defect and regen with the locked profile enforced.
 6. **Silent-only extras** (no dialogue ever): still prefer a short `voice_profile` if they might
    grunts/exclaim; if truly mute forever, `voice_profile` may be `"n/a — non-speaking"`.
-7. **No TTS ids in the blueprint by default.** Film dialogue is native model audio driven by
-   `voice_profile`. Do not invent or require `tts_voice` / Edge / SAPI ids in seeds.
+7. **No TTS.** Film dialogue is native model audio driven by `voice_profile` only.
 
 **Age variants are first-class seeds (REQUIRED when the story has flashbacks):**
 - Do NOT write `Young Character_N` as prose-only. Create separate tokens and use them in prompts:

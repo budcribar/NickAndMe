@@ -1189,56 +1189,6 @@ def remux_scene(scene_num: int) -> Optional[str]:
     return get_engine().remux_scene_from_disk(scene_num)
 
 
-def apply_dialogue_audio(
-    *,
-    only_scene: Optional[int] = None,
-    force: bool = True,
-    remux_scenes: bool = True,
-    progress_cb=None,
-) -> Dict[str, Any]:
-    """
-    Add TTS narration/dialogue onto existing on-disk clips (no Grok video regen).
-    Uses blueprint audio_payload. Optionally remux each affected scene after.
-    """
-    eng = get_engine()
-    # Reload blueprint so patched audio_payload is current
-    try:
-        eng.load_blueprint()
-    except Exception:
-        pass
-    summary = eng.apply_dialogue_audio_to_existing_clips(
-        only_scene=only_scene, force=force, progress_cb=progress_cb
-    )
-    remuxed: List[int] = []
-    if remux_scenes and summary.get("done"):
-        scenes = sorted({int(r["scene"]) for r in summary["done"]})
-        for sn in scenes:
-            try:
-                eng.remux_scene_from_disk(sn)
-                remuxed.append(sn)
-            except Exception as e:
-                summary.setdefault("remux_errors", []).append(
-                    {"scene": sn, "error": str(e)}
-                )
-    summary["remuxed_scenes"] = remuxed
-    edit_log.add_entry(
-        "dialogue_tts_apply",
-        user_note=(
-            f"Applied TTS to {len(summary.get('done') or [])} clip(s)"
-            + (f" scene={only_scene}" if only_scene else "")
-        ),
-        scene=only_scene,
-        action_taken=f"done={len(summary.get('done') or [])} failed={len(summary.get('failed') or [])}",
-        targets=["assets/video", "assets/scenes"],
-        extra={
-            "done_count": len(summary.get("done") or []),
-            "failed_count": len(summary.get("failed") or []),
-            "remuxed": remuxed,
-        },
-    )
-    return summary
-
-
 def rebuild_wip_movie(
     reason: str = "manual refresh",
     *,
@@ -1722,7 +1672,7 @@ def get_character_voice(char_key: str) -> Dict[str, str]:
     return get_engine().get_character_voice_profile(char_key)
 
 
-# Presets for Grok native narrator / character voice_profile (not TTS engine IDs)
+# Presets for Grok native narrator / character voice_profile (no external TTS)
 NARRATOR_VOICE_PRESETS: Dict[str, Dict[str, str]] = {
     "male_warm": {
         "voice_gender": "male",
@@ -1731,7 +1681,6 @@ NARRATOR_VOICE_PRESETS: Dict[str, Dict[str, str]] = {
             "Warm adult male storyteller, medium-low pitch, unhurried friendly pace, "
             "clear diction for rhymes, gentle smile in the voice; same voice every scene."
         ),
-        "tts_voice": "en-US-ChristopherNeural",
     },
     "female_warm": {
         "voice_gender": "female",
@@ -1740,7 +1689,6 @@ NARRATOR_VOICE_PRESETS: Dict[str, Dict[str, str]] = {
             "Warm adult female storyteller, medium pitch, unhurried friendly pace, "
             "clear diction for rhymes, gentle smile in the voice; same voice every scene."
         ),
-        "tts_voice": "en-US-JennyNeural",
     },
     "male_deep": {
         "voice_gender": "male",
@@ -1749,7 +1697,6 @@ NARRATOR_VOICE_PRESETS: Dict[str, Dict[str, str]] = {
             "Deep adult male storyteller, rich low pitch, calm deliberate pace, "
             "clear storytelling diction; same voice every scene."
         ),
-        "tts_voice": "en-US-GuyNeural",
     },
     "female_bright": {
         "voice_gender": "female",
@@ -1758,7 +1705,6 @@ NARRATOR_VOICE_PRESETS: Dict[str, Dict[str, str]] = {
             "Bright adult female storyteller, medium-high pitch, lively but clear pace, "
             "expressive for children's books; same voice every scene."
         ),
-        "tts_voice": "en-US-AriaNeural",
     },
 }
 
@@ -1768,42 +1714,41 @@ def save_character_voice(
     *,
     voice_profile: Optional[str] = None,
     voice_label: Optional[str] = None,
-    tts_voice: Optional[str] = None,
     voice_gender: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Save Grok voice_profile (+ optional gender / TTS id for optional fallback)."""
+    """Save Grok native voice_profile (+ optional gender) on character seed."""
     eng = get_engine()
     try:
         info = eng.set_character_voice_profile(
             char_key,
             voice_profile=voice_profile,
             voice_label=voice_label,
-            tts_voice=tts_voice,
             voice_gender=voice_gender,
         )
     except TypeError as e:
-        # Stale Streamlit process loaded engine before voice_gender existed
-        if "voice_gender" not in str(e):
+        # Stale Streamlit process may lack newer kwargs — patch seed fields directly
+        if "voice_gender" not in str(e) and "tts_voice" not in str(e):
             raise
         info = eng.set_character_voice_profile(
             char_key,
             voice_profile=voice_profile,
             voice_label=voice_label,
-            tts_voice=tts_voice,
         )
-        if voice_gender is not None:
-            seeds = eng.blueprint.setdefault(
-                "global_production_variables", {}
-            ).setdefault("character_seed_tokens", {})
-            seed = seeds.get(char_key)
-            if isinstance(seed, dict):
+        seeds = eng.blueprint.setdefault(
+            "global_production_variables", {}
+        ).setdefault("character_seed_tokens", {})
+        seed = seeds.get(char_key)
+        if isinstance(seed, dict):
+            seed.pop("tts_voice", None)
+            seed.pop("edge_tts_voice", None)
+            if voice_gender is not None:
                 g = str(voice_gender).strip().lower()
                 if g in ("male", "female", "neutral"):
                     seed["voice_gender"] = g
                 elif g in ("", "auto", "unset"):
                     seed.pop("voice_gender", None)
-                eng.save_blueprint_to_disk()
-                info = dict(seed)
+            eng.save_blueprint_to_disk()
+            info = dict(seed)
     edit_log.add_entry(
         "character_voice",
         user_note=f"Updated voice for {char_key}",
@@ -1813,7 +1758,6 @@ def save_character_voice(
         extra={
             "voice_profile": (voice_profile or "")[:200],
             "voice_gender": voice_gender or "",
-            "tts_voice": tts_voice or "",
         },
     )
     return info
@@ -3013,8 +2957,23 @@ def run_stage2_from_stage1(
                 "resolution": res,
                 "scene_filter": scenes,
                 "clip_duration_policy": mod._duration_policy_from_config(),
-                "prompt_soft_max": getattr(mod, "GROK_PROMPT_SOFT", 500),
-                "prompt_hard_max": getattr(mod, "GROK_PROMPT_HARD", 800),
+                **(
+                    lambda lim: {
+                        "prompt_soft_max": lim.get("soft"),
+                        "prompt_hard_max": lim.get("hard"),
+                        "prompt_limits_source": lim.get("source"),
+                        "prompt_limits_provider": lim.get("provider"),
+                        "prompt_limits_model": lim.get("model"),
+                    }
+                )(
+                    mod._prompt_limits_from_config()
+                    if hasattr(mod, "_prompt_limits_from_config")
+                    else {
+                        "soft": getattr(mod, "GROK_PROMPT_SOFT", 500),
+                        "hard": getattr(mod, "GROK_PROMPT_HARD", 800),
+                        "source": "fallback",
+                    }
+                ),
             },
         }
         if preserve_existing_seeds:

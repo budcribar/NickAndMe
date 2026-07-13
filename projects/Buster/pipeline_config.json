@@ -11,8 +11,6 @@
   "smart_continuation": true,
   "qa_retry_on_fail": true,
   "qa_max_retries": 2,
-  "ensure_dialogue_audio": false,
-  "dialogue_audio_mode": "replace",
   "rebuild_wip_movie_after_scene": true,
   "wip_movie_path": "assets/movie_wip.mp4",
   "aspect_ratio": "16:9",
@@ -68,8 +66,6 @@
   "resolution": "480p",
   "qa_frame_count": 4,
   "blueprint_file": "blueprint.clips.grok.json",
-  "dialogue_tts_volume": 1.0,
-  "native_audio_mix_volume": 0.12,
   "composite_audio_gain_db": 6.0,
   "cost_estimates": {
     "currency": "USD",

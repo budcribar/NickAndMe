@@ -62,14 +62,15 @@ VIDEO PROVIDER PROFILES
 - Clip 2+: 7s each
 - extend_previous ONLY for true continuous same-setup motion
 - Scene total on 8+7n grid: 8, 15, 22, 29, 36, 43, ... max 134
-- visual_prompt max 400 chars including trailing " / 720p, 24fps"
-  (use configured resolution in suffix if operator sets DRAFT_RESOLUTION)
+- visual_prompt length: use **pipeline_config.prompt_limits** for Veo
+  (defaults soft≈350 / hard≈400 including trailing " / {resolution}, 24fps")
 
 ----- PROFILE: grok -----
 - Prefer 6–10s per clip (default 8); integer duration in [1, 15]
 - Scene total = exact sum of clip durations; min 8, max 134
 - Timestamps contiguous and exact
-- visual_prompt max 800 chars (prefer ≤500) including " / 720p, 24fps" (or DRAFT_RESOLUTION)
+- visual_prompt length: use **pipeline_config.prompt_limits** for active Grok model
+  (defaults soft≈700 / hard≈1000 for grok-imagine-video; model may override)
 - Native audio: every clip needs intentional audio_payload
 
 ----- BOTH: force continuation "none" when -----
@@ -113,6 +114,22 @@ MAPPING BEATS → CLIPS
     Never emit empty audio_payload when Stage 1 has dialogue. delivery must be one of
     spoken_on_camera | voiceover_internal | none. Narrator → voiceover_internal.
     Split long dialogue across clips with ellipsis/phrase boundaries — do not rewrite meaning.
+    **Who talks + what they say (required in visual_prompt AND audio_payload):**
+    - **Bouncing conversation (preferred for banter):** keep speakers on **one continuous clip**
+      with `audio_payload.dialogue_turns`:  
+      `[{ "speaker": "Character_Mom", "dialogue": "…", "delivery": "spoken_on_camera" },  
+        { "speaker": "Character_Daddy", "dialogue": "…", "delivery": "spoken_on_camera" }]`  
+      Also set legacy `speaker`/`dialogue`/`delivery` to the first turn (and joined script ok).
+      Visual must list turns in order, e.g.  
+      `MULTI-SPEAKER DIALOGUE in order… 1) Character_Mom ON CAMERA says: "…" 2) Character_Daddy …`
+      Lip-sync: only the **active** speaker per turn mouths; listeners closed-mouth.
+    - **Split into separate clips** only when you need a hard cut, location change, new setup,
+      or the exchange is too long for one legal clip duration — not merely because speakers alternate.
+    - Single-speaker still uses root fields only:  
+      VO: `OFF-CAMERA VOICEOVER by Character_Narrator only saying: "…"`  
+      On-cam: `ONLY Character_Mom speaks on camera saying: "…"`
+    - Always name **each** speaker with their **exact** line so the model cannot swap voices.
+    - Never put the narrator token first as primary_subject (still off-screen).
 11. **Location pin every clip:** set `location_id` to a Loc_* from the scene’s location_ids
     (from beat.location_id when present; else primary_location_id / location_ids[0];
     for multi-place scenes, advance location when the beat moves place).
@@ -142,8 +159,9 @@ visual_prompt must:
 - Then name **other on-screen** Character_* from `characters_on_screen` / the beat
 - Short **identity cues** from character_seed_tokens (stable colors/markings — no redesign)
 - Be filmable progressive motion for action_class big_action
-- Include lips-closed / non-lip-sync language for voiceover_internal (book narrator VO)
-- For spoken_on_camera with 2+ on-screen beings: only the speaker lip-syncs; dogs/pets and
+- For voiceover_internal: **name the VO speaker** (usually Character_Narrator) as off-camera
+  voiceover; on-screen cast keep mouths/snouts closed (not lip-synced conversation)
+- For spoken_on_camera with 2+ on-screen beings: only the **named** speaker lip-syncs; dogs/pets and
   non-speakers keep mouth/snout closed (listening) — no dual mouthing to the same line.
   Encode that in visual_prompt AND append to negative_prompt extras
   (e.g. dog talking, dual lip-sync, non-speaker speaking)

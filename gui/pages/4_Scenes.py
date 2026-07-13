@@ -734,51 +734,6 @@ if cn is None or cn == 0:
             except Exception as e:
                 st.error(str(e))
 
-    # Optional TTS only — default film path is Grok native speech
-    with st.expander("Optional TTS backfill (not default)", expanded=False):
-        st.caption(
-            "Default: **Grok native audio** (narrator VO + Mom on-camera). "
-            "This panel only if you explicitly want edge-tts/SAPI over existing clips — "
-            "it does not re-call Grok video and can mis-read quoted lines."
-        )
-        tts_scope = st.radio(
-            "Scope",
-            options=["This scene only", "All scenes"],
-            horizontal=True,
-            key=f"tts_scope_{sn}",
-        )
-        if st.button("▶ Apply TTS narration", key=f"tts_apply_{sn}"):
-            only = sn if tts_scope.startswith("This") else None
-            prog = st.progress(0.0, text="Starting TTS…")
-            log = st.empty()
-            lines: list[str] = []
-
-            def _cb(ev: dict) -> None:
-                msg = ev.get("message") or ev.get("event") or ""
-                lines.append(msg)
-                log.code("\n".join(lines[-20:]), language="text")
-                prog.progress(min(0.95, 0.05 + 0.05 * len(lines)), text=msg)
-
-            try:
-                with st.spinner("Muxing narration onto clips…"):
-                    summary = api.apply_dialogue_audio(
-                        only_scene=only,
-                        force=True,
-                        remux_scenes=True,
-                        progress_cb=_cb,
-                    )
-                prog.progress(1.0, text="Done")
-                st.success(
-                    f"TTS on {len(summary.get('done') or [])} clip(s) · "
-                    f"failed {len(summary.get('failed') or [])} · "
-                    f"remuxed scenes {summary.get('remuxed_scenes')}"
-                )
-                if summary.get("failed"):
-                    st.warning(str(summary["failed"][:5]))
-                st.rerun()
-            except Exception as e:
-                st.error(str(e))
-
     # ---- Advanced (collapsed) ----
     with st.expander("Cost estimate", expanded=False):
         if st.button("Compute cost", key=f"compute_cost_{sn}"):

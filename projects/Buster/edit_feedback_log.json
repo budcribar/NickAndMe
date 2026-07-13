@@ -2,6 +2,278 @@
   "version": 1,
   "entries": [
     {
+      "id": "30d56632",
+      "ts": "2026-07-12T21:58:36",
+      "type": "clip_regen",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 5,
+      "character": null,
+      "user_note": "Regenerate without prompt change",
+      "action_taken": "Wiped and regenerated → assets/video/scene_02_clip_05.mp4; WIP=assets/movie_wip.mp4",
+      "before": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Hold on Character_Buster's puzzled face as the idea 'makes no sense' — freeze-frame-ish comic beat then he accepts and turns toward the door. lips closed, narration is voiceover (not lip-synced conversation). Same identity as locked refs: Character_Buster (Small black-and-white mixed dog (never brown, tan, or solid black…); Character_Mom… / 720p, 24fps",
+      "after": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Hold on Character_Buster's puzzled face as the idea 'makes no sense' — freeze-frame-ish comic beat then he accepts and turns toward the door. lips closed, narration is voiceover (not lip-synced conversation). Same identity as locked refs: Character_Buster (Small black-and-white mixed dog (never brown, tan, or solid black…); Character_Mom… / 720p, 24fps",
+      "suggested_rule": "Review learning (seen on S2C5): Regenerate without prompt change",
+      "targets": [
+        "nickandme.clips.grok.json",
+        "assets/video",
+        "assets/video",
+        "assets/movie_wip.mp4"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "a21d62b7",
+      "ts": "2026-07-12T21:44:38",
+      "type": "clip_pass",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 3,
+      "character": null,
+      "user_note": "Buster's mouth is moving to the narrator's voice and it should not",
+      "action_taken": "review_status=pass",
+      "before": "",
+      "after": "",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (seen on S2C3). Reviewer note: Buster's mouth is moving to the narrator's voice and it should not",
+      "targets": [
+        "pipeline_state.json"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "aeffc272",
+      "ts": "2026-07-12T21:44:12",
+      "type": "clip_regen",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 3,
+      "character": null,
+      "user_note": "Buster's mouth is moving to the narrator's voice and it should not",
+      "action_taken": "Wiped and regenerated → assets/video/scene_02_clip_03.mp4; WIP=assets/movie_wip.mp4",
+      "before": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Character_Buster pauses mid-curl, does a little potty dance / shifts paws; glances at the floor then guiltily away — he knows going on the floor is naughty. lips closed, narration is voiceover (not lip-synced conversation). must not: graphic potty accident on floor; explicit mess. Same identity as locked refs: Character_Buster (Small…, Buster's mouth is moving to the narrator's voice and it should not / 720p, 24fps",
+      "after": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Character_Buster pauses mid-curl, does a little potty dance / shifts paws; glances at the floor then guiltily away — he knows going on the floor is naughty. lips closed, narration is voiceover (not lip-synced conversation). must not: graphic potty accident on floor; explicit mess. Same identity as locked refs: Character_Buster (Small…, Buster's mouth is moving to the narrator's voice and it should not / 720p, 24fps",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (seen on S2C3). Reviewer note: Buster's mouth is moving to the narrator's voice and it should not",
+      "targets": [
+        "nickandme.clips.grok.json",
+        "assets/video",
+        "assets/video",
+        "assets/movie_wip.mp4"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "94545d2b",
+      "ts": "2026-07-12T21:41:55",
+      "type": "clip_fail",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 3,
+      "character": null,
+      "user_note": "Buster's mouth is moving to the narrator's voice and it should not",
+      "action_taken": "review_status=fail",
+      "before": "",
+      "after": "",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (seen on S2C3). Reviewer note: Buster's mouth is moving to the narrator's voice and it should not",
+      "targets": [
+        "nickandme.clips.grok.json",
+        "assets/video"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "634deb90",
+      "ts": "2026-07-12T21:40:09",
+      "type": "clip_regen",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 3,
+      "character": null,
+      "user_note": "Buster's mouth is moving to the narrator's voice and it should not",
+      "action_taken": "Wiped and regenerated → assets/video/scene_02_clip_03.mp4; WIP=assets/movie_wip.mp4",
+      "before": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Character_Buster pauses mid-curl, does a little potty dance / shifts paws; glances at the floor then guiltily away — he knows going on the floor is naughty. lips closed, narration is voiceover (not lip-synced conversation). must not: graphic potty accident on floor; explicit mess. Same identity as locked refs: Character_Buster (Small… / 720p, 24fps",
+      "after": "Warm lamp light, soft sofa or armchair, visible water bowl area nearby, front door to yard, cream/beige walls,…. also on screen: Character_Mom. Character_Buster pauses mid-curl, does a little potty dance / shifts paws; glances at the floor then guiltily away — he knows going on the floor is naughty. lips closed, narration is voiceover (not lip-synced conversation). must not: graphic potty accident on floor; explicit mess. Same identity as locked refs: Character_Buster (Small…, Buster's mouth is moving to the narrator's voice and it should not / 720p, 24fps",
+      "suggested_rule": "VO↔visual fidelity: the visual must match the book/dialogue event (seen on S2C3). Reviewer note: Buster's mouth is moving to the narrator's voice and it should not",
+      "targets": [
+        "nickandme.clips.grok.json",
+        "assets/video",
+        "assets/video",
+        "assets/movie_wip.mp4"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "129ed008",
+      "ts": "2026-07-12T21:37:10",
+      "type": "clip_pass",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 2,
+      "character": null,
+      "user_note": "Passed",
+      "action_taken": "review_status=pass",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning (seen on S2C2): Passed",
+      "targets": [
+        "pipeline_state.json"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "e717b7d7",
+      "ts": "2026-07-12T21:36:36",
+      "type": "clip_pass",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": 1,
+      "character": null,
+      "user_note": "Passed",
+      "action_taken": "review_status=pass",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning (seen on S2C1): Passed",
+      "targets": [
+        "pipeline_state.json"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {}
+    },
+    {
+      "id": "d1abd189",
+      "ts": "2026-07-12T21:34:37",
+      "type": "scene_generate",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": null,
+      "character": null,
+      "user_note": "Generate scene 2: 5 ok, 0 failed, 0 skipped",
+      "action_taken": "done=[1, 2, 3, 4, 5] failed=[]",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Generate scene 2: 5 ok, 0 failed, 0 skipped",
+      "targets": [
+        "assets/video",
+        "assets/scenes"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "done": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "failed": [],
+        "skipped": [],
+        "only_missing": false
+      }
+    },
+    {
+      "id": "fe690c2b",
+      "ts": "2026-07-12T21:29:14",
+      "type": "dialogue_tts_apply",
+      "learning_layer": "clip",
+      "scene": 2,
+      "clip": null,
+      "character": null,
+      "user_note": "Applied TTS to 4 clip(s) scene=2",
+      "action_taken": "done=4 failed=0",
+      "before": "",
+      "after": "",
+      "suggested_rule": "Review learning: Applied TTS to 4 clip(s) scene=2",
+      "targets": [
+        "assets/video",
+        "assets/scenes"
+      ],
+      "applied": {
+        "blueprint": false,
+        "adaptation_prompt": false,
+        "script_notes": false,
+        "learnings_md": false,
+        "layer_prompts": false,
+        "shared_rules": false,
+        "dirty_marked": false
+      },
+      "extra": {
+        "done_count": 4,
+        "failed_count": 0,
+        "remuxed": [
+          2
+        ]
+      }
+    },
+    {
       "id": "761379d2",
       "ts": "2026-07-12T21:18:29",
       "type": "character_voice",

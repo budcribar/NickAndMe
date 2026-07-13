@@ -209,10 +209,15 @@ do **not** put dialogue only inside free-text intent.
 - Never set delivery=`none` when the book has a line for this beat.
 
 **Multi-character dialogue (critical for automation):**
-- When delivery=`spoken_on_camera` and 2+ characters are on screen (e.g. Mom + dog),
-  set primary_subject to the **speaker**, list all listeners in characters_on_screen,
-  and put in blocking_notes or must_not: only the speaker’s mouth moves; pets/dogs keep
-  snout closed (listening) — no dual lip-sync / animal mouthing the same line.
+- **Bouncing conversation:** prefer **one beat** with  
+  `dialogue_turns: [{ "speaker": "Character_Mom", "dialogue": "…", "delivery": "spoken_on_camera" }, …]`  
+  so Stage 2 can keep banter on one continuous clip. Root `speaker`/`dialogue` may be the
+  first turn or a short summary; turns are the source of truth.
+- Split into **separate beats** when the story needs a hard cut, place change, or long gap —
+  not merely because speakers alternate.
+- When anyone is `spoken_on_camera` with 2+ characters on screen, set primary_subject to the
+  main on-screen focus (often the first speaker), list listeners in characters_on_screen,
+  and note: only the active speaker’s mouth moves each turn; pets/dogs keep snout closed.
 
 Blocking:
 - If someone confronts / approaches / answers at a window or doorway, put eyeline notes in

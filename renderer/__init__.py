@@ -22,6 +22,7 @@ from renderer.engine import (
     resolve_default_duration,
     resolve_duration_profile,
     resolve_ffmpeg,
+    resolve_prompt_limits,
 )
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "resolve_default_duration",
     "resolve_duration_profile",
     "resolve_ffmpeg",
+    "resolve_prompt_limits",
 ]

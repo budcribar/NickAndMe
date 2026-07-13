@@ -27,15 +27,34 @@ GLOBAL_NEGATIVE = (
     "no embroidered names, no lower thirds, no personal names on clothing or props"
 )
 
-# Fallback Grok constraints (overridden by pipeline_config.duration_defaults when available)
+# Fallback constraints (overridden by pipeline_config duration_defaults / prompt_limits)
 GROK_MIN_CLIP = 6
 GROK_MAX_CLIP = 10
 GROK_ABS_MAX = 15
 GROK_DEFAULT = 8
 GROK_SCENE_MIN = 8
 GROK_SCENE_MAX = 134
+# Legacy names — prefer _prompt_limits_from_config() for active model
 GROK_PROMPT_SOFT = 500
 GROK_PROMPT_HARD = 800
+
+
+def _load_project_config() -> Dict[str, Any]:
+    """Active project's pipeline_config.json (or empty)."""
+    try:
+        ws = ROOT / "projects" / "workspace.json"
+        pid = "NickAndMe"
+        if ws.is_file():
+            try:
+                pid = json.loads(ws.read_text(encoding="utf-8")).get("active_project") or pid
+            except Exception:
+                pass
+        cfg_path = ROOT / "projects" / str(pid) / "pipeline_config.json"
+        if cfg_path.is_file():
+            return json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
 
 
 def _duration_policy_from_config(
@@ -47,20 +66,7 @@ def _duration_policy_from_config(
         from renderer.engine import resolve_duration_profile  # type: ignore
 
         if config is None:
-            # try active project pipeline_config
-            cfg_path = None
-            ws = ROOT / "projects" / "workspace.json"
-            pid = "NickAndMe"
-            if ws.is_file():
-                try:
-                    pid = json.loads(ws.read_text(encoding="utf-8")).get("active_project") or pid
-                except Exception:
-                    pass
-            cfg_path = ROOT / "projects" / str(pid) / "pipeline_config.json"
-            if cfg_path.is_file():
-                config = json.loads(cfg_path.read_text(encoding="utf-8"))
-            else:
-                config = {}
+            config = _load_project_config()
         prof = resolve_duration_profile(config or {})
         return {
             "default": int(prof.get("default", GROK_DEFAULT)),
@@ -79,6 +85,26 @@ def _duration_policy_from_config(
         }
 
 
+def _prompt_limits_from_config(
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """visual_prompt soft/hard from target provider+model (config.prompt_limits)."""
+    try:
+        sys.path.insert(0, str(ROOT))
+        from renderer.engine import resolve_prompt_limits  # type: ignore
+
+        if config is None:
+            config = _load_project_config()
+        return resolve_prompt_limits(config or {})
+    except Exception:
+        return {
+            "soft": GROK_PROMPT_SOFT,
+            "hard": GROK_PROMPT_HARD,
+            "full_max": 0,
+            "source": "fallback",
+        }
+
+
 def _ts(start: int, end: int) -> str:
     def fmt(s: int) -> str:
         return f"{s // 60:02d}:{s % 60:02d}"
@@ -86,12 +112,14 @@ def _ts(start: int, end: int) -> str:
     return f"{fmt(start)}-{fmt(end)}"
 
 
-def _clamp_prompt(text: str, hard: int = GROK_PROMPT_HARD) -> str:
+def _clamp_prompt(text: str, hard: Optional[int] = None) -> str:
+    if hard is None:
+        hard = int(_prompt_limits_from_config().get("hard") or GROK_PROMPT_HARD)
     text = re.sub(r"\s+", " ", text).strip()
     suffix_m = re.search(r"\s*/\s*\d+p,\s*24fps\s*$", text, re.I)
     suffix = suffix_m.group(0) if suffix_m else " / 720p, 24fps"
     base = re.sub(r"\s*/\s*\d+p,\s*24fps\s*$", "", text, flags=re.I).strip()
-    budget = hard - len(suffix)
+    budget = int(hard) - len(suffix)
     if len(base) > budget:
         base = base[: max(40, budget - 1)].rsplit(" ", 1)[0] + "…"
     return f"{base}{suffix}"
@@ -336,12 +364,203 @@ def _identity_cues(
     return "Same identity as locked refs: " + "; ".join(bits)
 
 
+def _dialogue_quote_for_prompt(dialogue: str, max_len: int = 90) -> str:
+    """Compact spoken line for visual_prompt attribution (ASCII-safe quotes)."""
+    d = re.sub(r"\s+", " ", (dialogue or "").strip())
+    d = d.replace('"', "'").replace("“", "'").replace("”", "'")
+    if len(d) > max_len:
+        d = d[: max_len - 1].rsplit(" ", 1)[0] + "…"
+    return d
+
+
+def _parse_dialogue_turns(beat: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Ordered speech turns for a beat. Supports:
+      - dialogue_turns / speech_turns: [{speaker, dialogue, delivery?}, ...]
+      - tagged dialogue: Character_A: line. Character_B: line.
+      - single root speaker + dialogue
+    Prefers keeping multi-speaker banter as ONE list (one continuous clip), not N clips.
+    """
+    nested = beat.get("audio") if isinstance(beat.get("audio"), dict) else {}
+    turns_raw = (
+        beat.get("dialogue_turns")
+        or beat.get("speech_turns")
+        or (nested.get("dialogue_turns") if nested else None)
+    )
+    out: List[Dict[str, str]] = []
+    if isinstance(turns_raw, list):
+        for turn in turns_raw:
+            if not isinstance(turn, dict):
+                continue
+            sp = str(turn.get("speaker") or "").strip()
+            line = str(turn.get("dialogue") or turn.get("line") or "").strip()
+            if not sp or not line:
+                continue
+            deliv = str(
+                turn.get("delivery")
+                or beat.get("delivery")
+                or nested.get("delivery")
+                or "spoken_on_camera"
+            ).lower()
+            if "narrator" in sp.lower():
+                deliv = "voiceover_internal"
+            out.append({"speaker": sp, "dialogue": line, "delivery": deliv})
+        if out:
+            return out
+
+    dialogue = str(
+        (nested.get("dialogue") if nested else None)
+        or beat.get("dialogue")
+        or ""
+    ).strip()
+    # Character_X: "line" Character_Y: line
+    found = re.findall(
+        r"(Character_[A-Za-z0-9_]+)\s*:\s*[\"'“]?(.*?)(?=\s*Character_[A-Za-z0-9_]+\s*:|[\"'”]?\s*$)",
+        dialogue,
+        flags=re.S,
+    )
+    found = [(sp, ln.strip().strip("\"'“”").strip()) for sp, ln in found if ln.strip()]
+    if len(found) >= 2 and len({sp for sp, _ in found}) >= 2:
+        for sp, line in found:
+            deliv = (
+                "voiceover_internal"
+                if "narrator" in sp.lower()
+                else "spoken_on_camera"
+            )
+            out.append({"speaker": sp, "dialogue": line, "delivery": deliv})
+        return out
+
+    # Single-speaker beat
+    sp = str(
+        (nested.get("speaker") if nested else None) or beat.get("speaker") or ""
+    ).strip()
+    if sp and dialogue and sp.lower() not in ("none", "n/a", "-"):
+        deliv = str(
+            (nested.get("delivery") if nested else None)
+            or beat.get("delivery")
+            or "spoken_on_camera"
+        ).lower()
+        if "narrator" in sp.lower():
+            deliv = "voiceover_internal"
+        out.append({"speaker": sp, "dialogue": dialogue, "delivery": deliv})
+    return out
+
+
+def _speech_attribution_clause(
+    *,
+    delivery: str = "",
+    speaker: str = "",
+    dialogue: str = "",
+    turns: Optional[List[Dict[str, str]]] = None,
+) -> List[str]:
+    """
+    Explicit who-talks + what-they-say for Grok.
+
+    Multi-speaker banter stays on ONE clip via dialogue_turns (ordered).
+    Split into separate clips only when Stage 2 chooses hard cuts / new setups.
+    """
+    if turns and len(turns) >= 2:
+        bits: List[str] = [
+            "MULTI-SPEAKER DIALOGUE in order on this continuous take "
+            "(voices bounce; do not merge lines into one speaker)"
+        ]
+        for i, t in enumerate(turns, 1):
+            sp = str(t.get("speaker") or "").strip()
+            line = _dialogue_quote_for_prompt(str(t.get("dialogue") or ""), max_len=70)
+            deliv = str(t.get("delivery") or "spoken_on_camera").lower()
+            if not sp or not line:
+                continue
+            if deliv == "voiceover_internal" or "narrator" in sp.lower():
+                bits.append(f'{i}) OFF-CAMERA {sp} VO says: "{line}"')
+            else:
+                bits.append(
+                    f'{i}) {sp} ON CAMERA lip-syncs says: "{line}"'
+                )
+        bits.append(
+            "LIP-SYNC: only the active speaker for each turn moves their mouth; "
+            "listeners (and any dog/pet) keep mouth/snout CLOSED while others talk; "
+            "never two mouths moving on the same words"
+        )
+        return bits
+
+    sp = (speaker or "").strip()
+    if not sp or sp.lower() in ("none", "n/a", "-"):
+        return []
+    deliv = (delivery or "").strip().lower()
+    quote = _dialogue_quote_for_prompt(dialogue) if dialogue else ""
+    out: List[str] = []
+    if deliv == "voiceover_internal":
+        if quote:
+            out.append(
+                f'OFF-CAMERA VOICEOVER by {sp} only saying: "{quote}" '
+                f"(not visible; not lip-synced)"
+            )
+        else:
+            out.append(
+                f"OFF-CAMERA VOICEOVER by {sp} only (not visible; not lip-synced)"
+            )
+        out.append(
+            "on-screen mouths/snouts CLOSED and still — VO is not lip-synced conversation"
+        )
+    elif deliv == "spoken_on_camera" and "narrator" not in sp.lower():
+        if quote:
+            out.append(
+                f'ONLY {sp} speaks on camera and lip-syncs saying: "{quote}"; '
+                f"other characters and any dog keep mouth/snout closed and still "
+                f"(listening) until their turn"
+            )
+        else:
+            out.append(
+                f"ONLY {sp} speaks on camera and lip-syncs; other characters and any dog keep "
+                f"mouth/snout closed and still (listening)"
+            )
+    return out
+
+
+def _normalize_beats_speech(beats: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Attach dialogue_turns for multi-speaker banter; keep ONE beat (one clip) so
+    conversation can bounce without a hard cut per line.
+    """
+    out: List[Dict[str, Any]] = []
+    for beat in beats:
+        if not isinstance(beat, dict):
+            continue
+        b = dict(beat)
+        turns = _parse_dialogue_turns(b)
+        if len(turns) >= 2:
+            b["dialogue_turns"] = turns
+            # Legacy single fields = first turn + joined script for tooling
+            b["speaker"] = turns[0]["speaker"]
+            b["dialogue"] = " ".join(t["dialogue"] for t in turns)
+            # Scene delivery: on-camera if any turn is; pure narrator chain stays VO
+            if all(
+                t.get("delivery") == "voiceover_internal"
+                or "narrator" in str(t.get("speaker") or "").lower()
+                for t in turns
+            ):
+                b["delivery"] = "voiceover_internal"
+            else:
+                b["delivery"] = "spoken_on_camera"
+            # Visual focus: first on-camera speaker if any
+            for t in turns:
+                sp = t["speaker"]
+                if "narrator" not in sp.lower() and t.get("delivery") != "voiceover_internal":
+                    b["primary_subject"] = sp
+                    break
+        out.append(b)
+    return out
+
+
 def _build_visual_prompt(
     beat: Dict[str, Any],
     scene: Dict[str, Any],
     resolution: str,
     location_seeds: Optional[Dict[str, Any]] = None,
     character_seeds: Optional[Dict[str, Any]] = None,
+    *,
+    prompt_soft: Optional[int] = None,
+    prompt_hard: Optional[int] = None,
 ) -> str:
     ve = (beat.get("visual_event") or "").strip()
     # strip old tech suffix
@@ -385,22 +604,24 @@ def _build_visual_prompt(
         or "none"
     )
     delivery = str(delivery).lower()
-    # Lip-sync rules BEFORE identity cues so they survive prompt soft-clamp
-    if delivery == "voiceover_internal":
-        if "lips closed" not in ve.lower() and "not spoken" not in ve.lower():
-            bits.append(
-                "lips closed, narration is voiceover (not lip-synced conversation)"
-            )
-    elif delivery == "spoken_on_camera":
-        # Only the speaker mouths; animals/others listen (prevents dog lip-sync with Mom)
-        speaker = str(
-            (audio.get("speaker") if audio else None) or beat.get("speaker") or ""
-        ).strip()
-        if speaker and "narrator" not in speaker.lower():
-            bits.append(
-                f"only {speaker} lip-syncs and speaks; other characters and any dog keep "
-                f"mouth/snout closed and still (listening), no dual mouth movement"
-            )
+    speaker = str(
+        (audio.get("speaker") if audio else None) or beat.get("speaker") or ""
+    ).strip()
+    dialogue = str(
+        (audio.get("dialogue") if audio else None) or beat.get("dialogue") or ""
+    ).strip()
+    turns = _parse_dialogue_turns(beat)
+    # Who talks + exact line(s). Multi-speaker banter = ordered turns on ONE take.
+    # BEFORE identity cues so attribution survives prompt soft-clamp
+    for clause in _speech_attribution_clause(
+        delivery=delivery,
+        speaker=speaker,
+        dialogue=dialogue,
+        turns=turns if len(turns) >= 2 else None,
+    ):
+        body_so_far = " ".join(bits).lower()
+        if clause.lower() not in body_so_far:
+            bits.append(clause)
 
     # Continuous action language for big_action
     ac = (beat.get("action_class") or "").lower()
@@ -427,11 +648,14 @@ def _build_visual_prompt(
         # keep natural
         pass
     prompt = f"{body} / {resolution}, 24fps"
-    # Prefer soft limit
-    if len(prompt) > GROK_PROMPT_SOFT:
-        prompt = _clamp_prompt(prompt, GROK_PROMPT_SOFT)
-    else:
-        prompt = _clamp_prompt(prompt, GROK_PROMPT_HARD)
+    # Model-aware soft/hard (from pipeline_config.prompt_limits)
+    lim = _prompt_limits_from_config()
+    soft = int(prompt_soft if prompt_soft is not None else lim.get("soft") or GROK_PROMPT_SOFT)
+    hard = int(prompt_hard if prompt_hard is not None else lim.get("hard") or GROK_PROMPT_HARD)
+    if len(prompt) > soft:
+        prompt = _clamp_prompt(prompt, soft)
+    elif len(prompt) > hard:
+        prompt = _clamp_prompt(prompt, hard)
     return prompt
 
 
@@ -491,7 +715,7 @@ def _beat_audio_fields(beat: Dict[str, Any]) -> Dict[str, str]:
     if "narrator" in speaker.lower() and delivery == "spoken_on_camera":
         delivery = "voiceover_internal"
 
-    out: Dict[str, str] = {
+    out: Dict[str, Any] = {
         "speaker": speaker,
         "dialogue": dialogue,
         "delivery": delivery,
@@ -503,8 +727,32 @@ def _beat_audio_fields(beat: Dict[str, Any]) -> Dict[str, str]:
     return out
 
 
-def _build_audio_payload(beat: Dict[str, Any]) -> Dict[str, str]:
-    return _beat_audio_fields(beat)
+def _build_audio_payload(beat: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    audio_payload with optional dialogue_turns for multi-speaker continuous takes.
+
+    Legacy fields speaker/dialogue/delivery always set (first turn / joined script)
+    so older tooling keeps working.
+    """
+    fields = _beat_audio_fields(beat)
+    turns = _parse_dialogue_turns(beat)
+    out: Dict[str, Any] = dict(fields)
+    if len(turns) >= 2:
+        out["dialogue_turns"] = turns
+        out["speaker"] = turns[0]["speaker"]
+        # Joined script for weak-audio checks / UI preview
+        out["dialogue"] = " ".join(
+            f'{t["speaker"]}: {t["dialogue"]}' for t in turns
+        )
+        if all(
+            t.get("delivery") == "voiceover_internal"
+            or "narrator" in str(t.get("speaker") or "").lower()
+            for t in turns
+        ):
+            out["delivery"] = "voiceover_internal"
+        else:
+            out["delivery"] = "spoken_on_camera"
+    return out
 
 
 def _music_bed(scene: Dict[str, Any], total: int) -> Dict[str, Any]:
@@ -562,8 +810,16 @@ def plan_scene(
     resolution: str = "720p",
     location_seeds: Optional[Dict[str, Any]] = None,
     character_seeds: Optional[Dict[str, Any]] = None,
+    *,
+    prompt_soft: Optional[int] = None,
+    prompt_hard: Optional[int] = None,
 ) -> Dict[str, Any]:
-    beats = scene.get("story_beats") or []
+    beats = list(scene.get("story_beats") or [])
+    # Multi-speaker banter → dialogue_turns on the same beat (one continuous clip)
+    beats = _normalize_beats_speech(beats)
+    lim = _prompt_limits_from_config()
+    soft = int(prompt_soft if prompt_soft is not None else lim.get("soft") or GROK_PROMPT_SOFT)
+    hard = int(prompt_hard if prompt_hard is not None else lim.get("hard") or GROK_PROMPT_HARD)
     lids = list(scene.get("location_ids") or [])
     primary = scene.get("primary_location_id") or (lids[0] if lids else None)
     cast = _union_characters_on_screen(scene)
@@ -625,6 +881,8 @@ def plan_scene(
             resolution,
             location_seeds=location_seeds,
             character_seeds=character_seeds,
+            prompt_soft=soft,
+            prompt_hard=hard,
         )
         # Special polish for known failure modes: continuous window smash
         if (beat.get("action_class") or "") == "big_action" and re.search(
@@ -637,7 +895,7 @@ def plan_scene(
                     " ONE continuous take: kick, unbroken flight INTO window, glass SMASHES; "
                     "never miss window, never cut mid-flight"
                 )
-                vp = _clamp_prompt(f"{core} / {resolution}, 24fps", GROK_PROMPT_SOFT)
+                vp = _clamp_prompt(f"{core} / {resolution}, 24fps", soft)
 
         ap = _build_audio_payload(beat)
         clip = {
@@ -682,6 +940,12 @@ def validate_plan(plan: Dict[str, Any]) -> List[str]:
     gpv = plan.get("global_production_variables") or {}
     seeds = gpv.get("location_seed_tokens") or {}
     char_seeds = gpv.get("character_seed_tokens") or {}
+    meta = plan.get("stage2_meta") or {}
+    prompt_hard = int(
+        meta.get("prompt_hard_max")
+        or _prompt_limits_from_config().get("hard")
+        or GROK_PROMPT_HARD
+    )
     for sc in plan.get("scenes") or []:
         clips = sc.get("veo_clips") or []
         lids = sc.get("location_ids") or []
@@ -725,9 +989,10 @@ def validate_plan(plan: Dict[str, Any]) -> List[str]:
                 )
             prev_end = b
             vp = c.get("visual_prompt") or ""
-            if len(vp) > GROK_PROMPT_HARD:
+            if len(vp) > prompt_hard:
                 errs.append(
-                    f"S{sc.get('scene_number')}C{c.get('clip_number')}: prompt len {len(vp)}"
+                    f"S{sc.get('scene_number')}C{c.get('clip_number')}: "
+                    f"prompt len {len(vp)} > model hard max {prompt_hard}"
                 )
             if not vp.rstrip().endswith("24fps"):
                 errs.append(
@@ -748,6 +1013,37 @@ def validate_plan(plan: Dict[str, Any]) -> List[str]:
                 errs.append(
                     f"S{sc.get('scene_number')}C{c.get('clip_number')}: bad delivery"
                 )
+            # Who talks + what they say must be explicit (single or multi-turn)
+            sp = str(ap.get("speaker") or "").strip()
+            deliv = str(ap.get("delivery") or "")
+            dlg = str(ap.get("dialogue") or "").strip()
+            turns = ap.get("dialogue_turns") if isinstance(ap.get("dialogue_turns"), list) else []
+            vp_l = vp.lower()
+            if turns and len(turns) >= 2:
+                if "multi-speaker" not in vp_l and "dialogue turns" not in vp_l and "in order" not in vp_l:
+                    # soft: still require each speaker token
+                    missing = [
+                        str(t.get("speaker") or "")
+                        for t in turns
+                        if str(t.get("speaker") or "")
+                        and str(t.get("speaker")) not in vp
+                    ]
+                    if missing:
+                        errs.append(
+                            f"S{sc.get('scene_number')}C{c.get('clip_number')}: "
+                            f"multi-turn clip should name speakers {missing} in visual_prompt"
+                        )
+            elif dlg and deliv in ("voiceover_internal", "spoken_on_camera") and sp and sp.lower() not in ("none", ""):
+                if sp not in vp and "voiceover" not in vp_l:
+                    errs.append(
+                        f"S{sc.get('scene_number')}C{c.get('clip_number')}: "
+                        f"speech clip should name speaker {sp} in visual_prompt"
+                    )
+                if "saying:" not in vp_l and "says:" not in vp_l and "saying " not in vp_l:
+                    errs.append(
+                        f"S{sc.get('scene_number')}C{c.get('clip_number')}: "
+                        f"speech clip should attribute line for {sp} (saying: \"…\") in visual_prompt"
+                    )
             if dur < 1 or dur > GROK_ABS_MAX:
                 errs.append(
                     f"S{sc.get('scene_number')}C{c.get('clip_number')}: duration {dur}"
@@ -921,8 +1217,16 @@ def main() -> int:
             "resolution": args.resolution,
             "scene_filter": args.scenes,
             "clip_duration_policy": _duration_policy_from_config(),
-            "prompt_soft_max": GROK_PROMPT_SOFT,
-            "prompt_hard_max": GROK_PROMPT_HARD,
+            **{
+                k: v
+                for k, v in {
+                    "prompt_soft_max": _prompt_limits_from_config().get("soft"),
+                    "prompt_hard_max": _prompt_limits_from_config().get("hard"),
+                    "prompt_limits_source": _prompt_limits_from_config().get("source"),
+                    "prompt_limits_model": _prompt_limits_from_config().get("model"),
+                    "prompt_limits_provider": _prompt_limits_from_config().get("provider"),
+                }.items()
+            },
         },
     }
 

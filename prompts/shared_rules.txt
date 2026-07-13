@@ -20,13 +20,18 @@ BASELINE (always on)
   names every still-visible Character_* in visual_prompt so the engine can multi-lock refs.
 - **Audio automation:** Stage 1 beat root (or nested audio) carries delivery/speaker/dialogue;
   Stage 2 must map that into clip audio_payload — never drop book lines.
+  Stage 2 must **name who talks and what they say**. Single speaker: root fields +
+  saying: "…". Multi-speaker banter: one continuous clip with `dialogue_turns`
+  (ordered speaker+line list) so conversation can bounce without a cut per line;
+  only the active speaker lip-syncs each turn. Split clips only for hard cuts /
+  new setups / length — not merely alternating speakers.
 - **Identity stability:** character seed descriptions include stable colors/markings;
   Stage 2 restates them; engine locks reference plates — no free redesign between scenes.
 - **Ref placeholders:** bare filenames only (`buster_ref.png`), not full assets/ paths.
 - **Single speaker lip-sync:** on `spoken_on_camera`, only `audio_payload.speaker` mouths
   the line; dogs/pets and non-speakers stay mouth/snout closed (listening). No dual lip-sync.
-- **Native Grok audio:** film dialogue/narration comes from the video model; do not rely on
-  post-TTS as the default path (optional config only).
+- **Native Grok audio:** film dialogue/narration comes only from the video model.
+  No post-process TTS / edge-tts / SAPI path.
 
 ================================================================
 OPERATOR NOTES
