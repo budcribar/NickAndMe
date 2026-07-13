@@ -217,3 +217,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 /.vs
+/projects/Buster/assets/video/_review_1fps
+/projects/Buster/assets/video/_review_5fps
