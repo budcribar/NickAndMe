@@ -147,6 +147,18 @@ MAPPING BEATS → CLIPS
 13. **Identity automation:** for each on-screen Character_* with a seed description, inject a
     short stable-identity cue (colors/markings/wardrobe) so video models do not recolor
     characters between scenes. Do not invent new design facts not in the seed.
+14. **HIGH-ACTION WARDROBE LOCK:** For action_class `big_action` (or rapid motion: bounding,
+    jumping, racing, chasing), prepend each on-screen character's sticky items from
+    `wardrobe_always` / scene `wardrobe_by_character` **before the action verb** in the
+    character phrase, e.g. `Character_Buster wearing his signature silly noodle-head hat
+    securely bounds into frame…` — never leave mandatory hat/props only at the end of the
+    prompt where motion clips drop them.
+15. **EXCLUSIVE 'OR' SPLITS (general):** When Stage 1 / book VO offers alternatives joined
+    by *or* (environments, actions, props — any pair, not a fixed list), do **not** blend
+    those options into one frame unless Stage 1 explicitly asks for a mashup. The beat's
+    `visual_event` is the single chosen option (Stage 1 already resolved art/text). Open
+    with a short exclusive-lock restating that choice and exclude the rejected alternative(s)
+    in must_not / negative extras.
 
 ================================================================
 CLIP OBJECT (every veo_clips item)
@@ -171,6 +183,11 @@ visual_prompt must:
   scene `wardrobe_by_character`, beat `wardrobe_put_on` / `wardrobe_remove` — and restate
   those free-text phrases on later clips (WARDROBE CONTINUITY). Do not invent items not
   in Stage 1; do not drop sticky items mid-scene or after location changes.
+- **HIGH-ACTION WARDROBE LOCK:** on big_action / chase / jump / bound clips, put
+  wardrobe_always items (hat, collar, …) **immediately after** the Character_* token and
+  **before** the action verb; restate again in WARDROBE CONTINUITY if budget allows.
+- **Exclusive OR splits:** if VO uses "A or B", film only what `visual_event` chose; ban
+  mashing the other option into the same frame (works for any alternatives, not one story).
 - Be filmable progressive motion for action_class big_action
 - For voiceover_internal: **name the VO speaker** (usually Character_Narrator) as off-camera
   voiceover; **name each on-screen Character_*** (e.g. Character_Mom, Character_Buster) with

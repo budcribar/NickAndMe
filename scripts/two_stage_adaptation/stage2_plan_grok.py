@@ -1454,6 +1454,254 @@ def _normalize_beats_speech(beats: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return out
 
 
+def _is_high_action_beat(beat: Dict[str, Any]) -> bool:
+    ac = str(beat.get("action_class") or "").lower()
+    if ac in ("big_action", "montage"):
+        return True
+    blob = " ".join(
+        str(beat.get(k) or "")
+        for k in ("visual_event", "intent", "blocking_notes")
+    ).lower()
+    return bool(
+        re.search(
+            r"\b(bound|bounding|jump|jumping|race|racing|chase|chasing|"
+            r"run|running|sprint|leap|leaping|dash|dashing|spin|spinning)\b",
+            blob,
+        )
+    )
+
+
+def _high_action_wardrobe_prefix(
+    primary: str,
+    wardrobe_state: Optional[Dict[str, List[str]]],
+    character_seeds: Optional[Dict[str, Any]] = None,
+) -> str:
+    """
+    'Character_X wearing (hat; collar) securely' — prepended before action verbs
+    so motion clips do not strip always-on props.
+    """
+    if not primary or not str(primary).startswith("Character_"):
+        return ""
+    items: List[str] = list((wardrobe_state or {}).get(primary) or [])
+    if not items and character_seeds:
+        seed = (character_seeds or {}).get(primary)
+        if isinstance(seed, dict):
+            items = _always_on_wardrobe_from_seed(seed)
+    items = [it for it in items if it][:3]
+    if not items:
+        return ""
+    phrase = "; ".join(items)
+    return f"{primary} wearing ({phrase}) securely"
+
+
+_OR_STOPWORDS = {
+    "a",
+    "an",
+    "the",
+    "and",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "for",
+    "his",
+    "her",
+    "their",
+    "he",
+    "she",
+    "it",
+    "they",
+    "with",
+    "from",
+    "into",
+    "across",
+    "how",
+    "very",
+    "hard",
+    "have",
+    "has",
+    "will",
+    "he'll",
+    "she'll",
+    "they'll",
+    "dream",
+    "dreams",
+    "of",
+    "or",
+}
+
+
+def _content_tokens(text: str) -> set:
+    """Distinctive content words for overlap scoring (language-agnostic enough)."""
+    toks = re.findall(r"[a-zA-Z']{3,}", (text or "").lower())
+    return {t for t in toks if t not in _OR_STOPWORDS and not t.startswith("character_")}
+
+
+def _split_or_alternatives(*texts: str) -> List[str]:
+    """
+    Extract exclusive alternatives linked by 'or' / ', Or' in VO or stage notes.
+
+    General: works for any pair/list (environments, actions, objects) — not a fixed
+    catalog of story keywords. Returns cleaned alternative phrases (2+).
+
+    Each text is processed separately so intent/summary is not glued onto VO alternatives.
+    """
+    alts: List[str] = []
+    seen_l: set = set()
+
+    def _add(part: str) -> None:
+        p = re.sub(r"\s+", " ", (part or "")).strip(" .,;:\"'")
+        # Drop leading filler common in rhyme / prose
+        p = re.sub(
+            r"^(?:he'?ll|she'?ll|they'?ll|he|she|they|and)\s+",
+            "",
+            p,
+            flags=re.I,
+        )
+        p = re.sub(
+            r"^(?:have|has|had)\s+a\s+dream\s+of\s+",
+            "",
+            p,
+            flags=re.I,
+        )
+        p = re.sub(r"^(?:a\s+dream\s+of\s+)", "", p, flags=re.I)
+        # Trim trailing subordinate clauses after alternative
+        p = re.split(r"\s+/\s+|\s+and how\b|\s+because\b", p, maxsplit=1, flags=re.I)[
+            0
+        ].strip(" .,;:\"'")
+        if len(p) < 4:
+            return
+        key = p.lower()
+        if key in seen_l:
+            return
+        seen_l.add(key)
+        alts.append(p[:90])
+
+    for text in texts:
+        if not text or not re.search(r"\bor\b", str(text), re.I):
+            continue
+        # Line-by-line within each field
+        for line in re.split(r"[\n/;]+", str(text)):
+            line = line.strip()
+            if not re.search(r"\bor\b", line, re.I):
+                continue
+            parts = re.split(r"\s*,?\s+\bor\b\s+", line, flags=re.I)
+            if len(parts) < 2:
+                continue
+            for part in parts:
+                _add(part)
+
+    if len(alts) < 2:
+        return []
+    return alts[:4]
+
+
+def _exclusive_or_environment_lock(
+    beat: Dict[str, Any], scene: Dict[str, Any]
+) -> Tuple[str, List[str]]:
+    """
+    When narration/notes present exclusive Or-alternatives, force a single choice.
+
+    Policy (general, no per-story catalog):
+      1. Stage 1 visual_event is the chosen environment/action for this clip.
+      2. Never blend multiple Or-options into one frame.
+      3. Rejected options → short must_not fragments derived from their content words.
+      4. If Stage 1 visual_event already mixes several options, still assert exclusivity
+         toward the visual_event as written (operator should fix Stage 1).
+
+    Returns (prompt_clause, extra_must_not_strings).
+    """
+    ve = str(beat.get("visual_event") or "").strip()
+    dialogue = str(beat.get("dialogue") or "")
+    intent = str(beat.get("intent") or "")
+    notes = " ".join(
+        str(scene.get(k) or "")
+        for k in ("summary", "continuity_notes", "wardrobe_notes", "setting")
+    )
+    # Alternatives come from VO / intent / notes — not from inventing domains
+    alts = _split_or_alternatives(dialogue, intent, notes)
+    if not alts and not re.search(r"\bor\b", f"{dialogue} {intent}", re.I):
+        return "", []
+
+    ve_toks = _content_tokens(ve)
+    # Score each alternative by content-token overlap with the visual_event
+    scored: List[Tuple[int, str]] = []
+    for alt in alts:
+        at = _content_tokens(alt)
+        score = len(at & ve_toks) if at and ve_toks else 0
+        scored.append((score, alt))
+    scored.sort(key=lambda x: (-x[0], len(x[1])))
+
+    chosen = [alt for sc, alt in scored if sc > 0]
+    rejected = [alt for sc, alt in scored if sc == 0]
+
+    # If Stage 1 never committed (no overlap), still exclusive-lock to visual_event
+    if not chosen and ve:
+        clause = (
+            "EXCLUSIVE OR-SPLIT: Depict ONLY the single environment/action in this "
+            "visual_event. Do not mash up alternate options linked by 'or' in the "
+            "narration/VO into the same frame (unless Stage 1 explicitly requests a blend)."
+        )
+        # Ban distinctive words from VO alternatives not grounded in visual_event
+        ban: List[str] = []
+        for alt in alts:
+            for w in sorted(_content_tokens(alt) - ve_toks)[:3]:
+                ban.append(w)
+        # de-dupe preserve order
+        seen: set = set()
+        ban_u = []
+        for w in ban:
+            if w not in seen:
+                seen.add(w)
+                ban_u.append(w)
+        return clause, [f"blended alternate or-option ({w})" for w in ban_u[:6]]
+
+    if not chosen and not ve:
+        return (
+            "EXCLUSIVE OR-SPLIT: Narration offers alternatives joined by 'or' — "
+            "pick one coherent setting only; do not composite multiple options.",
+            [],
+        )
+
+    # Chosen = alternatives grounded in visual_event; reject the rest
+    chosen_bit = "; ".join(chosen[:2])
+    reject_bit = "; ".join(rejected[:3]) if rejected else ""
+    clause = (
+        f"EXCLUSIVE OR-SPLIT: Film ONLY ({chosen_bit}) as established in visual_event. "
+        "Do not blend other 'or' alternatives into this frame"
+        + (f" — exclude: {reject_bit}" if reject_bit else "")
+        + "."
+    )
+    extras: List[str] = []
+    for alt in rejected:
+        # Short ban phrase from the rejected alternative itself
+        short = re.sub(r"\s+", " ", alt).strip()[:50]
+        if short:
+            extras.append(f"also showing: {short}")
+    if rejected:
+        extras.append("simultaneous mashup of mutually exclusive or-options")
+    return clause, extras
+
+
+def _inject_high_action_wardrobe_into_event(
+    visual_event: str,
+    primary: str,
+    wardrobe_prefix: str,
+) -> str:
+    """Put 'Character_X wearing (…) securely' before the first action of primary."""
+    if not wardrobe_prefix or not primary:
+        return visual_event
+    ve = visual_event or ""
+    if "wearing (" in ve.lower() and "securely" in ve.lower():
+        return ve
+    # If event already starts with Character_X … rewrite to insert wardrobe
+    pat = re.compile(rf"({re.escape(primary)})\s+", re.I)
+    if pat.search(ve):
+        return pat.sub(rf"{wardrobe_prefix} ", ve, count=1)
+    return f"{wardrobe_prefix} {ve}".strip()
+
+
 def _build_visual_prompt(
     beat: Dict[str, Any],
     scene: Dict[str, Any],
@@ -1463,22 +1711,39 @@ def _build_visual_prompt(
     *,
     prompt_soft: Optional[int] = None,
     prompt_hard: Optional[int] = None,
+    wardrobe_state: Optional[Dict[str, List[str]]] = None,
 ) -> str:
     ve = (beat.get("visual_event") or "").strip()
     # strip old tech suffix
     ve = re.sub(r"\s*/\s*\d+p.*$", "", ve, flags=re.I).strip()
 
     bits: List[str] = []
-    # Place pin first (location consistency)
+    cast = _scene_cast_tokens(scene, beat)
+    primary = str(
+        beat.get("primary_subject") or (cast[0] if cast else "") or ""
+    ).strip()
+
+    # Exclusive Or-split (any alternatives joined by 'or' in VO) — style-lock first
+    or_lock, or_must_not = _exclusive_or_environment_lock(beat, scene)
+    if or_lock:
+        bits.append(or_lock)
+
+    # Place pin (location consistency)
     place = _location_lock_phrase(scene, beat, location_seeds)
     if place and place.lower() not in ve.lower()[:100]:
         bits.append(place)
 
-    cast = _scene_cast_tokens(scene, beat)
-    primary = beat.get("primary_subject") or (cast[0] if cast else None)
-    # Ensure primary Character_* early for identity lock
-    if primary and str(primary) not in ve[:100]:
-        bits.append(str(primary))
+    # HIGH-ACTION WARDROBE LOCK: prepend sticky props before action verbs
+    if _is_high_action_beat(beat) and primary:
+        w_prefix = _high_action_wardrobe_prefix(
+            primary, wardrobe_state, character_seeds=character_seeds
+        )
+        if w_prefix:
+            ve = _inject_high_action_wardrobe_into_event(ve, primary, w_prefix)
+
+    # Ensure primary Character_* early for identity lock (if not already in ve)
+    if primary and primary not in ve[:120]:
+        bits.append(primary)
 
     # Name other on-screen cast tokens (multi-ref automation)
     others = [t for t in cast if t != primary and t not in ve]
@@ -1533,10 +1798,20 @@ def _build_visual_prompt(
             bits.append(
                 "ONE continuous take no cut; unbroken cause-to-effect motion"
             )
+    # Attach generic must_not for rejected Or-alternatives
+    if or_must_not:
+        extras = beat.setdefault("_stage2_must_not_extra", [])
+        if isinstance(extras, list):
+            for x in or_must_not:
+                if x and x not in extras:
+                    extras.append(x)
 
-    must_not = beat.get("must_not") or []
+    must_not = list(beat.get("must_not") or [])
+    for extra in beat.get("_stage2_must_not_extra") or []:
+        if extra and extra not in must_not:
+            must_not.append(extra)
     if must_not:
-        short = "; ".join(str(m) for m in must_not[:3])
+        short = "; ".join(str(m) for m in must_not[:4])
         if short and short.lower() not in ve.lower():
             bits.append(f"must not: {short}")
 
@@ -1807,6 +2082,7 @@ def plan_scene(
             character_seeds=character_seeds,
             prompt_soft=soft,
             prompt_hard=hard,
+            wardrobe_state=wardrobe_state,
         )
         # Restate sticky items so location changes / cuts do not drop props
         clip_cast = list(cast)

@@ -8,11 +8,11 @@
     "total_runtime_target_seconds": 420,
     "character_seed_tokens": {
       "Character_Buster": {
-        "description": "Small black-and-white dog (never brown/tan redesign), compact playful build, bright curious eyes, floppy ears, short fur with clear black patches on white. Slightly goofy ‘noodle head’ expression—sweet, not mean. Daytime: bare dog coat only. Bedtime: black-and-white dog pajamas matching his coat pattern.",
+        "description": "Small black-and-white dog (never brown/tan redesign), compact playful build, bright curious eyes, floppy ears, short fur with clear black patches on white. Slightly goofy noodle-head expression—sweet, not mean. Coat IS the black-and-white look (book text pajamas is coat metaphor unless art shows real sleepwear). ALWAYS signature silly noodle-head hat. Day and night: natural bare coat; tucks under quilts bare-furred.",
         "reference_image_placeholder": "buster_ref.png",
         "voice_profile": "Young playful dog energy if any non-verbal vocalizations; soft yips and happy pants only—no human speech. Same light, eager dog sound every scene.",
         "voice_label": "Buster Dog SFX",
-        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Compact body, floppy ears, goofy sweet face. Daytime bare coat; after dress beat always black-and-white pajamas. Never bipedal humanoid redesign.",
+        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Always signature silly noodle-head hat (never bare-headed). Natural bare coat markings only—no physical pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign.",
         "age_band": "adult_dog",
         "display_name_policy": "ok_anytime",
         "source_image_pages": [
@@ -135,7 +135,7 @@
       ],
       "transition_type": "fade_in",
       "lighting_continuity_token": "evening_warm_house_A",
-      "wardrobe_notes": "Daytime/evening coat only; no pajamas yet.",
+      "wardrobe_notes": "Buster: natural black-and-white coat only (book \"pajamas\" = coat metaphor; no physical sleepwear). Always signature hat. Mom/Daddy as locked.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Light whimsical children’s underscore, soft piano and pizzicato strings",
@@ -166,7 +166,7 @@
           "ambient_or_sfx": "soft house room tone, distant collar jingle optional",
           "must_not": [
             "brown or tan dog",
-            "pajamas already on",
+            "physical pajama garment that blends into black-and-white fur",
             "human clothes on dog"
           ]
         },
@@ -185,7 +185,8 @@
           "ambient_or_sfx": "soft paw thumps on floor",
           "must_not": [
             "brown dog",
-            "destructive chaos"
+            "destructive chaos",
+            "losing signature hat mid-motion / bare-headed"
           ]
         },
         {
@@ -205,7 +206,12 @@
             "mean expression"
           ]
         }
-      ]
+      ],
+      "wardrobe_by_character": {
+        "Character_Buster": [
+          "signature silly noodle-head hat"
+        ]
+      }
     },
     {
       "scene_number": 2,
@@ -230,9 +236,12 @@
         "Character_Mom": [
           "soft blue cardigan",
           "cream pants"
+        ],
+        "Character_Buster": [
+          "signature silly noodle-head hat"
         ]
       },
-      "wardrobe_notes": "Still pre-pajamas for Buster; Mom in signature cardigan.",
+      "wardrobe_notes": "Buster: natural black-and-white coat only (book \"pajamas\" = coat metaphor; no physical sleepwear). Always signature hat. Mom/Daddy as locked.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Gentle bedtime cue under playful confusion",
@@ -338,9 +347,12 @@
         "Character_Mom": [
           "soft blue cardigan",
           "cream pants"
+        ],
+        "Character_Buster": [
+          "signature silly noodle-head hat"
         ]
       },
-      "wardrobe_notes": "Still no pajamas; outdoor then indoor.",
+      "wardrobe_notes": "Buster: natural black-and-white coat only (book \"pajamas\" = coat metaphor; no physical sleepwear). Always signature hat. Mom/Daddy as locked.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Light outdoor stroll motif returning to cozy indoor chime",
@@ -410,7 +422,8 @@
           "ambient_or_sfx": "door close soft, claws on floor",
           "must_not": [
             "brown dog",
-            "pajamas yet"
+            "pajamas yet",
+            "losing signature hat mid-motion / bare-headed"
           ]
         }
       ]
@@ -438,9 +451,12 @@
         "Character_Mom": [
           "soft blue cardigan",
           "cream pants"
+        ],
+        "Character_Buster": [
+          "signature silly noodle-head hat"
         ]
       },
-      "wardrobe_notes": "Still pre-pajamas.",
+      "wardrobe_notes": "Buster: natural black-and-white coat only (book \"pajamas\" = coat metaphor; no physical sleepwear). Always signature hat. Mom/Daddy as locked.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Soft reward chime and warm domestic underscore",
@@ -516,8 +532,7 @@
       "lighting_continuity_token": "night_lamps_house_C",
       "wardrobe_by_character": {
         "Character_Buster": [
-          "signature silly noodle-head hat",
-          "black-and-white dog pajamas"
+          "signature silly noodle-head hat"
         ],
         "Character_Mom": [
           "soft blue cardigan",
@@ -527,7 +542,7 @@
           "simple sleep shirt"
         ]
       },
-      "wardrobe_notes": "Buster puts on black-and-white pajamas this scene; keeps them through sleep.",
+      "wardrobe_notes": "Buster: natural black-and-white coat only (book \"pajamas\" = coat metaphor; no physical sleepwear). Always signature hat. Mom/Daddy as locked.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Ascending soft lullaby motif with stair-step rhythm into bedroom hush",
@@ -546,7 +561,7 @@
         {
           "beat_id": "b12",
           "intent": "Pajamas on",
-          "visual_event": "Character_Buster is helped into black-and-white dog pajamas matching his coat; he stands proudly pajama-clad in the house hall.",
+          "visual_event": "Character_Buster shows off his natural black-and-white coat markings (no separate pajama garment—coat is the black-and-white look) .",
           "shot_scale_hint": "medium",
           "action_class": "small_motion",
           "continuity": "new_setup",
@@ -556,13 +571,10 @@
           "speaker": "Character_Narrator",
           "dialogue": "Pajamas, black and white he wears",
           "primary_subject": "Character_Buster",
-          "wardrobe_put_on": [
-            "black-and-white dog pajamas"
-          ],
           "ambient_or_sfx": "soft fabric rustle",
           "must_not": [
             "daytime bare coat after this beat",
-            "wrong solid-color pajamas"
+            "recolored coat or solid-color redesign"
           ]
         },
         {
@@ -580,7 +592,8 @@
           "primary_subject": "Character_Buster",
           "ambient_or_sfx": "soft stair paw steps",
           "must_not": [
-            "falling injury comedy"
+            "falling injury comedy",
+            "losing signature hat mid-motion / bare-headed"
           ]
         },
         {
@@ -599,7 +612,7 @@
           "blocking_notes": "Parents already in bed; Buster leaps up; soft landing; HOME SWEET HOME warmth.",
           "ambient_or_sfx": "soft bed bounce, quiet night room",
           "must_not": [
-            "Buster without pajamas",
+            "physical pajama garment that blends into black-and-white fur",
             "harsh overhead hospital light"
           ]
         }
@@ -618,7 +631,7 @@
       "primary_location_id": "Loc_Parents_Bedroom",
       "duration_target_seconds": 85,
       "dramatic_function": "Dream montage and emotional close—loved for keeps",
-      "summary": "Buster dreams of fluffy snows and chasing bunnies; falls asleep warm and well-fed while Mom pets him; noodle head loved for keeps; zzz.",
+      "summary": "Buster drifts to sleep and dreams of bunnies running across a green yard (book art exclusive Or-choice, not a snow mashup); falls asleep warm under the quilt while Mom pets him; loved for keeps; zzz.",
       "characters_on_screen": [
         "Character_Buster",
         "Character_Mom",
@@ -628,7 +641,7 @@
       "lighting_continuity_token": "night_lamps_house_C",
       "wardrobe_by_character": {
         "Character_Buster": [
-          "black-and-white dog pajamas"
+          "signature silly noodle-head hat"
         ],
         "Character_Mom": [
           "soft blue cardigan",
@@ -638,7 +651,7 @@
           "simple sleep shirt"
         ]
       },
-      "wardrobe_notes": "Buster remains in black-and-white pajamas through sleep.",
+      "wardrobe_notes": "Bare black-and-white coat under quilt (no physical pajamas). Always hat when face is visible.",
       "spoiler_constraints": [],
       "music_intent": {
         "style_description": "Full soft lullaby with dreamy sparkle then fade to silence",
@@ -665,7 +678,7 @@
         {
           "beat_id": "b15",
           "intent": "Not smart but knows dreams come",
-          "visual_event": "Character_Buster in pajamas curls on the bed, eyes heavy; soft dreamy light on his face as he begins to drift.",
+          "visual_event": "Character_Buster with clear black-and-white coat patches curls on the bed, eyes heavy; soft dreamy light on his face as he begins to drift.",
           "shot_scale_hint": "close-up",
           "action_class": "hold",
           "continuity": "new_setup",
@@ -681,8 +694,8 @@
         },
         {
           "beat_id": "b16",
-          "intent": "Dream of snow and bunny chase",
-          "visual_event": "Soft dream insert: pajama-clad Character_Buster in a gentle snowy yard fantasy, then chasing bunnies running across a soft dream-yard—playful, not scary.",
+          "intent": "Dream exclusive: bunnies across the green yard (book art; not snow mashup)",
+          "visual_event": "Soft dream insert DREAMSCAPE: daytime vibrant green lawn under clear sky; a brown bunny runs across the yard; Character_Buster wearing (signature silly noodle-head hat) securely chases playfully across the grass — natural black-and-white bare coat only (no pajama garment); NO snow, NO winter landscape, NO white snow-bunnies mashup.",
           "shot_scale_hint": "wide dream",
           "action_class": "montage",
           "continuity": "flashback_enter",
@@ -692,11 +705,14 @@
           "speaker": "Character_Narrator",
           "dialogue": "Or bunnies running 'cross the yard / And how he'll chase them very hard",
           "primary_subject": "Character_Buster",
-          "ambient_or_sfx": "soft dream whoosh, light snow hush",
+          "ambient_or_sfx": "soft dream whoosh, light yard breeze",
           "must_not": [
             "violent hunt",
             "blood",
-            "real harm to bunnies"
+            "real harm to bunnies",
+            "snowy winter landscape",
+            "fluffy snow ground with bunnies",
+            "physical pajamas blending into fur"
           ]
         },
         {

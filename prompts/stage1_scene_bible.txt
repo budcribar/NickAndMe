@@ -62,9 +62,20 @@ Each seed REQUIRED fields:
   - “Always soft blue cardigan + cream pants; shoulder-length brown hair; never teen redesign.”
   - “Always red collar with tag shape; never bare neck.”
 - Prefer props visible in AVAILABLE_BOOK_IMAGES / the book illustrations (hat, glasses, scarf,
-  distinctive collar, pajamas only at bedtime if the book shows them, etc.).
+  distinctive collar, pajamas only when the book **draws** a real garment, etc.).
 - Do **not** invent a hat/prop the book never shows; if the book always shows it, you **must** lock it.
 - Pure narrator (`never_on_screen` / voice-only): omit `visual_lock` (or use empty omit-key).
+- **METAPHORICAL WARDROBE CAUTION (general):** If source text names a garment/prop that
+  matches the character's natural surface (coat, skin, feathers, armor plating, etc.),
+  **check the illustrations**. If art shows no separate garment, **omit it** from
+  `wardrobe_always` / `wardrobe_by_character` / `wardrobe_put_on` and keep the natural look
+  (VO may still speak the metaphor). If a real garment is required (art or operator), specify
+  **contrast** (trim color, seam/collar line, weave/texture) so models do not blend cloth into
+  the body surface.
+- **EXCLUSIVE OR BEATS (general):** When the book offers alternatives joined by "or"
+  (two settings, two actions, two objects), Stage 1 must **pick one** for that beat's
+  `visual_event` (prefer AVAILABLE_BOOK_IMAGES when they choose). Do not write a visual_event
+  that composites both options. Other options can appear in later beats or stay VO-only.
 
 **wardrobe_always (REQUIRED for every on-screen character with clothes/props; omit for pure narrator):**
 - **Structured list** of always-on wardrobe/prop phrases Stage 2 copies onto every scene.
@@ -76,6 +87,7 @@ Each seed REQUIRED fields:
   - `["red leather collar"]`
 - Do **not** put temporary/bedtime-only items here (those belong on the scene /
   beat wardrobe lists when the book shows them).
+- Do **not** list metaphorical garments the art never draws (see METAPHORICAL WARDROBE CAUTION).
 - Keep in sync with visual_lock prose; the **list** is the machine-readable source of truth
   so Stage 2 does not have to guess new item types forever.
 
@@ -83,14 +95,14 @@ Each seed REQUIRED fields:
 - Per scene **`wardrobe_by_character`**: object map `Character_*` → string[] of items
   that character wears **for this whole scene** (always-on + anything already on for the
   night/day). Stage 2 restates these on every clip.
-  Example: `"Character_Buster": ["signature silly noodle-head hat", "black-and-white dog pajamas"]`
-- Per scene **`wardrobe_notes`**: short human prose (who changed vs prior scene) — optional
-  companion, not a substitute for the structured map when cast wears distinctive items.
+  Example: `"Character_Buster": ["signature silly noodle-head hat"]` (plus real pajamas only
+  if illustrations show a physical garment, not coat-as-metaphor).
+- Per scene **`wardrobe_notes`**: short human prose (who changed vs prior scene; note metaphors).
 - Per beat when someone **puts on** or **removes** something mid-scene:
   - `wardrobe_put_on`: string[] (applied to `primary_subject`; sticks for later clips)
   - `wardrobe_remove`: string[] (rare)
   - Still describe the action in `visual_event` for filmability.
-- Daytime scenes: omit pajamas from `wardrobe_by_character` until the book dress beat.
+- Daytime scenes: no sleepwear items unless the book draws them.
 
 Also set when relevant:
 - age_band, variant_of for Young/Teen

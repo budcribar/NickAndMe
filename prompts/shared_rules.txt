@@ -33,6 +33,14 @@ BASELINE (always on)
   `wardrobe_remove`. Stage 2 **restates those phrases** on later clips (no fixed enum of
   item types). Prose visual_lock / wardrobe_notes remain human-readable backups; structured
   lists are the source of truth so new props (collar, cast, badge, …) need no Stage 2 code.
+- **Metaphorical wardrobe:** text like "pajamas black and white" for a B&W animal may be
+  coat-as-metaphor if book art shows bare fur — do not invent sleepwear that clips into coat.
+- **High-action props:** Stage 2 prepends always-on hat/props before the action verb on
+  big_action clips so motion does not strip them.
+- **Exclusive OR splits:** when text offers alternatives joined by "or", Stage 1 picks one
+  in `visual_event`; Stage 2 never composites the other options into the same frame unless
+  Stage 1 explicitly requests a blend. Principle applies to any pair of options (settings,
+  actions, props) — not a per-title keyword list.
 - **Ref placeholders:** bare filenames only (`buster_ref.png`), not full assets/ paths.
 - **Single speaker lip-sync:** on `spoken_on_camera`, only `audio_payload.speaker` mouths
   the line; dogs/pets and non-speakers stay mouth/snout closed (listening). No dual lip-sync.

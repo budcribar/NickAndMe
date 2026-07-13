@@ -76,7 +76,7 @@
               },
               "wardrobe_always": {
                 "type": "array",
-                "description": "Structured always-on wardrobe/prop phrases for this character (any item — hat, collar, glasses, cardigan, etc.). Stage 2 restates these every scene without keyword guessing. Free-text phrases, not a fixed enum.",
+                "description": "Structured always-on wardrobe/prop phrases (hat, collar, glasses, cardigan, etc.). Free-text phrases, not a fixed enum. Omit metaphorical garments that match natural coat/skin when book art shows bare coat (e.g. 'black and white pajamas' for a B&W dog).",
                 "items": { "type": "string", "minLength": 1 },
                 "maxItems": 12
               },
