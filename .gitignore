@@ -265,3 +265,4 @@ host/**/.vs/
 /host/FilmStudio.Web/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json
 /host/FilmStudio.Web/obj/Debug/net10.0/rjsmrazor.dswa.cache.json
 /host/FilmStudio.Web/obj/Debug/net10.0/rpswa.dswa.cache.json
+/host/FilmStudio.Web/obj/Debug/net10.0/FilmStudio.Web.csproj.CoreCompileInputs.cache
