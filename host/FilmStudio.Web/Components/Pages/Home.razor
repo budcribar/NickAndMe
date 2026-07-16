@@ -1,0 +1,250 @@
+@page "/"
+@rendermode InteractiveServer
+@inject FilmStudio.Web.Services.EngineApiClient Engine
+@inject IConfiguration Config
+
+<PageTitle>Film Studio</PageTitle>
+
+<h1>Film Studio</h1>
+<p class="text-muted">
+    Blazor UI over the Python film engine. Generation runs in
+    <code>renderer/</code> via <code>host/python_engine_api.py</code> — this app does not reimplement Grok/ffmpeg.
+</p>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_healthOk == true)
+{
+    <div class="alert alert-success py-2">Engine API reachable at <code>@_baseUrl</code></div>
+}
+else if (_healthOk == false)
+{
+    <div class="alert alert-warning">
+        Engine API not reachable at <code>@_baseUrl</code>.
+        Start it first:
+        <pre class="mb-0 mt-2">cd repo root
+python host/python_engine_api.py</pre>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Projects</div>
+            <div class="card-body">
+                @if (_projects is null)
+                {
+                    <p class="text-muted">Loading…</p>
+                }
+                else if (_projects.Projects.Count == 0)
+                {
+                    <p>No projects found under <code>projects/</code>.</p>
+                }
+                else
+                {
+                    <ul class="list-group mb-3">
+                        @foreach (var p in _projects.Projects)
+                        {
+                            var id = p.Id ?? "";
+                            var active = string.Equals(id, _projects.Active?.Id, StringComparison.OrdinalIgnoreCase);
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>@(p.Label ?? p.Title ?? id)</strong>
+                                    <small class="text-muted">(@id)</small>
+                                    @if (active)
+                                    {
+                                        <span class="badge bg-primary ms-1">active</span>
+                                    }
+                                </span>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        disabled="@active || _busy"
+                                        @onclick="() => ActivateAsync(id)">
+                                    Activate
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                <button class="btn btn-outline-primary btn-sm" disabled="@_busy" @onclick="RefreshAsync">Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Start generation</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">Project id</label>
+                    <input class="form-control" @bind="_projectId" disabled="@_busy" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Scene number</label>
+                    <input type="number" class="form-control" min="1" @bind="_scene" disabled="@_busy" />
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="onlyMissing" @bind="_onlyMissing" disabled="@_busy" />
+                    <label class="form-check-label" for="onlyMissing">Only missing clips</label>
+                </div>
+                <button class="btn btn-primary me-2" disabled="@_busy" @onclick="StartGenAsync">
+                    Start scene gen
+                </button>
+                <button class="btn btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">
+                    Cancel
+                </button>
+                @if (!string.IsNullOrEmpty(_message))
+                {
+                    <div class="alert alert-info mt-3 mb-0">@_message</div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between">
+                <span>Job status</span>
+                <button class="btn btn-sm btn-link" disabled="@_busy" @onclick="RefreshJobAsync">Refresh</button>
+            </div>
+            <div class="card-body">
+                @if (_jobJson is null)
+                {
+                    <p class="text-muted mb-0">No status yet.</p>
+                }
+                else
+                {
+                    <pre class="small mb-0" style="max-height: 240px; overflow: auto;">@_jobJson</pre>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _baseUrl = "";
+    private bool? _healthOk;
+    private bool _busy;
+    private string? _error;
+    private string? _message;
+    private string? _jobJson;
+    private FilmStudio.Web.Services.ProjectsResponse? _projects;
+    private string _projectId = "Buster";
+    private int _scene = 2;
+    private bool _onlyMissing = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _baseUrl = Config["EngineApi:BaseUrl"] ?? "http://127.0.0.1:8765";
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            try
+            {
+                await Engine.GetHealthAsync();
+                _healthOk = true;
+            }
+            catch
+            {
+                _healthOk = false;
+                _projects = null;
+                return;
+            }
+
+            _projects = await Engine.GetProjectsAsync();
+            if (_projects?.Active?.Id is { Length: > 0 } aid)
+                _projectId = aid;
+            await RefreshJobAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ActivateAsync(string id)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.ActivateProjectAsync(id);
+            _projectId = id;
+            await RefreshAsync();
+            _message = $"Activated {id}";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task StartGenAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var result = await Engine.StartSceneGenAsync(_projectId, _scene, _onlyMissing);
+            _message = result?.ToString() ?? "Started";
+            await RefreshJobAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Engine.CancelJobAsync();
+            _message = "Cancel requested";
+            await RefreshJobAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RefreshJobAsync()
+    {
+        try
+        {
+            var job = await Engine.GetJobAsync();
+            _jobJson = job is null
+                ? null
+                : System.Text.Json.JsonSerializer.Serialize(job, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (Exception ex)
+        {
+            _jobJson = ex.Message;
+        }
+    }
+}

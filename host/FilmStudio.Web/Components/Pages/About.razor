@@ -1,0 +1,23 @@
+@page "/about"
+
+<PageTitle>About</PageTitle>
+
+<h1>Architecture</h1>
+<pre class="bg-light p-3 rounded">
+Blazor UI  (this app, port 5xxx)
+    │  HTTP
+    ▼
+python_engine_api.py  (:8765)
+    │
+    ▼
+gui/review_app/pipeline_api.py
+    │
+    ▼
+renderer/engine.py  +  gen_jobs  (Grok, ffmpeg, projects/*)
+</pre>
+<p>
+    Stage 1/2 plans and <code>scenes.json</code> stay in each project folder.
+    This UI only <strong>starts</strong> work and shows job status.
+    Full Adaptation / Characters / clip review can move here over time;
+    Streamlit remains available for deep review.
+</p>
