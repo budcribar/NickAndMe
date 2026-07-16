@@ -43,27 +43,54 @@
     </div>
 </div>
 
-@* ---- Live job ---- *@
+@* ---- Live job (show while running; keep errors visible) ---- *@
 @if (_job is not null &&
-     (_job.Status is "running" or "done" or "error" or "cancelled") &&
-     (_job.Kind is "book_prepare" or "stage1" or "stage2" or "scene" or "batch" or "character"
-      || string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase)))
+     (_job.Status is "running" or "error" or "cancelled" ||
+      (_job.Status == "done" && _job.Kind is "stage1" or "stage2" or "book_prepare")))
 {
     <div class="card mb-3 border-@(_job.Status == "running" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
         <div class="card-body py-2">
-            <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
                 <div>
                     <span class="badge bg-secondary">@_job.Status</span>
                     @if (_job.Kind is { Length: > 0 } k)
                     {
                         <span class="badge bg-info text-dark ms-1">@k</span>
                     }
+                    @{
+                var jobIdx = Math.Max(_job.Index, _progressIndex);
+                var jobTot = Math.Max(_job.Total, _progressTotal);
+            }
+                    @if (jobTot > 0)
+                    {
+                        <span class="small text-muted ms-1">@jobIdx / @jobTot</span>
+                    }
                     <span class="ms-2 small">@_job.Message</span>
                 </div>
+                @if (JobRunning)
+                {
+                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">Cancel</button>
+                }
             </div>
+            @if (JobRunning)
+            {
+                var pct = jobTot > 0
+                    ? (int)Math.Round(100.0 * Math.Clamp(jobIdx, 0, jobTot) / Math.Max(1, jobTot))
+                    : 40;
+                <div class="progress mt-2" style="height: 0.85rem;" role="progressbar"
+                     aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                         style="width: @(Math.Clamp(pct, 8, 100))%">
+                        @if (jobTot > 0)
+                        {
+                            <span class="small">@pct%</span>
+                        }
+                    </div>
+                </div>
+            }
             @if (_job.Log.Count > 0)
             {
-                <pre class="small mb-0 mt-2" style="max-height: 160px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(30))</pre>
+                <pre class="small mb-0 mt-2" style="max-height: 200px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(40))</pre>
             }
         </div>
     </div>
@@ -248,20 +275,25 @@ else
                     </div>
 
                     <button class="btn btn-primary"
-                            disabled="@(_busy || JobRunning || !_status.Book.ReadyForStage1 || !_status.XaiConfigured)"
+                            disabled="@(_busy || JobRunning || !CanRunStage1 || !_status.XaiConfigured)"
                             @onclick="RunStage1Async">
                         @(_status.Stage1.SceneCount > 0 ? "Re-run Stage 1" : "Run Stage 1")
                     </button>
-                    @if (!_status.Book.ReadyForStage1)
-                    {
-                        <span class="small text-muted ms-2">Locked until book text is ready</span>
-                    }
-                    else if (!_status.XaiConfigured)
+                    @if (!_status.XaiConfigured)
                     {
                         <span class="small text-muted ms-2">Needs XAI_API_KEY on API</span>
                     }
+                    else if (!CanRunStage1)
+                    {
+                        <span class="small text-muted ms-2">Locked until book text exists (Prepare book)</span>
+                    }
+                    else if (!_status.Book.ReadyForStage1 && _status.Stage1.SceneCount > 0)
+                    {
+                        <span class="small text-success ms-2">Re-run allowed (existing bible)</span>
+                    }
                     <p class="small text-muted mt-2 mb-0">
-                        C# Stage1Service (Grok chat) · writes <code>@(_status.Stage1.ScenesFile ?? "scenes.json")</code>
+                        C# Stage1Service (Grok chat) · writes <code>@(_status.Stage1.ScenesFile ?? "scenes.json")</code>.
+                        Re-run rewrites seeds (nickname scrub + new prompt) and backs up the previous file.
                     </p>
                 </div>
             </div>
@@ -398,6 +430,10 @@ else
     private string _model = "grok-4.5";
     private bool _resume;
     private string _s2Resolution = "720p";
+    private CancellationTokenSource? _pollCts;
+    /// <summary>Parsed from log lines when SignalR/API snapshot omits Index/Total.</summary>
+    private int _progressIndex;
+    private int _progressTotal;
 
     private bool JobRunning =>
         string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase);
@@ -432,11 +468,20 @@ else
     private void OnJobUpdated(JobSnapshot snap)
     {
         _job = snap;
+        AbsorbProgressFromSnapshot(snap);
+        AbsorbProgressFromLine(snap.Message);
         if (snap.Status is "done" or "error" or "cancelled")
         {
+            _pollCts?.Cancel();
+            if (snap.Status == "done" && _progressTotal > 0)
+                _progressIndex = _progressTotal;
             _ = InvokeAsync(async () =>
             {
                 await SoftLoadAsync();
+                if (snap.Status == "done")
+                    _message = snap.Message ?? "Job finished";
+                else if (snap.Status == "error")
+                    _error = snap.Error ?? snap.Message ?? "Job failed";
                 StateHasChanged();
             });
         }
@@ -448,9 +493,71 @@ else
 
     private void OnJobLog(string line)
     {
-        if (_job is not null)
+        if (_job is null)
+        {
+            _job = new JobSnapshot
+            {
+                Status = "running",
+                Message = line,
+                Log = new List<string> { line },
+            };
+        }
+        else
+        {
             _job.Message = line;
+            if (_job.Log.Count == 0 || _job.Log[^1] != line)
+            {
+                _job.Log.Add(line);
+                if (_job.Log.Count > 120)
+                    _job.Log = _job.Log.TakeLast(120).ToList();
+            }
+        }
+        AbsorbProgressFromLine(line);
+        // Keep snapshot Index/Total in sync for display when only log events arrive
+        if (_job is not null && _progressTotal > 0)
+        {
+            _job.Index = Math.Max(_job.Index, _progressIndex);
+            _job.Total = Math.Max(_job.Total, _progressTotal);
+        }
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void AbsorbProgressFromSnapshot(JobSnapshot snap)
+    {
+        if (snap.Total > 0)
+            _progressTotal = Math.Max(_progressTotal, snap.Total);
+        if (snap.Index > 0)
+            _progressIndex = Math.Max(_progressIndex, snap.Index);
+    }
+
+    /// <summary>
+    /// Parse "chunk 2/5", "Stage 1: 3 book chunk(s)", "Grok vision 4/16" from live lines.
+    /// </summary>
+    private void AbsorbProgressFromLine(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        var mChunks = System.Text.RegularExpressions.Regex.Match(
+            line, @"Stage 1:\s+(\d+)\s+book chunk", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (mChunks.Success && int.TryParse(mChunks.Groups[1].Value, out var n) && n > 0)
+        {
+            _progressTotal = Math.Max(_progressTotal, n);
+            return;
+        }
+
+        var m = System.Text.RegularExpressions.Regex.Match(
+            line, @"(?:chunk|vision)\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!m.Success)
+            m = System.Text.RegularExpressions.Regex.Match(
+                line, @"(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (m.Success &&
+            int.TryParse(m.Groups[1].Value, out var idx) &&
+            int.TryParse(m.Groups[2].Value, out var tot) &&
+            tot > 0 && idx <= tot + 2)
+        {
+            _progressIndex = Math.Max(_progressIndex, idx);
+            _progressTotal = Math.Max(_progressTotal, tot);
+        }
     }
 
     private async Task LoadAsync()
@@ -491,6 +598,17 @@ else
         if (_status?.Book.SuggestedChunkPages is int c && c > 0)
             _chunkPages = Math.Clamp(c, 5, 30);
     }
+
+    /// <summary>
+    /// First-run needs ReadyForStage1; re-run allowed when bible + book text already exist
+    /// (API status also flips ReadyForStage1 in that case).
+    /// </summary>
+    private bool CanRunStage1 =>
+        _status is not null &&
+        (_status.Book.ReadyForStage1 ||
+         (_status.Stage1.Present &&
+          _status.Stage1.SceneCount > 0 &&
+          _status.Book.BookTextExists));
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
@@ -534,6 +652,7 @@ else
                 : "Book prepare started (PdfPig extract + auto vision) — watch the job log";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            StartJobPolling();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
@@ -546,6 +665,10 @@ else
         _message = null;
         try
         {
+            // Connect SignalR BEFORE starting so chunk progress is not missed
+            await EnsureHubAsync();
+            _progressIndex = 0;
+            _progressTotal = 0;
             await Engine.StartStage1Async(new StartStage1Request
             {
                 ProjectId = _projectId,
@@ -554,10 +677,11 @@ else
                 Model = _model,
                 Resume = _resume,
             });
-            _message = "Stage 1 started — watch the job log";
-            await EnsureHubAsync();
+            _message = "Stage 1 started — live log below (Grok can take minutes per chunk)";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            AbsorbProgressFromSnapshot(_job ?? new JobSnapshot());
+            StartJobPolling();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
@@ -570,19 +694,61 @@ else
         _message = null;
         try
         {
+            await EnsureHubAsync();
             await Engine.StartStage2Async(new StartStage2Request
             {
                 ProjectId = _projectId,
                 Resolution = _s2Resolution,
                 Scenes = "all",
             });
-            _message = "Stage 2 planner started — watch the job log";
-            await EnsureHubAsync();
+            _message = "Stage 2 planner started — live log below";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            StartJobPolling();
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
+    }
+
+    /// <summary>Poll /api/jobs while running so progress still updates if SignalR drops.</summary>
+    private void StartJobPolling()
+    {
+        _pollCts?.Cancel();
+        _pollCts = new CancellationTokenSource();
+        var ct = _pollCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await Task.Delay(1500, ct);
+                    var jobs = await Engine.GetJobAsync(ct);
+                    var snap = jobs?.Job;
+                    if (snap is null) continue;
+                    await InvokeAsync(() =>
+                    {
+                        _job = snap;
+                        AbsorbProgressFromSnapshot(snap);
+                        AbsorbProgressFromLine(snap.Message);
+                        if (_job is not null && _progressTotal > 0)
+                        {
+                            _job.Index = Math.Max(_job.Index, _progressIndex);
+                            _job.Total = Math.Max(_job.Total, _progressTotal);
+                        }
+                        StateHasChanged();
+                    });
+                    if (snap.Status is "done" or "error" or "cancelled" or "idle")
+                    {
+                        if (snap.Status is "done" or "error" or "cancelled")
+                            await InvokeAsync(async () => { await SoftLoadAsync(); StateHasChanged(); });
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { /* expected */ }
+            catch { /* ignore poll errors */ }
+        }, CancellationToken.None);
     }
 
     private async Task CancelAsync()
@@ -625,6 +791,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        _pollCts?.Cancel();
         Hub.JobUpdated -= OnJobUpdated;
         Hub.JobLog -= OnJobLog;
         await Task.CompletedTask;

@@ -88,11 +88,12 @@ Each seed REQUIRED fields:
   **dialogue / titles / summaries**, **not** in `description`, `visual_lock`, or `wardrobe_*`.
 - Those visual fields may only use **what a camera can see**: species, size, colors, markings,
   face shape, real garments/props with color/shape (as drawn in the art).
-- Never use food/object words as appearance metaphors (e.g. “noodle-head hat”, “carrot-top hair”,
-  “button-nose” as if they invent new props) unless the illustration **literally** draws that object.
-- Bad: `ALWAYS signature silly noodle-head hat` / `goofy noodle-head expression`
-- Good: `ALWAYS blue nightcap with yellow stars` / `sweet slightly goofy expression`
+- Never use food/object words as appearance metaphors unless the illustration **literally** draws them.
+  Prefer real art-visible props (color + shape), not book nicknames for the character.
+- Bad: nickname compounds used as wardrobe (`…-head hat`, epithet-as-prop).
+- Good: concrete art-visible props (`blue nightcap with yellow stars`, `red leather collar`).
 - Personality nicknames do **not** change silhouette; do not restate them in visual seeds.
+- Do **not** write story-specific anti-patterns into seeds (no “never draw X as a hat” boilerplate).
 
 - **METAPHORICAL WARDROBE CAUTION (general):** If source text names a garment/prop that
   matches the character's natural surface (coat, skin, feathers, armor plating, etc.),
@@ -114,7 +115,7 @@ Each seed REQUIRED fields:
   - `["blue nightcap with yellow stars and white pom-pom"]`
   - `["soft blue cardigan", "cream pants"]`
   - `["red leather collar"]`
-- Never put nickname-only strings here (no “noodle-head hat” — name the real prop/colors).
+- Never put nickname-only strings here — name the real prop and colors from the art.
 - Do **not** put temporary/bedtime-only items here (those belong on the scene /
   beat wardrobe lists when the book shows them).
 - Do **not** list metaphorical garments the art never draws (see METAPHORICAL WARDROBE CAUTION).

@@ -814,13 +814,13 @@
   },
   "character_plates": {
     "sorted_by_character": true,
-    "sorted_at": "2026-07-16T15:21:59",
+    "sorted_at": "2026-07-16T15:51:20",
     "source": "scenes.json#character_seed_tokens.design_reference_images",
     "characters_updated": 1,
     "method": "grok_vision"
   },
   "character_plates_sorted": true,
-  "character_plates_sorted_at": "2026-07-16T15:21:59",
+  "character_plates_sorted_at": "2026-07-16T15:51:20",
   "character_plates_method": "grok_vision",
   "cost_ledger": [
     {
@@ -2463,11 +2463,23 @@
       "source": "list_rate",
       "id": "1784237782_0087",
       "ts": "2026-07-16T15:36:22"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784238902_0088",
+      "ts": "2026-07-16T15:55:02"
     }
   ],
   "cost_totals": {
-    "usd": 34.08,
-    "events": 88,
-    "updated_at": "2026-07-16T15:36:22"
+    "usd": 34.13,
+    "events": 89,
+    "updated_at": "2026-07-16T15:55:02"
   }
 }

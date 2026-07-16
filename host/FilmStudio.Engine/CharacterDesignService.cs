@@ -525,7 +525,7 @@ public sealed class CharacterDesignService
                 "(coat markings, hat, illustration style) — copy that identity closely. " +
                 "CRITICAL: Match the preferred/reference face shape, fur color pattern, ear set, " +
                 "eye shape, and hat design from the images. Do NOT redesign the character. " +
-                "Do NOT turn book nicknames or metaphors into objects (never pasta/food hats). " +
+                "Do NOT turn book nicknames or metaphors into literal objects or props. " +
                 "Do NOT output a labeled model-sheet, callouts, color swatches, arrows, or UI chrome — " +
                 "one clean portrait only, plain soft background, head and upper body, facing camera. " +
                 $"{ageClause}{familyClause}" +

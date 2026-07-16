@@ -15,7 +15,6 @@
         "voice_profile": "Young playful dog energy if any on-camera dog sounds: light yips and soft pant-breaths, medium-high pitch, quick playful pace, same voice every scene. No human speech from Buster.",
         "voice_label": "Buster Dog SFX",
         "visual_lock": "Always small black-and-white coat only — never recolored brown/tan or monochrome redesign. Always compact playful dog silhouette with floppy ears and sweet slightly goofy expression. Stylized 3D animated children's CG throughout — not photoreal live-action dog.",
-        "wardrobe_always": [],
         "age_band": "adult_dog",
         "display_name_policy": "ok_anytime",
         "canonical_given_name": "Buster"
@@ -89,9 +88,7 @@
       ],
       "transition_type": "fade_in",
       "lighting_continuity_token": "evening_cozy_interior_01",
-      "wardrobe_by_character": {
-        "Character_Buster": []
-      },
+      "wardrobe_by_character": {},
       "wardrobe_notes": "Buster in natural black-and-white coat only; no invented garments.",
       "spoiler_constraints": [],
       "music_intent": {
@@ -195,7 +192,6 @@
       "transition_type": "cut",
       "lighting_continuity_token": "evening_cozy_interior_01",
       "wardrobe_by_character": {
-        "Character_Buster": [],
         "Character_Mom": [
           "soft blue cardigan",
           "cream top",
@@ -326,7 +322,6 @@
       "transition_type": "cut",
       "lighting_continuity_token": "evening_yard_to_interior_01",
       "wardrobe_by_character": {
-        "Character_Buster": [],
         "Character_Mom": [
           "soft blue cardigan",
           "cream top",
@@ -431,7 +426,6 @@
       "transition_type": "cut",
       "lighting_continuity_token": "evening_cozy_interior_01",
       "wardrobe_by_character": {
-        "Character_Buster": [],
         "Character_Mom": [
           "soft blue cardigan",
           "cream top",
@@ -534,7 +528,6 @@
       "transition_type": "cut",
       "lighting_continuity_token": "night_bedroom_soft_01",
       "wardrobe_by_character": {
-        "Character_Buster": [],
         "Character_Mom": [
           "soft blue cardigan",
           "cream top",
@@ -642,9 +635,7 @@
       ],
       "transition_type": "dissolve",
       "lighting_continuity_token": "dream_yard_soft_02",
-      "wardrobe_by_character": {
-        "Character_Buster": []
-      },
+      "wardrobe_by_character": {},
       "wardrobe_notes": "Dream insert of Buster in natural coat; no wardrobe change.",
       "spoiler_constraints": [],
       "music_intent": {
@@ -761,7 +752,6 @@
       "transition_type": "dissolve",
       "lighting_continuity_token": "night_bedroom_soft_01",
       "wardrobe_by_character": {
-        "Character_Buster": [],
         "Character_Mom": [
           "soft blue cardigan",
           "cream top",
@@ -870,5 +860,16 @@
         }
       ]
     }
-  ]
+  ],
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "generation": {
+    "method": "Stage1Service (C#)",
+    "model": "grok-4.5",
+    "book": "C:\\Users\\budcr\\source\\repos\\NickAndMe\\projects\\Buster\\source\\book_full.txt",
+    "chunk_pages": 15,
+    "chunks": 1,
+    "ts": "2026-07-16T15:50:30"
+  },
+  "cumulative_duration_target_seconds": 420
 }

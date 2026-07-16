@@ -1311,7 +1311,20 @@ public sealed class ProjectStore
                 status.ReadyForStage1 = true;
             }
         }
-        // else: keep ReadyForStage1 from extract_meta.json
+        else if (!status.ReadyForStage1)
+        {
+            // Strategy often sets ready=false for "prefer vision" even when text is usable
+            // (picture books). Allow Stage 1 / re-run when quality is good enough.
+            if (string.Equals(status.TextQuality, "good", StringComparison.OrdinalIgnoreCase) &&
+                status.GarbageScore < 0.45 &&
+                status.BookTextBytes > 200)
+            {
+                status.ReadyForStage1 = true;
+                if (status.Notes.All(n => !n.Contains("Stage 1 unlocked", StringComparison.OrdinalIgnoreCase)))
+                    status.Notes.Add(
+                        "Stage 1 unlocked: text quality is good enough (vision still optional for better OCR).");
+            }
+        }
 
         if (status.BookTextExists)
         {
@@ -1328,6 +1341,28 @@ public sealed class ProjectStore
             }
             catch { /* ignore */ }
         }
+
+        // Re-run path: existing bible + book text is enough even if prepare still flags "not ready"
+        try
+        {
+            foreach (var name in new[] { "scenes.json", "nickandme.scenes.json" })
+            {
+                var scenesPath = Path.Combine(projectDir, name);
+                if (!status.ReadyForStage1 &&
+                    status.BookTextExists &&
+                    status.BookTextBytes > 200 &&
+                    File.Exists(scenesPath) &&
+                    new FileInfo(scenesPath).Length > 64)
+                {
+                    status.ReadyForStage1 = true;
+                    if (status.Notes.All(n => !n.Contains("Re-run Stage 1", StringComparison.OrdinalIgnoreCase)))
+                        status.Notes.Add(
+                            "Re-run Stage 1 enabled: scenes.json already exists and book_full.txt is present.");
+                    break;
+                }
+            }
+        }
+        catch { /* ignore */ }
 
         return status;
     }

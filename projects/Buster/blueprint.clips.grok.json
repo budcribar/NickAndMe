@@ -15,7 +15,7 @@
         "reference_image_placeholder": "character_buster_ref.png",
         "voice_profile": "Young playful dog energy if any non-verbal vocalizations; soft yips and happy pants only—no human speech. Same light, eager dog sound every scene.",
         "voice_label": "Buster Dog SFX",
-        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Always signature blue star nightcap with white pom-pom (never bare-headed; never pasta/food hat). Natural bare coat markings only—no physical pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign.",
+        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Always signature blue star nightcap with white pom-pom (never bare-headed). Natural bare coat markings only—no physical pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign.",
         "age_band": "adult_dog",
         "display_name_policy": "ok_anytime",
         "source_image_pages": [
@@ -70,6 +70,20 @@
         "voice_profile": "Warm adult storyteller, medium pitch, playful rhyme-friendly cadence, gentle smile in the voice, clear diction for children. Same voice every scene.",
         "voice_label": "Narrator Storybook",
         "display_name_policy": "never_on_screen"
+      },
+      "Character_Dad": {
+        "description": "Stylized 3D animated adult man matching the dog's children's picture-book CG look — not photoreal. Medium build, short brown hair, calm kind face, relaxed bedtime presence. Soft gray sleep shirt or henley, dark lounge pants; mostly seen in or near the big bed.",
+        "reference_image_placeholder": "character_dad_ref.png",
+        "voice_profile": "Adult man, warm medium-low pitch, quiet calm pace, soft American accent, low energy at bedtime; same voice every scene. Mostly silent presence unless a soft murmur is needed.",
+        "voice_label": "Dad Soft",
+        "visual_lock": "Always soft gray sleep shirt and dark lounge pants; short brown hair; calm kind face. Stylized 3D animated adult matching Buster's CG look — never photoreal.",
+        "wardrobe_always": [
+          "soft gray sleep shirt",
+          "dark lounge pants"
+        ],
+        "age_band": "adult",
+        "display_name_policy": "ok_anytime",
+        "source_image_pages": []
       }
     },
     "location_seed_tokens": {

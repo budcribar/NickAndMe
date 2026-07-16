@@ -31,6 +31,7 @@ public sealed class FilmJobService
     private readonly FilmStudioOptions _opts;
     private readonly ILogger<FilmJobService> _log;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _snapLock = new(1, 1);
     private readonly ConcurrentQueue<string> _logLines = new();
     private CancellationTokenSource? _cts;
     private JobSnapshot _snapshot = new() { Status = "idle" };
@@ -528,6 +529,8 @@ public sealed class FilmJobService
             Kind = "stage1",
             ProjectId = projectId,
             Message = "Starting Stage 1 (C# Grok chat)…",
+            Index = 0,
+            Total = 0,
             StartedAt = DateTimeOffset.UtcNow,
             Log = new List<string>(),
         };
@@ -545,8 +548,8 @@ public sealed class FilmJobService
                 maxChunks: req.MaxChunks,
                 onProgress: line =>
                 {
-                    _ = AppendLogAsync(line);
-                    _ = UpdateAsync(s => s.Message = line);
+                    // Awaited via GetAwaiter so Grok chunk lines aren't dropped by fire-and-forget races
+                    ReportStage1ProgressAsync(line).GetAwaiter().GetResult();
                 },
                 ct: ct);
 
@@ -1075,14 +1078,67 @@ public sealed class FilmJobService
             await _sink.OnJobLogAsync(line);
     }
 
+    private async Task ReportStage1ProgressAsync(string line)
+    {
+        // Single UpdateAsync so Index/Total + log stay atomic (no race losing counters)
+        await UpdateAsync(s =>
+        {
+            if (s.Log.Count == 0 || s.Log[^1] != line)
+            {
+                s.Log.Add(line);
+                if (s.Log.Count > 120)
+                    s.Log = s.Log.TakeLast(120).ToList();
+            }
+            s.Message = line;
+
+            var mChunks = System.Text.RegularExpressions.Regex.Match(
+                line, @"Stage 1:\s+(\d+)\s+book chunk", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (mChunks.Success && int.TryParse(mChunks.Groups[1].Value, out var totalChunks) && totalChunks > 0)
+            {
+                s.Total = Math.Max(s.Total, totalChunks);
+                if (s.Index < 0) s.Index = 0;
+                return;
+            }
+
+            var m = System.Text.RegularExpressions.Regex.Match(
+                line, @"chunk\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (m.Success &&
+                int.TryParse(m.Groups[1].Value, out var idx) &&
+                int.TryParse(m.Groups[2].Value, out var tot) &&
+                tot > 0)
+            {
+                s.Index = Math.Max(s.Index, idx);
+                s.Total = Math.Max(s.Total, tot);
+                return;
+            }
+
+            var mVis = System.Text.RegularExpressions.Regex.Match(
+                line, @"Grok vision\s+(\d+)/(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (mVis.Success &&
+                int.TryParse(mVis.Groups[1].Value, out var vi) &&
+                int.TryParse(mVis.Groups[2].Value, out var vt) &&
+                vt > 0)
+            {
+                s.Index = Math.Max(s.Index, vi);
+                s.Total = Math.Max(s.Total, vt);
+            }
+        });
+        if (_sink is not null)
+            await _sink.OnJobLogAsync(line);
+    }
+
     private async Task AppendLogAsync(string message)
     {
         _logLines.Enqueue(message);
         await UpdateAsync(s =>
         {
-            s.Log.Add(message);
-            if (s.Log.Count > 80)
-                s.Log = s.Log.TakeLast(80).ToList();
+            // Avoid duplicate consecutive lines (AppendLog after Update that already set Message)
+            if (s.Log.Count == 0 || s.Log[^1] != message)
+            {
+                s.Log.Add(message);
+                if (s.Log.Count > 120)
+                    s.Log = s.Log.TakeLast(120).ToList();
+            }
             s.Message = message;
         });
         if (_sink is not null)
@@ -1091,8 +1147,16 @@ public sealed class FilmJobService
 
     private async Task UpdateAsync(Action<JobSnapshot> mutate)
     {
-        mutate(_snapshot);
-        await PublishAsync();
+        await _snapLock.WaitAsync();
+        try
+        {
+            mutate(_snapshot);
+            await PublishAsync();
+        }
+        finally
+        {
+            _snapLock.Release();
+        }
     }
 
     private async Task FinishAsync(string status, string message, string? error = null)
@@ -1103,6 +1167,8 @@ public sealed class FilmJobService
             s.Message = message;
             s.Error = error;
             s.FinishedAt = DateTimeOffset.UtcNow;
+            if (s.Total > 0 && status == "done")
+                s.Index = s.Total;
         });
         await AppendLogAsync(message);
     }

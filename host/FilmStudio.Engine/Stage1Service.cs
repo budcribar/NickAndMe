@@ -100,10 +100,11 @@ public sealed class Stage1Service
                 $"Resume from {Path.GetFileName(outPath)} ({CountScenes(partial)} scenes)");
         }
 
+        onProgress?.Invoke($"Stage 1: {chunks.Count} book chunk(s) · model={model}");
         for (var i = 0; i < chunks.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
-            onProgress?.Invoke($"Stage 1 chunk {i + 1}/{chunks.Count} model={model}…");
+            onProgress?.Invoke($"Stage 1 chunk {i + 1}/{chunks.Count} — calling Grok…");
             int? resumeScene = null;
             if (partial is not null && CountScenes(partial) > 0)
                 resumeScene = MaxSceneNumber(partial) + 1;
@@ -115,7 +116,31 @@ public sealed class Stage1Service
             string text;
             try
             {
-                text = await _chat.CompleteAsync(systemPrompt, user, model, temperature, ct);
+                // Heartbeat while Grok thinks (can be minutes per chunk)
+                using var heart = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                var heartTask = Task.Run(async () =>
+                {
+                    var n = 0;
+                    while (!heart.Token.IsCancellationRequested)
+                    {
+                        try { await Task.Delay(15_000, heart.Token); }
+                        catch (OperationCanceledException) { break; }
+                        n++;
+                        var sec = (DateTime.UtcNow - t0).TotalSeconds;
+                        onProgress?.Invoke(
+                            $"Stage 1 chunk {i + 1}/{chunks.Count} — waiting on Grok… {sec:0}s");
+                    }
+                }, CancellationToken.None);
+
+                try
+                {
+                    text = await _chat.CompleteAsync(systemPrompt, user, model, temperature, ct);
+                }
+                finally
+                {
+                    heart.Cancel();
+                    try { await heartTask; } catch { /* ignore */ }
+                }
             }
             catch (Exception ex)
             {
@@ -123,6 +148,7 @@ public sealed class Stage1Service
                 throw;
             }
 
+            onProgress?.Invoke($"Stage 1 chunk {i + 1}/{chunks.Count} — parsing JSON…");
             Dictionary<string, object?> parsed;
             try
             {
@@ -141,7 +167,7 @@ public sealed class Stage1Service
             await File.WriteAllTextAsync(ck, Serialize(partial), ct);
             var elapsed = (DateTime.UtcNow - t0).TotalSeconds;
             onProgress?.Invoke(
-                $"chunk {i + 1} done in {elapsed:0.0}s · {CountScenes(partial)} scenes");
+                $"Stage 1 chunk {i + 1}/{chunks.Count} done in {elapsed:0.0}s · {CountScenes(partial)} scenes");
         }
 
         if (partial is null)

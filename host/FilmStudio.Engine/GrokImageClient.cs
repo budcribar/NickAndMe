@@ -123,7 +123,7 @@ public sealed class GrokImageClient
                 (n > 1
                     ? $" Variation {i + 1} of {n}: tiny pose/expression change only;"
                     : " Single refined portrait;") +
-                " same face, coat, hat, and style as the references. No labels, no pasta hats, no redesign.";
+                " same face, coat, hat, and style as the references. No labels, no redesign.";
 
             var payload = new Dictionary<string, object?>
             {

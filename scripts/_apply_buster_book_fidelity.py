@@ -19,7 +19,7 @@ b["description"] = (
 )
 b["visual_lock"] = (
     "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. "
-    "Always signature blue star nightcap with white pom-pom (never bare-headed; never pasta/food hat). "
+    "Always signature blue star nightcap with white pom-pom (never bare-headed). "
     "Natural bare coat markings only—no physical pajama garment that blends into fur "
     "(text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign."
 )

@@ -3,9 +3,9 @@ using System.Text.RegularExpressions;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Keeps character visual fields filmable: strip book nicknames / food metaphors
-/// that image models misread as props (e.g. "noodle-head hat" → pasta).
-/// Used by Stage 1 normalizer and portrait prompts.
+/// Keeps character visual fields filmable: strip book nicknames / epithet compounds
+/// that image models misread as props (e.g. "noodle-head hat").
+/// Replacements stay generic — never inject story-specific anti-patterns into Stage 1 output.
 /// </summary>
 public static class CharacterVisualTextScrubber
 {
@@ -16,7 +16,6 @@ public static class CharacterVisualTextScrubber
             @"|\bnoodle[-\s]?head(?:ed)?\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    // "noodle-head hat" / "noodle head dog" compounds
     private static readonly Regex NoodleHeadHat =
         new(
             @"\b(?:signature\s+)?(?:silly\s+)?(?:goofy\s+)?noodle[-\s]?head\s+hat\b",
@@ -32,9 +31,15 @@ public static class CharacterVisualTextScrubber
             @"\b(?:the\s+)?noodle[-\s]?head\s+dog\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Leftover over-specific anti-pattern phrases we never want in seeds
+    private static readonly Regex PastaAntiPattern =
+        new(
+            @"\s*[;(,]?\s*never\s+pasta(?:/food)?(?:\s+hat)?s?\b|;\s*never\s+pasta(?:/food)?(?:\s+hat)?s?\b",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     /// <summary>
-    /// Scrub a description / visual_lock string. Leaves book titles in other fields alone
-    /// when this is only applied to seed visual prose.
+    /// Scrub a description / visual_lock string. Applied only to visual seed fields —
+    /// not dialogue or titles.
     /// </summary>
     public static string ScrubVisualProse(string? text)
     {
@@ -43,16 +48,13 @@ public static class CharacterVisualTextScrubber
 
         var t = text;
 
-        // Concrete replacements first (most specific)
-        t = NoodleHeadHat.Replace(t, "signature nightcap (as in book art; never pasta/food)");
+        // Concrete nickname → filmable generic (no anti-pasta boilerplate)
+        t = NoodleHeadHat.Replace(t, "signature hat as shown in book art");
         t = NoodleHeadExpression.Replace(t, "sweet slightly goofy expression");
         t = NoodleHeadDog.Replace(t, "dog");
-
-        // Remaining epithet uses
         t = NicknameHead.Replace(t, "");
 
-        // Generic: "food/object-head" epithets used as adjectives (carrot-head, potato-head style)
-        // only when clearly an epithet before hat/expression/dog — not "arrowhead" architecture
+        // Generic silly/goofy "object-head hat/expression" epithets
         t = Regex.Replace(
             t,
             @"\b(?:silly|goofy|lovable|signature)\s+(\w+)[-\s]head\s+(hat|expression)\b",
@@ -60,10 +62,14 @@ public static class CharacterVisualTextScrubber
             {
                 var kind = m.Groups[2].Value.ToLowerInvariant();
                 return kind == "hat"
-                    ? "signature hat (as in book art)"
+                    ? "signature hat as shown in book art"
                     : "sweet slightly goofy expression";
             },
             RegexOptions.IgnoreCase);
+
+        // Strip any previously injected story-specific anti-patterns
+        t = PastaAntiPattern.Replace(t, "");
+        t = Regex.Replace(t, @"\bnever pasta(?:/food)?(?:\s+hat)?s?\b", "", RegexOptions.IgnoreCase);
 
         // Clean punctuation / whitespace debris from removals
         t = Regex.Replace(t, @"\s{2,}", " ");
@@ -90,13 +96,12 @@ public static class CharacterVisualTextScrubber
                 (s.Contains("noodle", StringComparison.OrdinalIgnoreCase) &&
                  s.Contains("hat", StringComparison.OrdinalIgnoreCase)))
             {
-                s = "signature nightcap as in book art (never pasta/food)";
+                s = "signature hat as shown in book art";
             }
             else if (NicknameHead.IsMatch(s) ||
                      s.Contains("noodle-head", StringComparison.OrdinalIgnoreCase) ||
                      s.Contains("noodle head", StringComparison.OrdinalIgnoreCase))
             {
-                // Epithet-only wardrobe line is not filmable
                 continue;
             }
             else
@@ -105,6 +110,7 @@ public static class CharacterVisualTextScrubber
             }
 
             if (string.IsNullOrWhiteSpace(s)) continue;
+            if (s.Contains("pasta", StringComparison.OrdinalIgnoreCase)) continue;
             if (!outList.Contains(s, StringComparer.OrdinalIgnoreCase))
                 outList.Add(s);
         }
