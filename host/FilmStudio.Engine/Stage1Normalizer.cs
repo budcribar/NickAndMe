@@ -84,7 +84,13 @@ public static class Stage1Normalizer
         foreach (var (key, val) in seeds.ToList())
         {
             if (val is not Dictionary<string, object?> seed) continue;
-            seed["description"] = CoerceString(seed.TryGetValue("description", out var d) ? d : null) ?? key;
+
+            // Filmable identity only — strip book nicknames ("noodle-head") from visual prose
+            var rawDesc = CoerceString(seed.TryGetValue("description", out var d) ? d : null) ?? key;
+            seed["description"] = CharacterVisualTextScrubber.ScrubVisualProse(rawDesc);
+            if (string.IsNullOrWhiteSpace(CoerceString(seed["description"])))
+                seed["description"] = key;
+
             seed["reference_image_placeholder"] =
                 CoerceString(seed.TryGetValue("reference_image_placeholder", out var ph) ? ph : null)
                 ?? ProjectStore.CharacterRefFileName(key);
@@ -113,7 +119,13 @@ public static class Stage1Normalizer
                     var desc = CoerceString(seed["description"]) ?? key;
                     seed["visual_lock"] = desc.Length > 220 ? desc[..220] + "…" : desc;
                 }
-                var always = CoerceStringList(seed.TryGetValue("wardrobe_always", out var wa) ? wa : null);
+                else
+                {
+                    seed["visual_lock"] = CharacterVisualTextScrubber.ScrubVisualProse(vlck);
+                }
+
+                var always = CharacterVisualTextScrubber.ScrubWardrobeList(
+                    CoerceStringList(seed.TryGetValue("wardrobe_always", out var wa) ? wa : null));
                 if (always.Count > 0)
                     seed["wardrobe_always"] = always;
                 else
@@ -178,6 +190,21 @@ public static class Stage1Normalizer
             string.IsNullOrEmpty(CoerceString(s.TryGetValue("primary_location_id", out var pl) ? pl : null)))
             s["primary_location_id"] = lidList[0];
 
+        // Scrub nickname junk from scene wardrobe maps
+        if (s.TryGetValue("wardrobe_by_character", out var wbc) &&
+            wbc is Dictionary<string, object?> wmap)
+        {
+            foreach (var (ck, items) in wmap.ToList())
+            {
+                var cleaned = CharacterVisualTextScrubber.ScrubWardrobeList(CoerceStringList(items));
+                if (cleaned.Count > 0)
+                    wmap[ck] = cleaned;
+                else
+                    wmap.Remove(ck);
+            }
+            s["wardrobe_by_character"] = wmap;
+        }
+
         foreach (var b in GetList(s, "story_beats").OfType<Dictionary<string, object?>>())
         {
             b["beat_id"] = CoerceString(b.TryGetValue("beat_id", out var bi) ? bi : null) ?? "b1";
@@ -185,12 +212,26 @@ public static class Stage1Normalizer
             b["visual_event"] =
                 CoerceString(b.TryGetValue("visual_event", out var ve) ? ve : null)
                 ?? (string)b["intent"]!;
+            // visual_event may mention nicknames from the book VO — only scrub clear food-hat junk
+            if (b["visual_event"] is string veStr &&
+                CharacterVisualTextScrubber.LooksLikeNicknameVisualJunk(veStr))
+                b["visual_event"] = CharacterVisualTextScrubber.ScrubVisualProse(veStr);
             b["shot_scale_hint"] =
                 CoerceString(b.TryGetValue("shot_scale_hint", out var ssh) ? ssh : null) ?? "ms";
             b["continuity"] =
                 CoerceString(b.TryGetValue("continuity", out var c) ? c : null) ?? "new_setup";
             foreach (var leak in new[] { "visual_prompt", "negative_prompt", "timestamp", "veo_continuation_source" })
                 b.Remove(leak);
+
+            foreach (var wkey in new[] { "wardrobe_put_on", "wardrobe_remove" })
+            {
+                if (!b.TryGetValue(wkey, out var wraw)) continue;
+                var cleaned = CharacterVisualTextScrubber.ScrubWardrobeList(CoerceStringList(wraw));
+                if (cleaned.Count > 0)
+                    b[wkey] = cleaned;
+                else
+                    b.Remove(wkey);
+            }
         }
     }
 

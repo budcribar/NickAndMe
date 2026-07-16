@@ -386,6 +386,52 @@ main[b-zdbyi38f3b] {
     }
 }
 /* /Components/Pages/Characters.razor.rz.scp.css */
+.char-seed-tile[b-ndlvtfi1bo] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 96px;
+    padding: 0.35rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.char-seed-tile img[b-ndlvtfi1bo] {
+    width: 84px;
+    height: 100px;
+    object-fit: contain;
+    background: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.char-seed-tile__label[b-ndlvtfi1bo] {
+    font-size: 0.72rem;
+    margin-top: 0.25rem;
+    color: #495057;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.char-seed-tile--on[b-ndlvtfi1bo] {
+    border-color: #1b6ec2;
+    background: rgba(27, 110, 194, 0.08);
+    box-shadow: 0 0 0 1px rgba(27, 110, 194, 0.2);
+}
+
+.char-seed-tile:hover:not(:disabled)[b-ndlvtfi1bo] {
+    border-color: #1b6ec2;
+}
+
+.char-seed-tile:disabled[b-ndlvtfi1bo] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .char-source-grid[b-ndlvtfi1bo] {
     display: grid;
     grid-template-columns: 1fr 1fr;

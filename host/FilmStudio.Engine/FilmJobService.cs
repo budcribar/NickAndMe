@@ -253,6 +253,123 @@ public sealed class FilmJobService
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Grok vision: classify book images → which characters appear, write plates to scenes.json.
+    /// Cancellable. Falls back to heuristics if no API key.
+    /// </summary>
+    public async Task StartSortCharacterPlatesAsync(AttachCharacterPlatesRequest req)
+    {
+        if (!await _gate.WaitAsync(0))
+            throw new InvalidOperationException("A generation job is already running.");
+
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+        _ = Task.Run(async () =>
+        {
+            try { await RunSortCharacterPlatesAsync(req, ct); }
+            finally { _gate.Release(); }
+        }, CancellationToken.None);
+
+        await Task.CompletedTask;
+    }
+
+    private async Task RunSortCharacterPlatesAsync(AttachCharacterPlatesRequest req, CancellationToken ct)
+    {
+        var projectId = string.IsNullOrWhiteSpace(req.ProjectId)
+            ? _projects.ActiveProjectId
+            : req.ProjectId;
+        _projects.Activate(projectId);
+
+        _snapshot = new JobSnapshot
+        {
+            Status = "running",
+            Kind = "character-plates",
+            ProjectId = projectId,
+            Message = req.UseGrok
+                ? "Sorting book images onto characters with Grok vision…"
+                : "Sorting book images onto characters (heuristic)…",
+            Index = 0,
+            Total = Math.Max(1, req.MaxImages),
+            StartedAt = DateTimeOffset.UtcNow,
+            Log = new List<string>(),
+        };
+        await PublishAsync();
+
+        try
+        {
+            await AppendLogAsync(
+                req.UseGrok
+                    ? "Character plate sort (Grok vision classifies who appears on each page)"
+                    : "Character plate sort (heuristic only)");
+
+            var result = await _plates.AttachAsync(
+                projectId,
+                force: true, // job is always an explicit re-sort from UI
+                copyIntoAssets: req.CopyIntoAssets,
+                onlyCharKey: req.CharKey,
+                useGrok: req.UseGrok,
+                visionModel: string.IsNullOrWhiteSpace(req.VisionModel) ? "grok-4.5" : req.VisionModel,
+                maxImages: req.MaxImages > 0 ? req.MaxImages : 32,
+                onProgress: line =>
+                {
+                    _ = AppendLogAsync(line);
+                    // "Grok vision 3/20: …"
+                    var m = System.Text.RegularExpressions.Regex.Match(
+                        line, @"Grok vision\s+(\d+)/(\d+)",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (m.Success &&
+                        int.TryParse(m.Groups[1].Value, out var i) &&
+                        int.TryParse(m.Groups[2].Value, out var t))
+                    {
+                        _ = UpdateAsync(s =>
+                        {
+                            s.Index = i;
+                            s.Total = t;
+                            s.Message = line;
+                        });
+                    }
+                    else
+                        _ = UpdateAsync(s => s.Message = line);
+                },
+                ct: ct);
+
+            if (result.AlreadySorted)
+            {
+                await FinishAsync("done", $"Already sorted ({result.SortedAt})");
+                return;
+            }
+
+            if (!result.Ok && !string.IsNullOrEmpty(result.Reason))
+            {
+                await FinishAsync("error", result.Reason, result.Reason);
+                return;
+            }
+
+            await UpdateAsync(s =>
+            {
+                s.Index = Math.Max(s.Index, result.ImagesClassified);
+                if (result.ImagesClassified > 0)
+                    s.Total = Math.Max(s.Total, result.ImagesClassified);
+            });
+            await AppendLogAsync(
+                $"method={result.Method} updated={result.CharactersUpdated} " +
+                $"skipped={result.CharactersSkipped} classified={result.ImagesClassified} " +
+                $"text_skipped={result.ImagesSkippedText}");
+            await FinishAsync(
+                "done",
+                $"Plates sorted ({result.Method}): {result.CharactersUpdated} character(s) updated");
+        }
+        catch (OperationCanceledException)
+        {
+            await FinishAsync("cancelled", "Cancelled by user");
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Character plate sort failed");
+            await FinishAsync("error", ex.Message, ex.Message);
+        }
+    }
+
     /// <summary>Lock/unlock character reference images.</summary>
     public Task<string> RunCharacterDesignActionAsync(
         string projectId,

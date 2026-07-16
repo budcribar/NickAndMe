@@ -112,9 +112,18 @@ public sealed class GrokImageClient
             ct.ThrowIfCancellationRequested();
             onProgress?.Invoke($"edit variant {i + 1}/{n}");
 
+            // Multi-ref: first image = identity (preferred), later = book style plates
+            var orderHint = imagePayloads.Count > 1
+                ? "Image 1 is the identity/preferred portrait — match it closely. " +
+                  "Images 2+ are book plates of the SAME character for markings and style only. "
+                : "Match the attached reference image identity closely. ";
             var variantPrompt =
-                $"{prompt} Variation {i + 1} of {n}: slight pose/expression change only; " +
-                "keep the same identity, colors, markings, and illustration style as the reference.";
+                orderHint +
+                prompt +
+                (n > 1
+                    ? $" Variation {i + 1} of {n}: tiny pose/expression change only;"
+                    : " Single refined portrait;") +
+                " same face, coat, hat, and style as the references. No labels, no pasta hats, no redesign.";
 
             var payload = new Dictionary<string, object?>
             {
@@ -122,6 +131,7 @@ public sealed class GrokImageClient
                 ["prompt"] = variantPrompt,
                 ["response_format"] = "b64_json",
                 ["aspect_ratio"] = aspectRatio,
+                // Keep order: preferred first (caller must sort)
                 ["image"] = imagePayloads.Count == 1 ? imagePayloads[0] : imagePayloads,
             };
 

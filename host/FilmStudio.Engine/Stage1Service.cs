@@ -178,10 +178,19 @@ public sealed class Stage1Service
         try
         {
             onProgress?.Invoke("Attaching book plate candidates to character seeds…");
-            var plates = _plates.Attach(projectId, force: true, copyIntoAssets: true);
+            // Fresh Stage 1: Grok-vision sort of book images → character seeds (cancellable via Stage1 ct)
+            onProgress?.Invoke("Sorting book images onto characters (Grok vision when available)…");
+            var plates = await _plates.AttachAsync(
+                projectId,
+                force: true,
+                copyIntoAssets: true,
+                useGrok: true,
+                onProgress: onProgress,
+                ct: ct);
             if (plates.Ok)
                 onProgress?.Invoke(
-                    $"Book plates: updated={plates.CharactersUpdated} skipped={plates.CharactersSkipped}");
+                    $"Book plates ({plates.Method}): updated={plates.CharactersUpdated} " +
+                    $"skipped={plates.CharactersSkipped} classified={plates.ImagesClassified}");
             else
                 onProgress?.Invoke($"Book plate attach skipped: {plates.Reason}");
         }

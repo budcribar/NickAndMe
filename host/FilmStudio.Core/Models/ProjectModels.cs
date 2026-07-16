@@ -110,17 +110,31 @@ public sealed class StartCharacterVariantsRequest
     public List<int> VariantIndices { get; set; } = new();
     /// <summary>When SeedMode is explicit: also include locked ref if present.</summary>
     public bool IncludeLockedRef { get; set; } = true;
+    /// <summary>Optional description override for this generate (also used when PersistDescription).</summary>
+    public string? DescriptionOverride { get; set; }
+    /// <summary>Optional visual_lock override for this generate.</summary>
+    public string? VisualLockOverride { get; set; }
+    /// <summary>Write DescriptionOverride / VisualLockOverride into scenes.json seeds before generate.</summary>
+    public bool PersistDescription { get; set; } = true;
 }
 
 public sealed class AttachCharacterPlatesRequest
 {
     public string ProjectId { get; set; } = "";
-    /// <summary>Overwrite existing design_reference_images.</summary>
-    public bool Force { get; set; } = true;
+    /// <summary>
+    /// Re-sort even if pipeline_state.character_plates.sorted_by_character is true.
+    /// Default false so import/UI can skip a second sort.
+    /// </summary>
+    public bool Force { get; set; }
     /// <summary>Copy into assets/characters/*_bookref_*.</summary>
     public bool CopyIntoAssets { get; set; } = true;
     /// <summary>Optional single character; empty = all on-screen cast.</summary>
     public string? CharKey { get; set; }
+    /// <summary>Use Grok vision to assign pages to cast (default true for job).</summary>
+    public bool UseGrok { get; set; } = true;
+    /// <summary>Max book images to send to Grok (cost/latency cap).</summary>
+    public int MaxImages { get; set; } = 32;
+    public string VisionModel { get; set; } = "grok-4.5";
 }
 
 public sealed class AttachCharacterPlatesResult
@@ -129,7 +143,30 @@ public sealed class AttachCharacterPlatesResult
     public string? Reason { get; set; }
     public int CharactersUpdated { get; set; }
     public int CharactersSkipped { get; set; }
+    /// <summary>pipeline_state says plates were already sorted; Attach was a no-op.</summary>
+    public bool AlreadySorted { get; set; }
+    /// <summary>After this call, character plates are sorted in scenes.json.</summary>
+    public bool SortedByCharacter { get; set; }
+    public string? SortedAt { get; set; }
+    /// <summary>grok_vision | heuristic | heuristic_after_grok_empty | none</summary>
+    public string? Method { get; set; }
+    public int ImagesClassified { get; set; }
+    public int ImagesSkippedText { get; set; }
     public Dictionary<string, List<string>> AttachedByCharacter { get; set; } = new();
+}
+
+/// <summary>
+/// Snapshot of pipeline_state.character_plates — whether book images were
+/// sorted onto character seeds (scenes.json design_reference_images).
+/// </summary>
+public sealed class CharacterPlatesState
+{
+    public bool SortedByCharacter { get; set; }
+    public string? SortedAt { get; set; }
+    public string Source { get; set; } = "scenes.json#character_seed_tokens.design_reference_images";
+    public int CharactersUpdated { get; set; }
+    /// <summary>grok_vision | heuristic | …</summary>
+    public string? Method { get; set; }
 }
 
 public sealed class StartBookPrepareRequest

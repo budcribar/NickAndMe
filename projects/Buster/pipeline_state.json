@@ -315,7 +315,7 @@
         "Character_Narrator": 1
       },
       "review_status": "pass",
-      "review_note": "Character_Buster's hat should be worn throughout the clip",
+      "review_note": "Character_Buster\u0027s hat should be worn throughout the clip",
       "reviewed_at": "2026-07-13T06:43:48",
       "qa_approved": true
     },
@@ -719,7 +719,7 @@
     "stage2": {
       "done": true,
       "at": "2026-07-13T16:07:46",
-      "detail": "6 scenes · 19 clips"
+      "detail": "6 scenes \u00B7 19 clips"
     }
   },
   "wip_movie": {
@@ -763,11 +763,11 @@
     "done": [],
     "failed": [],
     "log": [
-      "Starting…",
+      "Starting\u2026",
       "Scene 4: 2 clip(s) to generate",
-      "Generating S04 C1 (1/2)…",
+      "Generating S04 C1 (1/2)\u2026",
       "Done S04 C1",
-      "Generating S04 C2 (2/2)…",
+      "Generating S04 C2 (2/2)\u2026",
       "Done S04 C2",
       "Finished: 2 generated, 0 failed",
       "Finished"
@@ -805,6 +805,23 @@
       "skipped_existing": []
     }
   },
+  "clip_review": {
+    "S01C01": {
+      "status": "pass",
+      "note": "smoke pass",
+      "ts": "2026-07-16T13:52:43"
+    }
+  },
+  "character_plates": {
+    "sorted_by_character": true,
+    "sorted_at": "2026-07-16T15:21:59",
+    "source": "scenes.json#character_seed_tokens.design_reference_images",
+    "characters_updated": 1,
+    "method": "grok_vision"
+  },
+  "character_plates_sorted": true,
+  "character_plates_sorted_at": "2026-07-16T15:21:59",
+  "character_plates_method": "grok_vision",
   "cost_ledger": [
     {
       "kind": "image",
@@ -2302,18 +2319,155 @@
       "source": "list_rate",
       "id": "1784229984_0075",
       "ts": "2026-07-16T13:26:24"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234677_0076",
+      "ts": "2026-07-16T14:44:37"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234677_0077",
+      "ts": "2026-07-16T14:44:37"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234678_0078",
+      "ts": "2026-07-16T14:44:38"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234737_0079",
+      "ts": "2026-07-16T14:45:37"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234737_0080",
+      "ts": "2026-07-16T14:45:37"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784234737_0081",
+      "ts": "2026-07-16T14:45:37"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237498_0082",
+      "ts": "2026-07-16T15:31:38"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237498_0083",
+      "ts": "2026-07-16T15:31:38"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237498_0084",
+      "ts": "2026-07-16T15:31:38"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237782_0085",
+      "ts": "2026-07-16T15:36:22"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237782_0086",
+      "ts": "2026-07-16T15:36:22"
+    },
+    {
+      "kind": "image",
+      "model": "grok-imagine-image-quality",
+      "character": "",
+      "n_images": 1,
+      "unit_usd": 0.05,
+      "usd": 0.05,
+      "currency": "USD",
+      "source": "list_rate",
+      "id": "1784237782_0087",
+      "ts": "2026-07-16T15:36:22"
     }
   ],
   "cost_totals": {
-    "usd": 33.48,
-    "events": 76,
-    "updated_at": "2026-07-16T13:26:24"
-  },
-  "clip_review": {
-    "S01C01": {
-      "status": "pass",
-      "note": "smoke pass",
-      "ts": "2026-07-16T13:52:43"
-    }
+    "usd": 34.08,
+    "events": 88,
+    "updated_at": "2026-07-16T15:36:22"
   }
 }

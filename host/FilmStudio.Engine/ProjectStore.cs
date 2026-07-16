@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FilmStudio.Core.Models;
 using FilmStudio.Core.Options;
 using Microsoft.Extensions.Options;
@@ -200,20 +201,14 @@ public sealed class ProjectStore
                     : key.Replace("Character_", "").Replace("_", " "));
 
             var refName = CharacterRefFileName(key);
-            var refPath = Path.Combine(projectDir, "assets", "characters", refName);
-            var hasRef = !voiceOnly && File.Exists(refPath) && new FileInfo(refPath).Length >= 64;
+            var resolvedRef = voiceOnly ? null : ResolveCharacterRefPath(projectId, key);
+            var hasRef = resolvedRef is not null;
+            if (hasRef && resolvedRef is not null)
+                refName = Path.GetFileName(resolvedRef);
 
-            var bookRefs = new List<string>();
-            if (info.TryGetProperty("design_reference_images", out var dri) &&
-                dri.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var x in dri.EnumerateArray())
-                {
-                    var s = x.GetString();
-                    if (!string.IsNullOrWhiteSpace(s))
-                        bookRefs.Add(s!);
-                }
-            }
+            // Plates come only from seed design_reference_images (scenes.json / mirrored blueprint).
+            // Never invent plates from free-form book_images or untracked disk bookrefs.
+            var bookRefs = CollectSeedPlatePaths(info);
 
             var wardrobe = new List<string>();
             if (info.TryGetProperty("wardrobe_always", out var wa) &&
@@ -227,19 +222,6 @@ public sealed class ProjectStore
                 }
             }
 
-            // book_reference_images alias
-            if (bookRefs.Count == 0 &&
-                info.TryGetProperty("book_reference_images", out var bri) &&
-                bri.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var x in bri.EnumerateArray())
-                {
-                    var s = x.GetString();
-                    if (!string.IsNullOrWhiteSpace(s))
-                        bookRefs.Add(s!);
-                }
-            }
-
             var bookRefImages = new List<CharacterImageRef>();
             if (!voiceOnly)
             {
@@ -247,6 +229,16 @@ public sealed class ProjectStore
                 {
                     var rel = bookRefs[i].Replace('\\', '/');
                     var full = ResolveProjectRelativePath(projectDir, rel);
+                    // Same filename under assets/characters if seed path moved
+                    if (full is null || !File.Exists(full))
+                    {
+                        var byName = Path.Combine(projectDir, "assets", "characters", Path.GetFileName(rel));
+                        if (File.Exists(byName))
+                        {
+                            full = byName;
+                            rel = Path.GetRelativePath(projectDir, byName).Replace('\\', '/');
+                        }
+                    }
                     var exists = full is not null && File.Exists(full);
                     bookRefImages.Add(new CharacterImageRef
                     {
@@ -337,13 +329,21 @@ public sealed class ProjectStore
     public string? ResolveCharacterRefPath(string projectId, string charKey)
     {
         var seeds = LoadCharacterSeeds(projectId);
-        if (!seeds.TryGetValue(charKey, out var info))
+        if (seeds.TryGetValue(charKey, out var info) && IsVoiceOnly(charKey, info))
             return null;
-        if (IsVoiceOnly(charKey, info))
-            return null;
-        var refName = CharacterRefFileName(charKey);
-        var full = Path.Combine(GetProjectDir(projectId), "assets", "characters", refName);
-        return File.Exists(full) && new FileInfo(full).Length >= 64 ? full : null;
+
+        var charDir = Path.Combine(GetProjectDir(projectId), "assets", "characters");
+        foreach (var name in CharacterRefFileCandidates(charKey))
+        {
+            var full = Path.Combine(charDir, name);
+            if (File.Exists(full) && new FileInfo(full).Length >= 64)
+                return full;
+            // Legacy nested path from older tools
+            var nested = Path.Combine(charDir, "assets", "characters", name);
+            if (File.Exists(nested) && new FileInfo(nested).Length >= 64)
+                return nested;
+        }
+        return null;
     }
 
     /// <summary>
@@ -429,11 +429,111 @@ public sealed class ProjectStore
         return $"{k}_ref.png";
     }
 
+    /// <summary>
+    /// Candidate on-disk names for a locked ref (canonical + short aliases + common typos).
+    /// </summary>
+    public static IEnumerable<string> CharacterRefFileCandidates(string charKey)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var list = new List<string>();
+        void Add(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            name = Path.GetFileName(name.Trim().Replace(' ', '_')).ToLowerInvariant();
+            if (!name.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                name = name.EndsWith("_ref", StringComparison.OrdinalIgnoreCase) ? name + ".png" : name + "_ref.png";
+            if (seen.Add(name))
+                list.Add(name);
+        }
+
+        Add(CharacterRefFileName(charKey));
+        var raw = (charKey ?? "").Trim();
+        var bare = raw.StartsWith("Character_", StringComparison.OrdinalIgnoreCase)
+            ? raw["Character_".Length..]
+            : raw;
+        Add($"{bare}_ref.png");
+        Add(bare);
+        // Dad / Daddy alias
+        if (bare.Equals("Dad", StringComparison.OrdinalIgnoreCase) ||
+            bare.Equals("Daddy", StringComparison.OrdinalIgnoreCase))
+        {
+            Add("character_daddy_ref.png");
+            Add("character_dad_ref.png");
+            Add("daddy_ref.png");
+            Add("dad_ref.png");
+        }
+        if (bare.Equals("Mom", StringComparison.OrdinalIgnoreCase) ||
+            bare.Equals("Mum", StringComparison.OrdinalIgnoreCase))
+        {
+            Add("character_mom_ref.png");
+            Add("mom_ref.png");
+        }
+        return list;
+    }
+
     /// <summary>Character seed token object from blueprint/scenes, or null.</summary>
     public JsonElement? GetCharacterSeed(string projectId, string charKey)
     {
         var seeds = LoadCharacterSeeds(projectId);
         return seeds.TryGetValue(charKey, out var info) ? info : null;
+    }
+
+    /// <summary>
+    /// Update description / visual_lock on character seeds in scenes.json (and blueprint when present).
+    /// Null args leave that field unchanged; empty string clears.
+    /// </summary>
+    public void UpdateCharacterSeedText(
+        string projectId,
+        string charKey,
+        string? description = null,
+        string? visualLock = null)
+    {
+        void PatchFile(string path)
+        {
+            if (!File.Exists(path)) return;
+            try
+            {
+                var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))
+                           as System.Text.Json.Nodes.JsonObject;
+                if (root is null) return;
+                var gpv = root["global_production_variables"] as System.Text.Json.Nodes.JsonObject
+                          ?? new System.Text.Json.Nodes.JsonObject();
+                root["global_production_variables"] = gpv;
+                var seeds = gpv["character_seed_tokens"] as System.Text.Json.Nodes.JsonObject;
+                if (seeds is null) return;
+                // case-insensitive key find
+                System.Text.Json.Nodes.JsonObject? seed = null;
+                string? foundKey = null;
+                foreach (var (k, v) in seeds)
+                {
+                    if (string.Equals(k, charKey, StringComparison.OrdinalIgnoreCase) &&
+                        v is System.Text.Json.Nodes.JsonObject jo)
+                    {
+                        seed = jo;
+                        foundKey = k;
+                        break;
+                    }
+                }
+                if (seed is null || foundKey is null) return;
+                if (description is not null)
+                    seed["description"] = CharacterVisualTextScrubber.ScrubVisualProse(description);
+                if (visualLock is not null)
+                    seed["visual_lock"] = CharacterVisualTextScrubber.ScrubVisualProse(visualLock);
+                seeds[foundKey] = seed;
+                File.WriteAllText(
+                    path,
+                    root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+            }
+            catch
+            {
+                /* non-fatal */
+            }
+        }
+
+        PatchFile(ResolveScenesJsonPath(projectId));
+        var bp = FindBlueprintPath(projectId);
+        if (bp is not null)
+            PatchFile(bp);
     }
 
     public void UpdateCharacterSeedPlaceholder(string projectId, string charKey, string refFileName)
@@ -481,8 +581,8 @@ public sealed class ProjectStore
         }
     }
 
-    /// <summary>Bump character revision in pipeline_state (cascade stale marker).</summary>
-    public void MarkCharacterChanged(string projectId, string charKey, string reason)
+    /// <summary>Resolve pipeline_state.json path (honors project.json state_file).</summary>
+    public string ResolvePipelineStatePath(string projectId)
     {
         var dir = GetProjectDir(projectId);
         var stateName = "pipeline_state.json";
@@ -498,23 +598,139 @@ public sealed class ProjectStore
             }
             catch { /* ignore */ }
         }
+        return Path.Combine(dir, stateName);
+    }
 
-        var path = Path.Combine(dir, stateName);
+    /// <summary>
+    /// Whether book images have been sorted onto character seeds
+    /// (pipeline_state.character_plates.sorted_by_character).
+    /// </summary>
+    public CharacterPlatesState GetCharacterPlatesState(string projectId)
+    {
+        var path = ResolvePipelineStatePath(projectId);
+        var state = new CharacterPlatesState();
+        if (!File.Exists(path)) return state;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            // Nested object preferred
+            if (doc.RootElement.TryGetProperty("character_plates", out var cp) &&
+                cp.ValueKind == JsonValueKind.Object)
+            {
+                state.SortedByCharacter = ReadJsonBool(cp, "sorted_by_character");
+                if (cp.TryGetProperty("sorted_at", out var at) && at.ValueKind == JsonValueKind.String)
+                    state.SortedAt = at.GetString();
+                if (cp.TryGetProperty("source", out var src) && src.ValueKind == JsonValueKind.String &&
+                    src.GetString() is { Length: > 0 } ss)
+                    state.Source = ss;
+                if (cp.TryGetProperty("characters_updated", out var cu) && cu.TryGetInt32(out var n))
+                    state.CharactersUpdated = n;
+                if (cp.TryGetProperty("method", out var meth) && meth.ValueKind == JsonValueKind.String)
+                    state.Method = meth.GetString();
+                return state;
+            }
+            // Flat legacy keys
+            if (ReadJsonBool(doc.RootElement, "character_plates_sorted"))
+            {
+                state.SortedByCharacter = true;
+                if (doc.RootElement.TryGetProperty("character_plates_sorted_at", out var at2) &&
+                    at2.ValueKind == JsonValueKind.String)
+                    state.SortedAt = at2.GetString();
+                if (doc.RootElement.TryGetProperty("character_plates_method", out var m2) &&
+                    m2.ValueKind == JsonValueKind.String)
+                    state.Method = m2.GetString();
+            }
+        }
+        catch { /* ignore */ }
+        return state;
+    }
 
-        // Preserve existing keys via re-parse of raw when possible
-        using var rawDoc = File.Exists(path)
-            ? JsonDocument.Parse(File.ReadAllText(path))
-            : JsonDocument.Parse("{}");
+    private static bool ReadJsonBool(JsonElement parent, string name)
+    {
+        if (!parent.TryGetProperty(name, out var el)) return false;
+        return el.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(el.GetString(), out var b) && b,
+            JsonValueKind.Number => el.TryGetInt32(out var n) && n != 0,
+            _ => false,
+        };
+    }
+
+    /// <summary>Record that character plates were sorted into scenes.json seeds.</summary>
+    public void MarkCharacterPlatesSorted(string projectId, int charactersUpdated, string method = "heuristic")
+    {
+        var path = ResolvePipelineStatePath(projectId);
+        var merged = LoadPipelineStateDict(path);
+        var now = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+        merged["character_plates"] = new Dictionary<string, object?>
+        {
+            ["sorted_by_character"] = true,
+            ["sorted_at"] = now,
+            ["source"] = "scenes.json#character_seed_tokens.design_reference_images",
+            ["characters_updated"] = charactersUpdated,
+            ["method"] = method,
+        };
+        // Keep flat keys in sync for simple greps / older tools
+        merged["character_plates_sorted"] = true;
+        merged["character_plates_sorted_at"] = now;
+        merged["character_plates_method"] = method;
+        var json = JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(path, json + "\n");
+    }
+
+    /// <summary>Clear the sorted flag (e.g. after book re-import invalidates plates).</summary>
+    public void ClearCharacterPlatesSorted(string projectId)
+    {
+        var path = ResolvePipelineStatePath(projectId);
+        if (!File.Exists(path)) return;
+        var merged = LoadPipelineStateDict(path);
+        merged["character_plates"] = new Dictionary<string, object?>
+        {
+            ["sorted_by_character"] = false,
+            ["sorted_at"] = null,
+            ["source"] = "scenes.json#character_seed_tokens.design_reference_images",
+            ["characters_updated"] = 0,
+            ["method"] = null,
+        };
+        merged["character_plates_sorted"] = false;
+        merged.Remove("character_plates_sorted_at");
+        merged.Remove("character_plates_method");
+        var json = JsonSerializer.Serialize(merged, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(path, json + "\n");
+    }
+
+    private static Dictionary<string, object?> LoadPipelineStateDict(string path)
+    {
+        if (!File.Exists(path))
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        using var rawDoc = JsonDocument.Parse(File.ReadAllText(path));
         var merged = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in rawDoc.RootElement.EnumerateObject())
             merged[p.Name] = JsonSerializer.Deserialize<object>(p.Value.GetRawText());
+        return merged;
+    }
+
+    /// <summary>Bump character revision in pipeline_state (cascade stale marker).</summary>
+    public void MarkCharacterChanged(string projectId, string charKey, string reason)
+    {
+        var path = ResolvePipelineStatePath(projectId);
+        var merged = LoadPipelineStateDict(path);
 
         var revs = new Dictionary<string, object?>(StringComparer.Ordinal);
-        if (rawDoc.RootElement.TryGetProperty("character_revisions", out var cr) &&
-            cr.ValueKind == JsonValueKind.Object)
+        if (merged.TryGetValue("character_revisions", out var crObj) && crObj is not null)
         {
-            foreach (var p in cr.EnumerateObject())
-                revs[p.Name] = JsonSerializer.Deserialize<object>(p.Value.GetRawText());
+            try
+            {
+                using var crDoc = JsonDocument.Parse(JsonSerializer.Serialize(crObj));
+                if (crDoc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var p in crDoc.RootElement.EnumerateObject())
+                        revs[p.Name] = JsonSerializer.Deserialize<object>(p.Value.GetRawText());
+                }
+            }
+            catch { /* ignore */ }
         }
 
         var prevRev = 0;
@@ -547,19 +763,40 @@ public sealed class ProjectStore
         if (variantIndex is < 1 or > 3)
             return null;
         var seeds = LoadCharacterSeeds(projectId);
-        if (!seeds.TryGetValue(charKey, out var info) || IsVoiceOnly(charKey, info))
+        if (seeds.TryGetValue(charKey, out var info) && IsVoiceOnly(charKey, info))
             return null;
         var fileName = $"{charKey.ToLowerInvariant()}_variant_0{variantIndex}.png";
         var full = Path.Combine(GetProjectDir(projectId), "assets", "characters", fileName);
-        return File.Exists(full) ? full : null;
+        return File.Exists(full) && new FileInfo(full).Length >= 64 ? full : null;
     }
 
     public string? ResolveCharacterBookRefPath(string projectId, string charKey, int bookIndex)
     {
         var seeds = LoadCharacterSeeds(projectId);
-        if (!seeds.TryGetValue(charKey, out var info) || IsVoiceOnly(charKey, info))
+        if (seeds.TryGetValue(charKey, out var info) && IsVoiceOnly(charKey, info))
             return null;
 
+        var projectDir = GetProjectDir(projectId);
+        // Only seed-tracked plates (scenes.json design_reference_images) — no free disk scan
+        var bookRefs = seeds.TryGetValue(charKey, out info)
+            ? CollectSeedPlatePaths(info)
+            : new List<string>();
+
+        if (bookIndex < 0 || bookIndex >= bookRefs.Count)
+            return null;
+        var rel = bookRefs[bookIndex];
+        var full = ResolveProjectRelativePath(projectDir, rel);
+        if (full is not null) return full;
+        var byName = Path.Combine(projectDir, "assets", "characters", Path.GetFileName(rel));
+        return File.Exists(byName) ? byName : null;
+    }
+
+    /// <summary>
+    /// Paths from character seed design_reference_images (book_reference_images alias).
+    /// Skips text-only / sampled layout filenames so they are never shown as plates.
+    /// </summary>
+    private static List<string> CollectSeedPlatePaths(JsonElement info)
+    {
         var bookRefs = new List<string>();
         foreach (var prop in new[] { "design_reference_images", "book_reference_images" })
         {
@@ -568,14 +805,25 @@ public sealed class ProjectStore
             foreach (var x in arr.EnumerateArray())
             {
                 var s = x.GetString();
-                if (!string.IsNullOrWhiteSpace(s) && !bookRefs.Contains(s!))
+                if (string.IsNullOrWhiteSpace(s)) continue;
+                if (IsTextOnlyPlatePath(s)) continue;
+                if (!bookRefs.Contains(s!, StringComparer.OrdinalIgnoreCase))
                     bookRefs.Add(s!);
             }
+            if (bookRefs.Count > 0)
+                break; // prefer design_reference_images when present
         }
+        return bookRefs;
+    }
 
-        if (bookIndex < 0 || bookIndex >= bookRefs.Count)
-            return null;
-        return ResolveProjectRelativePath(GetProjectDir(projectId), bookRefs[bookIndex]);
+    /// <summary>True for sampled/OCR/text-page paths that must never be character plates.</summary>
+    internal static bool IsTextOnlyPlatePath(string pathOrName)
+    {
+        var n = Path.GetFileName(pathOrName);
+        if (n.Contains("sampled", StringComparison.OrdinalIgnoreCase)) return true;
+        if (n.Contains("text_page", StringComparison.OrdinalIgnoreCase)) return true;
+        if (n.Contains("ocr", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     private static string? ResolveProjectRelativePath(string projectDir, string relative)
@@ -1284,7 +1532,7 @@ public sealed class ProjectStore
 
     private Dictionary<string, JsonElement> LoadCharacterSeeds(string projectId)
     {
-        // Prefer blueprint, then scenes.json
+        // Prefer blueprint, then scenes.json — case-insensitive keys
         try
         {
             using var bp = LoadBlueprint(projectId);
@@ -1293,7 +1541,7 @@ public sealed class ProjectStore
                 gpv.TryGetProperty("character_seed_tokens", out var seeds) &&
                 seeds.ValueKind == JsonValueKind.Object)
             {
-                var dict = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+                var dict = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
                 foreach (var p in seeds.EnumerateObject())
                     dict[p.Name] = p.Value.Clone();
                 if (dict.Count > 0)
@@ -1306,20 +1554,26 @@ public sealed class ProjectStore
         var alt = Path.Combine(GetProjectDir(projectId), "nickandme.scenes.json");
         var path = File.Exists(scenesPath) ? scenesPath : (File.Exists(alt) ? alt : null);
         if (path is null)
-            return new Dictionary<string, JsonElement>();
+            return new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
 
         using var doc = JsonDocument.Parse(File.ReadAllText(path));
         if (doc.RootElement.TryGetProperty("global_production_variables", out var g2) &&
             g2.TryGetProperty("character_seed_tokens", out var s2) &&
             s2.ValueKind == JsonValueKind.Object)
         {
-            var dict = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+            var dict = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
             foreach (var p in s2.EnumerateObject())
                 dict[p.Name] = p.Value.Clone();
             return dict;
         }
-        return new Dictionary<string, JsonElement>();
+        return new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
     }
+
+    private static bool TryGetSeed(
+        Dictionary<string, JsonElement> seeds,
+        string charKey,
+        out JsonElement info) =>
+        seeds.TryGetValue(charKey, out info);
 
     private static bool IsVoiceOnly(string key, JsonElement info)
     {

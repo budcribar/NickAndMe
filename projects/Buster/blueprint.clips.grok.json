@@ -11,30 +11,30 @@
     "total_runtime_target_seconds": 420,
     "character_seed_tokens": {
       "Character_Buster": {
-        "description": "Small black-and-white dog (never brown/tan redesign), compact playful build, bright curious eyes, floppy ears, short fur with clear black patches on white. Slightly goofy noodle-head expression—sweet, not mean. Coat IS the black-and-white look (book text pajamas is coat metaphor unless art shows real sleepwear). ALWAYS signature silly noodle-head hat. Day and night: natural bare coat; tucks under quilts bare-furred.",
+        "description": "Small black-and-white dog (never brown/tan redesign), compact playful build, bright curious eyes, floppy ears, short fur with clear black patches on white. Sweet, slightly goofy expression—not mean. Coat IS the black-and-white look (book text pajamas is coat metaphor unless art shows real sleepwear). ALWAYS wears his signature blue nightcap with yellow stars and a white pom-pom. Day and night: natural bare coat; tucks under quilts bare-furred.",
         "reference_image_placeholder": "character_buster_ref.png",
         "voice_profile": "Young playful dog energy if any non-verbal vocalizations; soft yips and happy pants only—no human speech. Same light, eager dog sound every scene.",
         "voice_label": "Buster Dog SFX",
-        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Always signature silly noodle-head hat (never bare-headed). Natural bare coat markings only—no physical pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign.",
+        "visual_lock": "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. Always signature blue star nightcap with white pom-pom (never bare-headed; never pasta/food hat). Natural bare coat markings only—no physical pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign.",
         "age_band": "adult_dog",
         "display_name_policy": "ok_anytime",
         "source_image_pages": [
           1,
-          2,
-          5
+          5,
+          3
         ],
         "design_reference_images": [
           "assets/characters/character_buster_bookref_1.png",
-          "assets/characters/character_buster_bookref_2.png",
-          "assets/characters/character_buster_bookref_3.png"
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
         ],
         "book_reference_images": [
           "assets/characters/character_buster_bookref_1.png",
-          "assets/characters/character_buster_bookref_2.png",
-          "assets/characters/character_buster_bookref_3.png"
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
         ],
         "wardrobe_always": [
-          "signature silly noodle-head hat"
+          "blue star nightcap with white pom-pom"
         ]
       },
       "Character_Mom": {
@@ -49,21 +49,7 @@
         ],
         "age_band": "adult",
         "display_name_policy": "ok_anytime",
-        "source_image_pages": [
-          4,
-          8,
-          14
-        ],
-        "design_reference_images": [
-          "assets/characters/character_mom_bookref_1.png",
-          "assets/characters/character_mom_bookref_2.png",
-          "assets/characters/character_mom_bookref_3.png"
-        ],
-        "book_reference_images": [
-          "assets/characters/character_mom_bookref_1.png",
-          "assets/characters/character_mom_bookref_2.png",
-          "assets/characters/character_mom_bookref_3.png"
-        ]
+        "source_image_pages": []
       },
       "Character_Daddy": {
         "description": "Adult man, father figure, medium build, short brown hair, soft plaid or solid sleep shirt, calm quiet presence in parents’ bed; mostly resting/background once Buster arrives. Stylized 3D animated picture-book design matching Buster's CG style, not photoreal.",
@@ -76,18 +62,7 @@
         ],
         "age_band": "adult",
         "display_name_policy": "ok_anytime",
-        "source_image_pages": [
-          10,
-          11
-        ],
-        "design_reference_images": [
-          "assets/characters/character_daddy_bookref_1.png",
-          "assets/characters/character_daddy_bookref_2.png"
-        ],
-        "book_reference_images": [
-          "assets/characters/character_daddy_bookref_1.png",
-          "assets/characters/character_daddy_bookref_2.png"
-        ]
+        "source_image_pages": []
       },
       "Character_Narrator": {
         "description": "Off-screen storybook narrator only; never appears on camera.",
@@ -146,7 +121,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Warm cream walls, soft evening lamps, front door visible for in/out beats, lo…. Character_Buster, small black-and-white dog, bounds into the cozy living area and freezes in a proud silly pose facing camera. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Warm cream walls, soft evening lamps, front door visible for in/out beats, lo…. Character_Buster, small black-and-white dog, bounds into the cozy living area and freezes in a proud silly pose facing camera. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, brown or tan dog, physical pajama garment that blends into black-and-white fur, human clothes on dog, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -164,7 +139,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster hops and bounces around the living room like a frog—springy jumps, happy tail, goofy grin.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster hops and bounces around the living room like a frog—springy jumps, happy tail, goofy grin.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, brown dog, destructive chaos, losing signature hat mid-motion / bare-headed, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -182,7 +157,7 @@
           "timestamp": "00:30-00:45",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Close on Character_Buster’s black-and-white coat and sweet vacant-bright eyes as he tilts his head, clearly lovable and not very bright. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Close on Character_Buster’s black-and-white coat and sweet vacant-bright eyes as he tilts his head, clearly lovable and not very bright. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, recolor dog, mean expression, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -234,7 +209,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "Character_Mom stands in the living area facing Character_Buster, gentle firm bedtime posture; Buster looks up at her.. Mom faces Buster; Buster eyeline up to Mom; camera favors Mom then includes dog. Character_Mom still wears soft blue cardigan, cream pants; Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "Character_Mom stands in the living area facing Character_Buster, gentle firm bedtime posture; Buster looks up at her.. Mom faces Buster; Buster eyeline up to Mom; camera favors Mom then includes dog. Character_Mom still wears soft blue cardigan, cream pants; Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster already in pajamas, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
@@ -252,7 +227,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster lowers his furry head toward the floor as if ready to sleep, then perks up with potty urgency; Mom gestures no to the floor. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster lowers his furry head toward the floor as if ready to sleep, then perks up with potty urgency; Mom gestures no to the floor. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster actually pees on the floor, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -270,7 +245,7 @@
           "timestamp": "00:30-00:45",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "Character_Mom points toward the front door; Character_Buster freezes with a classic confused head tilt—rule makes no sense to him.. Mom gestures to door; Buster holds confused stare to camera/Mom. Character_Mom still wears soft blue cardigan, cream pants; Character_Buster still wears signature silly noodle-head hat. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 720p, 24fps",
+          "visual_prompt": "Character_Mom points toward the front door; Character_Buster freezes with a classic confused head tilt—rule makes no sense to him.. Mom gestures to door; Buster holds confused stare to camera/Mom. Character_Mom still wears soft blue cardigan, cream pants; Character_Buster still wears signature blue star nightcap with white pom-pom. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, mean scolding tone visuals, floor accident, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
@@ -323,7 +298,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Yard",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Green bushes, grass patch, wooden fence or soft yard edge, evening blue-hour …. Character_Buster trots outside into the evening yard toward green bushes, sniffing and circling. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Green bushes, grass patch, wooden fence or soft yard edge, evening blue-hour …. Character_Buster trots outside into the evening yard toward green bushes, sniffing and circling. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, graphic potty detail, daytime harsh sun if story is evening, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -341,7 +316,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Yard",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster discreetly does his job near the bushes (tasteful, non-graphic: rear toward bush, quick cutaway-friendly posture), then looks satisfied. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster discreetly does his job near the bushes (tasteful, non-graphic: rear toward bush, quick cutaway-friendly posture), then looks satisfied. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, explicit urine stream close-up, floor accident inside, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -359,7 +334,7 @@
           "timestamp": "00:30-00:45",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "Character_Buster comes back through the door into Loc_Buster_House and does a happy little spin for Character_Mom, who watches approvingly.. Mom near door/living area; Buster spins center; Mom smiles down at him.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature silly noodle-head hat; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
+          "visual_prompt": "Character_Buster comes back through the door into Loc_Buster_House and does a happy little spin for Character_Mom, who watches approvingly.. Mom near door/living area; Buster spins center; Mom smiles down at him.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature blue star nightcap with white pom-pom; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, brown dog, pajamas yet, losing signature hat mid-motion / bare-headed, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -411,7 +386,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "Character_Buster spins again; Character_Mom gently lays a small dog treat on the floor by his front feet.. Mom kneels or bends; treat by Buster’s feet; gentle hands. Character_Buster still wears signature silly noodle-head hat; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
+          "visual_prompt": "Character_Buster spins again; Character_Mom gently lays a small dog treat on the floor by his front feet.. Mom kneels or bends; treat by Buster’s feet; gentle hands. Character_Buster still wears signature blue star nightcap with white pom-pom; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, human junk food as treat prop if avoidable, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -429,7 +404,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster eats the treat then laps water from his bowl; Character_Mom watches kindly nearby. Character_Buster still wears signature silly noodle-head hat; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster eats the treat then laps water from his bowl; Character_Mom watches kindly nearby. Character_Buster still wears signature blue star nightcap with white pom-pom; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, spilled flood comedy, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -482,7 +457,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Warm cream walls, soft evening lamps, front door visible for in/out beats, lo…. Character_Buster shows off his natural black-and-white coat markings (no separate pajama garment—coat is the black-and-white look). Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Warm cream walls, soft evening lamps, front door visible for in/out beats, lo…. Character_Buster shows off his natural black-and-white coat markings (no separate pajama garment—coat is the black-and-white look). Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, daytime bare coat after this beat, recolored coat or solid-color redesign, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -500,7 +475,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "none",
           "location_id": "Loc_Buster_House",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster in black-and-white pajamas climbs the carpeted staircase step by step toward the upper floor.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster in black-and-white pajamas climbs the carpeted staircase step by step toward the upper floor.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, falling injury comedy, losing signature hat mid-motion / bare-headed, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -518,7 +493,7 @@
           "timestamp": "00:30-00:45",
           "veo_continuation_source": "none",
           "location_id": "Loc_Parents_Bedroom",
-          "visual_prompt": "Character_Buster enters Loc_Parents_Bedroom where Character_Mom and Character_Daddy are in bed; Buster jumps onto the bed, none too soon, settling between or at their feet.. Parents already in bed; Buster leaps up; soft landing; HOME SWEET HOME warmth.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature silly noodle-head hat; Character_Mom still wears soft blue cardigan, cream pan… / 720p, 24fps",
+          "visual_prompt": "Character_Buster enters Loc_Parents_Bedroom where Character_Mom and Character_Daddy are in bed; Buster jumps onto the bed, none too soon, settling between or at their feet.. Parents already in bed; Buster leaps up; soft landing; HOME SWEET HOME warmth.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears signature blue star nightcap with white pom-pom; Character_Mom still wears soft blue cardigan, cream pan… / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, physical pajama garment that blends into black-and-white fur, harsh overhead hospital light, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -572,7 +547,7 @@
           "timestamp": "00:00-00:15",
           "veo_continuation_source": "none",
           "location_id": "Loc_Parents_Bedroom",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster with clear black-and-white coat patches curls on the bed, eyes heavy; soft dreamy light on his face as he begins to drift. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Character_Buster with clear black-and-white coat patches curls on the bed, eyes heavy; soft dreamy light on his face as he begins to drift. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, scary nightmare imagery, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -590,7 +565,7 @@
           "timestamp": "00:15-00:30",
           "veo_continuation_source": "none",
           "location_id": "Loc_Yard",
-          "visual_prompt": "Soft dream insert DREAMSCAPE: daytime vibrant green lawn under clear sky; a brown bunny runs across the yard; Character_Buster wearing (signature silly noodle-head hat) securely chases playfully across the grass — natural black-and-white bare coat only (no pajama garment); NO snow, NO winter landscape, NO white snow-bunnies mashup. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "Soft dream insert DREAMSCAPE: daytime vibrant green lawn under clear sky; a brown bunny runs across the yard; Character_Buster wearing (signature blue star nightcap with white pom-pom) securely chases playfully across the grass — natural black-and-white bare coat only (no pajama garment); NO snow, NO winter landscape, NO white snow-bunnies mashup. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, violent hunt, blood, real harm to bunnies, snowy winter landscape, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -608,7 +583,7 @@
           "timestamp": "00:30-00:45",
           "veo_continuation_source": "none",
           "location_id": "Loc_Parents_Bedroom",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Queen/king bed with soft duvet, warm bedside lamps, calm wall color, nightsta…. Return to Loc_Parents_Bedroom: Character_Buster settles deeper into the covers between sleeping parents; eyes close. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Queen/king bed with soft duvet, warm bedside lamps, calm wall color, nightsta…. Return to Loc_Parents_Bedroom: Character_Buster settles deeper into the covers between sleeping parents; eyes close. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster leaving bed again, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -626,7 +601,7 @@
           "timestamp": "00:45-01:00",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Parents_Bedroom",
-          "visual_prompt": "Character_Buster lays down his head fully asleep, warm and soft; Character_Mom gently pets him while he sleeps; Daddy rests nearby; tender family tableau.. Mom’s hand gently strokes Buster’s head/back; Buster snout closed in sleep; peaceful faces. Character_Buster still wears signature silly noodle-head hat; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
+          "visual_prompt": "Character_Buster lays down his head fully asleep, warm and soft; Character_Mom gently pets him while he sleeps; Daddy rests nearby; tender family tableau.. Mom’s hand gently strokes Buster’s head/back; Buster snout closed in sleep; peaceful faces. Character_Buster still wears signature blue star nightcap with white pom-pom; Character_Mom still wears soft blue cardigan, cream pants / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, startle awake, remove pajamas, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",
@@ -644,7 +619,7 @@
           "timestamp": "01:00-01:15",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Parents_Bedroom",
-          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Queen/king bed with soft duvet, warm bedside lamps, calm wall color, nightsta…. Hold on sleeping Character_Buster in black-and-white pajamas, tiny zzz energy, dim bedside lamp, fade toward black. Character_Buster still wears signature silly noodle-head hat / 720p, 24fps",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children's picture-book CG (same render family as the cartoon dog) -- smooth animated materials, expressive non-photoreal faces; NOT live-action, NOT photoreal human photography. Queen/king bed with soft duvet, warm bedside lamps, calm wall color, nightsta…. Hold on sleeping Character_Buster in black-and-white pajamas, tiny zzz energy, dim bedside lamp, fade toward black. Character_Buster still wears signature blue star nightcap with white pom-pom / 720p, 24fps",
           "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, jump scare end, no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "voiceover_internal",

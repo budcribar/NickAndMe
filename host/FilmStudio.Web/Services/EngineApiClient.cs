@@ -319,28 +319,76 @@ public sealed class EngineApiClient
         return await resp.Content.ReadFromJsonAsync<ConfigDto>(JsonOpts, ct);
     }
 
-    public async Task<CharactersDto?> GetCharactersAsync(string projectId, CancellationToken ct = default) =>
-        await _http.GetFromJsonAsync<CharactersDto>(
+    public async Task<CharactersDto?> GetCharactersAsync(string projectId, CancellationToken ct = default)
+    {
+        var dto = await _http.GetFromJsonAsync<CharactersDto>(
             $"/api/projects/{Uri.EscapeDataString(projectId)}/characters",
             JsonOpts,
             ct);
+        // API returns root-relative /api/... paths; browser would hit Blazor host (7206), not Engine API (5088).
+        if (dto?.Characters is not null)
+        {
+            foreach (var c in dto.Characters)
+            {
+                c.RefUrl = AbsolutizeMediaUrl(c.RefUrl)
+                           ?? (c.Locked ? CharacterRefUrl(projectId, c.Key) : null);
+                c.PreferredUrl = AbsolutizeMediaUrl(c.PreferredUrl)
+                                 ?? (c.HasPreferred
+                                     ? (c.Locked
+                                         ? CharacterRefUrl(projectId, c.Key)
+                                         : CharacterVariantUrl(projectId, c.Key, 1))
+                                     : null);
+                foreach (var b in c.BookRefs)
+                {
+                    b.Url = AbsolutizeMediaUrl(b.Url)
+                            ?? (b.Exists && b.Index is int bi
+                                ? CharacterBookRefUrl(projectId, c.Key, bi)
+                                : null);
+                }
+                foreach (var v in c.Variants)
+                {
+                    v.Url = AbsolutizeMediaUrl(v.Url)
+                            ?? (v.Exists && v.Index is int vi
+                                ? CharacterVariantUrl(projectId, c.Key, vi)
+                                : null);
+                }
+            }
+        }
+        return dto;
+    }
+
+    public string ApiBaseUrl =>
+        (_http.BaseAddress?.ToString() ?? "http://127.0.0.1:5088").TrimEnd('/');
+
+    /// <summary>
+    /// Turn API root-relative media paths into absolute Engine API URLs for &lt;img src&gt;.
+    /// </summary>
+    public string? AbsolutizeMediaUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        url = url.Trim();
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            return url;
+        if (url.StartsWith('/'))
+            return ApiBaseUrl + url;
+        return ApiBaseUrl + "/" + url.TrimStart('/');
+    }
 
     public string CharacterRefUrl(string projectId, string charKey)
     {
-        var baseUrl = _http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/ref";
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/ref";
     }
 
     public string CharacterVariantUrl(string projectId, string charKey, int index)
     {
-        var baseUrl = _http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/variants/{index}";
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/variants/{index}";
     }
 
     public string CharacterBookRefUrl(string projectId, string charKey, int index)
     {
-        var baseUrl = _http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/bookrefs/{index}";
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/bookrefs/{index}";
     }
 
     public async Task StartCharacterVariantsAsync(
@@ -370,6 +418,7 @@ public sealed class EngineApiClient
         }
     }
 
+    /// <summary>Sync heuristic-only attach (no Grok). Prefer <see cref="StartSortCharacterPlatesAsync"/>.</summary>
     public async Task<AttachCharacterPlatesResult?> AttachBookPlatesAsync(
         string projectId,
         bool force = true,
@@ -384,6 +433,7 @@ public sealed class EngineApiClient
                 Force = force,
                 CopyIntoAssets = true,
                 CharKey = charKey,
+                UseGrok = false,
             },
             JsonOpts,
             ct);
@@ -398,6 +448,35 @@ public sealed class EngineApiClient
         }
         catch { /* ignore */ }
         return null;
+    }
+
+    /// <summary>
+    /// Start Grok vision job: classify book pages → character plates in scenes.json.
+    /// Progress via SignalR; cancel with <see cref="CancelJobAsync"/>.
+    /// </summary>
+    public async Task StartSortCharacterPlatesAsync(
+        string projectId,
+        bool useGrok = true,
+        int maxImages = 32,
+        CancellationToken ct = default)
+    {
+        using var resp = await _http.PostAsJsonAsync(
+            "/api/jobs/sort-character-plates",
+            new AttachCharacterPlatesRequest
+            {
+                ProjectId = projectId,
+                Force = true,
+                CopyIntoAssets = true,
+                UseGrok = useGrok,
+                MaxImages = maxImages,
+            },
+            JsonOpts,
+            ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? resp.ReasonPhrase);
+        }
     }
 
     public async Task StartBookPrepareAsync(
@@ -514,6 +593,8 @@ public sealed class CharactersDto
     public bool Ok { get; set; }
     public string? ProjectId { get; set; }
     public List<CharacterSummary> Characters { get; set; } = new();
+    /// <summary>pipeline_state.character_plates — whether import sorted plates into scenes.json.</summary>
+    public CharacterPlatesState? CharacterPlates { get; set; }
 }
 
 public sealed class EditLogDto

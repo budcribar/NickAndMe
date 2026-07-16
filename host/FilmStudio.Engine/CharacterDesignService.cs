@@ -63,11 +63,10 @@ public sealed class CharacterDesignService
         var maxBook = Math.Clamp(opts.MaxBookHints < 0 ? 2 : opts.MaxBookHints, 0, maxRefs);
 
         var preferredPath = ResolvePreferredImagePath(projectId, charKey, charDir);
+        var preferredName = preferredPath is null ? "" : Path.GetFileName(preferredPath);
         var alreadyLocked = preferredPath is not null &&
-            string.Equals(
-                Path.GetFileName(preferredPath),
-                ProjectStore.CharacterRefFileName(charKey),
-                StringComparison.OrdinalIgnoreCase);
+            ProjectStore.CharacterRefFileCandidates(charKey)
+                .Any(c => string.Equals(c, preferredName, StringComparison.OrdinalIgnoreCase));
         if (n <= 0)
             n = opts.Count > 0 ? opts.Count : (alreadyLocked ? 1 : 3);
         n = Math.Clamp(n, 1, 6);
@@ -75,12 +74,42 @@ public sealed class CharacterDesignService
         var allBookRefs = ResolveBookRefPaths(projectDir, seeds, maxRefs: 12);
         var editRefs = ResolveEditRefs(
             projectId, charKey, charDir, preferredPath, allBookRefs, opts, maxRefs, maxBook, onProgress);
+        // Preferred / locked ref first so multi-image edit treats it as primary identity
+        if (preferredPath is not null && editRefs.Count > 0)
+        {
+            var prefInList = editRefs.FirstOrDefault(p =>
+                string.Equals(p, preferredPath, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Path.GetFileName(p), preferredName, StringComparison.OrdinalIgnoreCase));
+            if (prefInList is not null)
+            {
+                editRefs.Remove(prefInList);
+                editRefs.Insert(0, prefInList);
+            }
+        }
 
         onProgress?.Invoke(
             $"Seed mode={NormalizeSeedMode(opts.SeedMode)} · refs={editRefs.Count}/{maxRefs} · variants={n}");
 
+        // Optional edit of description / visual_lock from Characters UI before generating
+        if (opts.PersistDescription &&
+            (opts.DescriptionOverride is not null || opts.VisualLockOverride is not null))
+        {
+            _projects.UpdateCharacterSeedText(
+                projectId,
+                charKey,
+                description: opts.DescriptionOverride,
+                visualLock: opts.VisualLockOverride);
+            seeds = _projects.GetCharacterSeed(projectId, charKey) ?? seeds;
+            onProgress?.Invoke("Saved description / visual lock to scenes.json seeds");
+        }
+
         var hasImageHints = editRefs.Count > 0;
-        var prompt = BuildDesignPrompt(charKey, seeds, hasImageHints);
+        var prompt = BuildDesignPrompt(
+            charKey,
+            seeds,
+            hasImageHints,
+            descriptionOverride: opts.DescriptionOverride,
+            visualLockOverride: opts.VisualLockOverride);
         var imageModel = GetConfigString(projectId, "image_model_name", _opts.DefaultImageModel);
 
         onProgress?.Invoke($"design prompt ready ({prompt.Length} chars)");
@@ -106,7 +135,7 @@ public sealed class CharacterDesignService
             if (hasImageHints)
             {
                 onProgress?.Invoke(
-                    $"Grok image edit with {editRefs.Count} hint(s): " +
+                    $"Grok image edit with {editRefs.Count} hint(s) [primary={Path.GetFileName(editRefs[0])}]: " +
                     string.Join(", ", editRefs.Select(Path.GetFileName)));
                 try
                 {
@@ -126,10 +155,38 @@ public sealed class CharacterDesignService
                 catch (Exception ex)
                 {
                     editError = ex.Message;
-                    onProgress?.Invoke($"Image-hint edit failed ({ex.Message}); falling back to text-only…");
-                    blobs = await _images.GenerateVariantsAsync(
-                        prompt, n, aspectRatio: "1:1", model: imageModel, ct: ct);
-                    mode = "text_only_fallback";
+                    // User picked image seeds — never silently invent a different dog from text
+                    // Retry once with preferred-only if multi-ref failed
+                    if (preferredPath is not null && File.Exists(preferredPath) && editRefs.Count > 1)
+                    {
+                        onProgress?.Invoke(
+                            $"Multi-ref edit failed ({ex.Message}); retry preferred-only…");
+                        try
+                        {
+                            blobs = await _images.EditVariantsAsync(
+                                prompt,
+                                new[] { preferredPath },
+                                n,
+                                aspectRatio: "1:1",
+                                model: imageModel,
+                                onProgress: onProgress,
+                                ct: ct);
+                            mode = "preferred_only_retry";
+                        }
+                        catch (Exception ex2)
+                        {
+                            throw new InvalidOperationException(
+                                "Image-guided edit failed (multi-ref and preferred-only). " +
+                                "Not falling back to text-only — that invents a different character. " +
+                                $"Last error: {ex2.Message}", ex2);
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            "Image-guided edit failed. Not falling back to text-only " +
+                            $"(would ignore your selected seeds). Error: {ex.Message}", ex);
+                    }
                 }
             }
             else
@@ -400,10 +457,19 @@ public sealed class CharacterDesignService
         return null;
     }
 
-    private static string BuildDesignPrompt(string charKey, JsonElement seedInfo, bool hasImageHints)
+    private static string BuildDesignPrompt(
+        string charKey,
+        JsonElement seedInfo,
+        bool hasImageHints,
+        string? descriptionOverride = null,
+        string? visualLockOverride = null)
     {
-        var description = seedInfo.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
-        var visualLock = seedInfo.TryGetProperty("visual_lock", out var vlck) ? vlck.GetString() ?? "" : "";
+        var description = !string.IsNullOrWhiteSpace(descriptionOverride)
+            ? descriptionOverride!
+            : seedInfo.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+        var visualLock = !string.IsNullOrWhiteSpace(visualLockOverride)
+            ? visualLockOverride!
+            : seedInfo.TryGetProperty("visual_lock", out var vlck) ? vlck.GetString() ?? "" : "";
         var ageBand = seedInfo.TryGetProperty("age_band", out var ab) ? ab.GetString() ?? "" : "";
         var variantOf = seedInfo.TryGetProperty("variant_of", out var vo) ? vo.GetString() ?? "" : "";
         var display =
@@ -444,32 +510,42 @@ public sealed class CharacterDesignService
                 "(same ethnicity, hair color family, recognizable family features). ";
         }
 
-        var visualClause = string.IsNullOrWhiteSpace(visualLock) ? "" : $"Visual lock: {visualLock}. ";
-        const string treatment = "cinematic lighting";
+        var descSafe = CharacterVisualTextScrubber.ScrubVisualProse(description);
+        var visualSafe = CharacterVisualTextScrubber.ScrubVisualProse(visualLock);
+        var visualClauseSafe = string.IsNullOrWhiteSpace(visualSafe) ? "" : $"Visual lock: {visualSafe}. ";
+        const string treatment = "soft even studio lighting";
 
         if (hasImageHints)
         {
+            // Image refs are primary — description only clarifies, never invents a new design
             return
-                $"Create a clean character model-sheet portrait of {display} for film continuity. " +
-                "Use the attached reference image(s) as the identity HINT — match colors, markings, " +
-                "and illustration style as closely as possible (same character as the reference). " +
-                "Do NOT invent a different breed, palette, or photoreal live-action look unless the reference is photo. " +
-                $"Written description (also authoritative): {description}. {visualClause}{ageClause}{familyClause}" +
-                "Character centered, facing camera, plain soft studio or simple background, " +
-                "full head and upper body clear for video reference. " +
-                $"Keep the whimsical picture-book look of the source art; {treatment}.";
+                $"IDENTITY-LOCKED character continuity portrait of {display}. " +
+                "The FIRST attached reference image is the authoritative face/body identity. " +
+                "Any additional attached images are the SAME character from the picture book " +
+                "(coat markings, hat, illustration style) — copy that identity closely. " +
+                "CRITICAL: Match the preferred/reference face shape, fur color pattern, ear set, " +
+                "eye shape, and hat design from the images. Do NOT redesign the character. " +
+                "Do NOT turn book nicknames or metaphors into objects (never pasta/food hats). " +
+                "Do NOT output a labeled model-sheet, callouts, color swatches, arrows, or UI chrome — " +
+                "one clean portrait only, plain soft background, head and upper body, facing camera. " +
+                $"{ageClause}{familyClause}" +
+                $"Supporting text (secondary to images): {descSafe}. {visualClauseSafe}" +
+                $"Style: match the attached art (picture-book / soft 3D as in the refs). {treatment}.";
         }
 
         return
-            $"A detailed portrait model-sheet of {display}: {description}. {visualClause}" +
+            $"A clean character continuity portrait of {display}: {descSafe}. {visualClauseSafe}" +
             $"{ageClause}{familyClause}" +
-            $"Character centered in frame, look straight at camera, neutral expression, {treatment}. " +
-            "If this is a children's picture-book character, use illustrated storybook style " +
-            "(not a photorealistic stock photo). Isolated plain soft background.";
+            "Character centered, facing camera, plain soft background, head and upper body. " +
+            "Use only filmable look words from the description (colors, markings, real garments). " +
+            "No model-sheet labels or annotations. " +
+            "Children's picture-book character style unless text says otherwise. " +
+            treatment + ".";
     }
 
     private static List<string> ResolveBookRefPaths(string projectDir, JsonElement seedInfo, int maxRefs)
     {
+        // Only seed-tracked plates; never text-only / sampled paths
         var rels = new List<string>();
         foreach (var prop in new[] { "design_reference_images", "book_reference_images" })
         {
@@ -478,9 +554,13 @@ public sealed class CharacterDesignService
             foreach (var x in arr.EnumerateArray())
             {
                 var s = x.GetString();
-                if (!string.IsNullOrWhiteSpace(s) && !rels.Contains(s!))
+                if (string.IsNullOrWhiteSpace(s)) continue;
+                if (ProjectStore.IsTextOnlyPlatePath(s!)) continue;
+                if (!rels.Contains(s!, StringComparer.OrdinalIgnoreCase))
                     rels.Add(s!);
             }
+            if (rels.Count > 0)
+                break;
         }
 
         var full = new List<string>();

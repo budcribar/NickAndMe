@@ -12,17 +12,18 @@ d = json.loads(p.read_text(encoding="utf-8"))
 b = d["global_production_variables"]["character_seed_tokens"]["Character_Buster"]
 b["description"] = (
     "Small black-and-white dog (never brown/tan redesign), compact playful build, bright curious eyes, "
-    "floppy ears, short fur with clear black patches on white. Slightly goofy noodle-head expression—sweet, not mean. "
+    "floppy ears, short fur with clear black patches on white. Sweet, slightly goofy expression—not mean. "
     "Coat IS the black-and-white look (book text pajamas is coat metaphor unless art shows real sleepwear). "
-    "ALWAYS signature silly noodle-head hat. Day and night: natural bare coat; tucks under quilts bare-furred."
+    "ALWAYS wears his signature blue nightcap with yellow stars and a white pom-pom. "
+    "Day and night: natural bare coat; tucks under quilts bare-furred."
 )
 b["visual_lock"] = (
     "Always small black-and-white dog only—never brown, tan, gray, or solid-color redesign. "
-    "Always signature silly noodle-head hat (never bare-headed). Natural bare coat markings only—no physical "
-    "pajama garment that blends into fur (text pajamas = coat pattern metaphor per book art). "
-    "Never bipedal humanoid redesign."
+    "Always signature blue star nightcap with white pom-pom (never bare-headed; never pasta/food hat). "
+    "Natural bare coat markings only—no physical pajama garment that blends into fur "
+    "(text pajamas = coat pattern metaphor per book art). Never bipedal humanoid redesign."
 )
-b["wardrobe_always"] = ["signature silly noodle-head hat"]
+b["wardrobe_always"] = ["blue star nightcap with white pom-pom"]
 
 for s in d.get("scenes") or []:
     sn = int(s.get("scene_number") or 0)
@@ -36,7 +37,7 @@ for s in d.get("scenes") or []:
             if "pajama" not in str(i).lower() and "pjs" not in str(i).lower()
         ]
         if tok == "Character_Buster" and not any("hat" in str(i).lower() for i in cleaned):
-            cleaned = ["signature silly noodle-head hat"] + cleaned
+            cleaned = ["blue star nightcap with white pom-pom"] + cleaned
         wbc[tok] = cleaned
     if sn >= 1 and "Character_Buster" in (s.get("characters_on_screen") or []):
         wbc.setdefault("Character_Buster", ["signature silly noodle-head hat"])

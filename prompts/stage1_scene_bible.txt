@@ -46,8 +46,9 @@ CHARACTER SEEDS (REQUIRED)
 recurring on-screen person (and age variants for flashbacks).
 
 Each seed REQUIRED fields:
-- description — **filmable identity** (species/age/build/hair/face/wardrobe + **stable colors/markings**
-  that must not drift: e.g. “small black-and-white dog — never brown/tan redesign”)
+- description — **filmable identity only** (species/age/build/hair/face/wardrobe + **stable colors/markings**
+  that must not drift: e.g. “small black-and-white dog — never brown/tan redesign”).
+  **No book nicknames** as look words (see NICKNAMES vs VISUAL below).
 - reference_image_placeholder — **bare filename only** under assets/characters/
   (e.g. `buster_ref.png`, `character_mom_ref.png`). NEVER a full path like
   `assets/characters/buster_ref.png` (the pipeline prefixes that folder).
@@ -73,7 +74,7 @@ Each seed REQUIRED fields:
 - 1–3 sentences of **filmable constants** Stage 2 injects into every shot of this character
   (same role as location `visual_lock`, but for people/animals).
 - Include signature wardrobe/props/markings that must never drop between scenes, e.g.:
-  - “Always wears signature silly noodle-head hat; never bare-headed; black-and-white coat only.”
+  - “Always blue nightcap with yellow stars and white pom-pom; never bare-headed; black-and-white coat only.”
   - “Always soft blue cardigan + cream pants; shoulder-length brown hair; never teen redesign.”
   - “Always red collar with tag shape; never bare neck.”
 - **Include render medium** when the film is not plain live-action (e.g. “stylized 3D animated…”).
@@ -81,6 +82,18 @@ Each seed REQUIRED fields:
   distinctive collar, pajamas only when the book **draws** a real garment, etc.).
 - Do **not** invent a hat/prop the book never shows; if the book always shows it, you **must** lock it.
 - Pure narrator (`never_on_screen` / voice-only): omit `visual_lock` (or use empty omit-key).
+
+**NICKNAMES vs VISUAL (HARD — general, all books):**
+- Book nicknames, epithets, and title words (“Noodle Head”, “The Brave Little…”, “Speedy”) belong in
+  **dialogue / titles / summaries**, **not** in `description`, `visual_lock`, or `wardrobe_*`.
+- Those visual fields may only use **what a camera can see**: species, size, colors, markings,
+  face shape, real garments/props with color/shape (as drawn in the art).
+- Never use food/object words as appearance metaphors (e.g. “noodle-head hat”, “carrot-top hair”,
+  “button-nose” as if they invent new props) unless the illustration **literally** draws that object.
+- Bad: `ALWAYS signature silly noodle-head hat` / `goofy noodle-head expression`
+- Good: `ALWAYS blue nightcap with yellow stars` / `sweet slightly goofy expression`
+- Personality nicknames do **not** change silhouette; do not restate them in visual seeds.
+
 - **METAPHORICAL WARDROBE CAUTION (general):** If source text names a garment/prop that
   matches the character's natural surface (coat, skin, feathers, armor plating, etc.),
   **check the illustrations**. If art shows no separate garment, **omit it** from
@@ -98,9 +111,10 @@ Each seed REQUIRED fields:
 - Free-text phrases — **not** a fixed enum. Any item is allowed (hat, collar, glasses,
   cardigan, necklace, cast, alien badge, …). One short phrase per array entry.
 - Examples:
-  - `["signature silly noodle-head hat"]`
+  - `["blue nightcap with yellow stars and white pom-pom"]`
   - `["soft blue cardigan", "cream pants"]`
   - `["red leather collar"]`
+- Never put nickname-only strings here (no “noodle-head hat” — name the real prop/colors).
 - Do **not** put temporary/bedtime-only items here (those belong on the scene /
   beat wardrobe lists when the book shows them).
 - Do **not** list metaphorical garments the art never draws (see METAPHORICAL WARDROBE CAUTION).
@@ -111,7 +125,7 @@ Each seed REQUIRED fields:
 - Per scene **`wardrobe_by_character`**: object map `Character_*` → string[] of items
   that character wears **for this whole scene** (always-on + anything already on for the
   night/day). Stage 2 restates these on every clip.
-  Example: `"Character_Buster": ["signature silly noodle-head hat"]` (plus real pajamas only
+  Example: `"Character_Buster": ["blue nightcap with yellow stars"]` (plus real pajamas only
   if illustrations show a physical garment, not coat-as-metaphor).
 - Per scene **`wardrobe_notes`**: short human prose (who changed vs prior scene; note metaphors).
 - Per beat when someone **puts on** or **removes** something mid-scene:

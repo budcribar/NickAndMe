@@ -92,6 +92,14 @@ public sealed class BookPrepareService
             else
                 EnsureManifestFromDisk(source, imgDir, pageCount);
 
+            // New inventory invalidates prior character plate sort; Stage1/attach re-sorts into scenes.json
+            try
+            {
+                _projects.ClearCharacterPlatesSorted(projectId);
+                onProgress?.Invoke("Cleared character_plates sorted flag (book images refreshed)");
+            }
+            catch { /* non-fatal */ }
+
             await File.WriteAllTextAsync(bookTxt, text + "\n", ct);
             result.Pages = pageCount;
             result.TextEngine = engine;

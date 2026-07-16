@@ -233,7 +233,15 @@ app.MapGet("/api/projects/{id}/characters", (string id, ProjectStore store) =>
     try
     {
         var chars = store.ListCharacters(id);
-        return Results.Ok(new { ok = true, projectId = id, characters = chars });
+        var plates = store.GetCharacterPlatesState(id);
+        return Results.Ok(new
+        {
+            ok = true,
+            projectId = id,
+            characters = chars,
+            // Plates live on scenes.json seeds; this flag tracks whether import sorted them
+            characterPlates = plates,
+        });
     }
     catch (Exception ex)
     {
@@ -308,7 +316,9 @@ app.MapPost("/api/jobs/character-variants", async (StartCharacterVariantsRequest
     }
 });
 
-/// <summary>Attach book plate candidates to character seeds (flexible seed pipeline; does not lock).</summary>
+/// <summary>
+/// Sync heuristic attach (no Grok). Prefer POST /api/jobs/sort-character-plates for vision sort.
+/// </summary>
 app.MapPost("/api/projects/{id}/characters/attach-book-plates", (
     string id,
     AttachCharacterPlatesRequest? body,
@@ -329,6 +339,34 @@ app.MapPost("/api/projects/{id}/characters/attach-book-plates", (
     catch (Exception ex)
     {
         return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+/// <summary>
+/// Job: Grok vision sorts book images onto characters → scenes.json design_reference_images.
+/// Progress via SignalR; cancel with /api/jobs/cancel.
+/// </summary>
+app.MapPost("/api/jobs/sort-character-plates", async (
+    AttachCharacterPlatesRequest body,
+    FilmJobService jobService) =>
+{
+    try
+    {
+        body.Force = true; // explicit user/job start always re-sorts
+        if (body.MaxImages <= 0) body.MaxImages = 32;
+        await jobService.StartSortCharacterPlatesAsync(body);
+        return Results.Ok(new
+        {
+            ok = true,
+            message = body.UseGrok
+                ? "Started Grok vision character plate sort"
+                : "Started heuristic character plate sort",
+            job = jobService.GetSnapshot(),
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
     }
 });
 
