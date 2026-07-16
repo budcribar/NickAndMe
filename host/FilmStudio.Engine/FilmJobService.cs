@@ -210,7 +210,10 @@ public sealed class FilmJobService
             Status = "running",
             Kind = "character",
             ProjectId = projectId,
+            CharKey = req.CharKey,
             Message = $"Generating portraits for {req.CharKey}…",
+            Index = 0,
+            Total = 3,
             StartedAt = DateTimeOffset.UtcNow,
             Log = new List<string>(),
         };
@@ -226,14 +229,61 @@ public sealed class FilmJobService
             if (!File.Exists(script))
                 throw new InvalidOperationException($"character_design_cli.py not found: {script}");
 
+            // -u = unbuffered so SignalR gets live Python print lines
             var args =
-                $"\"{script}\" --project \"{projectId}\" generate --char \"{req.CharKey}\"";
+                $"-u \"{script}\" --project \"{projectId}\" generate --char \"{req.CharKey}\"";
             await AppendLogAsync($"Character design: python {args}");
-            var exit = await RunPythonAsync(args, root, ct);
+            await UpdateAsync(s => s.Message = "Calling Grok image model (book refs when available)…");
+
+            var exit = await RunPythonAsync(args, root, ct, onLine: line =>
+            {
+                // Map CLI/engine lines → coarse progress for the UI
+                if (line.Contains("[progress]", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (line.Contains("book_refs", StringComparison.OrdinalIgnoreCase))
+                        _ = UpdateAsync(s => { s.Index = Math.Max(s.Index, 0); s.Message = line; });
+                    else if (line.Contains("api", StringComparison.OrdinalIgnoreCase) ||
+                             line.Contains("edit", StringComparison.OrdinalIgnoreCase) ||
+                             line.Contains("generate", StringComparison.OrdinalIgnoreCase))
+                        _ = UpdateAsync(s => { s.Index = Math.Max(s.Index, 1); s.Message = "Grok image request in flight…"; });
+                    else if (line.Contains("saved", StringComparison.OrdinalIgnoreCase) ||
+                             line.Contains("variant", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // try "variant 2" / "variant_02" / "2/3"
+                        var idx = TryParseVariantProgress(line);
+                        _ = UpdateAsync(s =>
+                        {
+                            if (idx > 0) s.Index = Math.Clamp(idx, 0, 3);
+                            s.Message = line;
+                        });
+                    }
+                }
+                else if (line.Contains("Character design", StringComparison.OrdinalIgnoreCase) ||
+                         line.Contains("[Character design]", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = UpdateAsync(s =>
+                    {
+                        s.Index = Math.Max(s.Index, 1);
+                        s.Message = line.Trim();
+                    });
+                }
+                else if (line.Contains("_variant_0", StringComparison.OrdinalIgnoreCase))
+                {
+                    var idx = TryParseVariantProgress(line);
+                    if (idx > 0)
+                        _ = UpdateAsync(s => { s.Index = idx; s.Message = $"Saved variant {idx}/3"; });
+                }
+            });
+
             if (exit == 0)
+            {
+                await UpdateAsync(s => s.Index = 3);
                 await FinishAsync("done", $"Variants ready for {req.CharKey}");
+            }
             else
+            {
                 await FinishAsync("error", $"Portrait generation failed (exit {exit})", $"exit {exit}");
+            }
         }
         catch (OperationCanceledException)
         {
@@ -244,6 +294,19 @@ public sealed class FilmJobService
             _log.LogError(ex, "Character variants failed");
             await FinishAsync("error", ex.Message, ex.Message);
         }
+    }
+
+    private static int TryParseVariantProgress(string line)
+    {
+        // character_buster_variant_02.png / variant 2 / 2/3
+        var m = System.Text.RegularExpressions.Regex.Match(
+            line, @"variant[_\s-]*0*([1-3])", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (m.Success && int.TryParse(m.Groups[1].Value, out var n))
+            return n;
+        m = System.Text.RegularExpressions.Regex.Match(line, @"\b([1-3])\s*/\s*3\b");
+        if (m.Success && int.TryParse(m.Groups[1].Value, out n))
+            return n;
+        return 0;
     }
 
     private static string? TryParseCliError(string line)
@@ -393,9 +456,13 @@ public sealed class FilmJobService
         }
     }
 
-    private async Task<int> RunPythonAsync(string arguments, string workingDir, CancellationToken ct)
+    private async Task<int> RunPythonAsync(
+        string arguments,
+        string workingDir,
+        CancellationToken ct,
+        Action<string>? onLine = null)
     {
-        var (exit, _) = await RunPythonCaptureAsync(arguments, workingDir, ct, logToJob: true);
+        var (exit, _) = await RunPythonCaptureAsync(arguments, workingDir, ct, logToJob: true, onLine: onLine);
         return exit;
     }
 
@@ -403,22 +470,34 @@ public sealed class FilmJobService
         string arguments,
         string workingDir,
         CancellationToken ct,
-        bool logToJob = false)
+        bool logToJob = false,
+        Action<string>? onLine = null)
     {
         var python = string.IsNullOrWhiteSpace(_opts.PythonExecutable)
             ? "python"
             : _opts.PythonExecutable;
 
+        // If caller already passed "-u script…", don't double-wrap
+        var args = arguments.TrimStart();
+        if (!args.StartsWith("-u ", StringComparison.Ordinal) &&
+            !args.StartsWith("-u\"", StringComparison.Ordinal))
+        {
+            // Prefer unbuffered child when running scripts for live SignalR logs
+            if (args.Contains(".py", StringComparison.OrdinalIgnoreCase))
+                args = "-u " + args;
+        }
+
         var psi = new ProcessStartInfo
         {
             FileName = python,
-            Arguments = arguments,
+            Arguments = args,
             WorkingDirectory = workingDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        psi.Environment["PYTHONUNBUFFERED"] = "1";
         var key = Environment.GetEnvironmentVariable("XAI_API_KEY");
         if (!string.IsNullOrWhiteSpace(key) && !psi.Environment.ContainsKey("XAI_API_KEY"))
             psi.Environment["XAI_API_KEY"] = key;
@@ -431,6 +510,7 @@ public sealed class FilmJobService
         {
             if (string.IsNullOrEmpty(e.Data)) return;
             stdout.AppendLine(e.Data);
+            try { onLine?.Invoke(e.Data); } catch { /* ignore progress parse errors */ }
             if (logToJob)
                 await AppendLogAsync(e.Data);
         };
@@ -438,6 +518,7 @@ public sealed class FilmJobService
         {
             if (string.IsNullOrEmpty(e.Data)) return;
             stdout.AppendLine(e.Data);
+            try { onLine?.Invoke(e.Data); } catch { /* ignore */ }
             if (logToJob)
                 await AppendLogAsync(e.Data);
         };
@@ -842,6 +923,7 @@ public sealed class FilmJobService
         Kind = s.Kind,
         Message = s.Message,
         ProjectId = s.ProjectId,
+        CharKey = s.CharKey,
         Scene = s.Scene,
         Clip = s.Clip,
         Index = s.Index,

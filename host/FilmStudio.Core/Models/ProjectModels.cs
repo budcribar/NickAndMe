@@ -19,6 +19,7 @@ public sealed class JobSnapshot
     public string? Kind { get; set; }
     public string? Message { get; set; }
     public string? ProjectId { get; set; }
+    public string? CharKey { get; set; }
     public int? Scene { get; set; }
     public int? Clip { get; set; }
     public int Index { get; set; }

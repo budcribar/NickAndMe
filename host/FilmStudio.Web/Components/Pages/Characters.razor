@@ -42,20 +42,34 @@
 </div>
 
 @if (_job is not null &&
-     (_job.Kind is "character" || string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase)) &&
+     string.Equals(_job.Kind, "character", StringComparison.OrdinalIgnoreCase) &&
      _job.Status is "running" or "done" or "error" or "cancelled")
 {
     <div class="card mb-3 border-@(_job.Status == "running" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
         <div class="card-body py-2">
-            <span class="badge bg-secondary">@_job.Status</span>
-            @if (_job.Kind is { Length: > 0 } k)
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="badge bg-secondary">@_job.Status</span>
+                <span class="badge bg-info text-dark">character</span>
+                @if (!string.IsNullOrEmpty(_job.CharKey))
+                {
+                    <code class="small">@_job.CharKey</code>
+                }
+                @if (_job.Total > 0)
+                {
+                    <span class="small text-muted">@_job.Index / @_job.Total variants</span>
+                }
+                <span class="small">@_job.Message</span>
+            </div>
+            @if (_job.Status == "running" && _job.Total > 0)
             {
-                <span class="badge bg-info text-dark ms-1">@k</span>
+                var pct = (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / _job.Total);
+                <div class="progress mt-2" style="height: 0.5rem;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: @(Math.Max(8, pct))%"></div>
+                </div>
             }
-            <span class="ms-2 small">@_job.Message</span>
             @if (_job.Log.Count > 0)
             {
-                <pre class="small mb-0 mt-2" style="max-height: 120px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(16))</pre>
+                <pre class="small mb-0 mt-2" style="max-height: 140px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(20))</pre>
             }
         </div>
     </div>
@@ -304,13 +318,19 @@ else
 
     private void OnJobUpdated(JobSnapshot snap)
     {
+        // Always accept hub snapshots for character jobs (or any running job while on this page)
         _job = snap;
         if ((snap.Status is "done" or "error" or "cancelled") &&
             string.Equals(snap.Kind, "character", StringComparison.OrdinalIgnoreCase))
         {
             _ = InvokeAsync(async () =>
             {
+                // Re-fetch cast so variants / locked badges update from the API
                 await SoftReloadAsync();
+                if (snap.Status == "done")
+                    _message = snap.Message ?? "Portrait variants ready — lock one below.";
+                else if (snap.Status == "error")
+                    _error = snap.Error ?? snap.Message ?? "Portrait generation failed";
                 StateHasChanged();
             });
         }
@@ -322,8 +342,17 @@ else
 
     private void OnJobLog(string line)
     {
+        // Prefer full snapshots from JobUpdated; keep message fresh if log arrives first
         if (_job is not null)
+        {
             _job.Message = line;
+            if (_job.Log.Count == 0 || _job.Log[^1] != line)
+            {
+                _job.Log.Add(line);
+                if (_job.Log.Count > 80)
+                    _job.Log = _job.Log.TakeLast(80).ToList();
+            }
+        }
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -388,9 +417,10 @@ else
         _message = null;
         try
         {
+            // Connect hub *before* starting so we don't miss early JobUpdated events
+            try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
             await Engine.StartCharacterVariantsAsync(_projectId, _selected.Key);
-            _message = $"Generating variants for {_selected.DisplayName}…";
-            try { await Hub.StartAsync(); } catch { /* ignore */ }
+            _message = $"Generating variants for {_selected.DisplayName}… (live via SignalR)";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
         }

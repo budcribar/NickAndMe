@@ -43,21 +43,29 @@ def main() -> int:
 
     try:
         if args.action == "generate":
+            # Progress lines for FilmStudio.Api → SignalR (use -u / PYTHONUNBUFFERED)
+            print(f"[progress] starting generate for {args.char}", flush=True)
+            print("[progress] resolving book_refs / design prompt", flush=True)
+            print("[progress] calling grok image api (may take a minute)…", flush=True)
             result = api.generate_character_variants(args.char)
+            paths = result.get("paths") or []
+            for i, p in enumerate(paths, start=1):
+                print(f"[progress] saved variant {i}/3 → {Path(p).name}", flush=True)
             print(
                 json.dumps(
                     {
                         "ok": True,
                         "action": "generate",
                         "char": args.char,
-                        "paths": result.get("paths") or [],
+                        "paths": paths,
                         "mode": result.get("mode"),
                         "book_refs": [
                             Path(p).name for p in (result.get("book_refs") or [])
                         ],
                         "edit_error": result.get("edit_error"),
                     }
-                )
+                ),
+                flush=True,
             )
             return 0
 

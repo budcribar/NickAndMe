@@ -19,8 +19,16 @@ public sealed class JobHubClient : IAsyncDisposable
 
     public async Task StartAsync(CancellationToken ct = default)
     {
-        if (_connection is not null)
+        // Already live
+        if (_connection is { State: HubConnectionState.Connected or HubConnectionState.Connecting })
             return;
+
+        // Stale connection after drop — rebuild
+        if (_connection is not null)
+        {
+            try { await _connection.DisposeAsync(); } catch { /* ignore */ }
+            _connection = null;
+        }
 
         var baseUrl = (_opts.BaseUrl ?? "http://127.0.0.1:5088").TrimEnd('/');
         _connection = new HubConnectionBuilder()
