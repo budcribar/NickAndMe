@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Minimal C# port of xAI Grok video generate/poll/download used by the Python engine.
+/// xAI Grok video generate / poll / download client.
 /// </summary>
 public sealed class GrokVideoClient
 {

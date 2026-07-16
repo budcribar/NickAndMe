@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace FilmStudio.Engine;
 
-/// <summary>xAI /responses vision transcription (port of transcribe_book_pages_grok.py).</summary>
+/// <summary>xAI /responses vision transcription for book page images.</summary>
 public sealed class GrokVisionClient
 {
     public const string ApiBase = "https://api.x.ai/v1";

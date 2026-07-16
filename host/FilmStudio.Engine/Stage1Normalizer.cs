@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace FilmStudio.Engine;
 
-/// <summary>Port of normalize_stage1.py — coerce Stage 1 JSON after LLM generation.</summary>
+/// <summary>Coerce Stage 1 JSON after LLM generation (schema cleanup).</summary>
 public static class Stage1Normalizer
 {
     private static readonly Dictionary<string, string> LocTypeMap = new(StringComparer.OrdinalIgnoreCase)

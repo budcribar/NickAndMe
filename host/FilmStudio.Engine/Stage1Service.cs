@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// C# port of run_stage1_from_book.py — book chunks → Grok chat → scenes.json + normalize.
+/// Book chunks → Grok chat → scenes.json + normalize.
 /// </summary>
 public sealed class Stage1Service
 {

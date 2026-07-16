@@ -7,10 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace FilmStudio.Engine;
 
-/// <summary>
-/// Native C# client for xAI Grok Imagine image generate + edit APIs
-/// (port of renderer/engine.py _grok_generate_image_variants / _grok_edit_image_variants).
-/// </summary>
+/// <summary>xAI Grok Imagine image generate + edit client for character portraits.</summary>
 public sealed class GrokImageClient
 {
     public const string ApiBase = "https://api.x.ai/v1";

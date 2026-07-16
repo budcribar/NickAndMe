@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// C# port of stage2_plan_grok.py — Stage 1 bible → Stage 2 clip blueprint (deterministic, no API).
+/// Stage 1 bible → Stage 2 clip blueprint (deterministic, no API).
 /// Covers plan_scene, visual prompt packing, wardrobe continuity, duration allocation.
 /// </summary>
 public sealed class Stage2PlannerService

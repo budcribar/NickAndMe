@@ -397,7 +397,7 @@ public sealed class ProjectStore
 
     /// <summary>
     /// Canonical locked ref: <c>{character_key_lower}_ref.png</c>
-    /// e.g. Character_Mom → character_mom_ref.png (matches Python engine).
+    /// e.g. Character_Mom → character_mom_ref.png.
     /// </summary>
     public static string CharacterRefFileName(string charKey)
     {
@@ -1201,7 +1201,7 @@ public sealed class ProjectStore
                 catch { /* ignore */ }
             }
 
-            // Stale when Stage 1 bible is newer than blueprint (content fingerprint port is Python-side)
+            // Stale when Stage 1 bible is newer than blueprint
             var s1Path = ResolveScenesJsonPath(projectId);
             if (File.Exists(s1Path) && status.Stage2Ready)
             {

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FilmStudio.Engine;
 
-/// <summary>Port of gui/review_app/edit_log.py — project edit_feedback_log.json.</summary>
+/// <summary>Project edit/feedback log (edit_feedback_log.json) + clip/scene review state.</summary>
 public sealed class EditLogService
 {
     private static readonly JsonSerializerOptions JsonOpts = new()

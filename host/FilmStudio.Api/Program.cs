@@ -374,7 +374,7 @@ static string GuessImageContentType(string path) =>
     : path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? "image/webp"
     : "application/octet-stream";
 
-// ---- Adaptation (book / Stage 1 / Stage 2 status + Python jobs) ----
+// ---- Adaptation (book / Stage 1 / Stage 2 status + jobs) ----
 app.MapGet("/api/projects/{id}/adaptation", (string id, ProjectStore store) =>
 {
     try

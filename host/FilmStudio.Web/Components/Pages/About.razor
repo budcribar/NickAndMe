@@ -10,12 +10,11 @@ FilmStudio.Web (Blazor Server)
 FilmStudio.Api  (:5088)
     │  JobHub  ·  FilmJobService
     ▼
-FilmStudio.Engine (C#)
-    · ProjectStore  (projects/, blueprint JSON)
-    · GrokVideoClient (xAI videos API)
+FilmStudio.Engine (native C# — no Python)
+    · Book prepare (PdfPig + page render + Grok vision)
+    · Stage 1 (Grok chat) / Stage 2 (planner)
+    · Characters (Grok image) · multi-ref video
+    · FFmpeg remux/WIP (progress over SignalR)
+    · Review / edit log · cost ledger
     · writes assets/video/scene_XX_clip_YY.mp4
-
-Legacy (still useful):
-  Native C# engine: Stage1/2, multi-ref video, remux/WIP, review, PDF vision
-  Streamlit + Python remain as optional legacy tooling
 </pre>

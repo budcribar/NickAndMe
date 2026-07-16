@@ -5,7 +5,6 @@ namespace FilmStudio.Engine;
 
 /// <summary>
 /// Builds Grok video prompts (visual + audio) and resolves character ref image paths for multi-ref gen.
-/// Port of engine.py _build_video_generation_prompt + _find_character_anchor_paths (subset).
 /// </summary>
 public static class ClipVideoPromptBuilder
 {

@@ -10,8 +10,8 @@ using UglyToad.PdfPig.Content;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// C# port of prepare_book_source / extract_book_source / Grok vision transcribe.
-/// PDF text via PdfPig (MIT); vision OCR via xAI; writes source/book_full.txt + extract_meta.json.
+/// Prepare book source for Stage 1: PDF text (PdfPig), page render, optional Grok vision OCR.
+/// Writes source/book_full.txt + extract_meta.json.
 /// </summary>
 public sealed class BookPrepareService
 {
@@ -202,8 +202,8 @@ public sealed class BookPrepareService
         result.SuggestedChunkPages = analysis.SuggestedChunkPages;
         result.Notes = analysis.Notes.ToList();
 
-        // Match Python prepare: vision success is stage-1-ready; strategies that
-        // need user/key are not; clean embedded text uses analyzer flags.
+        // Vision success is stage-1-ready; strategies that need user/key are not;
+        // clean embedded text uses analyzer flags.
         if (result.TextEngine == "grok_vision")
         {
             var failed = result.VisionFailedPages;
@@ -495,8 +495,7 @@ public sealed class BookPrepareService
     }
 
     /// <summary>
-    /// Rebuild manifest from files already on disk (e.g. prior Python extract)
-    /// when PdfPig could not pull new embeds.
+    /// Rebuild manifest from files already on disk when PdfPig could not pull new embeds.
     /// </summary>
     private static void EnsureManifestFromDisk(string sourceDir, string imgDir, int pages)
     {

@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using FilmStudio.Core.Models;
 using FilmStudio.Core.Options;
@@ -16,7 +14,8 @@ public interface IJobProgressSink
 }
 
 /// <summary>
-/// C# film job orchestrator: Stage 1/2, book prepare, character design, multi-ref video, remux/WIP.
+/// Native C# film job orchestrator (no Python): Stage 1/2, book prepare,
+/// character design, multi-ref video, remux/WIP with SignalR progress.
 /// </summary>
 public sealed class FilmJobService
 {
@@ -121,7 +120,7 @@ public sealed class FilmJobService
         await Task.CompletedTask;
     }
 
-    /// <summary>Run Python Stage 1 (book → scenes.json). Requires XAI_API_KEY and python on PATH.</summary>
+    /// <summary>Stage 1 (book → scenes.json) via C# Grok chat. Requires XAI_API_KEY.</summary>
     public async Task StartStage1Async(StartStage1Request req)
     {
         if (!await _gate.WaitAsync(0))
@@ -138,7 +137,7 @@ public sealed class FilmJobService
         await Task.CompletedTask;
     }
 
-    /// <summary>Run Python Stage 2 planner (scenes.json → blueprint). No API key required.</summary>
+    /// <summary>Stage 2 planner (scenes.json → blueprint). Deterministic C#; no API key.</summary>
     public async Task StartStage2Async(StartStage2Request req)
     {
         if (!await _gate.WaitAsync(0))
@@ -251,7 +250,7 @@ public sealed class FilmJobService
         await Task.CompletedTask;
     }
 
-    /// <summary>Native C# lock/unlock (no Python).</summary>
+    /// <summary>Lock/unlock character reference images.</summary>
     public Task<string> RunCharacterDesignActionAsync(
         string projectId,
         string action,
@@ -416,7 +415,7 @@ public sealed class FilmJobService
 
         try
         {
-            await AppendLogAsync("Stage 1: C# Stage1Service (no Python)");
+            await AppendLogAsync("Stage 1: Stage1Service (Grok chat)");
             var result = await _stage1.RunAsync(
                 projectId,
                 chunkPages: Math.Clamp(req.ChunkPages, 5, 30),
@@ -556,95 +555,6 @@ public sealed class FilmJobService
             _log.LogError(ex, "Remux failed");
             await FinishAsync("error", ex.Message, ex.Message);
         }
-    }
-
-    private async Task<int> RunPythonAsync(
-        string arguments,
-        string workingDir,
-        CancellationToken ct,
-        Action<string>? onLine = null)
-    {
-        var (exit, _) = await RunPythonCaptureAsync(arguments, workingDir, ct, logToJob: true, onLine: onLine);
-        return exit;
-    }
-
-    private async Task<(int Exit, string Stdout)> RunPythonCaptureAsync(
-        string arguments,
-        string workingDir,
-        CancellationToken ct,
-        bool logToJob = false,
-        Action<string>? onLine = null)
-    {
-        var python = string.IsNullOrWhiteSpace(_opts.PythonExecutable)
-            ? "python"
-            : _opts.PythonExecutable;
-
-        // If caller already passed "-u script…", don't double-wrap
-        var args = arguments.TrimStart();
-        if (!args.StartsWith("-u ", StringComparison.Ordinal) &&
-            !args.StartsWith("-u\"", StringComparison.Ordinal))
-        {
-            // Prefer unbuffered child when running scripts for live SignalR logs
-            if (args.Contains(".py", StringComparison.OrdinalIgnoreCase))
-                args = "-u " + args;
-        }
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = python,
-            Arguments = args,
-            WorkingDirectory = workingDir,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        psi.Environment["PYTHONUNBUFFERED"] = "1";
-        var key = Environment.GetEnvironmentVariable("XAI_API_KEY");
-        if (!string.IsNullOrWhiteSpace(key) && !psi.Environment.ContainsKey("XAI_API_KEY"))
-            psi.Environment["XAI_API_KEY"] = key;
-
-        using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
-        var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var stdout = new StringBuilder();
-
-        proc.OutputDataReceived += async (_, e) =>
-        {
-            if (string.IsNullOrEmpty(e.Data)) return;
-            stdout.AppendLine(e.Data);
-            try { onLine?.Invoke(e.Data); } catch { /* ignore progress parse errors */ }
-            if (logToJob)
-                await AppendLogAsync(e.Data);
-        };
-        proc.ErrorDataReceived += async (_, e) =>
-        {
-            if (string.IsNullOrEmpty(e.Data)) return;
-            stdout.AppendLine(e.Data);
-            try { onLine?.Invoke(e.Data); } catch { /* ignore */ }
-            if (logToJob)
-                await AppendLogAsync(e.Data);
-        };
-        proc.Exited += (_, _) => tcs.TrySetResult(proc.ExitCode);
-
-        if (!proc.Start())
-            throw new InvalidOperationException($"Failed to start {python}");
-
-        proc.BeginOutputReadLine();
-        proc.BeginErrorReadLine();
-
-        await using var reg = ct.Register(() =>
-        {
-            try
-            {
-                if (!proc.HasExited)
-                    proc.Kill(entireProcessTree: true);
-            }
-            catch { /* ignore */ }
-        });
-
-        var exit = await tcs.Task.WaitAsync(ct);
-        await Task.Delay(100, CancellationToken.None);
-        return (exit, stdout.ToString());
     }
 
     private async Task RunBatchGenAsync(StartBatchGenRequest req, CancellationToken ct)

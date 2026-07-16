@@ -10,7 +10,7 @@
 <h1>Scenes &amp; Clips</h1>
 <p class="text-muted">
     Stage 2 blueprint browse + generate via the C# engine.
-    Pass/Fail/Regen QA and Stage 2 replan remain in <strong>Streamlit</strong> for now.
+    Pass/fail and remux live on the <a href="review">Review</a> page; replan Stage 2 from <a href="adaptation">Adaptation</a>.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -121,7 +121,7 @@
     else if (_scenes.Count == 0)
     {
         <div class="alert alert-warning">
-            No Stage 2 scenes. Run <strong>Streamlit → Adaptation → Stage 2</strong> (or the stage2 planner CLI) first.
+            No Stage 2 scenes. Open <strong>Adaptation</strong> and run Stage 2 first.
         </div>
     }
     else
@@ -448,7 +448,7 @@ else
                 </div>
             </div>
             <div class="card-footer small text-muted">
-                Edit prompts / Pass-Fail / QA retry: use Streamlit <strong>Scenes</strong> for now.
+                Pass/fail &amp; remux: open <a href="review">Review</a>. Prompt edits: edit the Stage 2 blueprint JSON or re-run Stage 2.
             </div>
         </div>
     }

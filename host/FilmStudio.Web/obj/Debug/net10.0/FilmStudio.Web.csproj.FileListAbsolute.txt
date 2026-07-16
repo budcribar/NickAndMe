@@ -93,3 +93,4 @@ C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web\obj\Debug\net10.0\comp
 C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web\obj\Debug\net10.0\compressed\eh2s2p8qch-{0}-hbwfqsbqmv-hbwfqsbqmv.gz
 C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web\obj\Debug\net10.0\compressed\evqbbyfe1r-{0}-f7fxoh55ae-f7fxoh55ae.gz
 C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web\obj\Debug\net10.0\compressed\eldwuk30w3-{0}-68qhiysw0j-68qhiysw0j.gz
+C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt

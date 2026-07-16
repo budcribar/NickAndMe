@@ -7,7 +7,7 @@ namespace FilmStudio.Engine;
 
 /// <summary>
 /// Cost ledger (pipeline_state.cost_ledger) + planning estimates from blueprint + list rates.
-/// Mirrors gui/review_app/cost_estimate.py — estimates only, not xAI invoices.
+/// Cost estimates + ledger aggregation (list-rate estimates, not xAI invoices).
 /// </summary>
 public sealed class CostReportService
 {

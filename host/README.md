@@ -1,29 +1,25 @@
 # Film Studio (.NET solution)
 
 Visual Studio / `dotnet` solution: **Blazor UI + C# API/engine**, with live **SignalR** job progress.
+**No Python runtime is required** for the product path under `host/`.
 
 ```text
 host/
   FilmStudio.slnx          # open this in Visual Studio
   FilmStudio.Core/         # shared models + options
-  FilmStudio.Engine/       # C# project store + Grok video jobs
+  FilmStudio.Engine/       # project store + Grok jobs + remux
   FilmStudio.Api/          # REST + SignalR hub (:5088)
   FilmStudio.Web/          # Blazor Server UI
-  python_engine_api.py     # optional legacy Python HTTP bridge
 ```
 
 ## Architecture
 
 | Project | Role |
 |---------|------|
-| **FilmStudio.Web** | Blazor UI (projects, start gen, live log) |
+| **FilmStudio.Web** | Blazor UI (projects, adaptation, scenes, characters, review, cost) |
 | **FilmStudio.Api** | Backend: REST + `/hubs/jobs` SignalR |
-| **FilmStudio.Engine** | Native C# job runner + Grok client |
+| **FilmStudio.Engine** | Native C# job runner (Stage 1/2, video, remux, book prepare) |
 | **FilmStudio.Core** | DTOs / options |
-
-The C# engine owns the product path: book prepare, Stage 1/2, multi-ref video gen,
-FFmpeg remux/WIP, character design, cost, and review/edit log. Python/Streamlit remain
-optional for legacy experiments.
 
 ## Run (two terminals)
 
@@ -31,7 +27,7 @@ optional for legacy experiments.
 
 ```powershell
 cd C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Api
-$env:XAI_API_KEY = "your-key"   # required to generate
+$env:XAI_API_KEY = "your-key"   # required for Stage 1 / images / video / vision
 dotnet run
 # Must listen on http://127.0.0.1:5088
 # GET http://127.0.0.1:5088/health
@@ -39,6 +35,8 @@ dotnet run
 ```
 
 You need **two processes**: Api **and** Web. If only Web is running, health checks fail with connection refused.
+
+ffmpeg for remux/WIP is **bundled** on Windows via NuGet (`Soenneker.Libraries.FFmpeg` → `Resources/ffmpeg.exe`). Override with `FilmStudio:FfmpegPath` if needed.
 
 ### 2) Blazor UI
 
@@ -62,7 +60,11 @@ Open `host/FilmStudio.slnx`, set **multiple startup projects**: Api + Web.
 | GET | `/api/projects` | List / active |
 | POST | `/api/projects/{id}/activate` | Switch project |
 | GET | `/api/jobs` | Job snapshot |
-| POST | `/api/jobs/gen-scene` | `{ projectId, scene, onlyMissing }` |
+| POST | `/api/jobs/book-prepare` | PDF extract / vision OCR |
+| POST | `/api/jobs/stage1` | Stage 1 scene bible |
+| POST | `/api/jobs/stage2` | Stage 2 clip plan |
+| POST | `/api/jobs/gen-scene` | Generate scene clips |
+| POST | `/api/jobs/remux` | Scene remux / WIP (ffmpeg progress over SignalR) |
 | POST | `/api/jobs/cancel` | Cancel |
 | GET | `/api/stage2-status` | Blueprint present? |
 
@@ -75,15 +77,17 @@ Events: `JobUpdated` (JobSnapshot), `JobLog` (string)
 
 `FilmStudio.Api/appsettings.json` → `FilmStudio:WorkspaceRoot` (empty = auto-detect repo root).
 
-## Parity notes
+## Capability matrix (native C#)
 
-| Feature | C# engine | Python (legacy) |
-|---------|-----------|-----------------|
-| PDF extract + vision OCR + page render | Yes | Yes |
-| Stage 1 scene bible (Grok chat) | Yes | Yes |
-| Stage 2 clip planner | Yes | Yes |
-| Multi-ref video + audio prompt build | Yes | Yes |
-| Character portrait gen / lock | Yes | Yes |
-| FFmpeg scene remux + WIP | Yes (bundled via Soenneker.Libraries.FFmpeg) | Yes |
-| Review / edit log / approve | Yes | Yes |
-| SignalR live UI | Yes | N/A (Streamlit poll) |
+| Feature | Status |
+|---------|--------|
+| PDF extract + vision OCR + page render | Yes |
+| Stage 1 scene bible (Grok chat) | Yes |
+| Stage 2 clip planner | Yes |
+| Multi-ref video + audio prompt build | Yes |
+| Character portrait gen / lock | Yes |
+| FFmpeg scene remux + WIP (progress via SignalR) | Yes |
+| Review / edit log / approve | Yes |
+| SignalR live UI | Yes |
+
+Repo-root `gui/`, `scripts/`, and `renderer/` may still contain historical Python tooling; they are **not** invoked by Film Studio under `host/`.

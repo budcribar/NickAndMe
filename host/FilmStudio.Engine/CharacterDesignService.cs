@@ -8,7 +8,7 @@ namespace FilmStudio.Engine;
 
 /// <summary>
 /// Native character portrait design: Grok image gen/edit, lock/unlock refs.
-/// Port of renderer/engine.py generate_character_variants + lock/unlock.
+/// Character portrait variants + lock/unlock to character_*_ref.png.
 /// </summary>
 public sealed class CharacterDesignService
 {
