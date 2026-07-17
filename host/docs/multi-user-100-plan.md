@@ -395,14 +395,15 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 - `JobRecord` + `IJobStore` (in-memory concurrent dictionary first).
 - Replace global single `_snapshot` with:
   - `TryEnqueue`, `GetJob`, `ListJobs(userId|projectId)`, `Cancel(jobId)`.
-- Keep **backward-compatible** `GET /api/jobs` → “primary” or “latest for caller”.
-- Add `GET /api/jobs/{id}`, `GET /api/jobs?mine=1`.
+- **Temporary shim:** keep **backward-compatible** `GET /api/jobs` → “primary” or “latest for caller” so existing Blazor keeps working during migration.
+- Add `GET /api/jobs/{id}`, `GET /api/jobs?mine=1` (and optional `?projectId=`).
 
 **A4. Capacity options**
 
 - `CapacityOptions` as above; enforce in enqueue.
 
 **Exit A:** app runs with fakes; single-user behavior preserved; tests use fakes.
+*(Do **not** remove the `/api/jobs` shim in Phase A.)*
 
 ---
 
@@ -510,6 +511,42 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 - **Admin check:** during soak, open `/admin` and confirm counters move (inFlight, queues, jobs); change `MaxVideoInFlight` live and observe queue behavior.
 
 **Exit E:** documented numbers + pass/fail thresholds + admin console verified under load.
+
+---
+
+### Phase F — Remove backward-compatible `GET /api/jobs` (when appropriate)
+
+**Purpose:** Drop the single-job shim once every consumer speaks multi-job.
+
+**Do this phase only when all gates pass:**
+
+| # | Gate |
+|---|------|
+| 1 | **FilmStudio.Web** uses only `GET /api/jobs?mine=1` (or list) + `GET /api/jobs/{id}`; no code treats one global snapshot as the sole job |
+| 2 | **SignalR** clients key progress by `jobId` / user queue, not “the” hub job |
+| 3 | **LoadSim** (if it watches jobs) uses list/id APIs |
+| 4 | **Admin** dashboard uses job lists from `/api/admin/state` or multi-job queries |
+| 5 | Repo search (`JobsDto` / single `job` as singleton) shows no remaining callers of the shim contract |
+| 6 | Optional: one release or flag period where both shapes worked (if any external clients) |
+
+**F1. Remove shim**
+
+- Delete “primary / latest for caller” special case.
+- Choose end-state contract (document in API README / `.http`):
+
+  **Preferred:** bare `GET /api/jobs` → **400** with message to pass `mine=1` or `projectId=…`  
+  **Alternative:** bare `GET /api/jobs` → same as `?mine=1` (list only; never a single wrapped “primary” job)
+
+**F2. Cleanup**
+
+- Remove compatibility DTOs/fields used only for the singleton shape (if any).
+- Update `FilmStudio.Api.http`, About/docs, and any samples.
+- Add a short changelog note: breaking API change for legacy single-job clients.
+
+**Exit F:** only multi-job list/detail endpoints remain; CI green; LoadSim + Web + admin verified once.
+
+**Earliest practical timing:** after **Phase D** (Web migrated).  
+**Safest timing:** after **Phase E** (sim + admin under load also off the shim).
 
 ---
 
@@ -672,6 +709,7 @@ dotnet run --project host/FilmStudio.LoadSim -- --users 100 --duration 300 --sce
 | C Locks + workers + **metrics feed** | 4–6 days |
 | D User UX + **admin dashboard + config** | 4–5 days |
 | E LoadSim + soak + admin under load | 2–3 days |
+| F Remove `GET /api/jobs` single-job shim | 0.5 day (when gates pass) |
 
 **First vertical slice (1 week goal):** A1–A3 + B1/B4 stub admin login + `GET /api/admin/state` skeleton + LoadSim browse 50 VUs.
 
@@ -702,7 +740,8 @@ Then iterate multi-job + locks + live metrics + config page + gen actions in sim
 | Test money | Fakes always for CI/load |
 | Fake video size | NickAndMe-scale real MP4 fixtures (~4–5 MB / ~10s) for ffmpeg merge realism; tiny fixture only for light load mode |
 | Work-stealing deque for WIP | Rejected; use single-flight + optional parallel stale remux |
+| Legacy `GET /api/jobs` shim | Keep through multi-job migration; **Phase F** removes when Web/sim/admin fully multi-job |
 
 ---
 
-*Document version: 2026-07-17c — fake video fixtures sized for realistic ffmpeg merges (NickAndMe ~4.6 MB avg).*
+*Document version: 2026-07-17d — Phase F: remove backward-compat single-job `GET /api/jobs` when gates pass.*
