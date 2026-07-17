@@ -4,6 +4,7 @@
 @inject AdminSessionService Session
 @inject JobHubClient Hub
 @inject NavigationManager Nav
+@inject IJSRuntime Js
 
 <PageTitle>Admin — Film Studio</PageTitle>
 
@@ -85,6 +86,143 @@
                 }
             </div>
         }
+
+        @* ── LoadSim live panel ─────────────────────────────────────────── *@
+        <div class="card mb-3 border-0 shadow-sm loadsim-panel">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2"
+                 style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); color: #e2e8f0;">
+                <div>
+                    <strong>LoadSim</strong>
+                    @if (_loadSim?.Active == true)
+                    {
+                        <span class="badge bg-success ms-2">LIVE</span>
+                    }
+                    else if (_loadSim?.Latest is not null)
+                    {
+                        <span class="badge bg-secondary ms-2">@(_loadSim.Latest.Status ?? "idle")</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-dark ms-2">idle</span>
+                    }
+                </div>
+                @if (_loadSim?.Latest is { } ls)
+                {
+                    <div class="small" style="opacity:0.9;">
+                        run <code class="text-info">@ls.RunId</code>
+                        · @ls.Users VU · @ls.Scenario · @ls.ProjectId
+                        · @ls.ElapsedSec.ToString("0")s / @ls.DurationSec s
+                        @if (ls.Passed == true) { <span class="badge bg-success ms-1">PASS</span> }
+                        else if (ls.Passed == false) { <span class="badge bg-danger ms-1">FAIL</span> }
+                    </div>
+                }
+            </div>
+            <div class="card-body" style="background:#0b1220; color:#cbd5e1;">
+                @if (_loadSim?.Latest is null)
+                {
+                    <p class="small mb-0" style="opacity:0.7;">
+                        No LoadSim telemetry yet. Start LoadSim — it posts every 2s to
+                        <code class="text-info">POST /api/loadsim/progress</code>.
+                    </p>
+                }
+                else
+                {
+                    var L = _loadSim.Latest;
+                    <div class="row g-2 mb-3 text-center">
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.ActionsTotal.ToString("N0")</div>
+                                <div class="loadsim-kpi__lbl">actions</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.ActionsPerSec.ToString("0.0")</div>
+                                <div class="loadsim-kpi__lbl">actions/s</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val @(L.ErrorRate > 0.01 ? "text-warning" : "text-success")">
+                                    @((L.ErrorRate * 100).ToString("0.00"))%
+                                </div>
+                                <div class="loadsim-kpi__lbl">error rate</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.BrowseP95Ms<span class="fs-6">ms</span></div>
+                                <div class="loadsim-kpi__lbl">browse p95</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.P50Ms<span class="fs-6">ms</span></div>
+                                <div class="loadsim-kpi__lbl">p50 latency</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.JobsSubmitted</div>
+                                <div class="loadsim-kpi__lbl">jobs ok</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val">@L.JobsRejected</div>
+                                <div class="loadsim-kpi__lbl">409 rejects</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="loadsim-kpi">
+                                <div class="loadsim-kpi__val @(L.Jobs5xx > 0 ? "text-danger" : "")">@L.Jobs5xx</div>
+                                <div class="loadsim-kpi__lbl">5xx</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="loadsim-chart-wrap">
+                                <div class="loadsim-chart-title">Throughput</div>
+                                <canvas id="chartLoadSimThroughput"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="loadsim-chart-wrap">
+                                <div class="loadsim-chart-title">Latency &amp; errors</div>
+                                <canvas id="chartLoadSimLatency"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    @if (L.ActionsByType is { Count: > 0 } acts)
+                    {
+                        <div class="mt-2 small font-monospace" style="opacity:0.8;">
+                            @foreach (var kv in acts.OrderByDescending(a => a.Value).Take(10))
+                            {
+                                <span class="me-2">@kv.Key=@(kv.Value)</span>
+                            }
+                        </div>
+                    }
+                }
+
+                <div class="row g-3 mt-1">
+                    <div class="col-12">
+                        <div class="loadsim-chart-wrap loadsim-chart-wrap--tall">
+                            <div class="loadsim-chart-title">
+                                Process memory
+                                @if (_state.Process is { } proc)
+                                {
+                                    <span class="ms-2" style="font-weight:400; opacity:0.85;">
+                                        WS <strong>@proc.WorkingSetMb</strong> MB · GC <strong>@proc.GcHeapMb</strong> MB · threads @proc.ThreadCount
+                                    </span>
+                                }
+                            </div>
+                            <canvas id="chartProcessMemory"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row g-3">
             <div class="col-md-6 col-lg-4">
@@ -245,6 +383,8 @@
     private int _capacityRejects;
     private int _lockConflicts;
     private List<AdminLockDto> _locks = new();
+    private LoadSimLiveStateDto? _loadSim;
+    private List<ProcessSampleDto> _processHistory = new();
 
     private bool _started;
 
@@ -324,8 +464,11 @@
                 _capacityRejects = _state.CapacityRejects;
                 _lockConflicts = _state.LockConflicts;
                 _locks = _state.Locks ?? new();
+                _loadSim = _state.LoadSim;
+                _processHistory = _state.ProcessHistory ?? new();
             }
             _error = null;
+            await UpdateChartsAsync();
         }
         catch (Exception ex)
         {
@@ -378,7 +521,68 @@
     private async Task LogoutAsync()
     {
         await Api.LogoutAsync();
-        Nav.NavigateTo("admin/login");
+        Nav.NavigateTo("/admin/login");
+    }
+
+    private async Task UpdateChartsAsync()
+    {
+        try
+        {
+            if (_loadSim?.History is { Count: > 0 } hist)
+            {
+                var labels = hist.Select(h =>
+                    TimeSpan.FromSeconds(Math.Max(0, h.ElapsedSec)).ToString(@"m\:ss")).ToArray();
+                var actionsPerSec = hist.Select(h => h.ActionsPerSec).ToArray();
+                var actionsTotal = hist.Select(h => (double)h.ActionsTotal).ToArray();
+                var p50 = hist.Select(h => (double)h.P50Ms).ToArray();
+                var browseP95 = hist.Select(h => (double)h.BrowseP95Ms).ToArray();
+                var errPct = hist.Select(h => h.ErrorRate * 100.0).ToArray();
+
+                await Js.InvokeVoidAsync("filmStudioCharts.upsertLine",
+                    "chartLoadSimThroughput",
+                    labels,
+                    new object[]
+                    {
+                        new { label = "actions/s", data = actionsPerSec, color = "#38bdf8", yAxisID = "y" },
+                        new { label = "total actions", data = actionsTotal, color = "#a78bfa", yAxisID = "y1" },
+                    },
+                    new { dualY = true, yTitle = "actions/s", y2Title = "total" });
+
+                await Js.InvokeVoidAsync("filmStudioCharts.upsertLine",
+                    "chartLoadSimLatency",
+                    labels,
+                    new object[]
+                    {
+                        new { label = "p50 ms", data = p50, color = "#34d399", yAxisID = "y" },
+                        new { label = "browse p95 ms", data = browseP95, color = "#fbbf24", yAxisID = "y" },
+                        new { label = "error %", data = errPct, color = "#f87171", yAxisID = "y1" },
+                    },
+                    new { dualY = true, yTitle = "latency ms", y2Title = "error %" });
+            }
+
+            if (_processHistory is { Count: > 0 } mem)
+            {
+                var memLabels = mem.Select(s => s.At.ToLocalTime().ToString("HH:mm:ss")).ToArray();
+                var ws = mem.Select(s => s.WorkingSetMb).ToArray();
+                var gc = mem.Select(s => s.GcHeapMb).ToArray();
+                var threads = mem.Select(s => (double)s.ThreadCount).ToArray();
+
+                await Js.InvokeVoidAsync("filmStudioCharts.upsertLine",
+                    "chartProcessMemory",
+                    memLabels,
+                    new object[]
+                    {
+                        new { label = "Working set (MB)", data = ws, color = "#22d3ee", yAxisID = "y" },
+                        new { label = "GC heap (MB)", data = gc, color = "#c084fc", yAxisID = "y" },
+                        new { label = "Threads", data = threads, color = "#fb7185", yAxisID = "y1" },
+                    },
+                    new { dualY = true, yTitle = "MB", y2Title = "threads" });
+            }
+        }
+        catch
+        {
+            // Chart.js not ready
+        }
     }
 
     private static string FormatUptime(long sec)

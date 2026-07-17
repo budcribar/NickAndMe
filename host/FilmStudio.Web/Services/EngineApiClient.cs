@@ -856,6 +856,16 @@ public sealed class AdminStateDto
     public int CapacityRejects { get; set; }
     public int LockConflicts { get; set; }
     public AdminHttpTrafficDto? Http { get; set; }
+    public FilmStudio.Core.Models.LoadSimLiveStateDto? LoadSim { get; set; }
+    public List<ProcessSampleDto>? ProcessHistory { get; set; }
+}
+
+public sealed class ProcessSampleDto
+{
+    public DateTimeOffset At { get; set; }
+    public double WorkingSetMb { get; set; }
+    public double GcHeapMb { get; set; }
+    public int ThreadCount { get; set; }
 }
 
 public sealed class AdminHttpTrafficDto

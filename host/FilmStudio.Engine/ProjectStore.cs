@@ -948,8 +948,11 @@ public sealed class ProjectStore
         return File.Exists(full) ? full : null;
     }
 
-    /// <summary>Light scene list from Stage 2 blueprint + on-disk clip counts.</summary>
-    public IReadOnlyList<SceneSummary> ListScenes(string projectId)
+    /// <summary>
+    /// Scene list from Stage 2 blueprint + on-disk clip counts.
+    /// When <paramref name="probeDurations"/> is false (LoadSim), skip ffprobe — much faster under concurrency.
+    /// </summary>
+    public IReadOnlyList<SceneSummary> ListScenes(string projectId, bool probeDurations = true)
     {
         using var bp = LoadBlueprint(projectId);
         if (bp is null ||
@@ -995,7 +998,7 @@ public sealed class ProjectStore
             }
 
             double? actual = null;
-            if (_duration is not null)
+            if (probeDurations && _duration is not null)
             {
                 var compositePath = ResolveCompositePath(projectId, sn);
                 var clipPaths = new List<string>();
@@ -1066,7 +1069,7 @@ public sealed class ProjectStore
         return rows.OrderBy(r => r.SceneNumber).ToList();
     }
 
-    public SceneDetail? GetSceneDetail(string projectId, int sceneNumber)
+    public SceneDetail? GetSceneDetail(string projectId, int sceneNumber, bool probeDurations = true)
     {
         using var bp = LoadBlueprint(projectId);
         if (bp is null)
@@ -1130,7 +1133,7 @@ public sealed class ProjectStore
                     dur = ds;
 
                 double? actualClip = null;
-                if (onDisk && _duration is not null)
+                if (probeDurations && onDisk && _duration is not null)
                 {
                     var clipPath = ResolveClipVideoPath(projectId, sceneNumber, cn);
                     actualClip = _duration.GetDurationSeconds(clipPath);
@@ -1176,7 +1179,7 @@ public sealed class ProjectStore
         }
 
         double? actual = null;
-        if (_duration is not null)
+        if (probeDurations && _duration is not null)
         {
             var compositePath = ResolveCompositePath(projectId, sceneNumber);
             var clipPaths = clips

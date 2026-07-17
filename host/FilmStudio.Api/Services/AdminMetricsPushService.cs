@@ -18,6 +18,7 @@ public sealed class AdminMetricsPushService : BackgroundService
     private readonly ILockService _locks;
     private readonly IOptions<FilmStudioOptions> _opts;
     private readonly IHostEnvironment _env;
+    private readonly ProcessHistoryStore _processHistory;
     private readonly DateTimeOffset _startedUtc = DateTimeOffset.UtcNow;
     private readonly bool _useFakes;
 
@@ -28,7 +29,8 @@ public sealed class AdminMetricsPushService : BackgroundService
         ILockService locks,
         IOptions<FilmStudioOptions> opts,
         IHostEnvironment env,
-        IConfiguration config)
+        IConfiguration config,
+        ProcessHistoryStore processHistory)
     {
         _hub = hub;
         _metrics = metrics;
@@ -36,6 +38,7 @@ public sealed class AdminMetricsPushService : BackgroundService
         _locks = locks;
         _opts = opts;
         _env = env;
+        _processHistory = processHistory;
         _useFakes = opts.Value.UseFakes
             || string.Equals(Environment.GetEnvironmentVariable("FILMSTUDIO_USE_FAKES"), "1", StringComparison.OrdinalIgnoreCase)
             || string.Equals(Environment.GetEnvironmentVariable("FILMSTUDIO_USE_FAKES"), "true", StringComparison.OrdinalIgnoreCase)
@@ -49,6 +52,7 @@ public sealed class AdminMetricsPushService : BackgroundService
         {
             try
             {
+                _processHistory.Sample();
                 var snap = BuildSnapshot();
                 await _hub.Clients.Group(JobHub.AdminOpsGroup)
                     .SendAsync(JobHubEvents.AdminState, snap, stoppingToken);

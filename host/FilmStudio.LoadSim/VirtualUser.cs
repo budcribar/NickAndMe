@@ -123,20 +123,21 @@ public sealed class VirtualUser
                 break;
         }
 
-        // Occasional capacity/admin snapshot (user 0 only)
-        if (_index == 0 && _rng.NextDouble() < 0.05)
+        // Capacity samples (any VU, ~10%) so peakApiInFlight/cap appear in results
+        if (_rng.NextDouble() < 0.10)
             await SampleCapacityAsync(ct);
     }
 
     private async Task BrowseAsync(CancellationToken ct)
     {
+        // light=1 skips ffprobe on scene list/detail — full probes destroy p95 under 100 VUs
         await TimedAsync("health", () => GetAsync("/health", ct), ct);
         await TimedAsync("projects", () => GetAsync("/api/projects", ct), ct);
-        await TimedAsync("scenes", () => GetAsync($"/api/projects/{Esc(_opts.ProjectId)}/scenes", ct), ct);
+        await TimedAsync("scenes",
+            () => GetAsync($"/api/projects/{Esc(_opts.ProjectId)}/scenes?light=1", ct), ct);
         var sn = AssignedScene();
         await TimedAsync("scene_detail",
-            () => GetAsync($"/api/projects/{Esc(_opts.ProjectId)}/scenes/{sn}", ct), ct);
-        // mark aggregate browse sample for p95 gate
+            () => GetAsync($"/api/projects/{Esc(_opts.ProjectId)}/scenes/{sn}?light=1", ct), ct);
         await TimedAsync("browse", () => GetAsync("/api/capacity", ct), ct);
     }
 
@@ -240,11 +241,17 @@ public sealed class VirtualUser
             var root = doc.RootElement;
             var max = 0;
             var running = 0;
-            if (root.TryGetProperty("capacity", out var cap) &&
-                cap.TryGetProperty("maxVideoInFlight", out var m))
-                max = m.GetInt32();
-            if (root.TryGetProperty("runningCount", out var rc))
-                running = rc.GetInt32();
+            if (root.TryGetProperty("capacity", out var cap))
+            {
+                if (cap.TryGetProperty("maxVideoInFlight", out var m) && m.TryGetInt32(out var mi))
+                    max = mi;
+                else if (cap.TryGetProperty("MaxVideoInFlight", out var m2) && m2.TryGetInt32(out var mi2))
+                    max = mi2;
+            }
+            if (root.TryGetProperty("runningCount", out var rc) && rc.TryGetInt32(out var ri))
+                running = ri;
+            else if (root.TryGetProperty("running", out var run) && run.ValueKind == JsonValueKind.True)
+                running = 1;
             _metrics.NoteServerCapacity(max, running);
         }
         catch

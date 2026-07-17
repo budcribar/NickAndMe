@@ -60,12 +60,56 @@ public sealed class MetricsCollector
 
     public LoadSimResults Build(SimOptions opts, TimeSpan elapsed)
     {
+        var snap = Snapshot(opts, elapsed);
+        return new LoadSimResults
+        {
+            Users = opts.Users,
+            DurationSec = opts.DurationSec,
+            ElapsedSec = elapsed.TotalSeconds,
+            Scenario = opts.Scenario,
+            ProjectId = opts.ProjectId,
+            BaseUrl = opts.BaseUrl,
+            Actions = snap.ActionsByType,
+            Http = new HttpStats
+            {
+                Total = snap.ActionsTotal,
+                Errors = snap.Errors,
+                ErrorRate = snap.ErrorRate,
+                Intentional409 = snap.Intentional409,
+                P50Ms = snap.P50Ms,
+                P95Ms = snap.P95Ms,
+                P99Ms = snap.P99Ms,
+                BrowseP50Ms = snap.BrowseP50Ms,
+                BrowseP95Ms = snap.BrowseP95Ms,
+            },
+            Jobs = new JobStats
+            {
+                Submitted = snap.JobsSubmitted,
+                Rejected = snap.JobsRejected,
+                Server5xx = snap.Jobs5xx,
+            },
+            Health = new HealthStats
+            {
+                Ok = snap.HealthOk,
+                Fail = snap.HealthFail,
+            },
+            Server = new ServerStats
+            {
+                ConfiguredMaxVideoInFlight = snap.ConfiguredMaxVideoInFlight,
+                PeakApiInFlight = snap.PeakApiInFlight,
+            },
+            Gates = new List<GateResult>(),
+        };
+    }
+
+    /// <summary>Lightweight snapshot for live admin telemetry.</summary>
+    public LiveSnapshot Snapshot(SimOptions opts, TimeSpan elapsed)
+    {
         var all = _samples.ToArray();
         var byAction = all
             .GroupBy(s => s.Action, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
-        // Errors exclude intentional 409 lock/capacity conflicts
         var counted = all.Where(s => !s.IntentionalConflict).ToArray();
         var errors = counted.Count(s => s.StatusCode >= 400 || s.StatusCode < 0);
         var errorRate = counted.Length == 0 ? 0 : (double)errors / counted.Length;
@@ -75,46 +119,51 @@ public sealed class MetricsCollector
             .OrderBy(x => x)
             .ToArray();
         var allLat = all.Where(s => s.LatencyMs >= 0).Select(s => s.LatencyMs).OrderBy(x => x).ToArray();
+        var sec = Math.Max(0.001, elapsed.TotalSeconds);
 
-        return new LoadSimResults
+        return new LiveSnapshot
         {
-            Users = opts.Users,
-            DurationSec = opts.DurationSec,
-            ElapsedSec = elapsed.TotalSeconds,
-            Scenario = opts.Scenario,
-            ProjectId = opts.ProjectId,
-            BaseUrl = opts.BaseUrl,
-            Actions = byAction,
-            Http = new HttpStats
-            {
-                Total = all.Length,
-                Errors = errors,
-                ErrorRate = errorRate,
-                Intentional409 = all.Count(s => s.IntentionalConflict),
-                P50Ms = Percentile(allLat, 0.50),
-                P95Ms = Percentile(allLat, 0.95),
-                P99Ms = Percentile(allLat, 0.99),
-                BrowseP50Ms = Percentile(browse, 0.50),
-                BrowseP95Ms = Percentile(browse, 0.95),
-            },
-            Jobs = new JobStats
-            {
-                Submitted = (int)Interlocked.Read(ref _jobsSubmitted),
-                Rejected = (int)Interlocked.Read(ref _jobsRejected),
-                Server5xx = (int)Interlocked.Read(ref _jobs5xx),
-            },
-            Health = new HealthStats
-            {
-                Ok = (int)Interlocked.Read(ref _healthOk),
-                Fail = (int)Interlocked.Read(ref _healthFail),
-            },
-            Server = new ServerStats
-            {
-                ConfiguredMaxVideoInFlight = _configuredMaxVideo,
-                PeakApiInFlight = _peakApiInFlight,
-            },
-            Gates = new List<GateResult>(),
+            ActionsByType = byAction,
+            ActionsTotal = all.Length,
+            ActionsPerSec = all.Length / sec,
+            Errors = errors,
+            ErrorRate = errorRate,
+            Intentional409 = all.Count(s => s.IntentionalConflict),
+            P50Ms = Percentile(allLat, 0.50),
+            P95Ms = Percentile(allLat, 0.95),
+            P99Ms = Percentile(allLat, 0.99),
+            BrowseP50Ms = Percentile(browse, 0.50),
+            BrowseP95Ms = Percentile(browse, 0.95),
+            JobsSubmitted = (int)Interlocked.Read(ref _jobsSubmitted),
+            JobsRejected = (int)Interlocked.Read(ref _jobsRejected),
+            Jobs5xx = (int)Interlocked.Read(ref _jobs5xx),
+            HealthOk = (int)Interlocked.Read(ref _healthOk),
+            HealthFail = (int)Interlocked.Read(ref _healthFail),
+            ConfiguredMaxVideoInFlight = _configuredMaxVideo,
+            PeakApiInFlight = _peakApiInFlight,
         };
+    }
+
+    public sealed class LiveSnapshot
+    {
+        public Dictionary<string, int> ActionsByType { get; set; } = new();
+        public int ActionsTotal { get; set; }
+        public double ActionsPerSec { get; set; }
+        public int Errors { get; set; }
+        public double ErrorRate { get; set; }
+        public int Intentional409 { get; set; }
+        public long P50Ms { get; set; }
+        public long P95Ms { get; set; }
+        public long P99Ms { get; set; }
+        public long BrowseP50Ms { get; set; }
+        public long BrowseP95Ms { get; set; }
+        public int JobsSubmitted { get; set; }
+        public int JobsRejected { get; set; }
+        public int Jobs5xx { get; set; }
+        public int HealthOk { get; set; }
+        public int HealthFail { get; set; }
+        public int ConfiguredMaxVideoInFlight { get; set; }
+        public int PeakApiInFlight { get; set; }
     }
 
     private static long Percentile(long[] sorted, double p)

@@ -27,6 +27,34 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/About.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBYm91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Adaptation.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZGFwdGF0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Admin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/AdminConfig.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pbkNvbmZpZy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/AdminLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBZG1pbkxvZ2luLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Configuration.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb25maWd1cmF0aW9uLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Cost.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb3N0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Counter.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb3VudGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -41,6 +69,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/NotFound.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xOb3RGb3VuZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Review.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xSZXZpZXcucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Weather.razor]
@@ -66,3 +98,11 @@ build_metadata.AdditionalFiles.CssScope = b-85rt5vhob6
 [C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Layout/ReconnectModal.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcUmVjb25uZWN0TW9kYWwucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = b-lbj0ty81ea
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Characters.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDaGFyYWN0ZXJzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-ndlvtfi1bo
+
+[C:/Users/budcr/source/repos/NickAndMe/host/FilmStudio.Web/Components/Pages/Scenes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xTY2VuZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-ryro4ysb3d

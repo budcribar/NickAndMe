@@ -2,6 +2,57 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Admin LoadSim live panel */
+.loadsim-panel {
+    overflow: hidden;
+    border-radius: 0.5rem;
+}
+.loadsim-kpi {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(148,163,184,0.15);
+    border-radius: 0.4rem;
+    padding: 0.55rem 0.4rem;
+}
+.loadsim-kpi__val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #f1f5f9;
+    font-variant-numeric: tabular-nums;
+}
+.loadsim-kpi__lbl {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-top: 0.15rem;
+}
+.loadsim-chart-wrap {
+    height: 220px;
+    position: relative;
+    background: rgba(15,23,42,0.6);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.5rem 0.25rem;
+    border: 1px solid rgba(148,163,184,0.12);
+    display: flex;
+    flex-direction: column;
+}
+.loadsim-chart-wrap--tall {
+    height: 260px;
+}
+.loadsim-chart-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+    flex: 0 0 auto;
+}
+.loadsim-chart-wrap canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 a, .btn-link {
     color: #006bb7;
 }

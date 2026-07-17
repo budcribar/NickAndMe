@@ -35,7 +35,9 @@ public sealed class SimOptions
     public double MaxBrowseP95Ms { get; set; } = 500;
     public bool RequireFakes { get; set; } = true;
     public bool IKnowWhatImDoing { get; set; }
-    public int WarmupSec { get; set; } = 2;
+    public int WarmupSec { get; set; } = 0;
+    /// <summary>Seconds to wait for API /health before giving up (multi-start race).</summary>
+    public int WaitForApiSec { get; set; } = 90;
 
     public static SimOptions Parse(string[] args)
     {
@@ -80,6 +82,7 @@ public sealed class SimOptions
                 case "--requireFakes": o.RequireFakes = bool.Parse(Next()); break;
                 case "--i-know-what-im-doing": o.IKnowWhatImDoing = true; break;
                 case "--warmupSec": o.WarmupSec = int.Parse(Next()); break;
+                case "--waitForApiSec": o.WaitForApiSec = int.Parse(Next()); break;
                 case "--help":
                 case "-h":
                     PrintHelp();
@@ -91,6 +94,7 @@ public sealed class SimOptions
         o.Users = Math.Clamp(o.Users, 1, 500);
         o.DurationSec = Math.Clamp(o.DurationSec, 5, 86_400);
         o.ThinkTimeMs = Math.Clamp(o.ThinkTimeMs, 0, 60_000);
+        o.WaitForApiSec = Math.Clamp(o.WaitForApiSec, 0, 600);
         return o;
     }
 
@@ -124,6 +128,8 @@ public sealed class SimOptions
               --maxBrowseP95Ms N         gate: browse p95 (default 500)
               --requireFakes true|false  refuse gen without UseFakes unless --i-know-what-im-doing
               --i-know-what-im-doing     allow gen against real keys
+              --waitForApiSec N          wait for /health (default 90; multi-start with Api)
+              --warmupSec N              extra delay after health ok (default 0)
 
             Exit codes: 0 = gates pass, 1 = gates fail, 2 = setup error
             """);

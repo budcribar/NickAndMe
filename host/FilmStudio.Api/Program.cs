@@ -53,6 +53,8 @@ builder.Services.AddSingleton<IJobProgressSink, SignalRJobProgressSink>();
 builder.Services.AddSingleton<AdminMetricsPushService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AdminMetricsPushService>());
 builder.Services.AddSingleton<HttpRequestMetrics>();
+builder.Services.AddSingleton<LoadSimLiveStore>();
+builder.Services.AddSingleton<ProcessHistoryStore>();
 
 // Grok clients: real HttpClient or fakes (FilmStudio:UseFakes)
 var useFakes = builder.Configuration.GetValue("FilmStudio:UseFakes", false)
@@ -150,7 +152,9 @@ app.MapGet("/api/admin/state", (
     IUserContext user,
     ProjectStore store,
     AdminMetricsPushService metricsPush,
-    HttpRequestMetrics httpMetrics) =>
+    HttpRequestMetrics httpMetrics,
+    LoadSimLiveStore loadSimStore,
+    ProcessHistoryStore processHistory) =>
 {
     if (!user.IsAdmin)
         return Results.Json(new { ok = false, error = "admin role required" },
@@ -158,6 +162,9 @@ app.MapGet("/api/admin/state", (
 
     var snap = metricsPush.BuildSnapshot();
     var traffic = httpMetrics.Snapshot();
+    // Ensure at least one memory sample even before background tick
+    if (processHistory.GetHistory().Count == 0)
+        processHistory.Sample();
     return Results.Ok(new
     {
         ok = true,
@@ -203,6 +210,8 @@ app.MapGet("/api/admin/state", (
         capacityRejects = snap.CapacityRejects,
         lockConflicts = snap.LockConflicts,
         http = traffic,
+        loadSim = loadSimStore.GetState(),
+        processHistory = processHistory.GetHistory(),
     });
 });
 
@@ -210,6 +219,24 @@ app.MapGet("/api/locks", (ILockService locks, IUserContext user) =>
 {
     var list = locks.ListActive();
     return Results.Ok(new { ok = true, locks = list, userId = user.UserId });
+});
+
+// LoadSim live telemetry (no admin auth — sim posts from CLI)
+app.MapPost("/api/loadsim/progress", (LoadSimProgressDto body, LoadSimLiveStore store) =>
+{
+    if (body is null)
+        return Results.BadRequest(new { ok = false, error = "body required" });
+    store.Publish(body);
+    return Results.Accepted("/api/admin/loadsim", new { ok = true, runId = body.RunId, status = body.Status });
+});
+
+app.MapGet("/api/admin/loadsim", (IUserContext user, LoadSimLiveStore store) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var state = store.GetState();
+    return Results.Ok(new { ok = true, loadSim = state });
 });
 
 // ── Admin config + actions (Phase D) ────────────────────────────────────────
@@ -968,11 +995,14 @@ app.MapPost("/api/projects/{id}/cost/backfill", (string id, ProjectStore store, 
 });
 
 // ---- Scenes & Clips ----
-app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockService locks, IUserContext user) =>
+// light=1 skips ffprobe duration probes (required for LoadSim / high concurrency)
+app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockService locks, IUserContext user, string? light) =>
 {
     try
     {
-        var scenes = store.ListScenes(id).ToList();
+        var probe = !string.Equals(light, "1", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(light, "true", StringComparison.OrdinalIgnoreCase);
+        var scenes = store.ListScenes(id, probeDurations: probe).ToList();
         var active = locks.ListActive();
         foreach (var s in scenes)
         {
@@ -992,6 +1022,7 @@ app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockSer
             clipCount = scenes.Sum(s => s.ClipCount),
             clipsOnDisk = scenes.Sum(s => s.ClipsOnDisk),
             callerUserId = user.UserId,
+            light = !probe,
             scenes,
         });
     }
@@ -1001,14 +1032,16 @@ app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockSer
     }
 });
 
-app.MapGet("/api/projects/{id}/scenes/{sceneNumber:int}", (string id, int sceneNumber, ProjectStore store) =>
+app.MapGet("/api/projects/{id}/scenes/{sceneNumber:int}", (string id, int sceneNumber, ProjectStore store, string? light) =>
 {
     try
     {
-        var detail = store.GetSceneDetail(id, sceneNumber);
+        var probe = !string.Equals(light, "1", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(light, "true", StringComparison.OrdinalIgnoreCase);
+        var detail = store.GetSceneDetail(id, sceneNumber, probeDurations: probe);
         if (detail is null)
             return Results.NotFound(new { ok = false, error = $"Scene {sceneNumber} not found" });
-        return Results.Ok(new { ok = true, projectId = id, scene = detail });
+        return Results.Ok(new { ok = true, projectId = id, scene = detail, light = !probe });
     }
     catch (Exception ex)
     {

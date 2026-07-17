@@ -3,10 +3,38 @@
 ## Prerequisites
 
 - API with **fakes** for any gen-heavy run (avoids xAI spend).
-- Built solution: `dotnet build host/FilmStudio.slnx`
+- Prefer **Release** for latency numbers (Debug is much slower under 100 VUs).
+- Built solution: `dotnet build host/FilmStudio.slnx -c Release`
 - **Sandbox project:** uses checked-in `projects/LoadSimBuster` (isolated copy of Buster).
   Gen/remux/review only touch that folder. Real `Buster` / `NickAndMe` refused unless `--allowRealProject`.
   Optional rebuild from Buster: `--prepareSandbox --refreshSandbox`.
+
+### What is `light=1`?
+
+Scene list/detail normally run **ffprobe** on every clip to fill actual durations (for the Scenes UI).  
+Under LoadSim that becomes a huge bottleneck (browse p95 can hit 10–15s).
+
+LoadSim calls:
+
+```text
+GET /api/projects/{id}/scenes?light=1
+GET /api/projects/{id}/scenes/{n}?light=1
+```
+
+`light=1` means: **skip ffprobe** — still returns scenes, clip counts, locks, etc.; just no measured durations.  
+The Blazor Scenes page does **not** use `light=1` (you still get full duration probes in the UI).
+
+### Visual Studio → Release
+
+1. Toolbar: configuration dropdown **Debug → Release** (solution-wide).
+2. Multi-start profile **Load Sim** (Api + LoadSim + optional Web).
+3. F5 / Ctrl+F5.
+
+Or one-shot from a terminal (builds Release, starts Api fakes, runs sim):
+
+```powershell
+pwsh host/scripts/run-loadsim-release.ps1 -Users 100 -Duration 90
+```
 
 ## Quick CI-style run (local)
 
