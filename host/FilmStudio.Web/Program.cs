@@ -25,7 +25,11 @@ builder.Services.AddScoped(sp =>
     return new EngineApiClient(http, sp.GetRequiredService<AdminSessionService>());
 });
 
-builder.Services.AddScoped<JobHubClient>();
+builder.Services.AddScoped(sp =>
+{
+    var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EngineApiOptions>>();
+    return new JobHubClient(opts, sp.GetRequiredService<AdminSessionService>());
+});
 
 var app = builder.Build();
 

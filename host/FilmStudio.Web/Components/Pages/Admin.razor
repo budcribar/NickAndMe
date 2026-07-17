@@ -1,8 +1,9 @@
 @page "/admin"
 @rendermode InteractiveServer
-@implements IDisposable
+@implements IAsyncDisposable
 @inject EngineApiClient Api
 @inject AdminSessionService Session
+@inject JobHubClient Hub
 @inject NavigationManager Nav
 
 <PageTitle>Admin — Film Studio</PageTitle>
@@ -12,13 +13,22 @@
         <div>
             <h1 class="h3 mb-0">Admin dashboard</h1>
             <div class="text-muted small">
-                Live server state (poll). Full metrics / SignalR in Phase C–D.
+                Live ops · SignalR <code>admin:ops</code>
+                @if (_hubLive)
+                {
+                    <span class="badge text-bg-success ms-1">live</span>
+                }
+                else
+                {
+                    <span class="badge text-bg-secondary ms-1">poll 5s</span>
+                }
             </div>
         </div>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
             @if (Session.IsAuthenticated)
             {
                 <span class="badge text-bg-secondary">@Session.UserId</span>
+                <a class="btn btn-sm btn-outline-primary" href="admin/config">Config</a>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_busy">Refresh</button>
                 <button class="btn btn-sm btn-outline-danger" @onclick="LogoutAsync">Log out</button>
             }
@@ -41,6 +51,11 @@
     }
     else
     {
+        @if (!string.IsNullOrEmpty(_actionMsg))
+        {
+            <div class="alert alert-info py-2">@_actionMsg</div>
+        }
+
         <div class="row g-3">
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100">
@@ -66,10 +81,11 @@
                             <div>MaxFfmpegInFlight: <strong>@c.MaxFfmpegInFlight</strong></div>
                             <div>MaxQueuePerUser: <strong>@c.MaxQueuePerUser</strong></div>
                         }
-                        else
-                        {
-                            <span class="text-muted">n/a</span>
-                        }
+                        <div class="mt-2">
+                            API in-flight: <strong>@_apiInFlight</strong> · FFmpeg: <strong>@_ffmpegInFlight</strong>
+                        </div>
+                        <div>Rejects: <strong>@_capacityRejects</strong> · Lock conflicts: <strong>@_lockConflicts</strong></div>
+                        <a class="btn btn-sm btn-link px-0" href="admin/config">Edit capacity…</a>
                     </div>
                 </div>
             </div>
@@ -83,7 +99,6 @@
                         </div>
                         <div class="mt-2 text-muted">
                             Snapshot @(_state.GeneratedAt?.ToLocalTime().ToString("HH:mm:ss") ?? "—")
-                            · auto-refresh 5s
                         </div>
                     </div>
                 </div>
@@ -91,19 +106,62 @@
         </div>
 
         <div class="row g-3 mt-1">
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">In-flight / rejects</div>
-                    <div class="card-body small">
-                        <div>API slots: <strong>@_apiInFlight</strong></div>
-                        <div>FFmpeg slots: <strong>@_ffmpegInFlight</strong></div>
-                        <div>Capacity rejects: <strong>@_capacityRejects</strong></div>
-                        <div>Lock conflicts: <strong>@_lockConflicts</strong></div>
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span>Jobs (running / queued)</span>
+                        <span class="badge text-bg-primary">@(_state.Jobs?.Count ?? 0)</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (_state.Jobs?.Items is { Count: > 0 } items)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>Job</th>
+                                        <th>User</th>
+                                        <th>Kind</th>
+                                        <th>Scene</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Age</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach (var j in items)
+                                    {
+                                        <tr>
+                                            <td class="font-monospace small">@(ShortId(j.JobId))</td>
+                                            <td>@(j.UserId ?? "—")</td>
+                                            <td>@(j.Kind ?? "—")</td>
+                                            <td>@(j.Scene?.ToString() ?? "—")</td>
+                                            <td>@(j.Status ?? "—")</td>
+                                            <td>@(j.Total > 0 ? $"{j.Index}/{j.Total}" : "—")</td>
+                                            <td>@FormatAge(j.AgeMs)</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        disabled="@_busy || string.IsNullOrEmpty(j.JobId)"
+                                                        @onclick="() => CancelJobAsync(j.JobId!)">
+                                                    Cancel
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted p-3 mb-0">No active jobs.</p>
+                        }
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card h-100">
+            <div class="col-lg-5">
+                <div class="card">
                     <div class="card-header d-flex justify-content-between">
                         <span>Locks</span>
                         <span class="badge text-bg-secondary">@_locks.Count</span>
@@ -116,15 +174,23 @@
                         else
                         {
                             <ul class="list-group list-group-flush small">
-                                @foreach (var l in _locks.Take(12))
+                                @foreach (var l in _locks.Take(20))
                                 {
-                                    <li class="list-group-item py-1">
-                                        <code>@l.Resource</code>
-                                        · @l.UserId
-                                        @if (!string.IsNullOrEmpty(l.Reason))
-                                        {
-                                            <span class="text-muted"> (@l.Reason)</span>
-                                        }
+                                    <li class="list-group-item d-flex justify-content-between align-items-start py-2">
+                                        <div>
+                                            <code>@l.Resource</code>
+                                            <div>@l.UserId
+                                                @if (!string.IsNullOrEmpty(l.Reason))
+                                                {
+                                                    <span class="text-muted"> · @l.Reason</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-warning"
+                                                disabled="@_busy || string.IsNullOrEmpty(l.Resource)"
+                                                @onclick="() => ReleaseLockAsync(l.Resource!)">
+                                            Force release
+                                        </button>
                                     </li>
                                 }
                             </ul>
@@ -133,62 +199,15 @@
                 </div>
             </div>
         </div>
-
-        <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between">
-                <span>Jobs (running / queued)</span>
-                <span class="badge text-bg-primary">@(_state.Jobs?.Count ?? 0)</span>
-            </div>
-            <div class="card-body p-0">
-                @if (_state.Jobs?.Items is { Count: > 0 } items)
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped mb-0">
-                            <thead>
-                            <tr>
-                                <th>Job</th>
-                                <th>User</th>
-                                <th>Project</th>
-                                <th>Kind</th>
-                                <th>Scene</th>
-                                <th>Status</th>
-                                <th>Progress</th>
-                                <th>Age</th>
-                                <th>Message</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var j in items)
-                            {
-                                <tr>
-                                    <td class="font-monospace small">@(ShortId(j.JobId))</td>
-                                    <td>@(j.UserId ?? "—")</td>
-                                    <td>@(j.ProjectId ?? "—")</td>
-                                    <td>@(j.Kind ?? "—")</td>
-                                    <td>@(j.Scene?.ToString() ?? "—")@(j.Clip is int clipN ? $" C{clipN}" : "")</td>
-                                    <td>@(j.Status ?? "—")</td>
-                                    <td>@(j.Total > 0 ? $"{j.Index}/{j.Total}" : "—")</td>
-                                    <td>@FormatAge(j.AgeMs)</td>
-                                    <td class="small text-truncate" style="max-width: 16rem;">@(j.Message ?? "")</td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <p class="text-muted p-3 mb-0">No active jobs.</p>
-                }
-            </div>
-        </div>
     }
 </div>
 
 @code {
     private AdminStateDto? _state;
     private string? _error;
+    private string? _actionMsg;
     private bool _busy;
+    private bool _hubLive;
     private PeriodicTimer? _timer;
     private CancellationTokenSource? _pollCts;
     private int _apiInFlight;
@@ -205,10 +224,27 @@
             return;
         }
 
+        Hub.AdminState += OnAdminState;
+        try
+        {
+            await Hub.StartAsync();
+            _hubLive = Hub.IsConnected;
+        }
+        catch
+        {
+            _hubLive = false;
+        }
+
         await RefreshAsync();
         _pollCts = new CancellationTokenSource();
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
         _ = PollLoopAsync(_pollCts.Token);
+    }
+
+    private void OnAdminState(object? _)
+    {
+        _hubLive = true;
+        _ = InvokeAsync(RefreshAsync);
     }
 
     private async Task PollLoopAsync(CancellationToken ct)
@@ -222,16 +258,10 @@
                     await RefreshAsync();
                     await InvokeAsync(StateHasChanged);
                 }
-                catch
-                {
-                    // keep polling
-                }
+                catch { /* keep polling */ }
             }
         }
-        catch (OperationCanceledException)
-        {
-            // disposed
-        }
+        catch (OperationCanceledException) { /* disposed */ }
     }
 
     private async Task RefreshAsync()
@@ -267,6 +297,34 @@
         }
     }
 
+    private async Task CancelJobAsync(string jobId)
+    {
+        _busy = true;
+        _actionMsg = null;
+        try
+        {
+            await Api.AdminCancelJobAsync(jobId);
+            _actionMsg = $"Cancel requested for {jobId}";
+            await RefreshAsync();
+        }
+        catch (Exception ex) { _actionMsg = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ReleaseLockAsync(string resource)
+    {
+        _busy = true;
+        _actionMsg = null;
+        try
+        {
+            await Api.AdminReleaseLockAsync(resource, force: true);
+            _actionMsg = $"Released {resource}";
+            await RefreshAsync();
+        }
+        catch (Exception ex) { _actionMsg = ex.Message; }
+        finally { _busy = false; }
+    }
+
     private async Task LogoutAsync()
     {
         await Api.LogoutAsync();
@@ -295,10 +353,12 @@
         return id.Length <= 10 ? id : id[..8] + "…";
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        Hub.AdminState -= OnAdminState;
         _pollCts?.Cancel();
         _timer?.Dispose();
         _pollCts?.Dispose();
+        await Hub.DisposeAsync();
     }
 }

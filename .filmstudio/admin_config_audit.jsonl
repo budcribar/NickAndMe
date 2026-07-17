@@ -1,0 +1,44 @@
+{
+  "ts": "2026-07-17T19:20:36.3040126+00:00",
+  "user": "admin",
+  "before": {
+    "capacity": {
+      "maxVideoInFlight": 4,
+      "maxVideoInFlightPerUser": 2,
+      "maxFfmpegInFlight": 2,
+      "maxQueuePerUser": 5
+    },
+    "fakes": {
+      "videoMode": "MergeRealistic",
+      "videoDelayMs": 200,
+      "failRate": 0,
+      "rateLimitEveryN": 0
+    },
+    "useFakes": false,
+    "restartRequired": [
+      "UseFakes"
+    ],
+    "configPath": "C:\\Users\\budcr\\source\\repos\\NickAndMe\\.filmstudio\\runtime-config.json"
+  },
+  "after": {
+    "capacity": {
+      "maxVideoInFlight": 6,
+      "maxVideoInFlightPerUser": 2,
+      "maxFfmpegInFlight": 2,
+      "maxQueuePerUser": 5
+    },
+    "fakes": {
+      "videoMode": "MergeRealistic",
+      "videoDelayMs": 200,
+      "failRate": 0,
+      "rateLimitEveryN": 0
+    },
+    "useFakes": false,
+    "restartRequired": [
+      "UseFakes"
+    ],
+    "configPath": "C:\\Users\\budcr\\source\\repos\\NickAndMe\\.filmstudio\\runtime-config.json",
+    "updatedAt": "2026-07-17T19:20:36.2963287+00:00",
+    "updatedBy": "admin"
+  }
+}

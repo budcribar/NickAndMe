@@ -179,6 +179,36 @@
     </div>
 }
 
+@if (_myJobs.Count > 0)
+{
+    <div class="card mb-3 border-secondary">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span>My jobs <span class="badge text-bg-secondary">@_myJobs.Count</span></span>
+            <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="RefreshMyJobsAsync">Refresh</button>
+        </div>
+        <ul class="list-group list-group-flush small">
+            @foreach (var j in _myJobs.Take(8))
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                    <span>
+                        <span class="badge bg-secondary">@j.Status</span>
+                        @(j.Kind ?? "job")
+                        @if (j.Scene is int jsn) { <span>S@(jsn.ToString("D2"))</span> }
+                        @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
+                        <span class="text-muted ms-1">@j.Message</span>
+                    </span>
+                    @if (string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy"
+                                @onclick="() => CancelMyJobAsync(j.JobId)">Cancel</button>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
 @if (_selectedScene is null)
 {
     @* ---- Scene list ---- *@
@@ -210,6 +240,10 @@
                             @if (IncompleteCount > 0)
                             {
                                 <span class="batch-panel__warn"> · @IncompleteCount incomplete</span>
+                            }
+                            @if (_myJobs.Count > 0)
+                            {
+                                <span> · <strong>@_myJobs.Count</strong> my job@(_myJobs.Count == 1 ? "" : "s")</span>
                             }
                         </div>
                     </div>
@@ -267,7 +301,8 @@
 
                     <button type="button"
                             class="btn batch-go @(_selected.Count > 0 && !JobRunning ? "batch-go--ready" : "")"
-                            disabled="@(_busy || _selected.Count == 0 || JobRunning || (_onlyMissing && EstimateSelectedClips() == 0))"
+                            disabled="@(_busy || _selected.Count == 0 || JobRunning || (_onlyMissing && EstimateSelectedClips() == 0) || SelectedLockedByOther)"
+                            title="@(SelectedLockedByOther ? "Selection includes scenes locked by another user" : null)"
                             @onclick="StartBatchAsync">
                         @if (JobRunning)
                         {
@@ -328,6 +363,14 @@
                             </td>
                             <td @onclick="() => OpenSceneAsync(sn)">
                                 <span class="badge @StatusBadge(s.Status)">S@(sn.ToString("D2"))</span>
+                                @if (s.LockedByOther)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1" title="Locked by @s.LockOwnerUserId">🔒 @s.LockOwnerUserId</span>
+                                }
+                                else if (!string.IsNullOrEmpty(s.LockOwnerUserId))
+                                {
+                                    <span class="badge bg-info text-dark ms-1" title="You hold this lock">you</span>
+                                }
                             </td>
                             <td @onclick="() => OpenSceneAsync(sn)">
                                 @(s.Setting is { Length: > 0 } set ? Trunc(set, 56) : "—")
@@ -384,8 +427,8 @@
                                         ▶
                                     </button>
                                     <button class="btn btn-sm batch-row-gen"
-                                            disabled="@(_busy || JobRunning)"
-                                            title="Generate this scene"
+                                            disabled="@(_busy || JobRunning || s.LockedByOther)"
+                                            title="@(s.LockedByOther ? $"Locked by {s.LockOwnerUserId}" : "Generate this scene")"
                                             @onclick="() => GenOneSceneAsync(sn)">
                                         Gen
                                     </button>
@@ -429,10 +472,15 @@ else
                     Rebuild scene
                 </button>
                 <button class="btn btn-sm btn-primary"
-                        disabled="@(_busy || JobRunning)"
+                        disabled="@(_busy || JobRunning || DetailLockedByOther)"
+                        title="@(DetailLockedByOther ? $"Locked by {_detailLockOwner}" : null)"
                         @onclick="() => GenOneSceneAsync(_detail.SceneNumber)">
                     Generate scene
                 </button>
+                @if (DetailLockedByOther)
+                {
+                    <span class="badge bg-warning text-dark">🔒 @_detailLockOwner</span>
+                }
             </div>
         </div>
         <div class="card-body">
@@ -680,6 +728,7 @@ else
     private int? _selectedClip;
     private ClipSummary? _clip;
     private JobSnapshot? _job;
+    private List<JobSnapshot> _myJobs = new();
     private bool _wipExists;
     private bool _wipStale;
     private bool _wipCanBuild;
@@ -698,7 +747,21 @@ else
     private long _clipVideoKey;
 
     private bool JobRunning =>
-        string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase);
+        string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+        _myJobs.Any(j => string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase));
+
+    private bool SelectedLockedByOther =>
+        _scenes is not null &&
+        _selected.Any(sn => _scenes.Any(s => s.SceneNumber == sn && s.LockedByOther));
+
+    private bool DetailLockedByOther =>
+        _detail is not null &&
+        (_scenes?.FirstOrDefault(s => s.SceneNumber == _detail.SceneNumber)?.LockedByOther ?? false);
+
+    private string? _detailLockOwner =>
+        _detail is null
+            ? null
+            : _scenes?.FirstOrDefault(s => s.SceneNumber == _detail.SceneNumber)?.LockOwnerUserId;
 
     private string WipPlayTitle =>
         !_wipCanBuild && !_wipExists
@@ -805,6 +868,7 @@ else
 
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            await RefreshMyJobsAsync();
 
             await ReloadListAsync();
         }
@@ -817,6 +881,7 @@ else
     private void OnJobUpdated(JobSnapshot snap)
     {
         _job = snap;
+        _ = InvokeAsync(RefreshMyJobsAsync);
         if (snap.Status is "done" or "error" or "cancelled")
             _ = InvokeAsync(async () =>
             {
@@ -901,6 +966,7 @@ else
                 await LoadDetailAsync(sn);
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            await RefreshMyJobsAsync();
             await RefreshWipMetaAsync();
         }
         catch (Exception ex)
@@ -917,6 +983,7 @@ else
         {
             var dto = await Engine.GetScenesAsync(_projectId);
             _scenes = dto?.Scenes ?? new List<SceneSummary>();
+            await RefreshMyJobsAsync();
             await RefreshWipMetaAsync();
             if (_selectedScene is int sn)
             {
@@ -927,6 +994,41 @@ else
             }
         }
         catch { /* ignore soft reload errors */ }
+    }
+
+    private async Task RefreshMyJobsAsync()
+    {
+        try
+        {
+            var list = await Engine.GetJobsAsync(mine: true);
+            _myJobs = list?.Jobs?
+                .Where(j =>
+                    string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase) ||
+                    (j.FinishedAt is DateTimeOffset f && f > DateTimeOffset.UtcNow.AddMinutes(-5)))
+                .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+                .Take(12)
+                .ToList()
+                ?? new List<JobSnapshot>();
+        }
+        catch
+        {
+            // keep previous
+        }
+    }
+
+    private async Task CancelMyJobAsync(string? jobId)
+    {
+        if (string.IsNullOrWhiteSpace(jobId)) return;
+        _busy = true;
+        try
+        {
+            await Engine.CancelJobByIdAsync(jobId);
+            _message = $"Cancel requested for {jobId}";
+            await RefreshMyJobsAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private async Task OpenSceneAsync(int sn)

@@ -1,3 +1,6 @@
+@inject AdminSessionService Session
+@implements IDisposable
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Film Studio</a>
@@ -48,10 +51,37 @@
                 <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span> About
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="admin">
-                <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Admin
-            </NavLink>
-        </div>
+        @if (Session.IsAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin">
+                    <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Admin
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/config">
+                    <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Admin config
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/login">
+                    <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Admin login
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Session.Changed += OnSessionChanged;
+    }
+
+    private void OnSessionChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+}

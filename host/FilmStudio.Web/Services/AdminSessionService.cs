@@ -1,10 +1,11 @@
 namespace FilmStudio.Web.Services;
 
-/// <summary>Circuit-scoped admin JWT session (Phase B).</summary>
+/// <summary>Circuit-scoped identity: default user id + optional admin JWT (Phase B/D).</summary>
 public sealed class AdminSessionService
 {
     public string? Token { get; private set; }
-    public string? UserId { get; private set; }
+    /// <summary>Effective user id for X-User-Id (defaults to local).</summary>
+    public string UserId { get; private set; } = "local";
     public IReadOnlyList<string> Roles { get; private set; } = Array.Empty<string>();
     public DateTimeOffset? ExpiresAt { get; private set; }
 
@@ -14,10 +15,16 @@ public sealed class AdminSessionService
 
     public event Action? Changed;
 
+    public void SetUserId(string? userId)
+    {
+        UserId = string.IsNullOrWhiteSpace(userId) ? "local" : userId.Trim();
+        Changed?.Invoke();
+    }
+
     public void SetSession(string token, string? userId, IEnumerable<string>? roles, DateTimeOffset? expiresAt)
     {
         Token = token;
-        UserId = userId;
+        UserId = string.IsNullOrWhiteSpace(userId) ? "local" : userId.Trim();
         Roles = roles?.Where(r => !string.IsNullOrWhiteSpace(r)).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
                 ?? new List<string>();
         ExpiresAt = expiresAt;
@@ -27,7 +34,8 @@ public sealed class AdminSessionService
     public void Clear()
     {
         Token = null;
-        UserId = null;
+        // Keep working as local operator after admin logout
+        UserId = "local";
         Roles = Array.Empty<string>();
         ExpiresAt = null;
         Changed?.Invoke();

@@ -536,34 +536,32 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 ---
 
-### Phase D — Web UX (users) + admin console
+### Phase D — Web UX (users) + admin console — **IMPLEMENTED (2026-07-17)**
 
-**D1. User UX (minimum)**
+**D1. User UX (minimum)** ✅
 
-- Show **my jobs** + queue position.
-- Scene lock badge on Scenes list.
-- Disable Gen when locked by other user.
+- Home + Scenes: **my jobs** list (`GET /api/jobs?mine=1`) + cancel by id.
+- Scene lock badge on Scenes list (from enriched scenes API).
+- Disable Gen / batch when locked by other user.
 
-**D2. Admin live dashboard (`/admin`)**
+**D2. Admin live dashboard (`/admin`)** ✅
 
-- Login gate → real-time panels (process, capacity, running jobs, queues, locks).
-- SignalR client subscribed to `admin:ops` / `AdminState` messages.
-- Fallback poll `GET /api/admin/state`.
-- Actions: cancel job; force-release lock (confirm modal).
+- Login gate → process, capacity, jobs, locks, counters.
+- SignalR `AdminState` + 5s poll fallback.
+- Actions: cancel job (`POST /api/admin/jobs/{id}/cancel`); force-release lock.
 
-**D3. Admin server configuration (`/admin/config`)**
+**D3. Admin server configuration (`/admin/config`)** ✅
 
-- Forms bound to `RuntimeConfigDto`.
-- Save → `PUT /api/admin/config` → persist + hot-apply + audit line + SignalR notify.
-- Show effective vs file values; “restart required” badge if a setting cannot hot-reload (e.g. switching UseFakes mid-flight may be restart-only).
+- `IRuntimeConfigStore` → `.filmstudio/runtime-config.json` + audit jsonl.
+- `GET/PUT /api/admin/config` hot-applies capacity/fakes; UseFakes marked restart-required.
 
-**D4. Nav + security**
+**D4. Nav + security** ✅
 
-- Hide admin links from non-admins.
-- `[Authorize(Roles = "admin")]` on admin pages and APIs.
-- Rate-limit login attempts (simple in-memory).
+- Nav shows Admin only when `Session.IsAdmin`; otherwise Admin login.
+- Admin APIs check `IUserContext.IsAdmin` (403).
+- Login rate-limit (`LoginRateLimiter`, 10 / 5 min → 429).
 
-**Exit D:** human multi-user + admin can watch LoadSim live and tune caps without rebuild.
+**Exit D:** human multi-user + admin can watch LoadSim live and tune caps without rebuild. ✅
 
 ---
 

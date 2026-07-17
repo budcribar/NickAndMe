@@ -82,15 +82,34 @@ dotnet run</pre>
         </div>
 
         <div class="card mt-3">
-            <div class="card-header">Live job</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>My jobs</span>
+                <span class="badge text-bg-secondary">@_myJobs.Count</span>
+            </div>
             <div class="card-body">
-                @if (_job is null)
+                @if (_myJobs.Count == 0 && _job is null)
                 {
-                    <p class="text-muted mb-0">No job yet.</p>
+                    <p class="text-muted mb-0">No recent jobs.</p>
                 }
                 else
                 {
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var j in _myJobs.Take(8))
+                        {
+                            <li class="list-group-item px-0 py-2 small">
+                                <span class="badge bg-secondary">@j.Status</span>
+                                @(j.Kind ?? "job")
+                                @if (j.Scene is int sn) { <span>S@(sn.ToString("D2"))</span> }
+                                @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
+                                <div class="text-muted">@j.Message</div>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (_job is not null)
+                {
                     <p class="mb-1">
+                        <strong>Primary:</strong>
                         <span class="badge bg-secondary">@_job.Status</span>
                         @if (_job.Scene is int sn && _job.Clip is int cn)
                         {
@@ -120,6 +139,7 @@ dotnet run</pre>
     private string? _message;
     private ProjectsDto? _projects;
     private JobSnapshot? _job;
+    private List<JobSnapshot> _myJobs = new();
     private string _projectId = "Buster";
     private int _scene = 2;
     private bool _onlyMissing = true;
@@ -142,7 +162,20 @@ dotnet run</pre>
     private void OnJobUpdated(JobSnapshot snap)
     {
         _job = snap;
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                var mine = await Engine.GetJobsAsync(mine: true);
+                _myJobs = mine?.Jobs?
+                    .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+                    .Take(12)
+                    .ToList()
+                    ?? new List<JobSnapshot>();
+            }
+            catch { /* ignore */ }
+            StateHasChanged();
+        });
     }
 
     private void OnJobLog(string line)
@@ -177,6 +210,16 @@ dotnet run</pre>
 
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            try
+            {
+                var mine = await Engine.GetJobsAsync(mine: true);
+                _myJobs = mine?.Jobs?
+                    .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+                    .Take(12)
+                    .ToList()
+                    ?? new List<JobSnapshot>();
+            }
+            catch { _myJobs = new List<JobSnapshot>(); }
         }
         catch (Exception ex)
         {

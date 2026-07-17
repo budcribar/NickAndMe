@@ -279,6 +279,12 @@ public sealed class SceneSummary
     public List<string> LocationIds { get; set; } = new();
     public string? PrimaryLocationId { get; set; }
     public string Status { get; set; } = "empty"; // empty | partial | complete
+
+    /// <summary>User holding scene lock (Phase D), if any.</summary>
+    public string? LockOwnerUserId { get; set; }
+    /// <summary>True when locked by a different user than the caller.</summary>
+    public bool LockedByOther { get; set; }
+    public string? LockReason { get; set; }
 }
 
 public sealed class ClipSummary

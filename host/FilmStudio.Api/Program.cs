@@ -9,6 +9,7 @@ using FilmStudio.Core.Options;
 using FilmStudio.Engine;
 using FilmStudio.Engine.Abstractions;
 using FilmStudio.Fakes;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,8 +31,10 @@ builder.Services.AddSingleton<ProjectStore>();
 builder.Services.AddSingleton<IJobStore, JobStore>();
 builder.Services.AddSingleton<ILockService, InMemoryLockService>();
 builder.Services.AddSingleton<IServerMetricsService, ServerMetricsService>();
+builder.Services.AddSingleton<IRuntimeConfigStore, RuntimeConfigStore>();
 builder.Services.AddSingleton<ApiWorkerPool>();
 builder.Services.AddSingleton<LocalWorkerPool>();
+builder.Services.AddSingleton<LoginRateLimiter>();
 builder.Services.AddSingleton<CostReportService>();
 builder.Services.AddSingleton<CharacterDesignService>();
 builder.Services.AddSingleton<CharacterBookPlateService>();
@@ -103,12 +106,24 @@ app.UseCors();
 app.UseMiddleware<JwtHeaderMiddleware>();
 app.MapHub<JobHub>("/hubs/jobs");
 
-// ── Auth (Phase B) ──────────────────────────────────────────────────────────
-app.MapPost("/api/auth/login", (LoginRequest body, IAdminAuthService auth) =>
+// ── Auth (Phase B + D rate limit) ───────────────────────────────────────────
+app.MapPost("/api/auth/login", (LoginRequest body, IAdminAuthService auth, LoginRateLimiter limiter, HttpContext http) =>
 {
+    var key = $"{body.Username ?? ""}|{http.Connection.RemoteIpAddress}";
+    if (limiter.IsBlocked(key, out var retryAfter))
+    {
+        return Results.Json(
+            new LoginResponse { Ok = false, Error = $"Too many login attempts. Retry in {retryAfter}s." },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
     var result = auth.Login(body.Username ?? "", body.Password ?? "");
     if (!result.Ok)
+    {
+        limiter.RecordFailure(key);
         return Results.Json(result, statusCode: StatusCodes.Status401Unauthorized);
+    }
+    limiter.RecordSuccess(key);
     return Results.Ok(result);
 });
 
@@ -190,6 +205,70 @@ app.MapGet("/api/locks", (ILockService locks, IUserContext user) =>
 {
     var list = locks.ListActive();
     return Results.Ok(new { ok = true, locks = list, userId = user.UserId });
+});
+
+// ── Admin config + actions (Phase D) ────────────────────────────────────────
+app.MapGet("/api/admin/config", (IUserContext user, IRuntimeConfigStore config) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    return Results.Ok(config.Get());
+});
+
+app.MapPut("/api/admin/config", (
+    RuntimeConfigUpdateRequest body,
+    IUserContext user,
+    IRuntimeConfigStore config,
+    IHubContext<JobHub> hub) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var updated = config.Update(body, user.UserId);
+        _ = hub.Clients.Group(JobHub.AdminOpsGroup)
+            .SendAsync(JobHubEvents.AdminState, new { configChanged = true, config = updated });
+        return Results.Ok(updated);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/jobs/{jobId}/cancel", async (string jobId, IUserContext user, FilmJobService jobService) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    await jobService.CancelAsync(jobId);
+    return Results.Ok(new { ok = true, jobId, job = jobService.GetJob(jobId) });
+});
+
+app.MapPost("/api/admin/locks/release", (AdminReleaseLockRequest body, IUserContext user, ILockService locks) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    if (string.IsNullOrWhiteSpace(body.Resource))
+        return Results.BadRequest(new { ok = false, error = "resource required" });
+    var ok = locks.Release(body.Resource.Trim(), user.UserId, force: body.Force || true);
+    return Results.Ok(new { ok, resource = body.Resource, locks = locks.ListActive() });
+});
+
+app.MapPost("/api/jobs/{jobId}/cancel", async (string jobId, FilmJobService jobService, IUserContext user) =>
+{
+    var job = jobService.GetJob(jobId);
+    if (job is null)
+        return Results.NotFound(new { ok = false, error = "job not found" });
+    if (!user.IsAdmin &&
+        !string.Equals(job.UserId, user.UserId, StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { ok = false, error = "not your job" },
+            statusCode: StatusCodes.Status403Forbidden);
+    await jobService.CancelAsync(jobId);
+    return Results.Ok(new { ok = true, job = jobService.GetJob(jobId) });
 });
 
 app.MapGet("/health", (ProjectStore store, IOptions<FilmStudioOptions> opts, IGrokVideoClient video, IUserContext user) =>
@@ -885,11 +964,22 @@ app.MapPost("/api/projects/{id}/cost/backfill", (string id, ProjectStore store, 
 });
 
 // ---- Scenes & Clips ----
-app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store) =>
+app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockService locks, IUserContext user) =>
 {
     try
     {
-        var scenes = store.ListScenes(id);
+        var scenes = store.ListScenes(id).ToList();
+        var active = locks.ListActive();
+        foreach (var s in scenes)
+        {
+            var key = LockKeys.Scene(id, s.SceneNumber);
+            var held = active.FirstOrDefault(l =>
+                string.Equals(l.Resource, key, StringComparison.OrdinalIgnoreCase));
+            if (held is null) continue;
+            s.LockOwnerUserId = held.UserId;
+            s.LockReason = held.Reason;
+            s.LockedByOther = !string.Equals(held.UserId, user.UserId, StringComparison.OrdinalIgnoreCase);
+        }
         return Results.Ok(new
         {
             ok = true,
@@ -897,6 +987,7 @@ app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store) =>
             sceneCount = scenes.Count,
             clipCount = scenes.Sum(s => s.ClipCount),
             clipsOnDisk = scenes.Sum(s => s.ClipsOnDisk),
+            callerUserId = user.UserId,
             scenes,
         });
     }

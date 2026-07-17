@@ -1,0 +1,17 @@
+{
+  "capacity": {
+    "maxVideoInFlight": 6,
+    "maxVideoInFlightPerUser": 2,
+    "maxFfmpegInFlight": 2,
+    "maxQueuePerUser": 5
+  },
+  "fakes": {
+    "videoMode": "MergeRealistic",
+    "videoDelayMs": 200,
+    "failRate": 0,
+    "rateLimitEveryN": 0
+  },
+  "useFakes": false,
+  "updatedAt": "2026-07-17T19:20:36.2963287+00:00",
+  "updatedBy": "admin"
+}

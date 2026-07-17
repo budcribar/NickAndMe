@@ -7,23 +7,27 @@ namespace FilmStudio.Web.Services;
 public sealed class JobHubClient : IAsyncDisposable
 {
     private readonly EngineApiOptions _opts;
+    private readonly AdminSessionService? _session;
     private HubConnection? _connection;
 
     public event Action<JobSnapshot>? JobUpdated;
     public event Action<string>? JobLog;
+    public event Action<object?>? AdminState;
 
     public bool IsConnected =>
         _connection?.State == HubConnectionState.Connected;
 
-    public JobHubClient(IOptions<EngineApiOptions> opts) => _opts = opts.Value;
+    public JobHubClient(IOptions<EngineApiOptions> opts, AdminSessionService? session = null)
+    {
+        _opts = opts.Value;
+        _session = session;
+    }
 
     public async Task StartAsync(CancellationToken ct = default)
     {
-        // Already live
         if (_connection is { State: HubConnectionState.Connected or HubConnectionState.Connecting })
             return;
 
-        // Stale connection after drop — rebuild
         if (_connection is not null)
         {
             try { await _connection.DisposeAsync(); } catch { /* ignore */ }
@@ -31,16 +35,29 @@ public sealed class JobHubClient : IAsyncDisposable
         }
 
         var baseUrl = (_opts.BaseUrl ?? "http://127.0.0.1:5088").TrimEnd('/');
+        var userId = _session?.UserId ?? "local";
+        var url = $"{baseUrl}/hubs/jobs?userId={Uri.EscapeDataString(userId)}";
+
         _connection = new HubConnectionBuilder()
-            .WithUrl($"{baseUrl}/hubs/jobs")
+            .WithUrl(url, options =>
+            {
+                if (!string.IsNullOrWhiteSpace(_session?.Token))
+                {
+                    options.AccessTokenProvider = () => Task.FromResult<string?>(_session!.Token);
+                }
+                options.Headers[AuthHeaderUserId] = userId;
+            })
             .WithAutomaticReconnect()
             .Build();
 
         _connection.On<JobSnapshot>(JobHubEvents.JobUpdated, snap => JobUpdated?.Invoke(snap));
         _connection.On<string>(JobHubEvents.JobLog, line => JobLog?.Invoke(line));
+        _connection.On<object>(JobHubEvents.AdminState, payload => AdminState?.Invoke(payload));
 
         await _connection.StartAsync(ct);
     }
+
+    private const string AuthHeaderUserId = "X-User-Id";
 
     public async Task StopAsync()
     {

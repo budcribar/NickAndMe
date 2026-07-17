@@ -25,10 +25,34 @@ public sealed class EngineApiClient
     {
         _http = http;
         _session = session;
+        SyncIdentityHeaders();
+        if (_session is not null)
+            _session.Changed += SyncIdentityHeaders;
+    }
+
+    /// <summary>Push X-User-Id / Bearer onto the shared HttpClient defaults (circuit-scoped client).</summary>
+    public void SyncIdentityHeaders()
+    {
+        try
+        {
+            _http.DefaultRequestHeaders.Remove("Authorization");
+            _http.DefaultRequestHeaders.Remove(AuthHeaders.UserId);
+            if (_session is null) return;
+            if (!string.IsNullOrWhiteSpace(_session.Token))
+                _http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _session.Token.Trim());
+            var uid = string.IsNullOrWhiteSpace(_session.UserId) ? "local" : _session.UserId.Trim();
+            _http.DefaultRequestHeaders.TryAddWithoutValidation(AuthHeaders.UserId, uid);
+        }
+        catch
+        {
+            // ignore header races
+        }
     }
 
     private void ApplyAuth(HttpRequestMessage req)
     {
+        SyncIdentityHeaders();
         if (_session is null) return;
         if (!string.IsNullOrWhiteSpace(_session.Token))
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _session.Token.Trim());
@@ -95,8 +119,47 @@ public sealed class EngineApiClient
         return await SendJsonAsync<AdminStateDto>(req, ct);
     }
 
+    public async Task<RuntimeConfigDto?> GetAdminConfigAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/admin/config");
+        return await SendJsonAsync<RuntimeConfigDto>(req, ct);
+    }
+
+    public async Task<RuntimeConfigDto?> SaveAdminConfigAsync(
+        RuntimeConfigUpdateRequest body,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Put, "/api/admin/config")
+        {
+            Content = JsonContent.Create(body, options: JsonOpts),
+        };
+        return await SendJsonAsync<RuntimeConfigDto>(req, ct);
+    }
+
+    public async Task AdminCancelJobAsync(string jobId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/jobs/{Uri.EscapeDataString(jobId)}/cancel");
+        await SendJsonAsync<object>(req, ct);
+    }
+
+    public async Task AdminReleaseLockAsync(string resource, bool force = true, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/locks/release")
+        {
+            Content = JsonContent.Create(new AdminReleaseLockRequest { Resource = resource, Force = force }, options: JsonOpts),
+        };
+        await SendJsonAsync<object>(req, ct);
+    }
+
+    public async Task<LocksDto?> GetLocksAsync(CancellationToken ct = default)
+    {
+        SyncIdentityHeaders();
+        return await _http.GetFromJsonAsync<LocksDto>("/api/locks", JsonOpts, ct);
+    }
+
     public async Task EnsureHealthyAsync(CancellationToken ct = default)
     {
+        SyncIdentityHeaders();
         using var resp = await _http.GetAsync("/health", ct);
         resp.EnsureSuccessStatusCode();
     }
@@ -117,8 +180,11 @@ public sealed class EngineApiClient
         }
     }
 
-    public async Task<JobsDto?> GetJobAsync(CancellationToken ct = default) =>
-        await _http.GetFromJsonAsync<JobsDto>("/api/jobs", JsonOpts, ct);
+    public async Task<JobsDto?> GetJobAsync(CancellationToken ct = default)
+    {
+        SyncIdentityHeaders();
+        return await _http.GetFromJsonAsync<JobsDto>("/api/jobs", JsonOpts, ct);
+    }
 
     /// <summary>Multi-job list (Phase A+). Pass mine=true or projectId.</summary>
     public async Task<JobsListDto?> GetJobsAsync(
@@ -127,6 +193,7 @@ public sealed class EngineApiClient
         string? userId = null,
         CancellationToken ct = default)
     {
+        SyncIdentityHeaders();
         var q = new List<string>();
         if (mine) q.Add("mine=1");
         if (!string.IsNullOrWhiteSpace(projectId))
@@ -153,6 +220,7 @@ public sealed class EngineApiClient
         int? clip = null,
         CancellationToken ct = default)
     {
+        SyncIdentityHeaders();
         using var resp = await _http.PostAsJsonAsync(
             "/api/jobs/gen-scene",
             new StartSceneGenRequest
@@ -177,6 +245,7 @@ public sealed class EngineApiClient
         bool onlyMissing = true,
         CancellationToken ct = default)
     {
+        SyncIdentityHeaders();
         using var resp = await _http.PostAsJsonAsync(
             "/api/jobs/gen-batch",
             new StartBatchGenRequest
@@ -196,15 +265,33 @@ public sealed class EngineApiClient
 
     public async Task CancelJobAsync(CancellationToken ct = default)
     {
+        SyncIdentityHeaders();
         using var resp = await _http.PostAsJsonAsync("/api/jobs/cancel", new { }, ct);
         resp.EnsureSuccessStatusCode();
     }
 
-    public async Task<ScenesListDto?> GetScenesAsync(string projectId, CancellationToken ct = default) =>
-        await _http.GetFromJsonAsync<ScenesListDto>(
+    public async Task CancelJobByIdAsync(string jobId, CancellationToken ct = default)
+    {
+        SyncIdentityHeaders();
+        using var resp = await _http.PostAsJsonAsync(
+            $"/api/jobs/{Uri.EscapeDataString(jobId)}/cancel",
+            new { },
+            ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? resp.ReasonPhrase);
+        }
+    }
+
+    public async Task<ScenesListDto?> GetScenesAsync(string projectId, CancellationToken ct = default)
+    {
+        SyncIdentityHeaders();
+        return await _http.GetFromJsonAsync<ScenesListDto>(
             $"/api/projects/{Uri.EscapeDataString(projectId)}/scenes",
             JsonOpts,
             ct);
+    }
 
     public async Task<SceneDetailDto?> GetSceneDetailAsync(
         string projectId,
@@ -765,6 +852,13 @@ public sealed class AdminLockDto
     public string? Reason { get; set; }
     public string? JobId { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
+}
+
+public sealed class LocksDto
+{
+    public bool Ok { get; set; }
+    public List<AdminLockDto> Locks { get; set; } = new();
+    public string? UserId { get; set; }
 }
 
 public sealed class AdminProcessDto

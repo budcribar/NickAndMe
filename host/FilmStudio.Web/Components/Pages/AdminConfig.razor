@@ -1,0 +1,196 @@
+@page "/admin/config"
+@rendermode InteractiveServer
+@inject EngineApiClient Api
+@inject AdminSessionService Session
+@inject NavigationManager Nav
+
+<PageTitle>Admin config — Film Studio</PageTitle>
+
+<div class="container py-3" style="max-width: 40rem;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 mb-0">Server configuration</h1>
+            <div class="text-muted small">Hot-apply capacity &amp; fakes · persists under <code>.filmstudio/runtime-config.json</code></div>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="admin">← Dashboard</a>
+    </div>
+
+    @if (!Session.IsAdmin)
+    {
+        <div class="alert alert-warning">Admin session required. <a href="admin/login">Sign in</a></div>
+    }
+    else if (_cfg is null && string.IsNullOrEmpty(_error))
+    {
+        <p class="text-muted">Loading…</p>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert alert-success">@_message</div>
+        }
+
+        @if (_cfg is not null)
+        {
+            <div class="card mb-3">
+                <div class="card-header">Capacity</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">MaxVideoInFlight</label>
+                            <InputNumber class="form-control" @bind-Value="_maxVideo" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">MaxVideoInFlightPerUser</label>
+                            <InputNumber class="form-control" @bind-Value="_maxVideoPerUser" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">MaxFfmpegInFlight</label>
+                            <InputNumber class="form-control" @bind-Value="_maxFfmpeg" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">MaxQueuePerUser</label>
+                            <InputNumber class="form-control" @bind-Value="_maxQueue" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Fakes</span>
+                    @if (_cfg.RestartRequired?.Contains("UseFakes") == true)
+                    {
+                        <span class="badge text-bg-warning">UseFakes: restart for full DI effect</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <InputCheckbox class="form-check-input" id="useFakes" @bind-Value="_useFakes" />
+                        <label class="form-check-label" for="useFakes">UseFakes (flag only; clients fixed at process start)</label>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">VideoMode</label>
+                            <InputText class="form-control" @bind-Value="_videoMode" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">VideoDelayMs</label>
+                            <InputNumber class="form-control" @bind-Value="_videoDelayMs" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">FailRate (0–1)</label>
+                            <InputNumber class="form-control" @bind-Value="_failRate" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">RateLimitEveryN</label>
+                            <InputNumber class="form-control" @bind-Value="_rateLimitEveryN" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="small text-muted mb-3">
+                Path: <code>@(_cfg.ConfigPath ?? "—")</code><br />
+                Last update: @(_cfg.UpdatedAt?.ToLocalTime().ToString("g") ?? "—")
+                by @(_cfg.UpdatedBy ?? "—")
+            </div>
+
+            <button class="btn btn-primary" disabled="@_busy" @onclick="SaveAsync">
+                @(_busy ? "Saving…" : "Save & hot-apply")
+            </button>
+        }
+    }
+</div>
+
+@code {
+    private RuntimeConfigDto? _cfg;
+    private string? _error;
+    private string? _message;
+    private bool _busy;
+
+    private int _maxVideo = 4;
+    private int _maxVideoPerUser = 2;
+    private int _maxFfmpeg = 2;
+    private int _maxQueue = 5;
+    private bool _useFakes;
+    private string _videoMode = "MergeRealistic";
+    private int _videoDelayMs = 200;
+    private double _failRate;
+    private int _rateLimitEveryN;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Session.IsAdmin)
+        {
+            Nav.NavigateTo("admin/login");
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _cfg = await Api.GetAdminConfigAsync();
+            if (_cfg is not null)
+            {
+                _maxVideo = _cfg.Capacity?.MaxVideoInFlight ?? 4;
+                _maxVideoPerUser = _cfg.Capacity?.MaxVideoInFlightPerUser ?? 2;
+                _maxFfmpeg = _cfg.Capacity?.MaxFfmpegInFlight ?? 2;
+                _maxQueue = _cfg.Capacity?.MaxQueuePerUser ?? 5;
+                _useFakes = _cfg.UseFakes;
+                _videoMode = _cfg.Fakes?.VideoMode ?? "MergeRealistic";
+                _videoDelayMs = _cfg.Fakes?.VideoDelayMs ?? 200;
+                _failRate = _cfg.Fakes?.FailRate ?? 0;
+                _rateLimitEveryN = _cfg.Fakes?.RateLimitEveryN ?? 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            _cfg = await Api.SaveAdminConfigAsync(new RuntimeConfigUpdateRequest
+            {
+                Capacity = new CapacityRuntimeDto
+                {
+                    MaxVideoInFlight = _maxVideo,
+                    MaxVideoInFlightPerUser = _maxVideoPerUser,
+                    MaxFfmpegInFlight = _maxFfmpeg,
+                    MaxQueuePerUser = _maxQueue,
+                },
+                Fakes = new FakesRuntimeDto
+                {
+                    VideoMode = _videoMode,
+                    VideoDelayMs = _videoDelayMs,
+                    FailRate = _failRate,
+                    RateLimitEveryN = _rateLimitEveryN,
+                },
+                UseFakes = _useFakes,
+            });
+            _message = "Saved and applied (capacity hot; UseFakes may need restart for client DI).";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+}
