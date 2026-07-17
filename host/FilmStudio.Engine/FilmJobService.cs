@@ -657,17 +657,70 @@ public sealed class FilmJobService
                 throw new InvalidOperationException(
                     "ffmpeg not found. Install ffmpeg and ensure it is on PATH (or set FilmStudio:FfmpegPath).");
 
-            if (req.Scene is int sn && sn > 0)
+            var refreshed = 0;
+            if (req.RefreshStaleScenes)
+            {
+                // Play WIP: remux only stale scenes (clips newer / missing composite), then stitch WIP.
+                var fresh = _projects.AssessWipFreshness(projectId);
+                var toRemux = fresh.StaleScenes;
+                await AppendLogAsync(
+                    toRemux.Count > 0
+                        ? $"Remuxing {toRemux.Count} stale scene composite(s) before WIP…"
+                        : "No stale scenes — stitching WIP from current composites");
+                var i = 0;
+                foreach (var sn in toRemux)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    i++;
+                    await UpdateAsync(s =>
+                    {
+                        s.Scene = sn;
+                        s.Index = i;
+                        s.Total = toRemux.Count;
+                        s.Message = $"Remux stale S{sn:D2} ({i}/{toRemux.Count})…";
+                    });
+                    try
+                    {
+                        await _remux.RemuxSceneAsync(projectId, sn,
+                            line => { _ = OnRemuxProgressAsync(line); }, ct);
+                        refreshed++;
+                        await AppendLogAsync($"Remuxed S{sn:D2}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogWarning(ex, "Remux S{Scene} failed — continuing", sn);
+                        await AppendLogAsync($"S{sn:D2} remux skipped: {ex.Message}");
+                    }
+                }
+            }
+            else if (req.Scene is int sn && sn > 0)
             {
                 await _remux.RemuxSceneAsync(projectId, sn,
                     line => { _ = OnRemuxProgressAsync(line); }, ct);
             }
+
             if (req.RebuildWip)
             {
+                await UpdateAsync(s =>
+                {
+                    s.Scene = null;
+                    s.Message = "Stitching WIP from scene composites…";
+                });
                 await _remux.RebuildWipAsync(projectId,
                     line => { _ = OnRemuxProgressAsync(line); }, ct);
             }
-            await FinishAsync("done", "Remux / WIP complete");
+
+            var doneMsg = (req.RefreshStaleScenes, req.Scene is int dsn && dsn > 0, req.RebuildWip) switch
+            {
+                (true, _, true) when refreshed > 0 =>
+                    $"Remuxed {refreshed} stale scene(s) + WIP rebuilt",
+                (true, _, true) => "WIP rebuilt (no stale scenes)",
+                (false, true, true) => $"Scene S{req.Scene:D2} composite + WIP rebuilt",
+                (false, true, false) => $"Scene S{req.Scene:D2} composite rebuilt (WIP unchanged)",
+                (false, false, true) => "WIP movie rebuilt from scene composites",
+                _ => "Remux complete (nothing to do — pass scene and/or rebuildWip)",
+            };
+            await FinishAsync("done", doneMsg);
         }
         catch (OperationCanceledException)
         {
@@ -861,6 +914,8 @@ public sealed class FilmJobService
             {
                 var cn = c.TryGetProperty("clip_number", out var n) && n.TryGetInt32(out var v) ? v : 0;
                 if (cn <= 0) continue;
+                if (req.Clip is int onlyClip && onlyClip > 0 && cn != onlyClip)
+                    continue;
                 var path = Path.Combine(videoDir, $"scene_{req.Scene:D2}_clip_{cn:D2}.mp4");
                 var missing = !File.Exists(path) || new FileInfo(path).Length < 1024;
                 if (!req.OnlyMissing || missing)

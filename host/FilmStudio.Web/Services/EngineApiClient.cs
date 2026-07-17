@@ -48,6 +48,7 @@ public sealed class EngineApiClient
         string projectId,
         int scene,
         bool onlyMissing = true,
+        int? clip = null,
         CancellationToken ct = default)
     {
         using var resp = await _http.PostAsJsonAsync(
@@ -56,6 +57,7 @@ public sealed class EngineApiClient
             {
                 ProjectId = projectId,
                 Scene = scene,
+                Clip = clip,
                 OnlyMissing = onlyMissing,
             },
             JsonOpts,
@@ -113,15 +115,28 @@ public sealed class EngineApiClient
 
     public string ClipVideoUrl(string projectId, int sceneNumber, int clipNumber)
     {
-        var baseUrl = _http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/clips/{clipNumber}/video";
+        // Absolute API URL (same host as WIP) so <video src> never hits the Blazor port by mistake
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/clips/{clipNumber}/video";
     }
 
     public string CompositeVideoUrl(string projectId, int sceneNumber)
     {
-        var baseUrl = _http.BaseAddress?.ToString().TrimEnd('/') ?? "";
-        return $"{baseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/composite";
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/composite";
     }
+
+    /// <summary>Absolute stream URL for the WIP full movie (range requests enabled).</summary>
+    public string WipMovieUrl(string projectId)
+    {
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/movie/wip";
+    }
+
+    public async Task<WipMovieMetaDto?> GetWipMovieMetaAsync(
+        string projectId,
+        CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<WipMovieMetaDto>(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/movie/wip/meta",
+            JsonOpts,
+            ct);
 
     public async Task<AdaptationDto?> GetAdaptationAsync(string projectId, CancellationToken ct = default) =>
         await _http.GetFromJsonAsync<AdaptationDto>(
@@ -153,6 +168,7 @@ public sealed class EngineApiClient
         string projectId,
         int? scene = null,
         bool rebuildWip = true,
+        bool refreshStaleScenes = false,
         CancellationToken ct = default)
     {
         using var resp = await _http.PostAsJsonAsync(
@@ -162,6 +178,7 @@ public sealed class EngineApiClient
                 ProjectId = projectId,
                 Scene = scene,
                 RebuildWip = rebuildWip,
+                RefreshStaleScenes = refreshStaleScenes,
             },
             JsonOpts,
             ct);
@@ -621,6 +638,22 @@ public sealed class ScenesListDto
     public int ClipCount { get; set; }
     public int ClipsOnDisk { get; set; }
     public List<SceneSummary> Scenes { get; set; } = new();
+}
+
+public sealed class WipMovieMetaDto
+{
+    public bool Ok { get; set; }
+    public bool Exists { get; set; }
+    /// <summary>True if missing or inputs newer than WIP (or stale scene composites).</summary>
+    public bool Stale { get; set; }
+    public bool CanBuild { get; set; }
+    public string? Reason { get; set; }
+    public string? ProjectId { get; set; }
+    public string? Path { get; set; }
+    public long Bytes { get; set; }
+    public string? UpdatedAt { get; set; }
+    public string? Url { get; set; }
+    public List<int> StaleScenes { get; set; } = new();
 }
 
 public sealed class SceneDetailDto

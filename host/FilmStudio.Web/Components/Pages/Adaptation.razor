@@ -413,7 +413,7 @@ else
                                     @foreach (var s in _status.Stage1.Scenes)
                                     {
                                         <tr>
-                                            <td><code>S@s.SceneNumber.ToString("D2")</code></td>
+                                            <td><code>S@(s.SceneNumber.ToString("D2"))</code></td>
                                             <td class="small">@(string.IsNullOrEmpty(s.Setting) ? "—" : s.Setting)</td>
                                             <td class="small">@s.BeatCount</td>
                                             <td class="small text-muted">@(s.DurationSeconds is double d ? $"{d:0}s" : "—")</td>

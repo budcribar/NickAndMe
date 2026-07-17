@@ -1,0 +1,752 @@
+{
+  "schema_version": "stage2.v1",
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "video_provider_profile": "grok",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "Warm, cozy children’s bedtime picture-book film in stylized soft-3D CG. Gentle pacing, soft practical lamps and moonlight, playful dog energy that settles into snuggly sleep. Same picture-book CG medium for dog and humans throughout; never photoreal live-action, never mixed cartoon/photo cast.",
+    "render_style_lock": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only.",
+    "total_runtime_target_seconds": 420,
+    "character_seed_tokens": {
+      "Character_Narrator": {
+        "description": "Off-screen storybook narrator only; never appears on camera.",
+        "reference_image_placeholder": "character_narrator_ref.png",
+        "voice_profile": "Warm adult storyteller, medium pitch, unhurried gentle pace, clear American children’s-book diction, soft smile in the voice. Same voice every scene.",
+        "voice_label": "Narrator_WarmStoryteller",
+        "display_name_policy": "never_on_screen"
+      },
+      "Character_Buster": {
+        "description": "Stylized 3D animated small dog (not human), compact playful build, short black-and-white coat with clear black patches on white (or white patches on black) — never brown, tan, gold, or solid single-color redesign. Bright dark eyes, soft floppy ears, expressive snout. Picture-book soft-3D medium matching the film.",
+        "reference_image_placeholder": "character_buster_ref.png",
+        "voice_profile": "Small dog: soft pants, happy yips, and light playful grumbles only when needed; no human speech. Same animal vocal character every scene.",
+        "voice_label": "Buster_SmallDog",
+        "display_name_policy": "ok_anytime",
+        "canonical_given_name": "Buster",
+        "visual_lock": "Always stylized 3D animated small black-and-white dog with stable black-and-white coat markings only; never brown/tan/gold recolor; never human; never bare redesign as a different breed silhouette. No nickname props on head.",
+        "source_image_pages": [
+          1,
+          5,
+          11
+        ],
+        "design_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ]
+      },
+      "Character_Mom": {
+        "description": "Stylized 3D animated human adult woman (not an animal), medium build, shoulder-length brown hair, kind open face, soft evening home clothes (muted blue cardigan over cream top, simple pants). Same picture-book soft-3D medium as the film — not photoreal.",
+        "reference_image_placeholder": "character_mom_ref.png",
+        "voice_profile": "Adult woman, warm medium pitch, calm patient pace, gentle firm bedtime energy, light American accent. Same voice every scene.",
+        "voice_label": "Mom_WarmGentle",
+        "display_name_policy": "ok_anytime",
+        "visual_lock": "Always stylized 3D animated human adult woman with shoulder-length brown hair and soft blue cardigan over cream top; never teen redesign; never animal features; same picture-book CG medium as Buster.",
+        "wardrobe_always": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ],
+        "source_image_pages": []
+      },
+      "Character_Dad": {
+        "description": "Stylized 3D animated human adult man (not an animal), medium build, short brown hair, relaxed sleepy face, simple sleep shirt in bed. Same picture-book soft-3D medium as the film — not photoreal.",
+        "reference_image_placeholder": "character_dad_ref.png",
+        "voice_profile": "Adult man, low-medium pitch, quiet sleepy energy, minimal lines if any. Same voice every scene.",
+        "voice_label": "Dad_QuietSleepy",
+        "display_name_policy": "ok_anytime",
+        "visual_lock": "Always stylized 3D animated human adult man with short brown hair; appears in bed in simple sleep shirt; never animal features; same picture-book CG medium as the rest of the cast.",
+        "wardrobe_always": [
+          "simple sleep shirt"
+        ],
+        "source_image_pages": []
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Living_Room": {
+        "display_name": "Buster’s living room",
+        "description": "Cozy family living room in a small house at bedtime — soft rug, low furniture, treat spot near Mom’s feet, water bowl area.",
+        "visual_lock": "Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-height floor space, evening interior practicals; consistent furniture layout and wall color across returns; no outdoor foliage inside.",
+        "reference_image_placeholder": "loc_living_room_ref.png"
+      },
+      "Loc_Backyard": {
+        "display_name": "Backyard with bushes",
+        "description": "Small evening backyard with bushes where a dog can potty, path back to the house door.",
+        "visual_lock": "Night-leaning outdoor yard with green bushes, grass, house exterior door visible for exit/return; cool evening light with porch spill; same bush cluster and fence/house edge on every return.",
+        "reference_image_placeholder": "loc_backyard_ref.png"
+      },
+      "Loc_Parents_Bedroom": {
+        "display_name": "Mom and Dad’s bedroom",
+        "description": "Upstairs parents’ bedroom with a shared bed, reached by small indoor stairs; snuggle-ready bedding.",
+        "visual_lock": "Soft bedroom with double bed, pillows, blankets, tiny staircase approach or landing continuity; dim bedside lamp; consistent bed side and wall color; calm night interior.",
+        "reference_image_placeholder": "loc_parents_bedroom_ref.png"
+      },
+      "Loc_Dream_Yard": {
+        "display_name": "Dream yard (bunnies)",
+        "description": "Soft fantasy version of a yard for Buster’s sleep dream — fluffy clouds or open grass and running bunnies.",
+        "visual_lock": "Dreamy soft-focus yard/sky hybrid with pastel fluff and open grass; slightly glowing, less solid than real backyard; clearly dream, not the real Loc_Backyard lighting.",
+        "reference_image_placeholder": "loc_dream_yard_ref.png"
+      }
+    },
+    "spoiler_register": []
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "setting": "Evening — living room, Buster introduced",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc01_buster_intro",
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Light playful children’s underscore, soft pizzicato and warm keys",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. Character_Buster, small black-and-white dog, bounds into the warm living room and pauses center rug, ears up, looking toward camera with a happy open expression / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, brown or tan dog recolor, human clothing on Buster, photoreal live-action look",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He's Buster the Noodle Head Dog.",
+            "sfx": "soft room tone, light collar-free paw taps on rug",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b1",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. Character_Buster springs and hops around the living-room rug like a frog—short vertical jumps, playful landings, tail wagging.. ONE continuous take no cut; unbroken cause-to-effect motion / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, leaving the house, Mom on screen yet",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He jumps around like a frog.",
+            "sfx": "soft thumps of landings, happy dog pants",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. Closer view of Character_Buster sitting then half-standing, black-and-white coat markings clearly readable under lamp light; he tilts his head / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, any coat color other than black-and-white, nickname object on head",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He's small, black, and white. He's Buster the Noodle Head Dog.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 1,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "pages 1-2"
+      ]
+    },
+    {
+      "scene_number": 2,
+      "setting": "Evening — living room, Mom announces bed and outside potty",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc02_bedtime_and_potty_rule",
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "total_estimated_duration_seconds": 60,
+      "music_bed": {
+        "style_description": "Gentle bedtime cue under dialogue, soft woodwinds",
+        "duration_seconds": 60
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "Character_Mom stands in the living room looking down kindly at Character_Buster; she speaks on camera. Buster looks up at her.. Mom faces Buster; Buster’s eyeline up to Mom; camera favors Mom then includes dog. Character_Mom still wears soft blue cardigan, cream top, simple home pants / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster already asleep, outdoor location, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Mom",
+            "dialogue": "It's time for bed.",
+            "sfx": "quiet house evening tone",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Mom",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Character_Buster lowers his furry head toward the rug as if ready to rest, then glances guiltily at the floor; Character_Mom stays nearby watching. Character_Mom still wears soft blue cardigan, cream top / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster actually pottying on the floor, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He wants to rest his furry head. Before he goes, he has to potty. Going on the floor is naughty!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Character_Mom leans slightly toward Character_Buster and points toward the door; Buster cocks his head with a confused noodle-brain look.. Mom’s gesture toward exterior door; Buster faces Mom, then door. Character_Mom still wears soft blue cardigan, cream top / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Mom",
+            "dialogue": "A doggy goes outside.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Mom",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:45-01:00",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. also on screen: Character_Narrator. Hold on Character_Buster’s puzzled face and tilted head; soft living-room background / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "That makes no sense in Buster's head!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b7",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 2,
+      "stage1_beat_map": [
+        "b4",
+        "b5",
+        "b6",
+        "b7"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 4"
+      ]
+    },
+    {
+      "scene_number": 3,
+      "setting": "Evening — backyard potty then living room spin for Mom",
+      "location_ids": [
+        "Loc_Backyard",
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Backyard",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc03_outside_potty_and_spin",
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_yard_to_living",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Playful outdoor night motif then cheerful homecoming sting",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Backyard",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Night-leaning outdoor yard with green bushes, grass, house exterior door visi…. Character_Buster trots out into the evening backyard, walking around near green bushes under cool night air and porch spill light / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, interior furniture in yard, potty on living-room floor",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "Yet, off he goes to walk around outside where bushes can be found.",
+            "sfx": "crickets, soft night air, paw steps on grass",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b8",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Backyard",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Night-leaning outdoor yard with green bushes, grass, house exterior door visi…. Character_Buster sniffs a bush, does a quick tasteful potty pose beside the bushes (no graphic detail), then shakes and looks finished and proud / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, graphic toilet humor, mess left on camera",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He does his job, and then comes in.",
+            "sfx": "soft night ambience",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b9",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "Character_Buster comes through the door into Loc_Living_Room where Character_Mom waits; he does a little full-body spin on the rug for her.. Mom faces Buster near door; Buster spins in place in front of her.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Mom still wears soft blue cardigan, cream top / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, still outside during spin, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "For Mom he does a little spin.",
+            "sfx": "door soft close, claws on floor, happy pant",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b10",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 3,
+      "stage1_beat_map": [
+        "b8",
+        "b9",
+        "b10"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 6"
+      ]
+    },
+    {
+      "scene_number": 4,
+      "setting": "Evening — living room treat and water",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc04_treat_and_water",
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Sweet reward chime and soft lullaby-adjacent pad",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. Character_Buster spins again on the rug, eyes on Character_Mom, eager for a treat. Character_Mom still wears soft blue cardigan, cream top, simple home pants / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He spins around to get a treat.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b11",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "Character_Mom gently lays a small dog treat on the floor by Character_Buster’s front feet; Buster sniffs and eats it. Only Mom’s hands/body move the treat; Buster’s snout works the treat.. Mom kneels or bends; eyeline to Buster; treat lands at his paws. Character_Mom still wears soft blue cardigan, cream top. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, treat thrown hard, human food junk pile, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "She gently lays it by his feet.",
+            "sfx": "soft treat crunch",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b12",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-h…. also on screen: Character_Narrator. Character_Buster laps water from a floor bowl; Character_Mom watches kindly nearby. Character_Mom still wears soft blue cardigan, cream top / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He has his drink of water too. This also would be good for you!",
+            "sfx": "gentle lapping water",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b13",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 4,
+      "stage1_beat_map": [
+        "b11",
+        "b12",
+        "b13"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 8"
+      ]
+    },
+    {
+      "scene_number": 5,
+      "setting": "Night — living room to stairs to parents’ bed",
+      "location_ids": [
+        "Loc_Living_Room",
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Dad",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc05_pajamas_stairs_bed",
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_bedtime_dim",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Soft climbing motif into warm bedroom lullaby",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Living_Room",
+          "visual_prompt": "In Loc_Living_Room, Character_Buster now wears soft black-and-white dog pajamas with a visible fabric collar line and cloth texture distinct from his fur; he stands ready for bed. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, pajamas blended into fur with no cloth read, brown dog, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "Pajamas, black and white he wears.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b14",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Character_Buster climbs a short flight of tiny indoor stairs toward the upstairs landing, careful playful steps, pajamas visible.. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, outdoor stairs, elevator, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "And then he climbs the tiny stairs",
+            "sfx": "soft stair paw steps",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b15",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Character_Buster hops onto Mom and Dad’s bed in Loc_Parents_Bedroom. Character_Dad is already lying in bed in a sleep shirt; Character_Mom is on or beside the bed. Buster snuggles into the blankets between or beside them.. Bed center; Dad reclined; Mom present; Buster settles into covers. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti; Charac… / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster left downstairs, harsh overhead office lighting, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "To get to Mom and Daddy's bed, and snuggle in, and home to go.",
+            "sfx": "soft bedding rustle",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b16",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 5,
+      "stage1_beat_map": [
+        "b14",
+        "b15",
+        "b16"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 10"
+      ]
+    },
+    {
+      "scene_number": 6,
+      "setting": "Night — bedroom into dream of bunnies across the yard",
+      "location_ids": [
+        "Loc_Parents_Bedroom",
+        "Loc_Dream_Yard"
+      ],
+      "primary_location_id": "Loc_Dream_Yard",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc06_dream_bunnies",
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "night1_dream_soft_glow",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Whimsical dreamy sparkle over soft lullaby bed",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Character_Buster lies on the parents’ bed, eyes heavy; soft bedroom lamp; begin gentle dissolve shimmer around his head. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, mean-spirited mockery staging, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He's not that smart but still he knows.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b17",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Dream_Yard",
+          "visual_prompt": "Dream environment Loc_Dream_Yard: soft glowing grass; several fluffy bunnies run across the yard; Character_Buster in pajamas joyfully chases them hard in playful picture-book motion (no harm).. ONE continuous take no cut; unbroken cause-to-effect motion. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, violent catch or injury, photoreal nightmare tone, composite fluffy-cloud stage and yard as one confusing location, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "Have a dream of fluffy shows, or bunnies running 'cross the yard, and how he'll chase them very hard.",
+            "sfx": "soft dream whoosh, light bunny hops, happy dog pants",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b18",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "STYLE LOCK: stylized 3D animated children’s picture-book CG — same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only. Dissolve back: Character_Buster on the real bed, eyes closing fully, body relaxing into pillows. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, still full dream chase after return, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He goes to sleep because they say tomorrow is another day.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b19",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 6,
+      "stage1_beat_map": [
+        "b17",
+        "b18",
+        "b19"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 12"
+      ]
+    },
+    {
+      "scene_number": 7,
+      "setting": "Night — parents’ bedroom, final sleep and love",
+      "location_ids": [
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Dad",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc07_asleep_loved_for_keeps",
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_bedtime_dim",
+      "total_estimated_duration_seconds": 45,
+      "music_bed": {
+        "style_description": "Full soft lullaby resolution, warm strings and music-box fade",
+        "duration_seconds": 45
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:15",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Hold on sleeping Character_Buster in bed; optional very soft brief mental image dissolve of him jumping like a frog, then back to bed—keep primary frame the bedroom. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, full daytime exterior scene replacing bedtime, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "Another day for silly dogs to run and play and jump like frogs.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b20",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:15-00:30",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Character_Buster lays his head fully down on the pillow/blanket, body soft and still, breathing slow; Character_Dad sleeps quietly in frame background. Character_Buster still wears black-and-white soft dog pajamas with visible fabric collar seam and weave disti; Charac…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, Buster still jumping, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "He falls asleep, lays down his head. He's warm and soft and quite well-fed.",
+            "sfx": "very soft night room tone",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b21",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:30-00:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Parents_Bedroom",
+          "visual_prompt": "Character_Mom gently pets sleeping Character_Buster’s head and back on the bed; Buster stays asleep, peaceful; warm final family tableau with Dad in bed.. Mom’s hand pets Buster; eyeline soft down to dog; calm still frame for ending. Character_Mom still wears soft blue cardigan, cream top; Character_Buster still wears black-and-white soft dog pajama…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 720p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, scary jump scare ending, Buster recolored, no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "voiceover_internal",
+            "speaker": "Character_Narrator",
+            "dialogue": "His Mommy pets him while he sleeps. This noodle head is loved for keeps.",
+            "sfx": "soft fabric petting, fade-ready silence",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b22",
+          "primary_subject": "Character_Buster",
+          "duration_seconds": 15
+        }
+      ],
+      "stage1_scene_number": 7,
+      "stage1_beat_map": [
+        "b20",
+        "b21",
+        "b22"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": [
+        "page 14"
+      ]
+    }
+  ],
+  "stage2_meta": {
+    "source_stage1": "scenes.json",
+    "resolution": "720p",
+    "scene_filter": "all",
+    "planner": "Stage2PlannerService (C#)",
+    "prompt_soft_max": 500,
+    "prompt_hard_max": 800,
+    "stage1_fingerprint": "2e82bed36589cb4b",
+    "planned_at": "2026-07-16T16:59:04",
+    "total_duration_seconds": 330,
+    "total_clips": 22
+  }
+}

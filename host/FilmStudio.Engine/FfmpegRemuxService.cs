@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FilmStudio.Core.Options;
 using Microsoft.Extensions.Logging;
@@ -93,9 +94,11 @@ public sealed class FfmpegRemuxService
         var videoDir = Path.Combine(projectDir, "assets", "video");
         Directory.CreateDirectory(videoDir);
 
-        var clips = ListSceneClipFiles(videoDir, sceneNum);
+        var clips = ListSceneClipFiles(projectId, videoDir, sceneNum);
         if (clips.Count == 0)
-            throw new InvalidOperationException($"No clip files for scene {sceneNum} under {videoDir}");
+            throw new InvalidOperationException(
+                $"No clip files for scene {sceneNum} under {videoDir} " +
+                $"(expected scene_{sceneNum:D2}_clip_XX.mp4 only — not .native sidecars)");
 
         onProgress?.Invoke($"Remux S{sceneNum:D2}: {clips.Count} clip(s) via {Path.GetFileName(FfmpegPath)}…");
         onProgress?.Invoke("Probing clip durations…");
@@ -133,8 +136,132 @@ public sealed class FfmpegRemuxService
         if (exit != 0 || !File.Exists(outPath) || new FileInfo(outPath).Length < 1024)
             throw new InvalidOperationException($"FFmpeg remux failed for scene {sceneNum}: {TrimLog(log)}");
 
-        onProgress?.Invoke($"Remuxed → {Path.GetFileName(outPath)}");
+        WriteSceneSourcesManifest(outPath, clips, totalSec);
+        if (totalSec is > 0)
+            MediaDurationProbe.WriteDurationSidecar(outPath, totalSec.Value);
+        onProgress?.Invoke($"Remuxed → {Path.GetFileName(outPath)} ({clips.Count} clip(s))");
         return outPath;
+    }
+
+    public static string SceneSourcesManifestPath(string compositePath) =>
+        compositePath + ".sources.json";
+
+    private static void WriteSceneSourcesManifest(
+        string compositePath,
+        IReadOnlyList<string> clipFiles,
+        double? totalDurationSeconds = null)
+    {
+        try
+        {
+            var entries = clipFiles.Select(f =>
+            {
+                var fi = new FileInfo(f);
+                return new Dictionary<string, object?>
+                {
+                    ["name"] = fi.Name,
+                    ["bytes"] = fi.Length,
+                    ["mtimeUtc"] = fi.LastWriteTimeUtc.ToString("o"),
+                };
+            }).ToList();
+            var doc = new Dictionary<string, object?>
+            {
+                ["builtAtUtc"] = DateTime.UtcNow.ToString("o"),
+                ["count"] = entries.Count,
+                ["clips"] = entries,
+                ["strict"] = true, // exact scene_SS_clip_CC.mp4 only
+                ["totalDurationSeconds"] = totalDurationSeconds is > 0
+                    ? Math.Round(totalDurationSeconds.Value, 3)
+                    : null,
+            };
+            File.WriteAllText(
+                SceneSourcesManifestPath(compositePath),
+                JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        }
+        catch
+        {
+            // Non-fatal
+        }
+    }
+
+    /// <summary>
+    /// True if composite is missing, clips are newer, has no sources manifest (legacy/polluted remux),
+    /// or manifest clip set does not match current exact clips (blueprint-filtered).
+    /// </summary>
+    public bool IsSceneCompositeStale(string projectId, int sceneNum)
+    {
+        var projectDir = _projects.GetProjectDir(projectId);
+        var videoDir = Path.Combine(projectDir, "assets", "video");
+        var expected = ListSceneClipFiles(projectId, videoDir, sceneNum);
+        if (expected.Count == 0)
+            return false; // nothing to remux
+
+        var composite = _projects.ResolveCompositePath(projectId, sceneNum);
+        if (composite is null || !File.Exists(composite))
+            return true;
+
+        var maxClip = expected.Max(f => new FileInfo(f).LastWriteTimeUtc);
+        if (maxClip > new FileInfo(composite).LastWriteTimeUtc.AddSeconds(1))
+            return true;
+
+        // Legacy composites (e.g. included .native.mp4) have no strict manifest → dirty
+        var manifestPath = SceneSourcesManifestPath(composite);
+        // Also check path next to remux output name
+        var remuxOut = Path.Combine(videoDir, $"scene_{sceneNum:D2}.mp4");
+        if (!File.Exists(manifestPath) && File.Exists(remuxOut))
+            manifestPath = SceneSourcesManifestPath(remuxOut);
+
+        if (!File.Exists(manifestPath))
+            return true;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            if (!doc.RootElement.TryGetProperty("clips", out var clipsEl) ||
+                clipsEl.ValueKind != JsonValueKind.Array)
+                return true;
+
+            var recorded = new List<string>();
+            foreach (var el in clipsEl.EnumerateArray())
+            {
+                if (el.TryGetProperty("name", out var n) && n.GetString() is { Length: > 0 } name)
+                    recorded.Add(name);
+            }
+
+            var expectedNames = expected
+                .Select(Path.GetFileName)
+                .Where(n => n is not null)
+                .Cast<string>()
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var recSorted = recorded.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            if (!expectedNames.SequenceEqual(recSorted, StringComparer.OrdinalIgnoreCase))
+                return true;
+
+            // Per-file size/mtime drift
+            foreach (var path in expected)
+            {
+                var name = Path.GetFileName(path);
+                var fi = new FileInfo(path);
+                foreach (var el in clipsEl.EnumerateArray())
+                {
+                    if (!el.TryGetProperty("name", out var n) ||
+                        !string.Equals(n.GetString(), name, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    long bytes = 0;
+                    if (el.TryGetProperty("bytes", out var b) && b.TryGetInt64(out var bl))
+                        bytes = bl;
+                    if (bytes != fi.Length)
+                        return true;
+                    break;
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     /// <summary>Concat scene/clip files into WIP movie path from config.</summary>
@@ -156,21 +283,10 @@ public sealed class FfmpegRemuxService
         Directory.CreateDirectory(Path.GetDirectoryName(wipPath)!);
 
         var videoDir = Path.Combine(projectDir, "assets", "video");
-        var sceneFiles = Directory.Exists(videoDir)
-            ? Directory.GetFiles(videoDir, "scene_*.mp4")
-                .Where(f => RegexSceneOnly(Path.GetFileName(f)))
-                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                .ToList()
-            : new List<string>();
-
+        // Prefer Stage 2 scene order / set when blueprint exists
+        var sceneFiles = _projects.ListWipSourceFilesForProject(projectId);
         if (sceneFiles.Count == 0)
-        {
-            sceneFiles = Directory.Exists(videoDir)
-                ? Directory.GetFiles(videoDir, "scene_*_clip_*.mp4")
-                    .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                    .ToList()
-                : new List<string>();
-        }
+            sceneFiles = ListWipSourceFiles(videoDir);
 
         if (sceneFiles.Count == 0)
             throw new InvalidOperationException("No scene or clip videos found to build WIP.");
@@ -207,8 +323,97 @@ public sealed class FfmpegRemuxService
         if (exit != 0 || !File.Exists(wipPath))
             throw new InvalidOperationException($"FFmpeg WIP rebuild failed: {TrimLog(log)}");
 
-        onProgress?.Invoke($"WIP → {wipPath}");
+        WriteWipSourcesManifest(projectId, wipPath, sceneFiles);
+        onProgress?.Invoke($"WIP → {wipPath} ({sceneFiles.Count} source(s))");
         return wipPath;
+    }
+
+    /// <summary>
+    /// Ordered inputs for WIP concat: scene composites first, else exact clip files.
+    /// Shared by rebuild and freshness checks (add/delete detection).
+    /// </summary>
+    public static List<string> ListWipSourceFiles(string videoDir)
+    {
+        if (!Directory.Exists(videoDir))
+            return new List<string>();
+
+        var sceneFiles = Directory.GetFiles(videoDir, "scene_*.mp4")
+            .Where(f => RegexSceneOnly(Path.GetFileName(f)))
+            .Where(f =>
+            {
+                try { return new FileInfo(f).Length >= 1024; }
+                catch { return false; }
+            })
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (sceneFiles.Count > 0)
+            return sceneFiles;
+
+        return Directory.GetFiles(videoDir, "scene_*_clip_*.mp4")
+            .Where(f => IsExactClipFileName(Path.GetFileName(f)))
+            .Where(f =>
+            {
+                try { return new FileInfo(f).Length >= 1024; }
+                catch { return false; }
+            })
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Sidecar next to WIP listing concat sources (for add/delete/outdate detection).</summary>
+    public static string WipSourcesManifestPath(string wipPath) =>
+        wipPath + ".sources.json";
+
+    private void WriteWipSourcesManifest(
+        string projectId,
+        string wipPath,
+        IReadOnlyList<string> sourceFiles)
+    {
+        try
+        {
+            var entries = sourceFiles.Select(f =>
+            {
+                var fi = new FileInfo(f);
+                return new Dictionary<string, object?>
+                {
+                    ["name"] = fi.Name,
+                    ["bytes"] = fi.Length,
+                    ["mtimeUtc"] = fi.LastWriteTimeUtc.ToString("o"),
+                };
+            }).ToList();
+
+            var sceneNumbers = _projects.GetBlueprintSceneNumbers(projectId)
+                               ?? sourceFiles
+                                   .Select(f => Path.GetFileName(f))
+                                   .Where(n => n is not null && RegexSceneOnly(n))
+                                   .Select(n => int.TryParse(n!.AsSpan(6, 2), out var sn) ? sn : 0)
+                                   .Where(n => n > 0)
+                                   .Distinct()
+                                   .OrderBy(n => n)
+                                   .ToList();
+
+            string? bpMtime = null;
+            var bpPath = _projects.FindBlueprintPath(projectId);
+            if (bpPath is not null && File.Exists(bpPath))
+                bpMtime = new FileInfo(bpPath).LastWriteTimeUtc.ToString("o");
+
+            var doc = new Dictionary<string, object?>
+            {
+                ["builtAtUtc"] = DateTime.UtcNow.ToString("o"),
+                ["count"] = entries.Count,
+                ["sources"] = entries,
+                ["sceneNumbers"] = sceneNumbers,
+                ["blueprintMtimeUtc"] = bpMtime,
+            };
+            var path = WipSourcesManifestPath(wipPath);
+            File.WriteAllText(path,
+                JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        }
+        catch
+        {
+            // Non-fatal — freshness falls back to mtime heuristics
+        }
     }
 
     private void EnsureAvailable(Action<string>? onProgress)
@@ -310,14 +515,88 @@ public sealed class FfmpegRemuxService
     private static bool RegexSceneOnly(string name) =>
         Regex.IsMatch(name, @"^scene_\d{2}\.mp4$", RegexOptions.IgnoreCase);
 
-    private static List<string> ListSceneClipFiles(string videoDir, int sceneNum)
+    /// <summary>Strict: scene_01_clip_02.mp4 only — not scene_01_clip_02.mp4.native.mp4.</summary>
+    private static readonly Regex ExactClipNameRe = new(
+        @"^scene_(\d{2})_clip_(\d{2})\.mp4$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    internal static bool IsExactClipFileName(string? fileName) =>
+        !string.IsNullOrEmpty(fileName) && ExactClipNameRe.IsMatch(fileName);
+
+    /// <summary>
+    /// Clips for scene remux: only exact <c>scene_SS_clip_CC.mp4</c> names (≥1KB).
+    /// When Stage 2 blueprint lists <c>veo_clips</c>, only those clip numbers are included
+    /// (drops orphans like an old clip_04 and never picks .native sidecars).
+    /// </summary>
+    private List<string> ListSceneClipFiles(string projectId, string videoDir, int sceneNum)
     {
         if (!Directory.Exists(videoDir)) return new();
-        var prefix = $"scene_{sceneNum:D2}_clip_";
-        return Directory.GetFiles(videoDir, $"{prefix}*.mp4")
-            .Where(f => new FileInfo(f).Length >= 1024)
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+
+        var byClip = new SortedDictionary<int, string>();
+        foreach (var f in Directory.EnumerateFiles(videoDir, $"scene_{sceneNum:D2}_clip_*.mp4"))
+        {
+            var name = Path.GetFileName(f);
+            var m = ExactClipNameRe.Match(name);
+            if (!m.Success) continue;
+            if (!int.TryParse(m.Groups[1].Value, out var sn) || sn != sceneNum) continue;
+            if (!int.TryParse(m.Groups[2].Value, out var cn) || cn <= 0) continue;
+            try
+            {
+                if (new FileInfo(f).Length < 1024) continue;
+            }
+            catch { continue; }
+
+            byClip[cn] = f;
+        }
+
+        var allowed = TryBlueprintClipNumbers(projectId, sceneNum);
+        if (allowed is { Count: > 0 })
+        {
+            return allowed
+                .Where(cn => byClip.ContainsKey(cn))
+                .OrderBy(cn => cn)
+                .Select(cn => byClip[cn])
+                .ToList();
+        }
+
+        return byClip.Values.ToList();
+    }
+
+    /// <summary>Clip numbers from blueprint veo_clips for this scene, or null if unknown.</summary>
+    private HashSet<int>? TryBlueprintClipNumbers(string projectId, int sceneNum)
+    {
+        try
+        {
+            using var bp = _projects.LoadBlueprint(projectId);
+            if (bp is null) return null;
+            if (!bp.RootElement.TryGetProperty("scenes", out var scenes) ||
+                scenes.ValueKind != JsonValueKind.Array)
+                return null;
+
+            foreach (var s in scenes.EnumerateArray())
+            {
+                var sn = s.TryGetProperty("scene_number", out var snEl) && snEl.TryGetInt32(out var v)
+                    ? v
+                    : 0;
+                if (sn != sceneNum) continue;
+                if (!s.TryGetProperty("veo_clips", out var clips) ||
+                    clips.ValueKind != JsonValueKind.Array)
+                    return null;
+
+                var set = new HashSet<int>();
+                foreach (var c in clips.EnumerateArray())
+                {
+                    if (c.TryGetProperty("clip_number", out var cnEl) && cnEl.TryGetInt32(out var cn) && cn > 0)
+                        set.Add(cn);
+                }
+                return set.Count > 0 ? set : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "Blueprint clip filter unavailable for S{Scene}", sceneNum);
+        }
+        return null;
     }
 
     private static Dictionary<string, object?> LoadConfig(string projectDir)

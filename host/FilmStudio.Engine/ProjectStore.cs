@@ -15,11 +15,13 @@ public sealed class ProjectStore
     };
 
     private readonly FilmStudioOptions _opts;
+    private readonly MediaDurationProbe? _duration;
     private string _activeProjectId = "";
 
-    public ProjectStore(IOptions<FilmStudioOptions> opts)
+    public ProjectStore(IOptions<FilmStudioOptions> opts, MediaDurationProbe? duration = null)
     {
         _opts = opts.Value;
+        _duration = duration;
         var root = ResolveWorkspaceRoot();
         var ws = Path.Combine(root, "projects", "workspace.json");
         if (File.Exists(ws))
@@ -901,16 +903,29 @@ public sealed class ProjectStore
                     onDisk++;
             }
 
-            var compositeName = $"scene_{sn:D2}_complete.mp4";
             var compositeOk =
-                scenesIndex.TryGetValue(compositeName, out var csz) && csz >= 1024 ||
-                videoIndex.TryGetValue(compositeName, out var vsz) && vsz >= 1024;
+                HasCompositeFile(videoIndex, scenesIndex, sn);
 
-            double? dur = null;
+            double? planned = null;
             if (s.TryGetProperty("total_estimated_duration_seconds", out var dEl))
             {
-                if (dEl.TryGetDouble(out var dd)) dur = dd;
-                else if (dEl.TryGetInt32(out var di)) dur = di;
+                if (dEl.TryGetDouble(out var dd)) planned = dd;
+                else if (dEl.TryGetInt32(out var di)) planned = di;
+            }
+
+            double? actual = null;
+            if (_duration is not null)
+            {
+                var compositePath = ResolveCompositePath(projectId, sn);
+                var clipPaths = new List<string>();
+                foreach (var c in clips)
+                {
+                    var cn = c.TryGetProperty("clip_number", out var cnEl) && cnEl.TryGetInt32(out var n) ? n : 0;
+                    if (cn <= 0) continue;
+                    var cp = ResolveClipVideoPath(projectId, sn, cn);
+                    if (cp is not null) clipPaths.Add(cp);
+                }
+                actual = _duration.GetSceneActualDurationSeconds(compositePath, clipPaths);
             }
 
             var chars = new List<string>();
@@ -956,7 +971,9 @@ public sealed class ProjectStore
                 ClipCount = nClips,
                 ClipsOnDisk = onDisk,
                 ClipsComplete = complete,
-                DurationSeconds = dur,
+                PlannedDurationSeconds = planned,
+                ActualDurationSeconds = actual,
+                DurationSeconds = actual ?? planned,
                 CompositeExists = compositeOk,
                 CharactersOnScreen = chars,
                 LocationIds = locs,
@@ -1031,11 +1048,19 @@ public sealed class ProjectStore
                 if (c.TryGetProperty("duration_seconds", out var dEl) && dEl.TryGetInt32(out var ds))
                     dur = ds;
 
+                double? actualClip = null;
+                if (onDisk && _duration is not null)
+                {
+                    var clipPath = ResolveClipVideoPath(projectId, sceneNumber, cn);
+                    actualClip = _duration.GetDurationSeconds(clipPath);
+                }
+
                 clips.Add(new ClipSummary
                 {
                     ClipNumber = cn,
                     Timestamp = c.TryGetProperty("timestamp", out var ts) ? ts.GetString() ?? "" : "",
                     DurationSeconds = dur,
+                    ActualDurationSeconds = actualClip,
                     Continuation = c.TryGetProperty("veo_continuation_source", out var cont)
                         ? cont.GetString() ?? "none"
                         : "none",
@@ -1060,16 +1085,25 @@ public sealed class ProjectStore
         clips = clips.OrderBy(c => c.ClipNumber).ToList();
         var onDiskCount = clips.Count(c => c.OnDisk);
 
-        var compositeName = $"scene_{sceneNumber:D2}_complete.mp4";
-        var compositeOk =
-            scenesIndex.TryGetValue(compositeName, out var csz) && csz >= 1024 ||
-            videoIndex.TryGetValue(compositeName, out var vsz) && vsz >= 1024;
+        var compositeOk = HasCompositeFile(videoIndex, scenesIndex, sceneNumber);
 
-        double? durTotal = null;
+        double? planned = null;
         if (sEl.TryGetProperty("total_estimated_duration_seconds", out var td))
         {
-            if (td.TryGetDouble(out var dd)) durTotal = dd;
-            else if (td.TryGetInt32(out var di)) durTotal = di;
+            if (td.TryGetDouble(out var dd)) planned = dd;
+            else if (td.TryGetInt32(out var di)) planned = di;
+        }
+
+        double? actual = null;
+        if (_duration is not null)
+        {
+            var compositePath = ResolveCompositePath(projectId, sceneNumber);
+            var clipPaths = clips
+                .Where(c => c.OnDisk)
+                .Select(c => ResolveClipVideoPath(projectId, sceneNumber, c.ClipNumber))
+                .Where(p => p is not null)
+                .Cast<string>();
+            actual = _duration.GetSceneActualDurationSeconds(compositePath, clipPaths);
         }
 
         var chars = new List<string>();
@@ -1098,7 +1132,9 @@ public sealed class ProjectStore
         {
             SceneNumber = sceneNumber,
             Setting = sEl.TryGetProperty("setting", out var set) ? set.GetString() ?? "" : "",
-            DurationSeconds = durTotal,
+            PlannedDurationSeconds = planned,
+            ActualDurationSeconds = actual,
+            DurationSeconds = actual ?? planned,
             ClipCount = clips.Count,
             ClipsOnDisk = onDiskCount,
             CompositeExists = compositeOk,
@@ -1122,6 +1158,32 @@ public sealed class ProjectStore
             "video",
             $"scene_{sceneNumber:D2}_clip_{clipNumber:D2}.mp4");
         return File.Exists(path) && new FileInfo(path).Length >= 1024 ? path : null;
+    }
+
+    /// <summary>
+    /// WIP full-movie path from config <c>wip_movie_path</c> (default assets/movie_wip.mp4).
+    /// Returns null if the file is missing or empty.
+    /// </summary>
+    public string? ResolveWipMoviePath(string projectId)
+    {
+        var projectDir = GetProjectDir(projectId);
+        var cfg = GetConfig(projectId);
+        var wipRel = "assets/movie_wip.mp4";
+        if (cfg.TryGetValue("wip_movie_path", out var w) &&
+            w.ValueKind == JsonValueKind.String &&
+            w.GetString() is { Length: > 0 } s)
+            wipRel = s.Replace('\\', '/').TrimStart('/');
+
+        if (wipRel.Contains("..", StringComparison.Ordinal))
+            return null;
+
+        var full = Path.IsPathRooted(wipRel)
+            ? wipRel
+            : Path.GetFullPath(Path.Combine(projectDir, wipRel.Replace('/', Path.DirectorySeparatorChar)));
+        var root = Path.GetFullPath(projectDir);
+        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            return null;
+        return File.Exists(full) && new FileInfo(full).Length >= 1024 ? full : null;
     }
 
     public string ResolveScenesJsonPath(string projectId)
@@ -1450,7 +1512,9 @@ public sealed class ProjectStore
                         beats = sb.GetArrayLength();
                     status.BeatCount += beats;
                     double? dur = null;
-                    if (s.TryGetProperty("estimated_duration_seconds", out var d))
+                    // Stage 1 uses duration_target_seconds; accept legacy estimated_duration_seconds too
+                    if (s.TryGetProperty("duration_target_seconds", out var d) ||
+                        s.TryGetProperty("estimated_duration_seconds", out d))
                     {
                         if (d.TryGetDouble(out var dd)) dur = dd;
                         else if (d.TryGetInt32(out var di)) dur = di;
@@ -1550,16 +1614,546 @@ public sealed class ProjectStore
     public string? ResolveCompositePath(string projectId, int sceneNumber)
     {
         var dir = GetProjectDir(projectId);
+        // Remux writes scene_XX.mp4; older/python path used scene_XX_complete.mp4
         foreach (var candidate in new[]
                  {
-                     Path.Combine(dir, "assets", "scenes", $"scene_{sceneNumber:D2}_complete.mp4"),
+                     Path.Combine(dir, "assets", "video", $"scene_{sceneNumber:D2}.mp4"),
+                     Path.Combine(dir, "assets", "scenes", $"scene_{sceneNumber:D2}.mp4"),
                      Path.Combine(dir, "assets", "video", $"scene_{sceneNumber:D2}_complete.mp4"),
+                     Path.Combine(dir, "assets", "scenes", $"scene_{sceneNumber:D2}_complete.mp4"),
                  })
         {
             if (File.Exists(candidate) && new FileInfo(candidate).Length >= 1024)
                 return candidate;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Whether movie_wip is missing, older than inputs, or built from a different set of
+    /// scenes (added/deleted). Does not trigger clip regen — mux freshness only.
+    /// </summary>
+    public WipFreshness AssessWipFreshness(string projectId)
+    {
+        var result = new WipFreshness();
+        var projectDir = GetProjectDir(projectId);
+        var videoDir = Path.Combine(projectDir, "assets", "video");
+
+        // Physical path even when file missing (for manifest path)
+        var wipFullPath = ResolveWipMovieFullPath(projectId);
+        var wipExists = wipFullPath is not null &&
+                        File.Exists(wipFullPath) &&
+                        new FileInfo(wipFullPath).Length >= 1024;
+
+        if (wipExists)
+        {
+            var fi = new FileInfo(wipFullPath!);
+            result.Exists = true;
+            result.Path = Path.GetRelativePath(projectDir, wipFullPath!).Replace('\\', '/');
+            result.Bytes = fi.Length;
+            result.UpdatedAt = fi.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss");
+        }
+        else
+        {
+            result.Exists = false;
+            result.Path = "assets/movie_wip.mp4";
+            try
+            {
+                var cfg = GetConfig(projectId);
+                if (cfg.TryGetValue("wip_movie_path", out var w) &&
+                    w.ValueKind == JsonValueKind.String &&
+                    w.GetString() is { Length: > 0 } s)
+                    result.Path = s.Replace('\\', '/').TrimStart('/');
+            }
+            catch { /* ignore */ }
+        }
+
+        var clipsByScene = IndexExactClipsByScene(videoDir);
+        var blueprintScenes = GetBlueprintSceneNumbers(projectId);
+        var scenesToRemux = ListScenesToRemuxForWip(projectId, clipsByScene, blueprintScenes);
+        result.ScenesToRemux = scenesToRemux;
+
+        // Stale = missing composite, clips newer, no .sources.json (legacy polluted remux),
+        // or manifest clip set ≠ current exact/blueprint clips.
+        var staleScenes = new List<int>();
+        foreach (var sn in scenesToRemux)
+        {
+            if (IsSceneCompositeDirty(projectId, sn, videoDir, clipsByScene))
+                staleScenes.Add(sn);
+        }
+        result.StaleScenes = staleScenes;
+
+        // WIP sources = Stage 2 scene composites (blueprint-filtered when available)
+        var currentSources = ListWipSourceFilesForProject(projectId, videoDir, blueprintScenes);
+        result.CanBuild = scenesToRemux.Count > 0 || currentSources.Count > 0;
+
+        if (!result.CanBuild)
+        {
+            result.Stale = true;
+            result.Reason = "No scene or clip videos on disk to build WIP";
+            return result;
+        }
+
+        // Stage 2 blueprint newer than last WIP build → always remux
+        var bpPath = FindBlueprintPath(projectId);
+        DateTime? bpMtime = bpPath is not null && File.Exists(bpPath)
+            ? new FileInfo(bpPath).LastWriteTimeUtc
+            : null;
+
+        if (staleScenes.Count > 0)
+        {
+            result.Stale = true;
+            result.Reason =
+                $"Scene composite(s) dirty (missing/legacy/out of date): {string.Join(", ", staleScenes.Select(n => $"S{n:D2}"))}";
+            return result;
+        }
+
+        if (!result.Exists || wipFullPath is null)
+        {
+            result.Stale = true;
+            result.Reason = "WIP missing — needs rebuild";
+            return result;
+        }
+
+        var manifestPath = FfmpegRemuxService.WipSourcesManifestPath(wipFullPath);
+        if (bpMtime is DateTime bpm && File.Exists(manifestPath))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+                if (doc.RootElement.TryGetProperty("blueprintMtimeUtc", out var bm) &&
+                    bm.ValueKind == JsonValueKind.String &&
+                    DateTime.TryParse(bm.GetString(), null,
+                        System.Globalization.DateTimeStyles.RoundtripKind, out var recordedBp))
+                {
+                    if (bpm > recordedBp.ToUniversalTime().AddSeconds(1))
+                    {
+                        result.Stale = true;
+                        result.Reason = "Stage 2 blueprint changed since last WIP — remux all scenes + rebuild";
+                        return result;
+                    }
+                }
+                else if (doc.RootElement.TryGetProperty("builtAtUtc", out var built) &&
+                         built.ValueKind == JsonValueKind.String &&
+                         DateTime.TryParse(built.GetString(), null,
+                             System.Globalization.DateTimeStyles.RoundtripKind, out var builtAt) &&
+                         bpm > builtAt.ToUniversalTime().AddSeconds(1))
+                {
+                    result.Stale = true;
+                    result.Reason = "Stage 2 blueprint newer than WIP — remux all scenes + rebuild";
+                    return result;
+                }
+
+                // Scene list in plan vs last build
+                if (doc.RootElement.TryGetProperty("sceneNumbers", out var sns) &&
+                    sns.ValueKind == JsonValueKind.Array &&
+                    blueprintScenes is { Count: > 0 })
+                {
+                    var recorded = sns.EnumerateArray()
+                        .Select(e => e.TryGetInt32(out var n) ? n : 0)
+                        .Where(n => n > 0)
+                        .OrderBy(n => n)
+                        .ToList();
+                    var planned = blueprintScenes.OrderBy(n => n).ToList();
+                    if (!recorded.SequenceEqual(planned))
+                    {
+                        result.Stale = true;
+                        result.Reason = "Stage 2 scene list changed — remux all scenes + rebuild";
+                        return result;
+                    }
+                }
+            }
+            catch { /* fall through */ }
+        }
+        else if (bpMtime is DateTime bpm2)
+        {
+            var wipMtime = new FileInfo(wipFullPath).LastWriteTimeUtc;
+            if (bpm2 > wipMtime.AddSeconds(1))
+            {
+                result.Stale = true;
+                result.Reason = "Stage 2 blueprint newer than WIP — remux all scenes + rebuild";
+                return result;
+            }
+        }
+
+        // Manifest: detect added/removed/replaced sources vs last successful WIP build
+        var manifestMismatch = CompareWipSourcesManifest(wipFullPath, currentSources);
+        if (manifestMismatch is { Length: > 0 })
+        {
+            result.Stale = true;
+            result.Reason = manifestMismatch;
+            return result;
+        }
+
+        // No manifest (old WIP): fall back to mtime — any source newer than WIP
+        if (!File.Exists(manifestPath))
+        {
+            var wipMtime = new FileInfo(wipFullPath).LastWriteTimeUtc;
+            foreach (var src in currentSources)
+            {
+                try
+                {
+                    if (new FileInfo(src).LastWriteTimeUtc > wipMtime.AddSeconds(1))
+                    {
+                        result.Stale = true;
+                        result.Reason = "Sources newer than WIP (no build manifest — rebuild recommended)";
+                        return result;
+                    }
+                }
+                catch { /* ignore */ }
+            }
+        }
+
+        result.Stale = false;
+        result.Reason = "Up to date";
+        return result;
+    }
+
+    /// <summary>
+    /// True when scene should be remuxed before play/WIP.
+    /// Marks legacy composites dirty (no scene_XX.mp4.sources.json) so polluted 1:10 cuts get rebuilt.
+    /// </summary>
+    public bool IsSceneCompositeDirty(
+        string projectId,
+        int sceneNum,
+        string? videoDir = null,
+        Dictionary<int, List<FileInfo>>? clipsByScene = null)
+    {
+        videoDir ??= Path.Combine(GetProjectDir(projectId), "assets", "video");
+        clipsByScene ??= IndexExactClipsByScene(videoDir);
+
+        var expectedNames = GetExpectedClipFileNames(projectId, sceneNum, videoDir, clipsByScene);
+        if (expectedNames.Count == 0)
+            return false;
+
+        var composite = ResolveCompositePath(projectId, sceneNum);
+        if (composite is null || !File.Exists(composite))
+            return true;
+
+        var maxClipMtime = DateTime.MinValue;
+        foreach (var name in expectedNames)
+        {
+            var path = Path.Combine(videoDir, name);
+            if (!File.Exists(path)) continue;
+            var mt = new FileInfo(path).LastWriteTimeUtc;
+            if (mt > maxClipMtime) maxClipMtime = mt;
+        }
+        if (maxClipMtime > new FileInfo(composite).LastWriteTimeUtc.AddSeconds(1))
+            return true;
+
+        var manifestPath = FfmpegRemuxService.SceneSourcesManifestPath(composite);
+        var remuxOut = Path.Combine(videoDir, $"scene_{sceneNum:D2}.mp4");
+        if (!File.Exists(manifestPath) && File.Exists(remuxOut))
+            manifestPath = FfmpegRemuxService.SceneSourcesManifestPath(remuxOut);
+
+        // No strict manifest → treat as dirty (old remux may have concat'd .native + orphans)
+        if (!File.Exists(manifestPath))
+            return true;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            if (!doc.RootElement.TryGetProperty("clips", out var clipsEl) ||
+                clipsEl.ValueKind != JsonValueKind.Array)
+                return true;
+
+            var recorded = new List<string>();
+            foreach (var el in clipsEl.EnumerateArray())
+            {
+                if (el.TryGetProperty("name", out var n) && n.GetString() is { Length: > 0 } name)
+                    recorded.Add(name);
+            }
+
+            var expectedSorted = expectedNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            var recSorted = recorded.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+            if (!expectedSorted.SequenceEqual(recSorted, StringComparer.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    /// <summary>Exact clip file names that should make up the scene composite.</summary>
+    private List<string> GetExpectedClipFileNames(
+        string projectId,
+        int sceneNum,
+        string videoDir,
+        Dictionary<int, List<FileInfo>> clipsByScene)
+    {
+        var allowed = TryBlueprintClipNumbers(projectId, sceneNum);
+        var names = new List<string>();
+        if (clipsByScene.TryGetValue(sceneNum, out var files))
+        {
+            foreach (var fi in files.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var name = fi.Name;
+                if (!FfmpegRemuxService.IsExactClipFileName(name)) continue;
+                if (allowed is { Count: > 0 })
+                {
+                    if (!int.TryParse(name.AsSpan(14, 2), out var cn) || !allowed.Contains(cn))
+                        continue;
+                }
+                names.Add(name);
+            }
+        }
+
+        // Also include expected blueprint slots that exist as exact files
+        if (allowed is { Count: > 0 })
+        {
+            foreach (var cn in allowed.OrderBy(c => c))
+            {
+                var name = $"scene_{sceneNum:D2}_clip_{cn:D2}.mp4";
+                if (names.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
+                var path = Path.Combine(videoDir, name);
+                if (File.Exists(path) && new FileInfo(path).Length >= 1024)
+                    names.Add(name);
+            }
+        }
+
+        return names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private HashSet<int>? TryBlueprintClipNumbers(string projectId, int sceneNum)
+    {
+        try
+        {
+            using var bp = LoadBlueprint(projectId);
+            if (bp is null) return null;
+            if (!bp.RootElement.TryGetProperty("scenes", out var scenes) ||
+                scenes.ValueKind != JsonValueKind.Array)
+                return null;
+            foreach (var s in scenes.EnumerateArray())
+            {
+                var sn = s.TryGetProperty("scene_number", out var snEl) && snEl.TryGetInt32(out var v) ? v : 0;
+                if (sn != sceneNum) continue;
+                if (!s.TryGetProperty("veo_clips", out var clips) || clips.ValueKind != JsonValueKind.Array)
+                    return null;
+                var set = new HashSet<int>();
+                foreach (var c in clips.EnumerateArray())
+                {
+                    if (c.TryGetProperty("clip_number", out var cnEl) && cnEl.TryGetInt32(out var cn) && cn > 0)
+                        set.Add(cn);
+                }
+                return set.Count > 0 ? set : null;
+            }
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    /// <summary>Stage 2 scene numbers from blueprint, or null if no plan.</summary>
+    public List<int>? GetBlueprintSceneNumbers(string projectId)
+    {
+        try
+        {
+            using var bp = LoadBlueprint(projectId);
+            if (bp is null) return null;
+            if (!bp.RootElement.TryGetProperty("scenes", out var scenes) ||
+                scenes.ValueKind != JsonValueKind.Array)
+                return null;
+            var list = new List<int>();
+            foreach (var s in scenes.EnumerateArray())
+            {
+                if (s.TryGetProperty("scene_number", out var sn) && sn.TryGetInt32(out var n) && n > 0)
+                    list.Add(n);
+            }
+            return list.Count > 0 ? list.Distinct().OrderBy(x => x).ToList() : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Scenes to remux before WIP: Stage 2 order when blueprint exists, only those with clips on disk.
+    /// </summary>
+    public List<int> ListScenesToRemuxForWip(string projectId) =>
+        ListScenesToRemuxForWip(
+            projectId,
+            IndexExactClipsByScene(Path.Combine(GetProjectDir(projectId), "assets", "video")),
+            GetBlueprintSceneNumbers(projectId));
+
+    private static List<int> ListScenesToRemuxForWip(
+        string projectId,
+        Dictionary<int, List<FileInfo>> clipsByScene,
+        List<int>? blueprintScenes)
+    {
+        var withClips = clipsByScene.Keys.Where(k => clipsByScene[k].Count > 0).ToHashSet();
+        if (blueprintScenes is { Count: > 0 })
+            return blueprintScenes.Where(withClips.Contains).ToList();
+        return withClips.OrderBy(n => n).ToList();
+    }
+
+    private static Dictionary<int, List<FileInfo>> IndexExactClipsByScene(string videoDir)
+    {
+        var clipsByScene = new Dictionary<int, List<FileInfo>>();
+        if (!Directory.Exists(videoDir)) return clipsByScene;
+        foreach (var f in Directory.EnumerateFiles(videoDir, "scene_*_clip_*.mp4"))
+        {
+            var name = Path.GetFileName(f);
+            if (!FfmpegRemuxService.IsExactClipFileName(name)) continue;
+            if (!int.TryParse(name.AsSpan(6, 2), out var sn) || sn <= 0) continue;
+            var fi = new FileInfo(f);
+            if (fi.Length < 1024) continue;
+            if (!clipsByScene.TryGetValue(sn, out var list))
+            {
+                list = new List<FileInfo>();
+                clipsByScene[sn] = list;
+            }
+            list.Add(fi);
+        }
+        return clipsByScene;
+    }
+
+    /// <summary>WIP concat inputs: scene composites for Stage 2 scenes only when blueprint exists.</summary>
+    public List<string> ListWipSourceFilesForProject(string projectId)
+    {
+        var videoDir = Path.Combine(GetProjectDir(projectId), "assets", "video");
+        return ListWipSourceFilesForProject(projectId, videoDir, GetBlueprintSceneNumbers(projectId));
+    }
+
+    private List<string> ListWipSourceFilesForProject(
+        string projectId,
+        string videoDir,
+        List<int>? blueprintScenes)
+    {
+        if (!Directory.Exists(videoDir))
+            return new List<string>();
+
+        if (blueprintScenes is { Count: > 0 })
+        {
+            var list = new List<string>();
+            foreach (var sn in blueprintScenes)
+            {
+                var path = ResolveCompositePath(projectId, sn);
+                if (path is not null)
+                    list.Add(path);
+            }
+            if (list.Count > 0)
+                return list;
+        }
+
+        return FfmpegRemuxService.ListWipSourceFiles(videoDir);
+    }
+
+    /// <summary>Full path for WIP file from config (may not exist yet).</summary>
+    public string ResolveWipMovieFullPath(string projectId)
+    {
+        var projectDir = GetProjectDir(projectId);
+        var cfg = GetConfig(projectId);
+        var wipRel = "assets/movie_wip.mp4";
+        if (cfg.TryGetValue("wip_movie_path", out var w) &&
+            w.ValueKind == JsonValueKind.String &&
+            w.GetString() is { Length: > 0 } s)
+            wipRel = s.Replace('\\', '/').TrimStart('/');
+
+        if (wipRel.Contains("..", StringComparison.Ordinal))
+            return Path.Combine(projectDir, "assets", "movie_wip.mp4");
+
+        return Path.IsPathRooted(wipRel)
+            ? wipRel
+            : Path.GetFullPath(Path.Combine(projectDir, wipRel.Replace('/', Path.DirectorySeparatorChar)));
+    }
+
+    /// <summary>
+    /// null if match or no check; reason string if sources added/removed/changed vs last WIP build.
+    /// </summary>
+    private static string? CompareWipSourcesManifest(string wipPath, IReadOnlyList<string> currentSources)
+    {
+        var manifestPath = FfmpegRemuxService.WipSourcesManifestPath(wipPath);
+        if (!File.Exists(manifestPath))
+            return null; // caller uses mtime fallback
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            if (!doc.RootElement.TryGetProperty("sources", out var arr) ||
+                arr.ValueKind != JsonValueKind.Array)
+                return "WIP manifest invalid — rebuild needed";
+
+            var recorded = new List<(string Name, long Bytes, DateTime Mtime)>();
+            foreach (var el in arr.EnumerateArray())
+            {
+                var name = el.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                if (name.Length == 0) continue;
+                long bytes = 0;
+                if (el.TryGetProperty("bytes", out var b) && b.TryGetInt64(out var bl))
+                    bytes = bl;
+                var mtime = DateTime.MinValue;
+                if (el.TryGetProperty("mtimeUtc", out var m) &&
+                    m.ValueKind == JsonValueKind.String &&
+                    DateTime.TryParse(m.GetString(), null,
+                        System.Globalization.DateTimeStyles.RoundtripKind, out var mt))
+                    mtime = mt.ToUniversalTime();
+                recorded.Add((name, bytes, mtime));
+            }
+
+            var current = currentSources
+                .Select(f =>
+                {
+                    var fi = new FileInfo(f);
+                    return (Name: fi.Name, Bytes: fi.Length, Mtime: fi.LastWriteTimeUtc);
+                })
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var recSorted = recorded
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var curNames = current.Select(c => c.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var recNames = recSorted.Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var added = curNames.Except(recNames, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+            var removed = recNames.Except(curNames, StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+
+            if (added.Count > 0 || removed.Count > 0)
+            {
+                var parts = new List<string>();
+                if (added.Count > 0)
+                    parts.Add("added " + string.Join(", ", added));
+                if (removed.Count > 0)
+                    parts.Add("removed " + string.Join(", ", removed));
+                return "Scene set changed (" + string.Join("; ", parts) + ")";
+            }
+
+            foreach (var c in current)
+            {
+                var r = recSorted.FirstOrDefault(x =>
+                    string.Equals(x.Name, c.Name, StringComparison.OrdinalIgnoreCase));
+                if (r.Name is null) continue;
+                if (c.Bytes != r.Bytes ||
+                    Math.Abs((c.Mtime - r.Mtime).TotalSeconds) > 1.5)
+                    return $"Source changed: {c.Name}";
+            }
+
+            if (current.Count != recSorted.Count)
+                return $"Source count {current.Count} vs last build {recSorted.Count}";
+
+            return null;
+        }
+        catch
+        {
+            return "WIP manifest unreadable — rebuild needed";
+        }
+    }
+
+    private static bool HasCompositeFile(
+        Dictionary<string, long> videoIndex,
+        Dictionary<string, long> scenesIndex,
+        int sceneNumber)
+    {
+        foreach (var name in new[]
+                 {
+                     $"scene_{sceneNumber:D2}.mp4",
+                     $"scene_{sceneNumber:D2}_complete.mp4",
+                 })
+        {
+            if (videoIndex.TryGetValue(name, out var v) && v >= 1024) return true;
+            if (scenesIndex.TryGetValue(name, out var s) && s >= 1024) return true;
+        }
+        return false;
     }
 
     private static Dictionary<string, long> IndexDirFiles(string dir)

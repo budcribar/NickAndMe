@@ -18,6 +18,7 @@ builder.Services.PostConfigure<FilmStudioOptions>(o =>
         o.WorkspaceRoot = repoGuess;
 });
 
+builder.Services.AddSingleton<MediaDurationProbe>();
 builder.Services.AddSingleton<ProjectStore>();
 builder.Services.AddSingleton<CostReportService>();
 builder.Services.AddSingleton<CharacterDesignService>();
@@ -724,6 +725,50 @@ app.MapGet("/api/projects/{id}/scenes/{sceneNumber:int}/composite",
         if (path is null)
             return Results.NotFound(new { ok = false, error = "composite not found" });
         return Results.File(path, "video/mp4", enableRangeProcessing: true);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+/// <summary>Stream the WIP full movie (assets/movie_wip.mp4 by default).</summary>
+app.MapGet("/api/projects/{id}/movie/wip", (string id, ProjectStore store) =>
+{
+    try
+    {
+        var path = store.ResolveWipMoviePath(id);
+        if (path is null)
+            return Results.NotFound(new { ok = false, error = "WIP movie not found — rebuild WIP first" });
+        return Results.File(path, "video/mp4", enableRangeProcessing: true);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapGet("/api/projects/{id}/movie/wip/meta", (string id, ProjectStore store) =>
+{
+    try
+    {
+        var f = store.AssessWipFreshness(id);
+        return Results.Ok(new
+        {
+            ok = true,
+            exists = f.Exists,
+            stale = f.Stale,
+            canBuild = f.CanBuild,
+            reason = f.Reason,
+            projectId = id,
+            path = f.Path,
+            bytes = f.Bytes,
+            updatedAt = f.UpdatedAt,
+            staleScenes = f.StaleScenes,
+            url = f.Exists
+                ? $"/api/projects/{Uri.EscapeDataString(id)}/movie/wip"
+                : (string?)null,
+        });
     }
     catch (Exception ex)
     {

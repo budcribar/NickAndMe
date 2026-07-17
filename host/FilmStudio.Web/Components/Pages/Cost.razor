@@ -274,7 +274,7 @@ else
                         @foreach (var r in FilteredScenes)
                         {
                             <tr>
-                                <td><code>S@r.Scene.ToString("D2")</code></td>
+                                <td><code>S@(r.Scene.ToString("D2"))</code></td>
                                 <td class="small">@(string.IsNullOrEmpty(r.Setting) ? "—" : r.Setting)</td>
                                 <td class="small text-muted">
                                     @string.Join(", ", r.CharactersOnScreen.Select(ShortChar).Take(3))
@@ -316,7 +316,7 @@ else
                         @foreach (var r in _topRemaining)
                         {
                             <tr>
-                                <td><code>S@r.Scene.ToString("D2")</code></td>
+                                <td><code>S@(r.Scene.ToString("D2"))</code></td>
                                 <td class="small">@r.Setting</td>
                                 <td>@r.ClipsMissing</td>
                                 <td>@Usd(r.RemainingDraftUsd)</td>

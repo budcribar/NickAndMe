@@ -3,33 +3,21 @@
 @implements IAsyncDisposable
 @inject EngineApiClient Engine
 @inject JobHubClient Hub
-@inject IConfiguration Config
 @using FilmStudio.Core.Models
 
 <PageTitle>Film Studio</PageTitle>
 
 <h1>Film Studio</h1>
-<p class="text-muted">
-    Blazor UI → <strong>FilmStudio.Api</strong> (native C# engine + SignalR).
-    Full pipeline: Adaptation → Characters → Scenes → Review — no Python required.
-</p>
 
 @if (!string.IsNullOrEmpty(_error))
 {
     <div class="alert alert-danger">@_error</div>
 }
 
-@if (_healthOk == true)
-{
-    <div class="alert alert-success py-2">
-        API <code>@_baseUrl</code>
-        · SignalR @(_hubConnected ? "connected" : "disconnected")
-    </div>
-}
-else if (_healthOk == false)
+@if (_healthOk == false)
 {
     <div class="alert alert-warning">
-        API not reachable at <code>@_baseUrl</code>. Start backend:
+        API not reachable. Start backend:
         <pre class="mb-0 mt-2">cd host/FilmStudio.Api
 dotnet run</pre>
         Set <code>XAI_API_KEY</code> in that shell for generation.
@@ -94,7 +82,7 @@ dotnet run</pre>
         </div>
 
         <div class="card mt-3">
-            <div class="card-header">Live job (SignalR)</div>
+            <div class="card-header">Live job</div>
             <div class="card-body">
                 @if (_job is null)
                 {
@@ -106,7 +94,7 @@ dotnet run</pre>
                         <span class="badge bg-secondary">@_job.Status</span>
                         @if (_job.Scene is int sn && _job.Clip is int cn)
                         {
-                            <span class="ms-1">S@sn.ToString("D2") C@cn</span>
+                            <span class="ms-1">S@(sn.ToString("D2")) C@(cn.ToString("D2"))</span>
                         }
                         @if (_job.Total > 0)
                         {
@@ -126,9 +114,7 @@ dotnet run</pre>
 </div>
 
 @code {
-    private string _baseUrl = "";
     private bool? _healthOk;
-    private bool _hubConnected;
     private bool _busy;
     private string? _error;
     private string? _message;
@@ -140,19 +126,16 @@ dotnet run</pre>
 
     protected override async Task OnInitializedAsync()
     {
-        _baseUrl = Config["EngineApi:BaseUrl"] ?? "http://127.0.0.1:5088";
         Hub.JobUpdated += OnJobUpdated;
         Hub.JobLog += OnJobLog;
         await RefreshAsync();
         try
         {
             await Hub.StartAsync();
-            _hubConnected = Hub.IsConnected;
         }
-        catch (Exception ex)
+        catch
         {
-            _hubConnected = false;
-            _error = $"SignalR: {ex.Message}";
+            // SignalR optional for browse; job progress still works via poll/refresh
         }
     }
 
@@ -226,10 +209,10 @@ dotnet run</pre>
         try
         {
             await Engine.StartSceneGenAsync(_projectId, _scene, _onlyMissing);
-            _message = $"Started scene {_scene} — watch live log via SignalR";
-            if (!_hubConnected)
+            _message = $"Started scene {_scene}";
+            if (!Hub.IsConnected)
             {
-                try { await Hub.StartAsync(); _hubConnected = Hub.IsConnected; } catch { /* ignore */ }
+                try { await Hub.StartAsync(); } catch { /* ignore */ }
             }
         }
         catch (Exception ex) { _error = ex.Message; }

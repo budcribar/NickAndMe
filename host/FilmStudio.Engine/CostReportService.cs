@@ -777,9 +777,11 @@ public sealed class CostReportService
         {
             foreach (var f in Directory.EnumerateFiles(videoDir, "scene_*_clip_*.mp4"))
             {
-                var name = Path.GetFileNameWithoutExtension(f);
-                // scene_01_clip_02
-                var parts = name.Split('_');
+                var name = Path.GetFileName(f);
+                // Exact scene_01_clip_02.mp4 only (not .native.mp4 sidecars)
+                if (!FfmpegRemuxService.IsExactClipFileName(name)) continue;
+                var stem = Path.GetFileNameWithoutExtension(name);
+                var parts = stem.Split('_');
                 if (parts.Length >= 4 &&
                     int.TryParse(parts[1], out var sn) &&
                     int.TryParse(parts[3], out var cn))

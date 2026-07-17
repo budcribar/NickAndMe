@@ -34,6 +34,8 @@ public sealed class StartSceneGenRequest
 {
     public string ProjectId { get; set; } = "";
     public int Scene { get; set; }
+    /// <summary>When set, only generate this clip within the scene.</summary>
+    public int? Clip { get; set; }
     public bool OnlyMissing { get; set; } = true;
     /// <summary>Block gen when on-screen (non-narrator) cast lacks locked ref images. Default true.</summary>
     public bool RequireLockedCharacters { get; set; } = true;
@@ -212,6 +214,11 @@ public sealed class SceneSummary
     public int ClipCount { get; set; }
     public int ClipsOnDisk { get; set; }
     public bool ClipsComplete { get; set; }
+    /// <summary>Stage 2 plan total (sum of planned clip targets). Not measured media.</summary>
+    public double? PlannedDurationSeconds { get; set; }
+    /// <summary>Measured from composite, or sum of on-disk clips. Null if no media.</summary>
+    public double? ActualDurationSeconds { get; set; }
+    /// <summary>Preferred display: actual if known, else planned.</summary>
     public double? DurationSeconds { get; set; }
     public bool CompositeExists { get; set; }
     public List<string> CharactersOnScreen { get; set; } = new();
@@ -224,7 +231,10 @@ public sealed class ClipSummary
 {
     public int ClipNumber { get; set; }
     public string Timestamp { get; set; } = "";
+    /// <summary>Stage 2 planned duration for this clip.</summary>
     public int DurationSeconds { get; set; }
+    /// <summary>Measured from the MP4 when on disk.</summary>
+    public double? ActualDurationSeconds { get; set; }
     public string Continuation { get; set; } = "none";
     public string PrimarySubject { get; set; } = "";
     public string VisualPrompt { get; set; } = "";
@@ -242,6 +252,11 @@ public sealed class SceneDetail
 {
     public int SceneNumber { get; set; }
     public string Setting { get; set; } = "";
+    /// <summary>Stage 2 plan total.</summary>
+    public double? PlannedDurationSeconds { get; set; }
+    /// <summary>Measured composite or sum of clips.</summary>
+    public double? ActualDurationSeconds { get; set; }
+    /// <summary>Preferred display: actual if known, else planned.</summary>
     public double? DurationSeconds { get; set; }
     public int ClipCount { get; set; }
     public int ClipsOnDisk { get; set; }
@@ -346,6 +361,27 @@ public sealed class StartRemuxRequest
     public string ProjectId { get; set; } = "";
     public int? Scene { get; set; }
     public bool RebuildWip { get; set; } = true;
+    /// <summary>
+    /// When true with <see cref="RebuildWip"/>, remux only <b>stale</b> scene composites
+    /// (clips newer than composite, or composite missing), then stitch WIP.
+    /// </summary>
+    public bool RefreshStaleScenes { get; set; }
+}
+
+/// <summary>WIP movie freshness for Play-WIP-one-step UX.</summary>
+public sealed class WipFreshness
+{
+    public bool Exists { get; set; }
+    public bool Stale { get; set; }
+    public bool CanBuild { get; set; }
+    public string Reason { get; set; } = "";
+    public string? Path { get; set; }
+    public long Bytes { get; set; }
+    public string? UpdatedAt { get; set; }
+    /// <summary>Scenes whose composites need rebuild (clips newer / missing composite).</summary>
+    public List<int> StaleScenes { get; set; } = new();
+    /// <summary>All scenes that should be remuxed before WIP (Stage 2 order, with clips).</summary>
+    public List<int> ScenesToRemux { get; set; } = new();
 }
 
 public sealed class ClipReviewRequest

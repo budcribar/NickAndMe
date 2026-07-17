@@ -8,9 +8,13 @@
 <PageTitle>Scenes &amp; Clips</PageTitle>
 
 <h1>Scenes &amp; Clips</h1>
-<p class="text-muted">
+<p class="text-muted mb-1">
     Stage 2 blueprint browse + generate via the C# engine.
-    Pass/fail and remux live on the <a href="review">Review</a> page; replan Stage 2 from <a href="adaptation">Adaptation</a>.
+    Pass/fail on <a href="review">Review</a>; replan Stage 2 from <a href="adaptation">Adaptation</a>.
+</p>
+<p class="small text-muted">
+    <strong>Rebuild scene</strong> = ffmpeg concat of this scene’s clips → composite (not full WIP).
+    Clip <strong>Regen</strong> force-regenerates one clip; rebuild the scene after to update the composite.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -58,6 +62,11 @@
     </div>
     <div class="col-md-3 d-flex gap-2 flex-wrap">
         <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ReloadListAsync">Reload</button>
+        <button class="btn btn-success" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
+                @onclick="PlayWipAsync"
+                title="@WipPlayTitle">
+            @(_showWipPlayer && _wipExists && !_wipStale ? "Hide WIP" : _wipStale || !_wipExists ? "▶ Play WIP (refresh)" : "▶ Play WIP")
+        </button>
         @if (HasActiveFilters)
         {
             <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ClearFilters">Clear filters</button>
@@ -68,6 +77,65 @@
         }
     </div>
 </div>
+
+@if (_showWipPlayer && _wipExists)
+{
+    <div class="card mb-3 border-success">
+        <div class="card-header d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+            <span>
+                WIP movie <code class="small">@(_wipPath ?? "assets/movie_wip.mp4")</code>
+                @if (_wipStale)
+                {
+                    <span class="badge bg-warning text-dark ms-1">stale</span>
+                }
+            </span>
+            @if (!string.IsNullOrEmpty(_wipUpdatedAt))
+            {
+                <span class="small text-muted">@_wipUpdatedAt · @FormatBytes(_wipBytes)</span>
+            }
+        </div>
+        <div class="card-body py-2">
+            @if (!string.IsNullOrEmpty(_wipReason) && _wipStale)
+            {
+                <p class="small text-warning mb-2">@_wipReason</p>
+            }
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:70vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.WipMovieUrl(_projectId))"
+                   @key="_wipVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                <strong>Play WIP</strong> auto-refreshes if out of date (mux only — no clip re-gen).
+                <a href="@Engine.WipMovieUrl(_projectId)" target="_blank" rel="noopener">Open in new tab</a>
+            </p>
+        </div>
+    </div>
+}
+
+@if (_showScenePlayer && _playingScene is int playSn)
+{
+    <div class="card mb-3 border-primary">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span>Scene composite <code class="small">S@(playSn.ToString("D2"))</code></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="HideScenePlayer">Hide</button>
+        </div>
+        <div class="card-body py-2">
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:70vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.CompositeVideoUrl(_projectId, playSn))"
+                   @key="_sceneVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                If empty/404, use <strong>Rebuild scene</strong> (needs clips on disk).
+                <a href="@Engine.CompositeVideoUrl(_projectId, playSn)" target="_blank" rel="noopener">Open in new tab</a>
+            </p>
+        </div>
+    </div>
+}
 
 @* ---- Live job banner ---- *@
 @if (_job is not null && (_job.Status is "running" or "done" or "error" or "cancelled"))
@@ -83,7 +151,7 @@
                     }
                     @if (_job.Scene is int sn)
                     {
-                        <span class="ms-1">S@sn.ToString("D2")</span>
+                        <span class="ms-1">S@(sn.ToString("D2"))</span>
                     }
                     @if (_job.Clip is int cn)
                     {
@@ -242,7 +310,7 @@
                         <th>Setting</th>
                         <th>Cast / location</th>
                         <th style="width:6rem;">Clips</th>
-                        <th style="width:5rem;">Dur</th>
+                        <th style="width:7rem;" title="Actual media length (plan in muted)">Dur</th>
                         <th style="width:5rem;"></th>
                     </tr>
                 </thead>
@@ -259,7 +327,7 @@
                                        @onchange="e => ToggleSelect(sn, (bool)(e.Value ?? false))" />
                             </td>
                             <td @onclick="() => OpenSceneAsync(sn)">
-                                <span class="badge @StatusBadge(s.Status)">S@sn.ToString("D2")</span>
+                                <span class="badge @StatusBadge(s.Status)">S@(sn.ToString("D2"))</span>
                             </td>
                             <td @onclick="() => OpenSceneAsync(sn)">
                                 @(s.Setting is { Length: > 0 } set ? Trunc(set, 56) : "—")
@@ -289,16 +357,39 @@
                                     @s.ClipsOnDisk/@s.ClipCount
                                 </span>
                             </td>
-                            <td @onclick="() => OpenSceneAsync(sn)" class="text-muted small">
-                                @(s.DurationSeconds is double d ? $"{d:0}s" : "—")
+                            <td @onclick="() => OpenSceneAsync(sn)" class="small">
+                                @if (s.ActualDurationSeconds is double act)
+                                {
+                                    <span title="Measured from composite or clips">@FormatClock(act)</span>
+                                    @if (s.PlannedDurationSeconds is double plan && Math.Abs(plan - act) > 1.5)
+                                    {
+                                        <div class="text-muted" style="font-size:0.75rem;" title="Stage 2 plan">plan @FormatClock(plan)</div>
+                                    }
+                                }
+                                else if (s.PlannedDurationSeconds is double planOnly)
+                                {
+                                    <span class="text-muted" title="Plan only — no media measured">~@FormatClock(planOnly)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
                             </td>
                             <td @onclick:stopPropagation="true">
-                                <button class="btn btn-sm batch-row-gen"
-                                        disabled="@(_busy || JobRunning)"
-                                        title="Generate this scene"
-                                        @onclick="() => GenOneSceneAsync(sn)">
-                                    Gen
-                                </button>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <button class="btn btn-sm btn-success"
+                                            disabled="@(_busy || JobRunning || (s.ClipsOnDisk == 0 && !s.CompositeExists))"
+                                            title="@(s.CompositeExists ? "Play (auto-remux if stale)" : s.ClipsOnDisk > 0 ? "Remux then play" : "No clips")"
+                                            @onclick="() => PlaySceneCompositeAsync(sn)">
+                                        ▶
+                                    </button>
+                                    <button class="btn btn-sm batch-row-gen"
+                                            disabled="@(_busy || JobRunning)"
+                                            title="Generate this scene"
+                                            @onclick="() => GenOneSceneAsync(sn)">
+                                        Gen
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -317,25 +408,56 @@ else
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <span>
-                <strong>Scene @_detail.SceneNumber.ToString("D2")</strong>
+                <strong>Scene @(_detail.SceneNumber.ToString("D2"))</strong>
                 — @(_detail.Setting is { Length: > 0 } st ? st : "—")
             </span>
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
                 <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="onlyMissingDetail" @bind="_onlyMissing" disabled="@_busy" />
                     <label class="form-check-label" for="onlyMissingDetail">Only missing</label>
                 </div>
+                <button class="btn btn-sm btn-success"
+                        disabled="@(_busy || JobRunning || (_detail.ClipsOnDisk == 0 && !_detail.CompositeExists))"
+                        title="Play scene (auto-remux if missing or clips newer)"
+                        @onclick="() => PlaySceneCompositeAsync(_detail.SceneNumber)">
+                    ▶ Play scene
+                </button>
+                <button class="btn btn-sm btn-outline-primary"
+                        disabled="@(_busy || JobRunning || _detail.ClipsOnDisk == 0)"
+                        title="FFmpeg: concat this scene’s clips → composite (does not rebuild WIP)"
+                        @onclick="() => RebuildSceneAsync(_detail.SceneNumber)">
+                    Rebuild scene
+                </button>
                 <button class="btn btn-sm btn-primary"
                         disabled="@(_busy || JobRunning)"
                         @onclick="() => GenOneSceneAsync(_detail.SceneNumber)">
-                    ▶ Generate scene
+                    Generate scene
                 </button>
             </div>
         </div>
         <div class="card-body">
             <p class="small text-muted mb-2">
                 @_detail.ClipsOnDisk/@_detail.ClipCount clips on disk
-                · ~@(_detail.DurationSeconds is double dd ? $"{dd:0}" : "?")s
+                @if (_detail.ActualDurationSeconds is double actD)
+                {
+                    <span>· <strong class="text-body">@FormatClock(actD)</strong> actual</span>
+                    @if (_detail.PlannedDurationSeconds is double planD)
+                    {
+                        <span>· plan @FormatClock(planD)</span>
+                    }
+                }
+                else if (_detail.PlannedDurationSeconds is double planOnly)
+                {
+                    <span>· plan ~@FormatClock(planOnly)</span>
+                }
+                @if (_detail.CompositeExists)
+                {
+                    <span class="badge bg-success ms-1">composite ready</span>
+                }
+                else if (_detail.ClipsOnDisk > 0)
+                {
+                    <span class="badge bg-warning text-dark ms-1">composite needs rebuild</span>
+                }
                 @if (_detail.CharactersOnScreen.Count > 0)
                 {
                     <span>· cast: @string.Join(", ", _detail.CharactersOnScreen.Select(ShortChar))</span>
@@ -346,13 +468,34 @@ else
                 }
             </p>
 
-            @if (_detail.CompositeExists && _detail.CompositeUrl is not null)
+            @* Full scene composite — hide while inspecting a single clip so play isn't confused with C3 *@
+            @if (_detail.CompositeExists && _selectedClip is null)
             {
                 <div class="mb-3">
-                    <h6 class="text-muted">Composite</h6>
-                    <video controls style="max-width:100%; max-height:280px;"
-                           src="@Engine.CompositeVideoUrl(_projectId, _detail.SceneNumber)"></video>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="text-muted mb-0">Scene composite <span class="small fw-normal">(all clips · full scene)</span></h6>
+                        <button class="btn btn-sm btn-link" type="button"
+                                @onclick="() => PlaySceneCompositeAsync(_detail.SceneNumber)">
+                            Play full scene
+                        </button>
+                    </div>
+                    <video controls playsinline
+                           style="max-width:100%; max-height:280px; background:#111; border-radius:0.35rem;"
+                           src="@CacheBust(Engine.CompositeVideoUrl(_projectId, _detail.SceneNumber))"
+                           @key="_inlineCompositeKey"
+                           poster=""></video>
+                    <p class="small text-muted mb-0 mt-1">
+                        This is the remuxed scene (~@(_detail.ActualDurationSeconds is double ad ? FormatClock(ad) : "?")).
+                        Select a clip row below to play one clip only.
+                    </p>
                 </div>
+            }
+            else if (_detail.CompositeExists && _selectedClip is int)
+            {
+                <p class="small text-muted mb-2">
+                    Viewing single clip — full scene composite hidden.
+                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => SelectClip(null)">Show scene composite</button>
+                </p>
             }
 
             <div class="table-responsive">
@@ -364,17 +507,35 @@ else
                             <th>Subject</th>
                             <th>Dialogue</th>
                             <th>Disk</th>
-                            <th></th>
+                            <th style="width:8rem;"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var c in _detail.Clips)
                         {
                             var active = _selectedClip == c.ClipNumber;
+                            var cn = c.ClipNumber;
                             <tr class="@(active ? "table-primary" : "")" style="cursor:pointer;"
-                                @onclick="() => SelectClip(c.ClipNumber)">
-                                <td><code>C@c.ClipNumber.ToString("D2")</code></td>
-                                <td class="small">@(c.DurationSeconds > 0 ? $"{c.DurationSeconds}s" : "—")</td>
+                                @onclick="() => SelectClip(cn)">
+                                <td><code>C@(cn.ToString("D2"))</code></td>
+                                <td class="small">
+                                    @if (c.ActualDurationSeconds is double ca)
+                                    {
+                                        <span>@FormatClock(ca)</span>
+                                        @if (c.DurationSeconds > 0 && Math.Abs(c.DurationSeconds - ca) > 1.5)
+                                        {
+                                            <span class="text-muted"> · plan @c.DurationSeconds s</span>
+                                        }
+                                    }
+                                    else if (c.DurationSeconds > 0)
+                                    {
+                                        <span class="text-muted">~@c.DurationSeconds s</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
                                 <td class="small">@Trunc(c.PrimarySubject, 28)</td>
                                 <td class="small">@Trunc(c.Dialogue, 40)</td>
                                 <td>
@@ -388,7 +549,22 @@ else
                                         <span class="badge bg-secondary">missing</span>
                                     }
                                 </td>
-                                <td class="small text-muted">@c.Continuation</td>
+                                <td @onclick:stopPropagation="true">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-dark"
+                                                disabled="@(_busy || !c.OnDisk)"
+                                                title="Play clip"
+                                                @onclick="() => SelectClip(cn)">
+                                            ▶
+                                        </button>
+                                        <button class="btn btn-outline-warning"
+                                                disabled="@(_busy || JobRunning)"
+                                                title="Force re-generate this clip"
+                                                @onclick="() => RegenClipAsync(_detail.SceneNumber, cn)">
+                                            Regen
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -400,27 +576,58 @@ else
     @if (_clip is not null)
     {
         <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <span>
-                    Clip <code>S@_detail.SceneNumber.ToString("D2")C@_clip.ClipNumber.ToString("D2")</code>
+                    Clip <code>S@(_detail.SceneNumber.ToString("D2"))C@(_clip.ClipNumber.ToString("D2"))</code>
                     @if (!string.IsNullOrEmpty(_clip.Timestamp))
                     {
                         <span class="text-muted ms-2">@_clip.Timestamp</span>
                     }
                 </span>
-                <button class="btn btn-sm btn-outline-secondary" @onclick="() => SelectClip(null)">Close</button>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-warning"
+                            disabled="@(_busy || JobRunning)"
+                            title="Force re-generate this clip (overwrites if present)"
+                            @onclick="() => RegenClipAsync(_detail.SceneNumber, _clip.ClipNumber)">
+                        Regen clip
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => SelectClip(null)">Close</button>
+                </div>
             </div>
             <div class="card-body row">
                 <div class="col-md-5 mb-3">
                     @if (_clip.OnDisk)
                     {
-                        <video controls style="width:100%; max-height:320px; background:#111;"
-                               src="@Engine.ClipVideoUrl(_projectId, _detail.SceneNumber, _clip.ClipNumber)"></video>
-                        <div class="small text-muted mt-1">@_clip.FileName · @FormatSize(_clip.SizeBytes)</div>
+                        <div class="small text-success mb-1">
+                            Single clip only
+                            @if (_clip.ActualDurationSeconds is double cad)
+                            {
+                                <span>· @FormatClock(cad)</span>
+                            }
+                            · not the full scene
+                        </div>
+                        <video controls playsinline autoplay
+                               style="width:100%; max-height:320px; background:#111; border-radius:0.35rem;"
+                               src="@CacheBust(Engine.ClipVideoUrl(_projectId, _detail.SceneNumber, _clip.ClipNumber))"
+                               @key="@($"clip-{_detail.SceneNumber}-{_clip.ClipNumber}-{_clipVideoKey}")"
+                               onloadeddata="this.play().catch(function(){})"></video>
+                        <div class="small text-muted mt-1">
+                            @_clip.FileName · @FormatSize(_clip.SizeBytes)
+                            · <a href="@Engine.ClipVideoUrl(_projectId, _detail.SceneNumber, _clip.ClipNumber)" target="_blank" rel="noopener">open clip URL</a>
+                        </div>
                     }
                     else
                     {
-                        <div class="border rounded p-4 text-center text-muted">No video on disk</div>
+                        <div class="border rounded p-4 text-center text-muted">
+                            No video on disk
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-warning"
+                                        disabled="@(_busy || JobRunning)"
+                                        @onclick="() => RegenClipAsync(_detail.SceneNumber, _clip.ClipNumber)">
+                                    Generate this clip
+                                </button>
+                            </div>
+                        </div>
                     }
                 </div>
                 <div class="col-md-7">
@@ -448,7 +655,8 @@ else
                 </div>
             </div>
             <div class="card-footer small text-muted">
-                Pass/fail &amp; remux: open <a href="review">Review</a>. Prompt edits: edit the Stage 2 blueprint JSON or re-run Stage 2.
+                After <strong>Regen</strong>, use <strong>Rebuild scene</strong> so the composite includes the new clip.
+                Pass/fail: <a href="review">Review</a>. Full movie: rebuild WIP on Review.
             </div>
         </div>
     }
@@ -472,9 +680,32 @@ else
     private int? _selectedClip;
     private ClipSummary? _clip;
     private JobSnapshot? _job;
+    private bool _wipExists;
+    private bool _wipStale;
+    private bool _wipCanBuild;
+    private string? _wipReason;
+    private bool _showWipPlayer;
+    private bool _playWipAfterRemux;
+    private int? _playSceneAfterRemux;
+    private string? _wipPath;
+    private string? _wipUpdatedAt;
+    private long _wipBytes;
+    private long _wipVideoKey;
+    private bool _showScenePlayer;
+    private int? _playingScene;
+    private long _sceneVideoKey;
+    private long _inlineCompositeKey;
+    private long _clipVideoKey;
 
     private bool JobRunning =>
         string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase);
+
+    private string WipPlayTitle =>
+        !_wipCanBuild && !_wipExists
+            ? "No scene/clip videos to build WIP"
+            : _wipStale || !_wipExists
+                ? $"Refresh then play: {_wipReason ?? "out of date"}"
+                : "Play streamed movie_wip.mp4 (up to date)";
 
     private string SelectionMode => _selectionMode;
 
@@ -590,6 +821,48 @@ else
             _ = InvokeAsync(async () =>
             {
                 await SoftReloadAsync();
+                if (snap.Status == "done" &&
+                    string.Equals(snap.Kind, "remux", StringComparison.OrdinalIgnoreCase))
+                {
+                    await RefreshWipMetaAsync();
+                    if (_playWipAfterRemux)
+                    {
+                        _playWipAfterRemux = false;
+                        if (_wipExists)
+                        {
+                            _showWipPlayer = true;
+                            _wipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            _message = "WIP ready — player below";
+                        }
+                    }
+                    else if (_playSceneAfterRemux is int playSn)
+                    {
+                        _playSceneAfterRemux = null;
+                        _playingScene = playSn;
+                        _showScenePlayer = true;
+                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        _inlineCompositeKey = _sceneVideoKey;
+                        _message = $"Scene S{playSn:D2} ready — playing";
+                    }
+                    else if (snap.Scene is int sn && sn > 0)
+                    {
+                        _playingScene = sn;
+                        _showScenePlayer = true;
+                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        _inlineCompositeKey = _sceneVideoKey;
+                        _message = $"Scene S{sn:D2} composite rebuilt";
+                    }
+                }
+                else if (snap.Status == "done" &&
+                         string.Equals(snap.Kind, "scene", StringComparison.OrdinalIgnoreCase) &&
+                         snap.Clip is int cn &&
+                         snap.Scene is int gsn)
+                {
+                    _clipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    _message = $"Clip S{gsn:D2}C{cn:D2} finished — rebuild scene composite if you want it in the cut";
+                    if (_selectedClip == cn)
+                        SelectClip(cn);
+                }
                 StateHasChanged();
             });
         else
@@ -628,6 +901,7 @@ else
                 await LoadDetailAsync(sn);
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
+            await RefreshWipMetaAsync();
         }
         catch (Exception ex)
         {
@@ -643,6 +917,7 @@ else
         {
             var dto = await Engine.GetScenesAsync(_projectId);
             _scenes = dto?.Scenes ?? new List<SceneSummary>();
+            await RefreshWipMetaAsync();
             if (_selectedScene is int sn)
             {
                 var detail = await Engine.GetSceneDetailAsync(_projectId, sn);
@@ -691,6 +966,100 @@ else
         _clip = cn is int n
             ? _detail?.Clips.FirstOrDefault(c => c.ClipNumber == n)
             : null;
+        if (cn is int)
+        {
+            // Force new <video> mount so we never keep a previous composite/clip stream
+            _clipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            // Stop full-scene autoplay panel if open
+            if (_showScenePlayer && _playingScene == _detail?.SceneNumber)
+            {
+                _showScenePlayer = false;
+                _playingScene = null;
+            }
+        }
+    }
+
+    private async Task PlaySceneCompositeAsync(int sn)
+    {
+        var meta = await Engine.GetWipMovieMetaAsync(_projectId);
+        var summary = _scenes?.FirstOrDefault(s => s.SceneNumber == sn);
+        var compositeOk = summary?.CompositeExists == true
+                          || (_detail is { SceneNumber: var dsn, CompositeExists: true } && dsn == sn);
+        var clipsOnDisk = summary?.ClipsOnDisk
+                          ?? (_detail is { SceneNumber: var d2 } && d2 == sn ? _detail.ClipsOnDisk : 0);
+        var needsRemux = !compositeOk || meta?.StaleScenes?.Contains(sn) == true;
+
+        if (needsRemux && clipsOnDisk > 0 && !JobRunning)
+        {
+            _busy = true;
+            _error = null;
+            try
+            {
+                await EnsureHubAsync();
+                _playSceneAfterRemux = sn;
+                await Engine.StartRemuxAsync(_projectId, sn, rebuildWip: false);
+                _message = $"Rebuilding S{sn:D2} composite then play…";
+                var jobs = await Engine.GetJobAsync();
+                _job = jobs?.Job;
+            }
+            catch (Exception ex) { _error = ex.Message; _playSceneAfterRemux = null; }
+            finally { _busy = false; }
+            return;
+        }
+
+        if (!compositeOk)
+        {
+            _error = $"No composite for S{sn:D2} — generate clips or rebuild scene first";
+            return;
+        }
+
+        _playingScene = sn;
+        _showScenePlayer = true;
+        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _inlineCompositeKey = _sceneVideoKey;
+        _message = $"Playing S{sn:D2} composite";
+    }
+
+    private void HideScenePlayer()
+    {
+        _showScenePlayer = false;
+        _playingScene = null;
+    }
+
+    /// <summary>FFmpeg concat clips → scene composite only (not WIP).</summary>
+    private async Task RebuildSceneAsync(int sn)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartRemuxAsync(_projectId, sn, rebuildWip: false);
+            _message = $"Rebuilding S{sn:D2} scene composite (clips → composite; WIP unchanged)";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Force re-generate a single clip (onlyMissing: false).</summary>
+    private async Task RegenClipAsync(int sn, int cn)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartSceneGenAsync(_projectId, sn, onlyMissing: false, clip: cn);
+            _message = $"Regenerating S{sn:D2}C{cn:D2}…";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private void ToggleSelect(int sn, bool on)
@@ -821,6 +1190,88 @@ else
         if (bytes < 1024) return $"{bytes} B";
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
         return $"{bytes / (1024.0 * 1024):0.#} MB";
+    }
+
+    private async Task RefreshWipMetaAsync()
+    {
+        try
+        {
+            var meta = await Engine.GetWipMovieMetaAsync(_projectId);
+            _wipExists = meta?.Exists == true;
+            _wipStale = meta?.Stale == true || !_wipExists;
+            _wipCanBuild = meta?.CanBuild == true;
+            _wipReason = meta?.Reason;
+            _wipPath = meta?.Path;
+            _wipUpdatedAt = meta?.UpdatedAt;
+            _wipBytes = meta?.Bytes ?? 0;
+            if (!_wipExists)
+                _showWipPlayer = false;
+        }
+        catch
+        {
+            _wipExists = false;
+            _wipStale = true;
+            _wipCanBuild = false;
+        }
+    }
+
+    private async Task PlayWipAsync()
+    {
+        if (_showWipPlayer && _wipExists && !_wipStale)
+        {
+            await RefreshWipMetaAsync();
+            if (_wipExists && !_wipStale)
+            {
+                _showWipPlayer = false;
+                return;
+            }
+        }
+
+        // Always re-check: scenes added/removed/out-of-date trigger auto-remux
+        await RefreshWipMetaAsync();
+        if (_wipExists && !_wipStale)
+        {
+            _showWipPlayer = true;
+            _wipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _message = "Playing WIP (up to date)";
+            return;
+        }
+
+        if (!_wipCanBuild && !_wipExists)
+        {
+            _error = _wipReason ?? "Nothing on disk to build WIP";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            _playWipAfterRemux = true;
+            await Engine.StartRemuxAsync(_projectId, scene: null, rebuildWip: true, refreshStaleScenes: true);
+            _message = $"Auto-remux then play… {_wipReason}";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; _playWipAfterRemux = false; }
+        finally { _busy = false; }
+    }
+
+    private static string CacheBust(string url) =>
+        url + (url.Contains('?') ? "&" : "?") + "v=" + DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    private static string FormatBytes(long n) => FormatSize(n);
+
+    /// <summary>Format seconds as m:ss or plain seconds when under a minute.</summary>
+    private static string FormatClock(double seconds)
+    {
+        if (seconds < 0) seconds = 0;
+        var whole = (int)Math.Round(seconds);
+        if (whole < 60) return $"{whole}s";
+        var m = whole / 60;
+        var s = whole % 60;
+        return $"{m}:{s:D2}";
     }
 
     public async ValueTask DisposeAsync()

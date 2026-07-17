@@ -1,0 +1,22 @@
+{
+  "builtAtUtc": "2026-07-17T01:33:13.3061870Z",
+  "count": 3,
+  "clips": [
+    {
+      "name": "scene_01_clip_01.mp4",
+      "bytes": 1929547,
+      "mtimeUtc": "2026-07-13T12:43:02.9852149Z"
+    },
+    {
+      "name": "scene_01_clip_02.mp4",
+      "bytes": 3038599,
+      "mtimeUtc": "2026-07-13T01:10:43.7618533Z"
+    },
+    {
+      "name": "scene_01_clip_03.mp4",
+      "bytes": 1377982,
+      "mtimeUtc": "2026-07-13T12:38:52.4089231Z"
+    }
+  ],
+  "strict": true
+}
