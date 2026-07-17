@@ -16,12 +16,17 @@ public sealed class ProjectStore
 
     private readonly FilmStudioOptions _opts;
     private readonly MediaDurationProbe? _duration;
+    private readonly SceneListCache? _sceneListCache;
     private string _activeProjectId = "";
 
-    public ProjectStore(IOptions<FilmStudioOptions> opts, MediaDurationProbe? duration = null)
+    public ProjectStore(
+        IOptions<FilmStudioOptions> opts,
+        MediaDurationProbe? duration = null,
+        SceneListCache? sceneListCache = null)
     {
         _opts = opts.Value;
         _duration = duration;
+        _sceneListCache = sceneListCache;
         var root = ResolveWorkspaceRoot();
         var ws = Path.Combine(root, "projects", "workspace.json");
         if (File.Exists(ws))
@@ -34,6 +39,10 @@ public sealed class ProjectStore
             catch { /* ignore */ }
         }
     }
+
+    /// <summary>Drop cached scene lists for a project (call after gen/remux/stage2).</summary>
+    public void InvalidateSceneListCache(string? projectId) =>
+        _sceneListCache?.Invalidate(projectId);
 
     public string WorkspaceRoot => ResolveWorkspaceRoot();
 
@@ -951,8 +960,20 @@ public sealed class ProjectStore
     /// <summary>
     /// Scene list from Stage 2 blueprint + on-disk clip counts.
     /// When <paramref name="probeDurations"/> is false (LoadSim), skip ffprobe — much faster under concurrency.
+    /// Results are cached briefly (single-flight) when <see cref="SceneListCache"/> is registered.
     /// </summary>
     public IReadOnlyList<SceneSummary> ListScenes(string projectId, bool probeDurations = true)
+    {
+        if (_sceneListCache is null)
+            return ListScenesCore(projectId, probeDurations);
+
+        return _sceneListCache.GetOrBuild(
+            projectId,
+            probeDurations,
+            () => ListScenesCore(projectId, probeDurations));
+    }
+
+    private IReadOnlyList<SceneSummary> ListScenesCore(string projectId, bool probeDurations)
     {
         using var bp = LoadBlueprint(projectId);
         if (bp is null ||

@@ -27,6 +27,7 @@ builder.Services.PostConfigure<FilmStudioOptions>(o =>
 });
 
 builder.Services.AddSingleton<MediaDurationProbe>();
+builder.Services.AddSingleton<SceneListCache>();
 builder.Services.AddSingleton<ProjectStore>();
 builder.Services.AddSingleton<IJobStore, JobStore>();
 builder.Services.AddSingleton<ILockService, InMemoryLockService>();
@@ -423,12 +424,14 @@ app.MapPost("/api/jobs/gen-scene", async (StartSceneGenRequest body, FilmJobServ
     {
         if (body.Scene <= 0)
             return Results.BadRequest(new { ok = false, error = "scene required" });
-        await jobService.StartSceneGenAsync(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartSceneGenAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = $"Started scene {body.Scene}",
-            job = jobService.GetSnapshot(),
+            message = job.Status == "queued"
+                ? $"Queued scene {body.Scene} (waiting for lock/worker)"
+                : $"Started scene {body.Scene}",
+            job,
         });
     }
     catch (Exception ex)
@@ -443,12 +446,14 @@ app.MapPost("/api/jobs/gen-batch", async (StartBatchGenRequest body, FilmJobServ
     {
         if (body.Scenes is null || body.Scenes.Count == 0)
             return Results.BadRequest(new { ok = false, error = "scenes required" });
-        await jobService.StartBatchGenAsync(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartBatchGenAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = $"Started batch for {body.Scenes.Count} scene(s)",
-            job = jobService.GetSnapshot(),
+            message = job.Status == "queued"
+                ? $"Queued batch for {body.Scenes.Count} scene(s)"
+                : $"Started batch for {body.Scenes.Count} scene(s)",
+            job,
         });
     }
     catch (Exception ex)
@@ -609,17 +614,17 @@ app.MapPost("/api/jobs/character-variants", async (StartCharacterVariantsRequest
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId) || string.IsNullOrWhiteSpace(body.CharKey))
             return Results.BadRequest(new { ok = false, error = "projectId and charKey required" });
-        await jobService.StartCharacterVariantsAsync(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartCharacterVariantsAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = $"Started portrait generation for {body.CharKey}",
-            job = jobService.GetSnapshot(),
+            message = $"Queued portrait generation for {body.CharKey}",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 
@@ -689,19 +694,19 @@ app.MapPost("/api/jobs/sort-character-plates", async (
     {
         body.Force = true; // explicit user/job start always re-sorts
         if (body.MaxImages <= 0) body.MaxImages = 32;
-        await jobService.StartSortCharacterPlatesAsync(body);
-        return Results.Ok(new
+        var job = await jobService.StartSortCharacterPlatesAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
             message = body.UseGrok
-                ? "Started Grok vision character plate sort"
-                : "Started heuristic character plate sort",
-            job = jobService.GetSnapshot(),
+                ? "Queued Grok vision character plate sort"
+                : "Queued heuristic character plate sort",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 
@@ -792,17 +797,17 @@ app.MapPost("/api/jobs/book-prepare", async (StartBookPrepareRequest body, FilmJ
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
             return Results.BadRequest(new { ok = false, error = "projectId required" });
-        await jobService.StartBookPrepareAsync(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartBookPrepareAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = "Started book prepare (C# PDF extract / vision OCR)",
-            job = jobService.GetSnapshot(),
+            message = "Queued book prepare (C# PDF extract / vision OCR)",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 
@@ -840,17 +845,17 @@ app.MapPost("/api/jobs/stage1", async (StartStage1Request body, FilmJobService j
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
             return Results.BadRequest(new { ok = false, error = "projectId required" });
-        await jobService.StartStage1Async(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartStage1Async(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = "Started Stage 1 (C# Grok chat)",
-            job = jobService.GetSnapshot(),
+            message = "Queued Stage 1 (C# Grok chat)",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 
@@ -860,17 +865,17 @@ app.MapPost("/api/jobs/stage2", async (StartStage2Request body, FilmJobService j
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
             return Results.BadRequest(new { ok = false, error = "projectId required" });
-        await jobService.StartStage2Async(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartStage2Async(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = "Started Stage 2 (C# planner)",
-            job = jobService.GetSnapshot(),
+            message = "Queued Stage 2 (C# planner)",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 
@@ -880,17 +885,17 @@ app.MapPost("/api/jobs/remux", async (StartRemuxRequest body, FilmJobService job
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
             return Results.BadRequest(new { ok = false, error = "projectId required" });
-        await jobService.StartRemuxAsync(body);
-        return Results.Accepted("/api/jobs", new
+        var job = await jobService.StartRemuxAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
         {
             ok = true,
-            message = "Started remux / WIP",
-            job = jobService.GetSnapshot(),
+            message = "Queued remux / WIP",
+            job,
         });
     }
     catch (Exception ex)
     {
-        return Results.Conflict(new { ok = false, error = ex.Message, job = jobService.GetSnapshot() });
+        return JobStartError(ex, jobService);
     }
 });
 

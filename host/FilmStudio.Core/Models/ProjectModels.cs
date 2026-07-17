@@ -102,6 +102,11 @@ public sealed class StartSceneGenRequest
     public bool OnlyMissing { get; set; } = true;
     /// <summary>Block gen when on-screen (non-narrator) cast lacks locked ref images. Default true.</summary>
     public bool RequireLockedCharacters { get; set; } = true;
+    /// <summary>
+    /// When true, return 409 immediately if the scene lock is held by another user.
+    /// Default false: accept as queued and wait for the lock (Phase 2).
+    /// </summary>
+    public bool FailIfLocked { get; set; }
 }
 
 public sealed class StartBatchGenRequest
@@ -111,6 +116,8 @@ public sealed class StartBatchGenRequest
     public bool OnlyMissing { get; set; } = true;
     /// <summary>Block gen when on-screen (non-narrator) cast lacks locked ref images. Default true.</summary>
     public bool RequireLockedCharacters { get; set; } = true;
+    /// <summary>When true, 409 if any scene lock is held by another user (default wait).</summary>
+    public bool FailIfLocked { get; set; }
 }
 
 public sealed class CharacterImageRef
@@ -444,6 +451,8 @@ public sealed class StartRemuxRequest
     /// (clips newer than composite, or composite missing), then stitch WIP.
     /// </summary>
     public bool RefreshStaleScenes { get; set; }
+    /// <summary>When true, 409 if remux locks held by another user (default wait).</summary>
+    public bool FailIfLocked { get; set; }
 }
 
 /// <summary>WIP movie freshness for Play-WIP-one-step UX.</summary>

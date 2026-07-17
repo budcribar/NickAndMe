@@ -186,7 +186,9 @@ public sealed class FilmJobService
         }
     }
 
-    /// <summary>Register current snapshot in the multi-job store (call after assigning a new running snapshot).</summary>
+    /// <summary>
+    /// Promote pre-created queued job to running (or create if none). Publishes SignalR.
+    /// </summary>
     private void RegisterActiveJob()
     {
         var run = CurrentRun.Value
@@ -194,7 +196,46 @@ public sealed class FilmJobService
         if (string.IsNullOrWhiteSpace(Snapshot.UserId))
             Snapshot.UserId = run.UserId;
         Snapshot.QueuedAt ??= run.QueuedAt;
-        var rec = _jobs.Create(new JobRecord
+        Snapshot.StartedAt ??= DateTimeOffset.UtcNow;
+        Snapshot.Status = "running";
+        run.StartedAt = Snapshot.StartedAt;
+
+        if (!string.IsNullOrWhiteSpace(run.ActiveJobId))
+        {
+            // Promote existing queued → running
+            Snapshot.JobId = run.ActiveJobId;
+            _jobs.Update(run.ActiveJobId, rec =>
+            {
+                rec.Status = "running";
+                rec.Kind = Snapshot.Kind;
+                rec.Message = Snapshot.Message;
+                rec.ProjectId = Snapshot.ProjectId;
+                rec.UserId = Snapshot.UserId;
+                rec.CharKey = Snapshot.CharKey;
+                rec.Scene = Snapshot.Scene;
+                rec.Clip = Snapshot.Clip;
+                rec.Index = Snapshot.Index;
+                rec.Total = Snapshot.Total;
+                rec.Log = Snapshot.Log.ToList();
+                rec.StartedAt = Snapshot.StartedAt;
+                rec.QueuedAt = Snapshot.QueuedAt ?? rec.QueuedAt;
+            });
+            foreach (var res in run.HeldLocks)
+            {
+                var existing = _locks.Get(res);
+                if (existing is not null &&
+                    string.Equals(existing.UserId, run.UserId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _locks.TryAcquire(res, run.UserId, DefaultLockTtl, existing.Reason, run.ActiveJobId);
+                }
+            }
+            _metrics.NoteJobStarted(Snapshot.Kind ?? "job", run.UserId, run.QueuedAt);
+            _ = PublishAsync();
+            return;
+        }
+
+        // Fallback: create running job (legacy path)
+        var recNew = _jobs.Create(new JobRecord
         {
             Status = Snapshot.Status,
             Kind = Snapshot.Kind,
@@ -210,34 +251,44 @@ public sealed class FilmJobService
             StartedAt = Snapshot.StartedAt ?? DateTimeOffset.UtcNow,
             Log = Snapshot.Log.ToList(),
         });
-        ActiveJobId = rec.JobId;
-        Snapshot.JobId = rec.JobId;
-        Snapshot.QueuedAt = rec.QueuedAt;
-        run.StartedAt = Snapshot.StartedAt ?? DateTimeOffset.UtcNow;
-        _jobCts[rec.JobId] = run.Cts;
-
-        // Attach job id to held locks for cleanup
+        ActiveJobId = recNew.JobId;
+        Snapshot.JobId = recNew.JobId;
+        Snapshot.QueuedAt = recNew.QueuedAt;
+        _jobCts[recNew.JobId] = run.Cts;
         foreach (var res in run.HeldLocks)
         {
             var existing = _locks.Get(res);
             if (existing is not null &&
                 string.Equals(existing.UserId, run.UserId, StringComparison.OrdinalIgnoreCase))
             {
-                _locks.TryAcquire(res, run.UserId, DefaultLockTtl, existing.Reason, rec.JobId);
+                _locks.TryAcquire(res, run.UserId, DefaultLockTtl, existing.Reason, recNew.JobId);
             }
         }
-
         _metrics.NoteJobStarted(Snapshot.Kind ?? "job", run.UserId, run.QueuedAt);
+        _ = PublishAsync();
+    }
+
+    private sealed class JobEnqueueMeta
+    {
+        public string? Kind { get; set; }
+        public string? ProjectId { get; set; }
+        public int? Scene { get; set; }
+        public int? Clip { get; set; }
+        public string? CharKey { get; set; }
+        public string Message { get; set; } = "Queued — waiting for worker…";
     }
 
     /// <summary>
-    /// Capture user/API key, acquire resource locks, run under worker pool + <see cref="ApiKeyScope"/>.
+    /// Phase 2: accept job as <c>queued</c> immediately, wait for locks + worker slot, then run.
+    /// Hard 409 only when user queue is full, or <paramref name="failIfLocked"/> and lock held by other.
     /// </summary>
-    private Task StartBackgroundJobAsync(
+    private Task<JobSnapshot> StartBackgroundJobAsync(
         Func<CancellationToken, Task> work,
+        JobEnqueueMeta meta,
         IReadOnlyList<string>? lockResources = null,
         string? lockReason = null,
-        bool useLocalPool = false)
+        bool useLocalPool = false,
+        bool failIfLocked = false)
     {
         var userId = string.IsNullOrWhiteSpace(_user.UserId) ? "local" : _user.UserId.Trim();
         EnsureCanStart(userId);
@@ -247,44 +298,57 @@ public sealed class FilmJobService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var acquired = new List<string>();
-        try
+        // Hard reject only when client asks FailIfLocked and lock is held by someone else
+        if (failIfLocked)
         {
             foreach (var res in resources)
             {
-                if (_locks.TryAcquire(res, userId, DefaultLockTtl, lockReason))
-                {
-                    acquired.Add(res);
+                var held = _locks.Get(res);
+                if (held is null) continue;
+                if (string.Equals(held.UserId, userId, StringComparison.OrdinalIgnoreCase))
                     continue;
-                }
-
-                var holder = _locks.Get(res);
                 _metrics.NoteLockConflict();
-                // Release what we got
-                foreach (var a in acquired)
-                    _locks.Release(a, userId);
-                throw new LockConflictException(res, holder?.UserId, holder?.ExpiresAt);
+                throw new LockConflictException(res, held.UserId, held.ExpiresAt);
             }
-        }
-        catch
-        {
-            throw;
         }
 
         var apiKey = !string.IsNullOrWhiteSpace(_user.RequestApiKey)
             ? _user.RequestApiKey
             : _keys.GetKey(userId);
 
+        var queuedAt = DateTimeOffset.UtcNow;
+        var cts = new CancellationTokenSource();
+        var kind = meta.Kind ?? "job";
+        var rec = _jobs.Create(new JobRecord
+        {
+            Status = "queued",
+            Kind = kind,
+            ProjectId = meta.ProjectId,
+            UserId = userId,
+            CharKey = meta.CharKey,
+            Scene = meta.Scene,
+            Clip = meta.Clip,
+            Message = meta.Message,
+            QueuedAt = queuedAt,
+            Log = new List<string> { meta.Message },
+        });
+
         var run = new JobRunState
         {
             UserId = userId,
             ApiKey = apiKey,
-            QueuedAt = DateTimeOffset.UtcNow,
+            QueuedAt = queuedAt,
             UseLocalPool = useLocalPool,
-            Cts = new CancellationTokenSource(),
-            HeldLocks = acquired,
+            Cts = cts,
+            ActiveJobId = rec.JobId,
+            HeldLocks = new List<string>(),
+            Snapshot = rec.ToSnapshot(),
+            PendingLockResources = resources,
+            LockReason = lockReason,
         };
-        _metrics.NoteJobQueued("pending", userId);
+        _jobCts[rec.JobId] = cts;
+        _metrics.NoteJobQueued(kind, userId);
+        _ = PublishSnapshotAsync(run.Snapshot);
 
         _ = Task.Run(async () =>
         {
@@ -292,10 +356,14 @@ public sealed class FilmJobService
             using (ApiKeyScope.Push(run.ApiKey))
             {
                 var startedAt = DateTimeOffset.UtcNow;
-                run.StartedAt = startedAt;
                 var success = false;
                 try
                 {
+                    // Wait for locks (queued stays visible via SignalR messages)
+                    await WaitForLocksAsync(run, cts.Token);
+
+                    await UpdateQueuedMessageAsync(run, "Waiting for worker slot…");
+
                     if (useLocalPool)
                     {
                         await _localPool.RunAsync(
@@ -334,13 +402,23 @@ public sealed class FilmJobService
                     }
                     catch { /* ignore */ }
                 }
+                catch (LockConflictException ex)
+                {
+                    _metrics.NoteLockConflict();
+                    try
+                    {
+                        await FinishAsync("error", ex.Message, ex.Message);
+                    }
+                    catch { /* ignore */ }
+                }
                 catch (Exception ex)
                 {
                     _log.LogError(ex, "Background job failed");
                     try
                     {
                         if (CurrentRun.Value?.Snapshot is { } s &&
-                            string.Equals(s.Status, "running", StringComparison.OrdinalIgnoreCase))
+                            (string.Equals(s.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(s.Status, "queued", StringComparison.OrdinalIgnoreCase)))
                         {
                             await FinishAsync("error", ex.Message, ex.Message);
                         }
@@ -349,10 +427,9 @@ public sealed class FilmJobService
                 }
                 finally
                 {
-                    var kind = CurrentRun.Value?.Snapshot.Kind ?? "job";
+                    var kindDone = CurrentRun.Value?.Snapshot.Kind ?? kind;
                     var q = run.QueuedAt;
                     var st = run.StartedAt ?? startedAt;
-                    // Prefer finished status from snapshot
                     var snapStatus = CurrentRun.Value?.Snapshot.Status;
                     if (string.Equals(snapStatus, "done", StringComparison.OrdinalIgnoreCase))
                         success = true;
@@ -360,7 +437,7 @@ public sealed class FilmJobService
                              string.Equals(snapStatus, "cancelled", StringComparison.OrdinalIgnoreCase))
                         success = false;
 
-                    _metrics.NoteJobFinished(kind, userId, success, q, st);
+                    _metrics.NoteJobFinished(kindDone, userId, success, q, st);
 
                     foreach (var res in run.HeldLocks)
                         _locks.Release(res, userId);
@@ -376,10 +453,101 @@ public sealed class FilmJobService
             }
         }, CancellationToken.None);
 
-        return Task.CompletedTask;
+        return Task.FromResult(rec.ToSnapshot());
     }
 
-    public Task StartSceneGenAsync(StartSceneGenRequest req)
+    private async Task WaitForLocksAsync(JobRunState run, CancellationToken ct)
+    {
+        var resources = run.PendingLockResources;
+        if (resources.Count == 0)
+            return;
+
+        await UpdateQueuedMessageAsync(run, "Waiting for resource lock…");
+
+        while (!ct.IsCancellationRequested)
+        {
+            // Cancelled while queued?
+            var job = !string.IsNullOrEmpty(run.ActiveJobId) ? _jobs.Get(run.ActiveJobId) : null;
+            if (job is not null &&
+                string.Equals(job.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new OperationCanceledException("Job cancelled");
+            }
+
+            var acquired = new List<string>();
+            string? blockedResource = null;
+            string? blockedOwner = null;
+            foreach (var res in resources)
+            {
+                if (_locks.TryAcquire(res, run.UserId, DefaultLockTtl, run.LockReason, run.ActiveJobId))
+                {
+                    acquired.Add(res);
+                    continue;
+                }
+
+                var holder = _locks.Get(res);
+                if (holder is not null &&
+                    string.Equals(holder.UserId, run.UserId, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Already ours
+                    acquired.Add(res);
+                    continue;
+                }
+
+                blockedResource = res;
+                blockedOwner = holder?.UserId;
+                break;
+            }
+
+            if (blockedResource is null)
+            {
+                run.HeldLocks = acquired;
+                await UpdateQueuedMessageAsync(run, "Lock acquired — waiting for worker…");
+                return;
+            }
+
+            foreach (var a in acquired)
+                _locks.Release(a, run.UserId);
+
+            var msg = string.IsNullOrEmpty(blockedOwner)
+                ? $"Waiting for lock {blockedResource}…"
+                : $"Waiting for lock (held by {blockedOwner})…";
+            await UpdateQueuedMessageAsync(run, msg);
+            await Task.Delay(300, ct);
+        }
+
+        throw new OperationCanceledException("Cancelled while waiting for lock");
+    }
+
+    private async Task UpdateQueuedMessageAsync(JobRunState run, string message)
+    {
+        if (string.IsNullOrEmpty(run.ActiveJobId)) return;
+        run.Snapshot.Message = message;
+        run.Snapshot.Status = "queued";
+        if (run.Snapshot.Log.Count == 0 || run.Snapshot.Log[^1] != message)
+        {
+            run.Snapshot.Log.Add(message);
+            if (run.Snapshot.Log.Count > 120)
+                run.Snapshot.Log = run.Snapshot.Log.TakeLast(120).ToList();
+        }
+        _jobs.Update(run.ActiveJobId, rec =>
+        {
+            if (string.Equals(rec.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
+                return;
+            rec.Status = "queued";
+            rec.Message = message;
+            rec.Log = run.Snapshot.Log.ToList();
+        });
+        await PublishSnapshotAsync(run.Snapshot);
+    }
+
+    private async Task PublishSnapshotAsync(JobSnapshot snap)
+    {
+        if (_sink is not null)
+            await _sink.OnJobUpdatedAsync(Clone(snap));
+    }
+
+    public Task<JobSnapshot> StartSceneGenAsync(StartSceneGenRequest req)
     {
         if (req.Scene <= 0)
             throw new InvalidOperationException("scene required");
@@ -388,18 +556,26 @@ public sealed class FilmJobService
             : req.ProjectId;
         return StartBackgroundJobAsync(
             ct => RunSceneGenAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "scene",
+                ProjectId = projectId,
+                Scene = req.Scene,
+                Clip = req.Clip,
+                Message = $"Queued scene S{req.Scene:D2} gen…",
+            },
             lockResources: new[] { LockKeys.Scene(projectId, req.Scene) },
-            lockReason: $"scene gen S{req.Scene:D2}");
+            lockReason: $"scene gen S{req.Scene:D2}",
+            failIfLocked: req.FailIfLocked);
     }
 
-    public Task StartBatchGenAsync(StartBatchGenRequest req)
+    public Task<JobSnapshot> StartBatchGenAsync(StartBatchGenRequest req)
     {
         if (req.Scenes is null || req.Scenes.Count == 0)
             throw new InvalidOperationException("At least one scene is required.");
         var projectId = string.IsNullOrWhiteSpace(req.ProjectId)
             ? _projects.ActiveProjectId
             : req.ProjectId;
-        // Exclusive stage-style lock for multi-scene batch (avoids partial scene locks)
         var locks = req.Scenes
             .Where(s => s > 0)
             .Select(s => LockKeys.Scene(projectId, s))
@@ -407,41 +583,66 @@ public sealed class FilmJobService
             .ToList();
         return StartBackgroundJobAsync(
             ct => RunBatchGenAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "batch",
+                ProjectId = projectId,
+                Message = $"Queued batch gen ({req.Scenes.Count} scenes)…",
+            },
             lockResources: locks,
-            lockReason: "batch scene gen");
+            lockReason: "batch scene gen",
+            failIfLocked: req.FailIfLocked);
     }
 
     /// <summary>Stage 1 (book → scenes.json) via C# Grok chat. Requires XAI_API_KEY.</summary>
-    public Task StartStage1Async(StartStage1Request req)
+    public Task<JobSnapshot> StartStage1Async(StartStage1Request req)
     {
         var projectId = string.IsNullOrWhiteSpace(req.ProjectId)
             ? _projects.ActiveProjectId
             : req.ProjectId;
         return StartBackgroundJobAsync(
             ct => RunStage1Async(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "stage1",
+                ProjectId = projectId,
+                Message = "Queued Stage 1…",
+            },
             lockResources: new[] { LockKeys.Stage(projectId) },
             lockReason: "stage1");
     }
 
     /// <summary>Stage 2 planner (scenes.json → blueprint). Deterministic C#; no API key.</summary>
-    public Task StartStage2Async(StartStage2Request req)
+    public Task<JobSnapshot> StartStage2Async(StartStage2Request req)
     {
         var projectId = string.IsNullOrWhiteSpace(req.ProjectId)
             ? _projects.ActiveProjectId
             : req.ProjectId;
         return StartBackgroundJobAsync(
             ct => RunStage2Async(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "stage2",
+                ProjectId = projectId,
+                Message = "Queued Stage 2…",
+            },
             lockResources: new[] { LockKeys.Stage(projectId) },
             lockReason: "stage2");
     }
 
     /// <summary>C# PDF extract + optional Grok vision OCR → book_full.txt.</summary>
-    public Task StartBookPrepareAsync(StartBookPrepareRequest req)
+    public Task<JobSnapshot> StartBookPrepareAsync(StartBookPrepareRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.ProjectId))
             throw new InvalidOperationException("projectId required");
         return StartBackgroundJobAsync(
             ct => RunBookPrepareAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "book_prepare",
+                ProjectId = req.ProjectId,
+                Message = "Queued book prepare…",
+            },
             lockResources: new[] { LockKeys.Stage(req.ProjectId) },
             lockReason: "book prepare");
     }
@@ -457,6 +658,8 @@ public sealed class FilmJobService
         public DateTimeOffset? StartedAt { get; set; }
         public bool UseLocalPool { get; set; }
         public List<string> HeldLocks { get; set; } = new();
+        public List<string> PendingLockResources { get; set; } = new();
+        public string? LockReason { get; set; }
         public SemaphoreSlim SnapLock { get; } = new(1, 1);
     }
 
@@ -518,7 +721,7 @@ public sealed class FilmJobService
     }
 
     /// <summary>Generate portrait variants via C# Grok image API.</summary>
-    public Task StartCharacterVariantsAsync(StartCharacterVariantsRequest req)
+    public Task<JobSnapshot> StartCharacterVariantsAsync(StartCharacterVariantsRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.CharKey))
             throw new InvalidOperationException("charKey required");
@@ -527,6 +730,13 @@ public sealed class FilmJobService
             : req.ProjectId;
         return StartBackgroundJobAsync(
             ct => RunCharacterVariantsAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "character_variants",
+                ProjectId = projectId,
+                CharKey = req.CharKey,
+                Message = $"Queued portrait gen for {req.CharKey}…",
+            },
             lockResources: new[] { LockKeys.Character(projectId, req.CharKey) },
             lockReason: $"char variants {req.CharKey}");
     }
@@ -535,13 +745,19 @@ public sealed class FilmJobService
     /// Grok vision: classify book images → which characters appear, write plates to scenes.json.
     /// Cancellable. Falls back to heuristics if no API key.
     /// </summary>
-    public Task StartSortCharacterPlatesAsync(AttachCharacterPlatesRequest req)
+    public Task<JobSnapshot> StartSortCharacterPlatesAsync(AttachCharacterPlatesRequest req)
     {
         var projectId = string.IsNullOrWhiteSpace(req.ProjectId)
             ? _projects.ActiveProjectId
             : req.ProjectId;
         return StartBackgroundJobAsync(
             ct => RunSortCharacterPlatesAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "character-plates",
+                ProjectId = projectId,
+                Message = "Queued character plate sort…",
+            },
             lockResources: new[] { LockKeys.Stage(projectId) },
             lockReason: "character plates");
     }
@@ -895,7 +1111,7 @@ public sealed class FilmJobService
         }
     }
 
-    public Task StartRemuxAsync(StartRemuxRequest req)
+    public Task<JobSnapshot> StartRemuxAsync(StartRemuxRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.ProjectId))
             throw new InvalidOperationException("projectId required");
@@ -904,16 +1120,23 @@ public sealed class FilmJobService
             locks.Add(LockKeys.Scene(req.ProjectId, sn));
         if (req.RebuildWip || req.RefreshStaleScenes)
             locks.Add(LockKeys.Wip(req.ProjectId));
-        // Scene-only remux without WIP still needs a lock
         if (locks.Count == 0 && req.Scene is int sn2 && sn2 > 0)
             locks.Add(LockKeys.Scene(req.ProjectId, sn2));
         if (locks.Count == 0)
             locks.Add(LockKeys.Wip(req.ProjectId));
         return StartBackgroundJobAsync(
             ct => RunRemuxAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "remux",
+                ProjectId = req.ProjectId,
+                Scene = req.Scene,
+                Message = "Queued remux / WIP…",
+            },
             lockResources: locks,
             lockReason: "remux/wip",
-            useLocalPool: true);
+            useLocalPool: true,
+            failIfLocked: req.FailIfLocked);
     }
 
     private async Task RunRemuxAsync(StartRemuxRequest req, CancellationToken ct)
@@ -1534,6 +1757,7 @@ public sealed class FilmJobService
 
     private async Task FinishAsync(string status, string message, string? error = null)
     {
+        string? projectId = null;
         await UpdateAsync(s =>
         {
             s.Status = status;
@@ -1542,8 +1766,17 @@ public sealed class FilmJobService
             s.FinishedAt = DateTimeOffset.UtcNow;
             if (s.Total > 0 && status == "done")
                 s.Index = s.Total;
+            projectId = s.ProjectId;
         });
         await AppendLogAsync(message);
+
+        // Scene list cache: clip/composite counts change on gen/remux/stage done
+        if (status is "done" or "error" or "cancelled")
+        {
+            if (string.IsNullOrWhiteSpace(projectId))
+                projectId = CurrentRun.Value?.Snapshot.ProjectId;
+            _projects.InvalidateSceneListCache(projectId);
+        }
     }
 
     private async Task PublishAsync()

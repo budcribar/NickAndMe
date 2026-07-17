@@ -747,7 +747,10 @@ else
 
     private bool JobRunning =>
         string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase) ||
-        _myJobs.Any(j => string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase));
+        string.Equals(_job?.Status, "queued", StringComparison.OrdinalIgnoreCase) ||
+        _myJobs.Any(j =>
+            string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase));
 
     private bool SelectedLockedByOther =>
         _scenes is not null &&

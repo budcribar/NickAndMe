@@ -588,6 +588,13 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 ---
 
+### Job queue UX (API Phase 2) — **IMPLEMENTED (2026-07-17)**
+
+- `POST /api/jobs/gen-scene` (and remux/batch/etc.) **accepts as `queued`** when under per-user queue cap.
+- Worker **waits for locks** then **worker pool slot**, then promotes **queued → running** (SignalR).
+- **409** only for hard policy: user queue full (`capacity`), or `failIfLocked: true` while another user holds the lock.
+- Default clients wait rather than error-then-reclick.
+
 ### Phase F — Remove backward-compatible `GET /api/jobs` — **IMPLEMENTED (2026-07-17)**
 
 **Purpose:** Drop the single-job shim once every consumer speaks multi-job.
