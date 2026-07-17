@@ -1,0 +1,31 @@
+[
+  {
+    "Name": "Load Sim",
+    "Projects": [
+      {
+        "Path": "FilmStudio.Api\\FilmStudio.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http (fakes)"
+      },
+      {
+        "Path": "FilmStudio.LoadSim\\FilmStudio.LoadSim.csproj",
+        "Action": "Start",
+        "DebugTarget": "Load Sim"
+      }
+    ]
+  },
+  {
+    "Name": "Api + Web",
+    "Projects": [
+      {
+        "Path": "FilmStudio.Api\\FilmStudio.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "FilmStudio.Web\\FilmStudio.Web.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
