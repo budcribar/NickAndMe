@@ -276,3 +276,4 @@ host/**/.vs/
 /host/FilmStudio.Web/obj/Debug/net10.0/staticwebassets.build.json
 /host/FilmStudio.Web/obj/Debug/net10.0/staticwebassets.build.json.cache
 /host/FilmStudio.Web/obj/Debug/net10.0/staticwebassets.development.json
+/host/FilmStudio.Web/bin/Debug/net10.0/FilmStudio.Web.staticwebassets.endpoints.json
