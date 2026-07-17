@@ -1,9 +1,10 @@
 @inject AdminSessionService Session
 @implements IDisposable
+@rendermode InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Film Studio</a>
+        <a class="navbar-brand" href="/">Film Studio</a>
     </div>
 </div>
 
@@ -12,54 +13,54 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Studio
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="adaptation">
+            <NavLink class="nav-link" href="/adaptation">
                 <span class="bi bi-book-nav-menu" aria-hidden="true"></span> Adaptation
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="scenes">
+            <NavLink class="nav-link" href="/scenes">
                 <span class="bi bi-film-nav-menu" aria-hidden="true"></span> Scenes
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="characters">
+            <NavLink class="nav-link" href="/characters">
                 <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Characters
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="configuration">
+            <NavLink class="nav-link" href="/configuration">
                 <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Configuration
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="review">
+            <NavLink class="nav-link" href="/review">
                 <span class="bi bi-check2-square-nav-menu" aria-hidden="true"></span> Review
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cost">
+            <NavLink class="nav-link" href="/cost">
                 <span class="bi bi-cash-nav-menu" aria-hidden="true"></span> Cost
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="about">
+            <NavLink class="nav-link" href="/about">
                 <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span> About
             </NavLink>
         </div>
         @if (Session.IsAdmin)
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin">
+                <NavLink class="nav-link" href="/admin">
                     <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Admin
                 </NavLink>
             </div>
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/config">
+                <NavLink class="nav-link" href="/admin/config">
                     <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Admin config
                 </NavLink>
             </div>
@@ -67,7 +68,7 @@
         else
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/login">
+                <NavLink class="nav-link" href="/admin/login">
                     <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span> Admin login
                 </NavLink>
             </div>
@@ -76,9 +77,12 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender) return;
+        await Session.EnsureHydratedAsync();
         Session.Changed += OnSessionChanged;
+        StateHasChanged();
     }
 
     private void OnSessionChanged() => InvokeAsync(StateHasChanged);

@@ -9,44 +9,62 @@
 <div class="container py-4" style="max-width: 28rem;">
     <h1 class="h3 mb-3">Admin login</h1>
     <p class="text-muted small">
-        Signs in against the API (<code>POST /api/auth/login</code>). Dev default: username <code>admin</code>,
-        password <code>admin</code> (or empty with AllowDevBypass).
+        Signs in against the API (<code>POST /api/auth/login</code>). JWT is stored in browser session storage.
+        Dev default: username <code>admin</code>, password <code>admin</code>.
     </p>
 
-    @if (Session.IsAdmin)
+    @if (_redirecting)
     {
-        <div class="alert alert-success">
-            Signed in as <strong>@Session.UserId</strong> (admin).
-            <a href="admin">Open dashboard</a>
-        </div>
-        <button class="btn btn-outline-secondary btn-sm" @onclick="LogoutAsync">Log out</button>
+        <p class="text-muted">Signed in as <strong>@Session.UserId</strong>. Opening dashboard…</p>
     }
     else
     {
-        <EditForm Model="_model" OnValidSubmit="LoginAsync">
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <InputText class="form-control" @bind-Value="_model.Username" autocomplete="username" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <InputText type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
-            </div>
-            @if (!string.IsNullOrEmpty(_error))
-            {
-                <div class="alert alert-danger py-2">@_error</div>
-            }
-            <button class="btn btn-primary" type="submit" disabled="@_busy">
-                @(_busy ? "Signing in…" : "Sign in")
-            </button>
-        </EditForm>
+        <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input class="form-control" @bind="_username" autocomplete="username" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" @bind="_password" autocomplete="current-password"
+                   @onkeydown="OnKeyDown" />
+        </div>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger py-2">@_error</div>
+        }
+        <button type="button" class="btn btn-primary" @onclick="LoginAsync" disabled="@_busy">
+            @(_busy ? "Signing in…" : "Sign in")
+        </button>
+        <p class="small text-muted mt-3 mb-0">
+            Use Web launch profile <strong>http</strong> (<code>http://localhost:5079</code>).
+        </p>
     }
 </div>
 
 @code {
-    private readonly LoginForm _model = new() { Username = "admin", Password = "admin" };
+    private string _username = "admin";
+    private string _password = "admin";
     private string? _error;
     private bool _busy;
+    private bool _redirecting;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await Session.EnsureHydratedAsync();
+        if (Session.IsAdmin)
+        {
+            _redirecting = true;
+            StateHasChanged();
+            Nav.NavigateTo("/admin", forceLoad: false);
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await LoginAsync();
+    }
 
     private async Task LoginAsync()
     {
@@ -54,22 +72,39 @@
         _error = null;
         try
         {
-            var resp = await Api.LoginAsync(_model.Username ?? "", _model.Password ?? "");
+            var resp = await Api.LoginAsync(_username ?? "", _password ?? "");
             if (resp is null || !resp.Ok || string.IsNullOrWhiteSpace(resp.Token))
             {
-                _error = resp?.Error ?? "Login failed";
+                _error = resp?.Error
+                         ?? "Login failed — is FilmStudio.Api running on http://127.0.0.1:5088?";
                 return;
             }
 
-            Session.SetSession(resp.Token, resp.UserId, resp.Roles, resp.ExpiresAt);
+            Session.SetSession(resp.Token!, resp.UserId, resp.Roles, resp.ExpiresAt);
+            if (!Session.IsAdmin)
+            {
+                try
+                {
+                    var me = await Api.GetMeAsync();
+                    if (me?.IsAdmin == true)
+                        Session.SetSession(resp.Token!, me.UserId ?? resp.UserId, me.Roles, resp.ExpiresAt);
+                }
+                catch { /* ignore */ }
+            }
+
             if (!Session.IsAdmin)
             {
                 Session.Clear();
-                _error = "Account is not admin";
+                _error = "Account is not admin. Check FilmStudio:Auth settings.";
                 return;
             }
 
-            Nav.NavigateTo("admin");
+            _redirecting = true;
+            Nav.NavigateTo("/admin");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Cannot reach API: {ex.Message}. Start FilmStudio.Api (port 5088).";
         }
         catch (Exception ex)
         {
@@ -79,17 +114,5 @@
         {
             _busy = false;
         }
-    }
-
-    private async Task LogoutAsync()
-    {
-        await Api.LogoutAsync();
-        Nav.NavigateTo("admin/login");
-    }
-
-    private sealed class LoginForm
-    {
-        public string Username { get; set; } = "admin";
-        public string Password { get; set; } = "admin";
     }
 }

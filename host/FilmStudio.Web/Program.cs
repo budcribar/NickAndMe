@@ -10,6 +10,7 @@ builder.Services.Configure<EngineApiOptions>(
     builder.Configuration.GetSection(EngineApiOptions.SectionName));
 
 builder.Services.AddScoped<AdminSessionService>();
+// ProtectedSessionStorage is used by AdminSessionService to survive per-page circuits
 builder.Services.AddHttpClient("FilmStudio.Api", (sp, client) =>
 {
     var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EngineApiOptions>>().Value;
@@ -31,15 +32,28 @@ builder.Services.AddScoped(sp =>
     return new JobHubClient(opts, sp.GetRequiredService<AdminSessionService>());
 });
 
+// Antiforgery: allow HTTP localhost in Development (avoid Secure cookie blocked on http://)
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "FilmStudio.Antiforgery";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = appEnvIsDev(builder)
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
+// Development: no HTTPS redirect — API is http://127.0.0.1:5088; mixed https Web + http
+// breaks SameSite cookies (admin login antiforgery, etc.).
+
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
@@ -48,3 +62,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static bool appEnvIsDev(WebApplicationBuilder b) =>
+    b.Environment.IsDevelopment();

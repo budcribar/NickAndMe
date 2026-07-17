@@ -11,6 +11,10 @@
         "Path": "FilmStudio.LoadSim\\FilmStudio.LoadSim.csproj",
         "Action": "Start",
         "DebugTarget": "Load Sim"
+      },
+      {
+        "Path": "FilmStudio.Web\\FilmStudio.Web.csproj",
+        "Action": "Start"
       }
     ]
   },
@@ -24,7 +28,8 @@
       },
       {
         "Path": "FilmStudio.Web\\FilmStudio.Web.csproj",
-        "Action": "Start"
+        "Action": "Start",
+        "DebugTarget": "http"
       }
     ]
   }

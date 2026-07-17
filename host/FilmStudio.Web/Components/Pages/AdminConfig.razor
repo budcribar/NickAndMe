@@ -12,12 +12,12 @@
             <h1 class="h3 mb-0">Server configuration</h1>
             <div class="text-muted small">Hot-apply capacity &amp; fakes · persists under <code>.filmstudio/runtime-config.json</code></div>
         </div>
-        <a class="btn btn-sm btn-outline-secondary" href="admin">← Dashboard</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/admin">← Dashboard</a>
     </div>
 
     @if (!Session.IsAdmin)
     {
-        <div class="alert alert-warning">Admin session required. <a href="admin/login">Sign in</a></div>
+        <div class="alert alert-warning">Admin session required. <a href="/admin/login">Sign in</a></div>
     }
     else if (_cfg is null && string.IsNullOrEmpty(_error))
     {
@@ -125,9 +125,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Session.EnsureHydratedAsync();
         if (!Session.IsAdmin)
         {
-            Nav.NavigateTo("admin/login");
+            Nav.NavigateTo("/admin/login");
             return;
         }
         await LoadAsync();

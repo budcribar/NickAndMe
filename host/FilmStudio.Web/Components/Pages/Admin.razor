@@ -28,7 +28,7 @@
             @if (Session.IsAuthenticated)
             {
                 <span class="badge text-bg-secondary">@Session.UserId</span>
-                <a class="btn btn-sm btn-outline-primary" href="admin/config">Config</a>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/config">Config</a>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_busy">Refresh</button>
                 <button class="btn btn-sm btn-outline-danger" @onclick="LogoutAsync">Log out</button>
             }
@@ -38,7 +38,7 @@
     @if (!Session.IsAdmin)
     {
         <div class="alert alert-warning">
-            Admin session required. <a href="admin/login">Sign in</a>
+            Admin session required. <a href="/admin/login">Sign in</a>
         </div>
     }
     else if (!string.IsNullOrEmpty(_error))
@@ -85,7 +85,7 @@
                             API in-flight: <strong>@_apiInFlight</strong> · FFmpeg: <strong>@_ffmpegInFlight</strong>
                         </div>
                         <div>Rejects: <strong>@_capacityRejects</strong> · Lock conflicts: <strong>@_lockConflicts</strong></div>
-                        <a class="btn btn-sm btn-link px-0" href="admin/config">Edit capacity…</a>
+                        <a class="btn btn-sm btn-link px-0" href="/admin/config">Edit capacity…</a>
                     </div>
                 </div>
             </div>
@@ -218,9 +218,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Restore JWT from sessionStorage (new Interactive circuit per page)
+        await Session.EnsureHydratedAsync();
         if (!Session.IsAdmin)
         {
-            Nav.NavigateTo("admin/login");
+            Nav.NavigateTo("/admin/login");
             return;
         }
 
