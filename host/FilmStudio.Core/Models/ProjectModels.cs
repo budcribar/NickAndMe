@@ -34,6 +34,24 @@ public sealed class JobSnapshot
     public DateTimeOffset? FinishedAt { get; set; }
 }
 
+/// <summary>Helpers for multi-job lists (Phase F).</summary>
+public static class JobListHelpers
+{
+    /// <summary>Prefer a running job; else most recently finished/queued.</summary>
+    public static JobSnapshot? PickPrimary(IReadOnlyList<JobSnapshot>? jobs)
+    {
+        if (jobs is null || jobs.Count == 0) return null;
+        var running = jobs
+            .Where(j => string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+            .FirstOrDefault();
+        if (running is not null) return running;
+        return jobs
+            .OrderByDescending(j => j.FinishedAt ?? j.StartedAt ?? j.QueuedAt)
+            .FirstOrDefault();
+    }
+}
+
 /// <summary>Persisted multi-job record (same fields as snapshot + queue metadata).</summary>
 public sealed class JobRecord
 {

@@ -63,13 +63,16 @@ Open `host/FilmStudio.slnx`, set **multiple startup projects**: Api + Web.
 | GET | `/health` | Liveness + workspace |
 | GET | `/api/projects` | List / active |
 | POST | `/api/projects/{id}/activate` | Switch project |
-| GET | `/api/jobs` | Job snapshot |
+| GET | `/api/jobs?mine=1` | List my jobs (Phase F: bare `/api/jobs` → **400**) |
+| GET | `/api/jobs?projectId=` | List jobs for project |
+| GET | `/api/jobs/{jobId}` | Job detail |
+| POST | `/api/jobs/{jobId}/cancel` | Cancel one job |
 | POST | `/api/jobs/book-prepare` | PDF extract / vision OCR |
 | POST | `/api/jobs/stage1` | Stage 1 scene bible |
 | POST | `/api/jobs/stage2` | Stage 2 clip plan |
 | POST | `/api/jobs/gen-scene` | Generate scene clips |
 | POST | `/api/jobs/remux` | Scene remux / WIP (ffmpeg progress over SignalR) |
-| POST | `/api/jobs/cancel` | Cancel |
+| POST | `/api/jobs/cancel` | Cancel all / active |
 | GET | `/api/stage2-status` | Blueprint present? |
 
 ## SignalR

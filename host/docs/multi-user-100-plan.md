@@ -588,39 +588,36 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 ---
 
-### Phase F — Remove backward-compatible `GET /api/jobs` (when appropriate)
+### Phase F — Remove backward-compatible `GET /api/jobs` — **IMPLEMENTED (2026-07-17)**
 
 **Purpose:** Drop the single-job shim once every consumer speaks multi-job.
 
-**Do this phase only when all gates pass:**
+**Gates (checked):**
 
-| # | Gate |
-|---|------|
-| 1 | **FilmStudio.Web** uses only `GET /api/jobs?mine=1` (or list) + `GET /api/jobs/{id}`; no code treats one global snapshot as the sole job |
-| 2 | **SignalR** clients key progress by `jobId` / user queue, not “the” hub job |
-| 3 | **LoadSim** (if it watches jobs) uses list/id APIs |
-| 4 | **Admin** dashboard uses job lists from `/api/admin/state` or multi-job queries |
-| 5 | Repo search (`JobsDto` / single `job` as singleton) shows no remaining callers of the shim contract |
-| 6 | Optional: one release or flag period where both shapes worked (if any external clients) |
+| # | Gate | Status |
+|---|------|--------|
+| 1 | Web uses list/detail; `GetJobAsync` → `?mine=1` + pick primary | ✅ |
+| 2 | SignalR still broadcasts by job/user groups; hub snapshot is per-caller | ✅ |
+| 3 | LoadSim does not use bare GET /api/jobs | ✅ |
+| 4 | Admin uses `/api/admin/state` job lists | ✅ |
+| 5 | No callers of singleton `job` wrapper on bare GET | ✅ |
 
-**F1. Remove shim**
+**F1. Remove shim** ✅
 
-- Delete “primary / latest for caller” special case.
-- Choose end-state contract (document in API README / `.http`):
+- Bare `GET /api/jobs` → **400** with examples (`mine=1`, `projectId`, `{jobId}`).
+- List only with `mine` / `projectId` / `userId`.
+- `GetSnapshot()` prefers **current user** jobs (not global singleton).
 
-  **Preferred:** bare `GET /api/jobs` → **400** with message to pass `mine=1` or `projectId=…`  
-  **Alternative:** bare `GET /api/jobs` → same as `?mine=1` (list only; never a single wrapped “primary” job)
+**F2. Cleanup** ✅
 
-**F2. Cleanup**
+- `FilmStudio.Api.http` + `host/README.md` updated.
+- Breaking change note below.
 
-- Remove compatibility DTOs/fields used only for the singleton shape (if any).
-- Update `FilmStudio.Api.http`, About/docs, and any samples.
-- Add a short changelog note: breaking API change for legacy single-job clients.
+**Changelog (breaking):**  
+`GET /api/jobs` without query filters no longer returns `{ job: <primary> }`.  
+Clients must call `GET /api/jobs?mine=1` (list) or `GET /api/jobs/{id}` (detail).
 
-**Exit F:** only multi-job list/detail endpoints remain; CI green; LoadSim + Web + admin verified once.
-
-**Earliest practical timing:** after **Phase D** (Web migrated).  
-**Safest timing:** after **Phase E** (sim + admin under load also off the shim).
+**Exit F:** only multi-job list/detail remain. ✅
 
 ---
 

@@ -180,13 +180,23 @@ public sealed class EngineApiClient
         }
     }
 
+    /// <summary>
+    /// Primary job for the current user (Phase F: uses list <c>?mine=1</c>, not bare GET).
+    /// Prefers a running job, else most recent.
+    /// </summary>
     public async Task<JobsDto?> GetJobAsync(CancellationToken ct = default)
     {
-        SyncIdentityHeaders();
-        return await _http.GetFromJsonAsync<JobsDto>("/api/jobs", JsonOpts, ct);
+        var list = await GetJobsAsync(mine: true, ct: ct);
+        if (list is null) return null;
+        return new JobsDto
+        {
+            Ok = list.Ok,
+            Running = list.Running,
+            Job = JobListHelpers.PickPrimary(list.Jobs),
+        };
     }
 
-    /// <summary>Multi-job list (Phase A+). Pass mine=true or projectId.</summary>
+    /// <summary>Multi-job list. Requires mine, projectId, or userId (Phase F).</summary>
     public async Task<JobsListDto?> GetJobsAsync(
         bool mine = false,
         string? projectId = null,
@@ -200,7 +210,9 @@ public sealed class EngineApiClient
             q.Add("projectId=" + Uri.EscapeDataString(projectId));
         if (!string.IsNullOrWhiteSpace(userId))
             q.Add("userId=" + Uri.EscapeDataString(userId));
-        var url = "/api/jobs" + (q.Count > 0 ? "?" + string.Join("&", q) : "");
+        if (q.Count == 0)
+            q.Add("mine=1"); // never call bare /api/jobs
+        var url = "/api/jobs?" + string.Join("&", q);
         return await _http.GetFromJsonAsync<JobsListDto>(url, JsonOpts, ct);
     }
 

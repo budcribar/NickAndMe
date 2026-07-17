@@ -322,37 +322,36 @@ app.MapPost("/api/projects/{id}/activate", (string id, ProjectStore store) =>
     }
 });
 
-// Phase A: multi-job list + backward-compat primary job on GET /api/jobs
+// Phase F: multi-job list only — bare GET is 400 (no single-job shim)
 app.MapGet("/api/jobs", (FilmJobService jobService, IUserContext user, string? mine, string? projectId, string? userId) =>
 {
-    // Explicit list: ?mine=1 or ?projectId=
-    if (string.Equals(mine, "1", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(mine, "true", StringComparison.OrdinalIgnoreCase) ||
-        !string.IsNullOrWhiteSpace(projectId) ||
-        !string.IsNullOrWhiteSpace(userId))
+    var wantMine = string.Equals(mine, "1", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(mine, "true", StringComparison.OrdinalIgnoreCase);
+    if (!wantMine && string.IsNullOrWhiteSpace(projectId) && string.IsNullOrWhiteSpace(userId))
     {
-        var filterUser = string.Equals(mine, "1", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(mine, "true", StringComparison.OrdinalIgnoreCase)
-            ? user.UserId
-            : userId;
-        var list = jobService.ListJobs(filterUser, projectId, take: 50);
-        return Results.Ok(new
+        return Results.BadRequest(new
         {
-            ok = true,
-            running = jobService.IsRunning,
-            jobs = list,
-            count = list.Count,
-            userId = user.UserId,
+            ok = false,
+            error = "Specify mine=1, projectId, or userId. Single-job GET /api/jobs was removed (Phase F).",
+            examples = new[]
+            {
+                "/api/jobs?mine=1",
+                "/api/jobs?projectId=Buster",
+                "/api/jobs/{jobId}",
+            },
         });
     }
 
-    // Shim: single primary job for existing Blazor clients
-    var snap = jobService.GetSnapshot();
+    var filterUser = wantMine ? user.UserId : userId;
+    var list = jobService.ListJobs(filterUser, projectId, take: 50);
     return Results.Ok(new
     {
         ok = true,
-        running = jobService.IsRunning,
-        job = snap,
+        running = list.Any(j =>
+            string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase)),
+        jobs = list,
+        count = list.Count,
+        userId = user.UserId,
     });
 });
 

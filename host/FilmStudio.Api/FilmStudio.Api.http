@@ -1,6 +1,72 @@
-@FilmStudio.Api_HostAddress = http://localhost:5274
+@FilmStudio.Api_HostAddress = http://127.0.0.1:5088
 
-GET {{FilmStudio.Api_HostAddress}}/weatherforecast/
+### Health
+GET {{FilmStudio.Api_HostAddress}}/health
 Accept: application/json
 
 ###
+
+### Jobs — multi-job only (Phase F)
+# Bare GET is 400 — always pass mine / projectId / userId
+GET {{FilmStudio.Api_HostAddress}}/api/jobs?mine=1
+X-User-Id: local
+Accept: application/json
+
+###
+
+GET {{FilmStudio.Api_HostAddress}}/api/jobs?projectId=Buster
+X-User-Id: local
+Accept: application/json
+
+###
+
+# GET {{FilmStudio.Api_HostAddress}}/api/jobs/{jobId}
+# Accept: application/json
+
+###
+
+POST {{FilmStudio.Api_HostAddress}}/api/jobs/gen-scene
+X-User-Id: local
+Content-Type: application/json
+
+{
+  "projectId": "Buster",
+  "scene": 1,
+  "onlyMissing": true
+}
+
+###
+
+POST {{FilmStudio.Api_HostAddress}}/api/jobs/cancel
+X-User-Id: local
+Content-Type: application/json
+
+{}
+
+###
+
+### Capacity
+GET {{FilmStudio.Api_HostAddress}}/api/capacity
+Accept: application/json
+
+###
+
+### Projects
+GET {{FilmStudio.Api_HostAddress}}/api/projects
+Accept: application/json
+
+###
+
+### Auth (admin)
+POST {{FilmStudio.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin"
+}
+
+###
+
+# GET {{FilmStudio.Api_HostAddress}}/api/admin/state
+# Authorization: Bearer {{token}}

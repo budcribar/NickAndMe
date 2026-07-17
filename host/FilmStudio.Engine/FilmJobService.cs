@@ -89,12 +89,21 @@ public sealed class FilmJobService
 
     public void SetProgressSink(IJobProgressSink sink) => _sink = sink;
 
+    /// <summary>
+    /// Primary job for the current caller (Phase F: no global singleton job).
+    /// Prefers this user's running job, else their most recent, else idle.
+    /// </summary>
     public JobSnapshot GetSnapshot()
     {
-        var primary = _jobs.GetPrimary();
+        var userId = string.IsNullOrWhiteSpace(_user.UserId) ? null : _user.UserId;
+        var primary = _jobs.GetPrimary(userId);
         if (primary is not null)
             return primary.ToSnapshot();
-        return Clone(CurrentRun.Value?.Snapshot ?? new JobSnapshot { Status = "idle" });
+        // Fallback: active AsyncLocal run (background worker thread)
+        if (CurrentRun.Value?.Snapshot is { } live &&
+            !string.Equals(live.Status, "idle", StringComparison.OrdinalIgnoreCase))
+            return Clone(live);
+        return new JobSnapshot { Status = "idle", UserId = userId };
     }
 
     public JobSnapshot? GetJob(string jobId) => _jobs.Get(jobId)?.ToSnapshot();
