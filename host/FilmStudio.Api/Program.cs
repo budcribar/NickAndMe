@@ -52,6 +52,7 @@ builder.Services.AddSingleton<FilmJobService>();
 builder.Services.AddSingleton<IJobProgressSink, SignalRJobProgressSink>();
 builder.Services.AddSingleton<AdminMetricsPushService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AdminMetricsPushService>());
+builder.Services.AddSingleton<HttpRequestMetrics>();
 
 // Grok clients: real HttpClient or fakes (FilmStudio:UseFakes)
 var useFakes = builder.Configuration.GetValue("FilmStudio:UseFakes", false)
@@ -103,6 +104,7 @@ var jobs = app.Services.GetRequiredService<FilmJobService>();
 jobs.SetProgressSink(app.Services.GetRequiredService<IJobProgressSink>());
 
 app.UseCors();
+app.UseMiddleware<HttpRequestMetricsMiddleware>();
 app.UseMiddleware<JwtHeaderMiddleware>();
 app.MapHub<JobHub>("/hubs/jobs");
 
@@ -147,13 +149,15 @@ app.MapGet("/api/auth/me", (IUserContext user, IUserApiKeyProvider keys) =>
 app.MapGet("/api/admin/state", (
     IUserContext user,
     ProjectStore store,
-    AdminMetricsPushService metricsPush) =>
+    AdminMetricsPushService metricsPush,
+    HttpRequestMetrics httpMetrics) =>
 {
     if (!user.IsAdmin)
         return Results.Json(new { ok = false, error = "admin role required" },
             statusCode: StatusCodes.Status403Forbidden);
 
     var snap = metricsPush.BuildSnapshot();
+    var traffic = httpMetrics.Snapshot();
     return Results.Ok(new
     {
         ok = true,
@@ -198,6 +202,7 @@ app.MapGet("/api/admin/state", (
         ffmpegInFlight = snap.FfmpegInFlight,
         capacityRejects = snap.CapacityRejects,
         lockConflicts = snap.LockConflicts,
+        http = traffic,
     });
 });
 

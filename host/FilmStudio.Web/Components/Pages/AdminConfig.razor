@@ -1,5 +1,4 @@
 @page "/admin/config"
-@rendermode InteractiveServer
 @inject EngineApiClient Api
 @inject AdminSessionService Session
 @inject NavigationManager Nav
@@ -123,15 +122,22 @@
     private double _failRate;
     private int _rateLimitEveryN;
 
-    protected override async Task OnInitializedAsync()
+    private bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender || _started) return;
+        _started = true;
+
         await Session.EnsureHydratedAsync();
         if (!Session.IsAdmin)
         {
-            Nav.NavigateTo("/admin/login");
+            Nav.NavigateTo("/admin/login", forceLoad: true);
             return;
         }
+
         await LoadAsync();
+        StateHasChanged();
     }
 
     private async Task LoadAsync()

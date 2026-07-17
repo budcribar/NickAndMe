@@ -1,5 +1,4 @@
 @page "/admin/login"
-@rendermode InteractiveServer
 @inject EngineApiClient Api
 @inject AdminSessionService Session
 @inject NavigationManager Nav
@@ -9,13 +8,12 @@
 <div class="container py-4" style="max-width: 28rem;">
     <h1 class="h3 mb-3">Admin login</h1>
     <p class="text-muted small">
-        Signs in against the API (<code>POST /api/auth/login</code>). JWT is stored in browser session storage.
-        Dev default: username <code>admin</code>, password <code>admin</code>.
+        API login returns a JWT (not a browser cookie). Dev: <code>admin</code> / <code>admin</code>.
     </p>
 
-    @if (_redirecting)
+    @if (_busy && string.IsNullOrEmpty(_error))
     {
-        <p class="text-muted">Signed in as <strong>@Session.UserId</strong>. Opening dashboard…</p>
+        <p class="text-muted">@_status</p>
     }
     else
     {
@@ -36,7 +34,7 @@
             @(_busy ? "Signing in…" : "Sign in")
         </button>
         <p class="small text-muted mt-3 mb-0">
-            Use Web launch profile <strong>http</strong> (<code>http://localhost:5079</code>).
+            Prefer <code>http://localhost:5079</code> (Web <strong>http</strong> profile).
         </p>
     }
 </div>
@@ -45,19 +43,34 @@
     private string _username = "admin";
     private string _password = "admin";
     private string? _error;
+    private string _status = "Checking session…";
     private bool _busy;
-    private bool _redirecting;
+    private bool _started;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-        await Session.EnsureHydratedAsync();
-        if (Session.IsAdmin)
+        if (!firstRender || _started) return;
+        _started = true;
+
+        try
         {
-            _redirecting = true;
-            StateHasChanged();
-            Nav.NavigateTo("/admin", forceLoad: false);
+            await Session.EnsureHydratedAsync();
+            if (Session.IsAdmin)
+            {
+                _busy = true;
+                _status = $"Signed in as {Session.UserId}. Opening dashboard…";
+                StateHasChanged();
+                // forceLoad: full navigation so layout/nav re-bind cleanly
+                Nav.NavigateTo("/admin", forceLoad: true);
+                return;
+            }
         }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        StateHasChanged();
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -70,6 +83,7 @@
     {
         _busy = true;
         _error = null;
+        _status = "Signing in…";
         try
         {
             var resp = await Api.LoginAsync(_username ?? "", _password ?? "");
@@ -81,26 +95,20 @@
             }
 
             Session.SetSession(resp.Token!, resp.UserId, resp.Roles, resp.ExpiresAt);
-            if (!Session.IsAdmin)
-            {
-                try
-                {
-                    var me = await Api.GetMeAsync();
-                    if (me?.IsAdmin == true)
-                        Session.SetSession(resp.Token!, me.UserId ?? resp.UserId, me.Roles, resp.ExpiresAt);
-                }
-                catch { /* ignore */ }
-            }
+
+            // Give sessionStorage a moment to flush
+            await Task.Delay(50);
+            await Session.EnsureHydratedAsync();
 
             if (!Session.IsAdmin)
             {
                 Session.Clear();
-                _error = "Account is not admin. Check FilmStudio:Auth settings.";
+                _error = "Token missing admin role. Check FilmStudio:Auth on the API.";
                 return;
             }
 
-            _redirecting = true;
-            Nav.NavigateTo("/admin");
+            _status = "Opening dashboard…";
+            Nav.NavigateTo("/admin", forceLoad: true);
         }
         catch (HttpRequestException ex)
         {

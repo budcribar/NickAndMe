@@ -1,0 +1,916 @@
+{
+  "schema_version": "stage1.v1",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "Warm, cozy children\u2019s bedtime picture-book film in stylized soft-3D CG. Gentle pacing, soft practical lamps and moonlight, playful dog energy that settles into snuggly sleep. Same picture-book CG medium for dog and humans throughout; never photoreal live-action, never mixed cartoon/photo cast.",
+    "render_style_lock": "STYLE LOCK: stylized 3D animated children\u2019s picture-book CG \u2014 same look for animals and humans; soft rounded forms, gentle subsurface, storybook lighting; NOT photoreal, NOT live-action photography, NOT flat 2D only.",
+    "total_runtime_target_seconds": 420,
+    "character_seed_tokens": {
+      "Character_Narrator": {
+        "description": "Off-screen storybook narrator only; never appears on camera.",
+        "reference_image_placeholder": "character_narrator_ref.png",
+        "voice_profile": "Warm adult storyteller, medium pitch, unhurried gentle pace, clear American children\u2019s-book diction, soft smile in the voice. Same voice every scene.",
+        "voice_label": "Narrator_WarmStoryteller",
+        "display_name_policy": "never_on_screen"
+      },
+      "Character_Buster": {
+        "description": "Stylized 3D animated small dog (not human), compact playful build, short black-and-white coat with clear black patches on white (or white patches on black) \u2014 never brown, tan, gold, or solid single-color redesign. Bright dark eyes, soft floppy ears, expressive snout. Picture-book soft-3D medium matching the film.",
+        "reference_image_placeholder": "character_buster_ref.png",
+        "voice_profile": "Small dog: soft pants, happy yips, and light playful grumbles only when needed; no human speech. Same animal vocal character every scene.",
+        "voice_label": "Buster_SmallDog",
+        "display_name_policy": "ok_anytime",
+        "canonical_given_name": "Buster",
+        "visual_lock": "Always stylized 3D animated small black-and-white dog with stable black-and-white coat markings only; never brown/tan/gold recolor; never human; never bare redesign as a different breed silhouette. No nickname props on head.",
+        "source_image_pages": [
+          1,
+          5,
+          11
+        ],
+        "design_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ],
+        "book_reference_images": [
+          "assets/characters/character_buster_bookref_1.png",
+          "assets/characters/character_buster_bookref_2.jpg",
+          "assets/characters/character_buster_bookref_3.jpg"
+        ]
+      },
+      "Character_Mom": {
+        "description": "Stylized 3D animated human adult woman (not an animal), medium build, shoulder-length brown hair, kind open face, soft evening home clothes (muted blue cardigan over cream top, simple pants). Same picture-book soft-3D medium as the film \u2014 not photoreal.",
+        "reference_image_placeholder": "character_mom_ref.png",
+        "voice_profile": "Adult woman, warm medium pitch, calm patient pace, gentle firm bedtime energy, light American accent. Same voice every scene.",
+        "voice_label": "Mom_WarmGentle",
+        "display_name_policy": "ok_anytime",
+        "visual_lock": "Always stylized 3D animated human adult woman with shoulder-length brown hair and soft blue cardigan over cream top; never teen redesign; never animal features; same picture-book CG medium as Buster.",
+        "wardrobe_always": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ],
+        "source_image_pages": []
+      },
+      "Character_Dad": {
+        "description": "Stylized 3D animated human adult man (not an animal), medium build, short brown hair, relaxed sleepy face, simple sleep shirt in bed. Same picture-book soft-3D medium as the film \u2014 not photoreal.",
+        "reference_image_placeholder": "character_dad_ref.png",
+        "voice_profile": "Adult man, low-medium pitch, quiet sleepy energy, minimal lines if any. Same voice every scene.",
+        "voice_label": "Dad_QuietSleepy",
+        "display_name_policy": "ok_anytime",
+        "visual_lock": "Always stylized 3D animated human adult man with short brown hair; appears in bed in simple sleep shirt; never animal features; same picture-book CG medium as the rest of the cast.",
+        "wardrobe_always": [
+          "simple sleep shirt"
+        ],
+        "source_image_pages": []
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Living_Room": {
+        "display_name": "Buster\u2019s living room",
+        "description": "Cozy family living room in a small house at bedtime \u2014 soft rug, low furniture, treat spot near Mom\u2019s feet, water bowl area.",
+        "visual_lock": "Warm lamp-lit living room with soft rug, low coffee table or sofa edge, dog-height floor space, evening interior practicals; consistent furniture layout and wall color across returns; no outdoor foliage inside.",
+        "reference_image_placeholder": "loc_living_room_ref.png"
+      },
+      "Loc_Backyard": {
+        "display_name": "Backyard with bushes",
+        "description": "Small evening backyard with bushes where a dog can potty, path back to the house door.",
+        "visual_lock": "Night-leaning outdoor yard with green bushes, grass, house exterior door visible for exit/return; cool evening light with porch spill; same bush cluster and fence/house edge on every return.",
+        "reference_image_placeholder": "loc_backyard_ref.png"
+      },
+      "Loc_Parents_Bedroom": {
+        "display_name": "Mom and Dad\u2019s bedroom",
+        "description": "Upstairs parents\u2019 bedroom with a shared bed, reached by small indoor stairs; snuggle-ready bedding.",
+        "visual_lock": "Soft bedroom with double bed, pillows, blankets, tiny staircase approach or landing continuity; dim bedside lamp; consistent bed side and wall color; calm night interior.",
+        "reference_image_placeholder": "loc_parents_bedroom_ref.png"
+      },
+      "Loc_Dream_Yard": {
+        "display_name": "Dream yard (bunnies)",
+        "description": "Soft fantasy version of a yard for Buster\u2019s sleep dream \u2014 fluffy clouds or open grass and running bunnies.",
+        "visual_lock": "Dreamy soft-focus yard/sky hybrid with pastel fluff and open grass; slightly glowing, less solid than real backyard; clearly dream, not the real Loc_Backyard lighting.",
+        "reference_image_placeholder": "loc_dream_yard_ref.png"
+      }
+    },
+    "spoiler_register": []
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "scene_filename": "sc01_buster_intro",
+      "setting": "Evening \u2014 living room, Buster introduced",
+      "story_day": "Night 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "duration_target_seconds": 50,
+      "dramatic_function": "Establish hero identity and playful energy before bedtime.",
+      "summary": "Narrator introduces Buster, a small black-and-white dog who jumps around like a frog in the living room.",
+      "characters_on_screen": [
+        "Character_Buster"
+      ],
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "wardrobe_by_character": {},
+      "wardrobe_notes": "Daytime/evening coat only; no sleepwear yet.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Light playful children\u2019s underscore, soft pizzicato and warm keys",
+        "mood_arc": "bouncy introduction settling slightly toward home comfort"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b1",
+          "intent": "Open on Buster and name him as the noodle-head dog hero.",
+          "visual_event": "Character_Buster, small black-and-white dog, bounds into the warm living room and pauses center rug, ears up, looking toward camera with a happy open expression.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He\u0027s Buster the Noodle Head Dog.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Living_Room",
+          "ambient_or_sfx": "soft room tone, light collar-free paw taps on rug",
+          "must_not": [
+            "brown or tan dog recolor",
+            "human clothing on Buster",
+            "photoreal live-action look"
+          ]
+        },
+        {
+          "beat_id": "b2",
+          "intent": "Show his frog-like jumping energy.",
+          "visual_event": "Character_Buster springs and hops around the living-room rug like a frog\u2014short vertical jumps, playful landings, tail wagging.",
+          "shot_scale_hint": "wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.5,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He jumps around like a frog.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Living_Room",
+          "ambient_or_sfx": "soft thumps of landings, happy dog pants",
+          "must_not": [
+            "leaving the house",
+            "Mom on screen yet"
+          ]
+        },
+        {
+          "beat_id": "b3",
+          "intent": "Lock visual identity: small, black and white.",
+          "visual_event": "Closer view of Character_Buster sitting then half-standing, black-and-white coat markings clearly readable under lamp light; he tilts his head.",
+          "shot_scale_hint": "medium close",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He\u0027s small, black, and white. He\u0027s Buster the Noodle Head Dog.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Living_Room",
+          "must_not": [
+            "any coat color other than black-and-white",
+            "nickname object on head"
+          ]
+        }
+      ],
+      "source_book_refs": [
+        "pages 1-2"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 2",
+          "excerpt": "He\u0027s Buster the Noodle Head Dog. He jumps around like a frog. He\u0027s small, black, and white."
+        }
+      ]
+    },
+    {
+      "scene_number": 2,
+      "scene_filename": "sc02_bedtime_and_potty_rule",
+      "setting": "Evening \u2014 living room, Mom announces bed and outside potty",
+      "story_day": "Night 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "duration_target_seconds": 60,
+      "dramatic_function": "Inciting bedtime routine; establish potty-before-bed rule and Buster\u2019s confusion.",
+      "summary": "Mom says it is time for bed. Buster wants to rest but must potty outside first; Mom reminds him dogs go outside, not on the floor.",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "wardrobe_by_character": {
+        "Character_Mom": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ]
+      },
+      "wardrobe_notes": "Mom in evening home clothes; Buster still in natural coat.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Gentle bedtime cue under dialogue, soft woodwinds",
+        "mood_arc": "cozy instruction with a comic beat of dog confusion"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b4",
+          "intent": "Mom announces bedtime.",
+          "visual_event": "Character_Mom stands in the living room looking down kindly at Character_Buster; she speaks on camera. Buster looks up at her.",
+          "shot_scale_hint": "medium two-shot",
+          "action_class": "dialogue",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Mom",
+          "dialogue": "It\u0027s time for bed.",
+          "primary_subject": "Character_Mom",
+          "characters_on_screen": [
+            "Character_Mom",
+            "Character_Buster"
+          ],
+          "blocking_notes": "Mom faces Buster; Buster\u2019s eyeline up to Mom; camera favors Mom then includes dog.",
+          "location_id": "Loc_Living_Room",
+          "ambient_or_sfx": "quiet house evening tone",
+          "must_not": [
+            "Buster already asleep",
+            "outdoor location"
+          ]
+        },
+        {
+          "beat_id": "b5",
+          "intent": "Buster wants rest but potty comes first; floor is naughty.",
+          "visual_event": "Character_Buster lowers his furry head toward the rug as if ready to rest, then glances guiltily at the floor; Character_Mom stays nearby watching.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He wants to rest his furry head. Before he goes, he has to potty. Going on the floor is naughty!",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom"
+          ],
+          "location_id": "Loc_Living_Room",
+          "must_not": [
+            "Buster actually pottying on the floor"
+          ]
+        },
+        {
+          "beat_id": "b6",
+          "intent": "Mom states the outside rule; Buster is puzzled.",
+          "visual_event": "Character_Mom leans slightly toward Character_Buster and points toward the door; Buster cocks his head with a confused noodle-brain look.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.5,
+          "delivery": "spoken_on_camera",
+          "speaker": "Character_Mom",
+          "dialogue": "A doggy goes outside.",
+          "dialogue_turns": [
+            {
+              "speaker": "Character_Mom",
+              "dialogue": "A doggy goes outside.",
+              "delivery": "spoken_on_camera"
+            }
+          ],
+          "primary_subject": "Character_Mom",
+          "characters_on_screen": [
+            "Character_Mom",
+            "Character_Buster"
+          ],
+          "blocking_notes": "Mom\u2019s gesture toward exterior door; Buster faces Mom, then door.",
+          "location_id": "Loc_Living_Room",
+          "must_not": []
+        },
+        {
+          "beat_id": "b7",
+          "intent": "Narrator underlines Buster\u2019s confusion.",
+          "visual_event": "Hold on Character_Buster\u2019s puzzled face and tilted head; soft living-room background.",
+          "shot_scale_hint": "close-up",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "That makes no sense in Buster\u0027s head!",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Living_Room",
+          "must_not": []
+        }
+      ],
+      "source_book_refs": [
+        "page 4"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 4",
+          "excerpt": "Mom says, \u0022It\u0027s time for bed\u0022. He wants to rest his furry head. Before he goes, he has to potty. Going on the floor is naughty! \u0022A doggy goes outside\u0022 Mom said. That makes no sense in Buster\u0027s head!"
+        }
+      ]
+    },
+    {
+      "scene_number": 3,
+      "scene_filename": "sc03_outside_potty_and_spin",
+      "setting": "Evening \u2014 backyard potty then living room spin for Mom",
+      "story_day": "Night 1",
+      "location_type": "mixed",
+      "location_ids": [
+        "Loc_Backyard",
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Backyard",
+      "duration_target_seconds": 70,
+      "dramatic_function": "Complete the potty job outside and celebrate return with a spin for Mom.",
+      "summary": "Buster walks outside among bushes, does his job, comes back in, and does a little spin for Mom.",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_yard_to_living",
+      "wardrobe_by_character": {
+        "Character_Mom": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ]
+      },
+      "wardrobe_notes": "No wardrobe change; exterior then interior return.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Playful outdoor night motif then cheerful homecoming sting",
+        "mood_arc": "duty outside \u2192 proud happy return"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b8",
+          "intent": "Buster goes outside to walk where bushes are.",
+          "visual_event": "Character_Buster trots out into the evening backyard, walking around near green bushes under cool night air and porch spill light.",
+          "shot_scale_hint": "wide",
+          "action_class": "establishing",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "Yet, off he goes to walk around outside where bushes can be found.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Backyard",
+          "environment_mode": "present",
+          "ambient_or_sfx": "crickets, soft night air, paw steps on grass",
+          "must_not": [
+            "interior furniture in yard",
+            "potty on living-room floor"
+          ]
+        },
+        {
+          "beat_id": "b9",
+          "intent": "He does his potty job (tasteful, kid-safe).",
+          "visual_event": "Character_Buster sniffs a bush, does a quick tasteful potty pose beside the bushes (no graphic detail), then shakes and looks finished and proud.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.3,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He does his job, and then comes in.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Backyard",
+          "ambient_or_sfx": "soft night ambience",
+          "must_not": [
+            "graphic toilet humor",
+            "mess left on camera"
+          ]
+        },
+        {
+          "beat_id": "b10",
+          "intent": "Return inside and spin for Mom.",
+          "visual_event": "Character_Buster comes through the door into Loc_Living_Room where Character_Mom waits; he does a little full-body spin on the rug for her.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.5,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "For Mom he does a little spin.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom"
+          ],
+          "location_id": "Loc_Living_Room",
+          "blocking_notes": "Mom faces Buster near door; Buster spins in place in front of her.",
+          "ambient_or_sfx": "door soft close, claws on floor, happy pant",
+          "must_not": [
+            "still outside during spin"
+          ]
+        }
+      ],
+      "source_book_refs": [
+        "page 6"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 6",
+          "excerpt": "Yet, off he goes to walk around outside where bushes can be found. He does his job, and then comes in. For Mom he does a little spin."
+        }
+      ]
+    },
+    {
+      "scene_number": 4,
+      "scene_filename": "sc04_treat_and_water",
+      "setting": "Evening \u2014 living room treat and water",
+      "story_day": "Night 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Living_Room"
+      ],
+      "primary_location_id": "Loc_Living_Room",
+      "duration_target_seconds": 55,
+      "dramatic_function": "Reward beat; calm the routine with treat and water.",
+      "summary": "Buster spins for a treat; Mom gently lays it by his feet; he drinks water too.",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_living_warm_lamps",
+      "wardrobe_by_character": {
+        "Character_Mom": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ]
+      },
+      "wardrobe_notes": "Unchanged from prior interior.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Sweet reward chime and soft lullaby-adjacent pad",
+        "mood_arc": "happy treat \u2192 calm hydration"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b11",
+          "intent": "Spin continues as treat-seeking.",
+          "visual_event": "Character_Buster spins again on the rug, eyes on Character_Mom, eager for a treat.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He spins around to get a treat.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom"
+          ],
+          "location_id": "Loc_Living_Room",
+          "must_not": []
+        },
+        {
+          "beat_id": "b12",
+          "intent": "Mom gently places treat by his feet.",
+          "visual_event": "Character_Mom gently lays a small dog treat on the floor by Character_Buster\u2019s front feet; Buster sniffs and eats it. Only Mom\u2019s hands/body move the treat; Buster\u2019s snout works the treat.",
+          "shot_scale_hint": "medium close",
+          "action_class": "dialogue",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.3,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "She gently lays it by his feet.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Mom",
+            "Character_Buster"
+          ],
+          "blocking_notes": "Mom kneels or bends; eyeline to Buster; treat lands at his paws.",
+          "location_id": "Loc_Living_Room",
+          "ambient_or_sfx": "soft treat crunch",
+          "must_not": [
+            "treat thrown hard",
+            "human food junk pile"
+          ]
+        },
+        {
+          "beat_id": "b13",
+          "intent": "Water drink; gentle health aside to audience.",
+          "visual_event": "Character_Buster laps water from a floor bowl; Character_Mom watches kindly nearby.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He has his drink of water too. This also would be good for you!",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom"
+          ],
+          "location_id": "Loc_Living_Room",
+          "ambient_or_sfx": "gentle lapping water",
+          "must_not": []
+        }
+      ],
+      "source_book_refs": [
+        "page 8"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 8",
+          "excerpt": "He spins around to get a treat. She gently lays it by his feet. He has his drink of water too. This also would be good for you!"
+        }
+      ]
+    },
+    {
+      "scene_number": 5,
+      "scene_filename": "sc05_pajamas_stairs_bed",
+      "setting": "Night \u2014 living room to stairs to parents\u2019 bed",
+      "story_day": "Night 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Living_Room",
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "duration_target_seconds": 70,
+      "dramatic_function": "Transition to sleep space; family bed snuggle setup.",
+      "summary": "Buster is ready for bed in black-and-white bedtime look, climbs the tiny stairs, and snuggles into Mom and Dad\u2019s bed.",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Dad"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_bedtime_dim",
+      "wardrobe_by_character": {
+        "Character_Buster": [
+          "black-and-white soft dog pajamas with visible fabric collar seam and weave disti"
+        ],
+        "Character_Mom": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ],
+        "Character_Dad": [
+          "simple sleep shirt"
+        ]
+      },
+      "wardrobe_notes": "Book states black-and-white pajamas; show as real soft dog PJs with clear fabric seam/collar so cloth does not blend into black-and-white fur. Dad already in bed clothes.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Soft climbing motif into warm bedroom lullaby",
+        "mood_arc": "preparation \u2192 climb \u2192 snuggle arrival"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b14",
+          "intent": "Show black-and-white pajamas on Buster.",
+          "visual_event": "In Loc_Living_Room, Character_Buster now wears soft black-and-white dog pajamas with a visible fabric collar line and cloth texture distinct from his fur; he stands ready for bed.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "Pajamas, black and white he wears.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Living_Room",
+          "wardrobe_put_on": [
+            "black-and-white soft dog pajamas with visible fabric collar seam and weave disti"
+          ],
+          "must_not": [
+            "pajamas blended into fur with no cloth read",
+            "brown dog"
+          ]
+        },
+        {
+          "beat_id": "b15",
+          "intent": "Climb the tiny stairs toward parents\u2019 room.",
+          "visual_event": "Character_Buster climbs a short flight of tiny indoor stairs toward the upstairs landing, careful playful steps, pajamas visible.",
+          "shot_scale_hint": "wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.4,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "And then he climbs the tiny stairs",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "ambient_or_sfx": "soft stair paw steps",
+          "must_not": [
+            "outdoor stairs",
+            "elevator"
+          ]
+        },
+        {
+          "beat_id": "b16",
+          "intent": "Arrive at Mom and Dad\u2019s bed and snuggle in.",
+          "visual_event": "Character_Buster hops onto Mom and Dad\u2019s bed in Loc_Parents_Bedroom. Character_Dad is already lying in bed in a sleep shirt; Character_Mom is on or beside the bed. Buster snuggles into the blankets between or beside them.",
+          "shot_scale_hint": "medium wide",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.5,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "To get to Mom and Daddy\u0027s bed, and snuggle in, and home to go.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom",
+            "Character_Dad"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "blocking_notes": "Bed center; Dad reclined; Mom present; Buster settles into covers.",
+          "ambient_or_sfx": "soft bedding rustle",
+          "must_not": [
+            "Buster left downstairs",
+            "harsh overhead office lighting"
+          ]
+        }
+      ],
+      "source_book_refs": [
+        "page 10"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 10",
+          "excerpt": "Pajamas, black and white he wears. And then he climbs the tiny stairs. To get to Mom and Daddy\u0027s bed, and snuggle in"
+        }
+      ]
+    },
+    {
+      "scene_number": 6,
+      "scene_filename": "sc06_dream_bunnies",
+      "setting": "Night \u2014 bedroom into dream of bunnies across the yard",
+      "story_day": "Night 1",
+      "location_type": "dream",
+      "location_ids": [
+        "Loc_Parents_Bedroom",
+        "Loc_Dream_Yard"
+      ],
+      "primary_location_id": "Loc_Dream_Yard",
+      "duration_target_seconds": 60,
+      "dramatic_function": "Interior dream wish; playful chase fantasy before true sleep.",
+      "summary": "As Buster drifts, he dreams of fluffy shows and bunnies running across the yard that he chases hard; narrator notes tomorrow is another day.",
+      "characters_on_screen": [
+        "Character_Buster"
+      ],
+      "transition_type": "dissolve",
+      "lighting_continuity_token": "night1_dream_soft_glow",
+      "wardrobe_by_character": {
+        "Character_Buster": [
+          "black-and-white soft dog pajamas with visible fabric collar seam and weave disti"
+        ]
+      },
+      "wardrobe_notes": "Pajamas remain in dream silhouette for continuity.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Whimsical dreamy sparkle over soft lullaby bed",
+        "mood_arc": "float into dream chase then ease toward sleep"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b17",
+          "intent": "Not that smart but he knows how to dream.",
+          "visual_event": "Character_Buster lies on the parents\u2019 bed, eyes heavy; soft bedroom lamp; begin gentle dissolve shimmer around his head.",
+          "shot_scale_hint": "medium close",
+          "action_class": "flashback_enter",
+          "continuity": "new_setup",
+          "time_weight": 1,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He\u0027s not that smart but still he knows.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "environment_mode": "present",
+          "must_not": [
+            "mean-spirited mockery staging"
+          ]
+        },
+        {
+          "beat_id": "b18",
+          "intent": "Dream of fluffy clouds/shows and bunnies; pick bunnies-across-yard chase as the filmed dream (not both settings composited as one shot).",
+          "visual_event": "Dream environment Loc_Dream_Yard: soft glowing grass; several fluffy bunnies run across the yard; Character_Buster in pajamas joyfully chases them hard in playful picture-book motion (no harm).",
+          "shot_scale_hint": "wide",
+          "action_class": "big_action",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.8,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "Have a dream of fluffy shows, or bunnies running \u0027cross the yard, and how he\u0027ll chase them very hard.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Dream_Yard",
+          "environment_mode": "dream",
+          "ambient_or_sfx": "soft dream whoosh, light bunny hops, happy dog pants",
+          "must_not": [
+            "violent catch or injury",
+            "photoreal nightmare tone",
+            "composite fluffy-cloud stage and yard as one confusing location"
+          ]
+        },
+        {
+          "beat_id": "b19",
+          "intent": "He goes to sleep; tomorrow is another day.",
+          "visual_event": "Dissolve back: Character_Buster on the real bed, eyes closing fully, body relaxing into pillows.",
+          "shot_scale_hint": "medium close",
+          "action_class": "flashback_exit",
+          "continuity": "return_to_present",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He goes to sleep because they say tomorrow is another day.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "environment_mode": "present",
+          "must_not": [
+            "still full dream chase after return"
+          ]
+        }
+      ],
+      "source_book_refs": [
+        "page 12"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 12",
+          "excerpt": "He\u0027s not that smart but still he knows. Have a dream of fluffy shows, or bunnies running \u0027cross the yard. And how he\u0027ll chase them very hard. He goes to sleep because they say. Tomorrow is another day."
+        }
+      ]
+    },
+    {
+      "scene_number": 7,
+      "scene_filename": "sc07_asleep_loved_for_keeps",
+      "setting": "Night \u2014 parents\u2019 bedroom, final sleep and love",
+      "story_day": "Night 1",
+      "location_type": "int",
+      "location_ids": [
+        "Loc_Parents_Bedroom"
+      ],
+      "primary_location_id": "Loc_Parents_Bedroom",
+      "duration_target_seconds": 55,
+      "dramatic_function": "Resolution; emotional button that Buster is loved for keeps.",
+      "summary": "Narrator imagines another day of silly play, then Buster falls fully asleep, warm and well-fed, while Mom pets him; he is loved for keeps.",
+      "characters_on_screen": [
+        "Character_Buster",
+        "Character_Mom",
+        "Character_Dad"
+      ],
+      "transition_type": "cut",
+      "lighting_continuity_token": "night1_bedtime_dim",
+      "wardrobe_by_character": {
+        "Character_Buster": [
+          "black-and-white soft dog pajamas with visible fabric collar seam and weave disti"
+        ],
+        "Character_Mom": [
+          "soft blue cardigan",
+          "cream top",
+          "simple home pants"
+        ],
+        "Character_Dad": [
+          "simple sleep shirt"
+        ]
+      },
+      "wardrobe_notes": "Final sleep look; Mom may still wear evening cardigan while petting.",
+      "spoiler_constraints": [],
+      "music_intent": {
+        "style_description": "Full soft lullaby resolution, warm strings and music-box fade",
+        "mood_arc": "tender close \u2192 held love \u2192 gentle fade out"
+      },
+      "story_beats": [
+        {
+          "beat_id": "b20",
+          "intent": "Promise of another day for silly dogs (VO over sleeping dog, not a new daytime montage).",
+          "visual_event": "Hold on sleeping Character_Buster in bed; optional very soft brief mental image dissolve of him jumping like a frog, then back to bed\u2014keep primary frame the bedroom.",
+          "shot_scale_hint": "medium",
+          "action_class": "hold",
+          "continuity": "new_setup",
+          "time_weight": 1.2,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "Another day for silly dogs to run and play and jump like frogs.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "must_not": [
+            "full daytime exterior scene replacing bedtime"
+          ]
+        },
+        {
+          "beat_id": "b21",
+          "intent": "He falls asleep, warm soft well-fed.",
+          "visual_event": "Character_Buster lays his head fully down on the pillow/blanket, body soft and still, breathing slow; Character_Dad sleeps quietly in frame background.",
+          "shot_scale_hint": "close-up",
+          "action_class": "hold",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.3,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "He falls asleep, lays down his head. He\u0027s warm and soft and quite well-fed.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Dad"
+          ],
+          "location_id": "Loc_Parents_Bedroom",
+          "ambient_or_sfx": "very soft night room tone",
+          "must_not": [
+            "Buster still jumping"
+          ]
+        },
+        {
+          "beat_id": "b22",
+          "intent": "Mommy pets him; loved for keeps.",
+          "visual_event": "Character_Mom gently pets sleeping Character_Buster\u2019s head and back on the bed; Buster stays asleep, peaceful; warm final family tableau with Dad in bed.",
+          "shot_scale_hint": "medium",
+          "action_class": "small_motion",
+          "continuity": "continuous_from_previous_beat",
+          "time_weight": 1.6,
+          "delivery": "voiceover_internal",
+          "speaker": "Character_Narrator",
+          "dialogue": "His Mommy pets him while he sleeps. This noodle head is loved for keeps.",
+          "primary_subject": "Character_Buster",
+          "characters_on_screen": [
+            "Character_Buster",
+            "Character_Mom",
+            "Character_Dad"
+          ],
+          "blocking_notes": "Mom\u2019s hand pets Buster; eyeline soft down to dog; calm still frame for ending.",
+          "location_id": "Loc_Parents_Bedroom",
+          "ambient_or_sfx": "soft fabric petting, fade-ready silence",
+          "must_not": [
+            "scary jump scare ending",
+            "Buster recolored"
+          ]
+        }
+      ],
+      "source_book_refs": [
+        "page 14"
+      ],
+      "source_excerpts": [
+        {
+          "source": "book page 14",
+          "excerpt": "Another day for silly dogs to run and play and jump like frogs. He falls asleep, lays down his head. He\u0027s warm and soft and quite well-fed. His Mommy pets him while he sleeps. This noodle head is loved for keeps."
+        }
+      ]
+    }
+  ],
+  "movie_title": "Buster the Noodlehead dog",
+  "source_book_title": "Buster the Noodlehead dog",
+  "generation": {
+    "method": "Stage1Service (C#)",
+    "model": "grok-4.5",
+    "book": "C:\\Users\\budcr\\source\\repos\\NickAndMe\\projects\\Buster\\source\\book_full.txt",
+    "chunk_pages": 15,
+    "chunks": 1,
+    "ts": "2026-07-16T16:58:07"
+  },
+  "cumulative_duration_target_seconds": 420
+}

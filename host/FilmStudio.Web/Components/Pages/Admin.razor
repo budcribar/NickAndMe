@@ -1,5 +1,4 @@
 @page "/admin"
-@rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject EngineApiClient Api
 @inject AdminSessionService Session
@@ -35,7 +34,11 @@
         </div>
     </div>
 
-    @if (!Session.IsAdmin)
+    @if (!_started)
+    {
+        <p class="text-muted">Loading admin session…</p>
+    }
+    else if (!Session.IsAdmin)
     {
         <div class="alert alert-warning">
             Admin session required. <a href="/admin/login">Sign in</a>
@@ -44,16 +47,43 @@
     else if (!string.IsNullOrEmpty(_error))
     {
         <div class="alert alert-danger">@_error</div>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Retry</button>
     }
     else if (_state is null)
     {
-        <p class="text-muted">Loading…</p>
+        <p class="text-muted">Loading server state…</p>
     }
     else
     {
         @if (!string.IsNullOrEmpty(_actionMsg))
         {
             <div class="alert alert-info py-2">@_actionMsg</div>
+        }
+
+        @if (_state.Http is { } http)
+        {
+            <div class="alert @(http.NonAdminLast5Sec > 5 ? "alert-success" : "alert-warning") py-2 small">
+                <strong>HTTP traffic</strong>
+                · last 5s: <strong>@http.RequestsLast5Sec</strong> total
+                · <strong>@http.NonAdminLast5Sec</strong> non-admin
+                · last 30s non-admin: <strong>@http.NonAdminLast30Sec</strong>
+                @if (http.NonAdminLast5Sec <= 2)
+                {
+                    <span class="ms-1">
+                        — LoadSim does not appear to be hitting this API (only admin poll).
+                        Check LoadSim console: “running…”, baseUrl <code>http://127.0.0.1:5088</code>, project <code>LoadSimBuster</code>.
+                    </span>
+                }
+                @if (http.ByPrefixLast5Sec is { Count: > 0 } pref)
+                {
+                    <div class="mt-1 font-monospace" style="font-size:0.75rem;">
+                        @foreach (var kv in pref.OrderByDescending(k => k.Value).Take(8))
+                        {
+                            <span class="me-2">@kv.Key=@(kv.Value)</span>
+                        }
+                    </div>
+                }
+            </div>
         }
 
         <div class="row g-3">
@@ -216,31 +246,45 @@
     private int _lockConflicts;
     private List<AdminLockDto> _locks = new();
 
-    protected override async Task OnInitializedAsync()
+    private bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Restore JWT from sessionStorage (new Interactive circuit per page)
+        if (!firstRender || _started) return;
+        _started = true;
+
         await Session.EnsureHydratedAsync();
         if (!Session.IsAdmin)
         {
-            Nav.NavigateTo("/admin/login");
+            Nav.NavigateTo("/admin/login", forceLoad: true);
             return;
         }
 
+        StateHasChanged();
+
         Hub.AdminState += OnAdminState;
+        // Do not block UI on SignalR
+        _ = ConnectHubAsync();
+        await RefreshAsync();
+        StateHasChanged();
+
+        _pollCts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _ = PollLoopAsync(_pollCts.Token);
+    }
+
+    private async Task ConnectHubAsync()
+    {
         try
         {
             await Hub.StartAsync();
             _hubLive = Hub.IsConnected;
+            await InvokeAsync(StateHasChanged);
         }
         catch
         {
             _hubLive = false;
         }
-
-        await RefreshAsync();
-        _pollCts = new CancellationTokenSource();
-        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-        _ = PollLoopAsync(_pollCts.Token);
     }
 
     private void OnAdminState(object? _)
@@ -286,11 +330,15 @@
         catch (Exception ex)
         {
             _error = ex.Message;
-            if (ex.Message.Contains("403") || ex.Message.Contains("401") ||
-                ex.Message.Contains("admin", StringComparison.OrdinalIgnoreCase))
+            // Only hard-logout on clear auth failures (not every message containing "admin")
+            var msg = ex.Message;
+            if (msg.Contains("403", StringComparison.Ordinal) ||
+                msg.Contains("401", StringComparison.Ordinal) ||
+                msg.Contains("admin role required", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase))
             {
                 Session.Clear();
-                Nav.NavigateTo("admin/login");
+                Nav.NavigateTo("/admin/login", forceLoad: true);
             }
         }
         finally

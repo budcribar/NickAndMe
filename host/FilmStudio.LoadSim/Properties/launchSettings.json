@@ -1,9 +1,8 @@
 {
-  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
     "Load Sim": {
       "commandName": "Project",
-      "commandLineArgs": "--baseUrl http://127.0.0.1:5088 --users 25 --duration 90 --scenario mixed --project LoadSimBuster --thinkTimeMs 150 --genWeight 0.08 --browseWeight 0.50 --playWeight 0.35 --reviewWeight 0.05 --remuxWeight 0.02 --maxGenPerUser 2 --maxErrorRate 0.02 --maxBrowseP95Ms 800 --out loadsim-results.json",
+      "commandLineArgs": "--baseUrl http://127.0.0.1:5088 --users 100 --duration 90 --scenario mixed --project LoadSimBuster --thinkTimeMs 150 --genWeight 0.08 --browseWeight 0.50 --playWeight 0.35 --reviewWeight 0.05 --remuxWeight 0.02 --maxGenPerUser 2 --maxErrorRate 0.02 --maxBrowseP95Ms 800 --out loadsim-results.json",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"
       }
@@ -22,5 +21,6 @@
         "DOTNET_ENVIRONMENT": "Development"
       }
     }
-  }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
 }

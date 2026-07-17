@@ -1,19 +1,21 @@
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using System.Text.Json;
+using Microsoft.JSInterop;
 
 namespace FilmStudio.Web.Services;
 
 /// <summary>
-/// Circuit-scoped admin identity. Persists JWT to sessionStorage so navigation
-/// between per-page Interactive Server roots does not drop the login.
+/// Circuit-scoped admin identity. Also mirrors JWT into sessionStorage via JS
+/// so a full page reload can restore the session.
 /// </summary>
 public sealed class AdminSessionService
 {
     private const string StorageKey = "filmstudio.admin.session";
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    private readonly ProtectedSessionStorage? _store;
+    private readonly IJSRuntime? _js;
     private bool _hydrated;
 
-    public AdminSessionService(ProtectedSessionStorage? store = null) => _store = store;
+    public AdminSessionService(IJSRuntime? js = null) => _js = js;
 
     public string? Token { get; private set; }
     public string UserId { get; private set; } = "local";
@@ -56,33 +58,46 @@ public sealed class AdminSessionService
         _ = ClearPersistAsync();
     }
 
-    /// <summary>Load JWT from browser sessionStorage (call once per interactive page).</summary>
+    /// <summary>
+    /// Restore from sessionStorage. Safe only after interactive render (JS available).
+    /// Never throws; never hangs longer than a quick JS call.
+    /// </summary>
     public async Task EnsureHydratedAsync()
     {
-        if (_hydrated || _store is null)
+        if (_hydrated)
             return;
+
+        if (_js is null)
+        {
+            _hydrated = true;
+            return;
+        }
 
         try
         {
-            var result = await _store.GetAsync<StoredSession>(StorageKey);
-            if (result.Success && result.Value is { } s && !string.IsNullOrWhiteSpace(s.Token))
+            var json = await _js.InvokeAsync<string?>("sessionStorage.getItem", StorageKey);
+            if (!string.IsNullOrWhiteSpace(json))
             {
-                if (s.ExpiresAt is DateTimeOffset exp && exp < DateTimeOffset.UtcNow)
+                var s = JsonSerializer.Deserialize<StoredSession>(json, JsonOpts);
+                if (s is not null && !string.IsNullOrWhiteSpace(s.Token))
                 {
-                    await ClearPersistAsync();
-                }
-                else
-                {
-                    Token = s.Token;
-                    UserId = string.IsNullOrWhiteSpace(s.UserId) ? "local" : s.UserId!;
-                    Roles = s.Roles?.ToList() ?? new List<string>();
-                    ExpiresAt = s.ExpiresAt;
+                    if (s.ExpiresAt is DateTimeOffset exp && exp < DateTimeOffset.UtcNow)
+                    {
+                        await ClearPersistAsync();
+                    }
+                    else
+                    {
+                        Token = s.Token;
+                        UserId = string.IsNullOrWhiteSpace(s.UserId) ? "local" : s.UserId!;
+                        Roles = s.Roles?.ToList() ?? new List<string>();
+                        ExpiresAt = s.ExpiresAt;
+                    }
                 }
             }
         }
         catch
         {
-            // Prerender / JS unavailable — ignore
+            // JS not ready or disabled
         }
         finally
         {
@@ -92,17 +107,18 @@ public sealed class AdminSessionService
 
     private async Task PersistAsync()
     {
-        if (_store is null || string.IsNullOrWhiteSpace(Token))
+        if (_js is null || string.IsNullOrWhiteSpace(Token))
             return;
         try
         {
-            await _store.SetAsync(StorageKey, new StoredSession
+            var json = JsonSerializer.Serialize(new StoredSession
             {
                 Token = Token,
                 UserId = UserId,
                 Roles = Roles.ToList(),
                 ExpiresAt = ExpiresAt,
-            });
+            }, JsonOpts);
+            await _js.InvokeVoidAsync("sessionStorage.setItem", StorageKey, json);
         }
         catch
         {
@@ -112,8 +128,8 @@ public sealed class AdminSessionService
 
     private async Task ClearPersistAsync()
     {
-        if (_store is null) return;
-        try { await _store.DeleteAsync(StorageKey); }
+        if (_js is null) return;
+        try { await _js.InvokeVoidAsync("sessionStorage.removeItem", StorageKey); }
         catch { /* ignore */ }
     }
 

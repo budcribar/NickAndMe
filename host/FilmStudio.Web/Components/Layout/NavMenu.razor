@@ -1,6 +1,5 @@
 @inject AdminSessionService Session
 @implements IDisposable
-@rendermode InteractiveServer
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -77,9 +76,12 @@
 </div>
 
 @code {
+    private bool _started;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (!firstRender || _started) return;
+        _started = true;
         await Session.EnsureHydratedAsync();
         Session.Changed += OnSessionChanged;
         StateHasChanged();

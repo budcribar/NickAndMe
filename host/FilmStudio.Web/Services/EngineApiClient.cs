@@ -855,6 +855,18 @@ public sealed class AdminStateDto
     public int FfmpegInFlight { get; set; }
     public int CapacityRejects { get; set; }
     public int LockConflicts { get; set; }
+    public AdminHttpTrafficDto? Http { get; set; }
+}
+
+public sealed class AdminHttpTrafficDto
+{
+    public long TotalLifetime { get; set; }
+    public int RequestsLast5Sec { get; set; }
+    public int RequestsLast30Sec { get; set; }
+    public int NonAdminLast5Sec { get; set; }
+    public int NonAdminLast30Sec { get; set; }
+    public Dictionary<string, int>? ByPrefixLast5Sec { get; set; }
+    public Dictionary<string, int>? ByPrefixLast30Sec { get; set; }
 }
 
 public sealed class AdminLockDto
