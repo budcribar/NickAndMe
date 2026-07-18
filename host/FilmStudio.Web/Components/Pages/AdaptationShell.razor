@@ -5,8 +5,14 @@
     return;
 }
 
-<h1>Adaptation</h1>
-<p class="text-muted mb-2">Import → screenplay → shot plan.</p>
+<div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-1">
+    <h1 class="mb-0">Adaptation</h1>
+    @if (!string.IsNullOrEmpty(Host.ProjectLabel))
+    {
+        <span class="text-muted small">@Host.ProjectLabel</span>
+    }
+</div>
+<p class="text-muted mb-3">Import → screenplay → shot plan.</p>
 
 @* ---- Step strip ---- *@
 <nav class="nav nav-pills flex-wrap gap-1 mb-3" aria-label="Adaptation steps">
@@ -31,32 +37,10 @@
     <div class="alert alert-info">@Host.Message</div>
 }
 
-<div class="row mb-3 g-2 align-items-end">
-    <div class="col-md-4">
-        <label class="form-label">Project</label>
-        <select class="form-select" value="@Host.ProjectId"
-                @onchange="OnProjectChanged"
-                disabled="@Host.Busy">
-            @foreach (var p in Host.ProjectIds)
-            {
-                <option value="@p">@p</option>
-            }
-        </select>
-    </div>
-    <div class="col-md-4 d-flex gap-2">
-        <button class="btn btn-outline-secondary" disabled="@Host.Busy" @onclick="Host.LoadAsync">Reload</button>
-        @if (Host.JobRunning)
-        {
-            <button class="btn btn-outline-danger" disabled="@Host.Busy" @onclick="Host.CancelAsync">Cancel job</button>
-        }
-    </div>
-</div>
-
-@if (Host.Job is not null &&
-     (Host.Job.Status is "running" or "error" or "cancelled" ||
-      (Host.Job.Status == "done" && Host.Job.Kind is "stage1" or "stage2" or "book_prepare")))
+@* Job panel: skip on Import (progress lives in the Import card). Show on screenplay/shots. *@
+@if (ShowJobPanel)
 {
-    <div class="card mb-3 border-@(Host.Job.Status == "running" ? "primary" : Host.Job.Status == "error" ? "danger" : "secondary")">
+    <div class="card mb-3 border-@(Host.Job!.Status == "running" ? "primary" : Host.Job.Status == "error" ? "danger" : "secondary")">
         <div class="card-body py-2">
             <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
                 <div>
@@ -122,13 +106,17 @@
 }
 else
 {
-    <div class="alert @AdaptationPageBase.NextStepAlertClass(Host.Status.NextStep) py-2">
-        <strong>Next:</strong> @AdaptationPageBase.NextStepLabel(Host.Status.NextStep)
-        @if (!Host.Status.XaiConfigured)
-        {
-            <span class="ms-2">· <a href="configuration">Connect service</a> required for some steps</span>
-        }
-    </div>
+    @* Skip “Next” when it only restates the step you’re already on *@
+    @if (ShowNextBanner)
+    {
+        <div class="alert @AdaptationPageBase.NextStepAlertClass(Host.Status.NextStep) py-2">
+            <strong>Next:</strong> @AdaptationPageBase.NextStepLabel(Host.Status.NextStep)
+            @if (!Host.Status.XaiConfigured && Host.Status.NextStep is "draft_screenplay" or "run_stage1" or "run_stage2" or "replan_stage2")
+            {
+                <span class="ms-2">· <a href="configuration">Connect service</a></span>
+            }
+        </div>
+    }
 
     @ChildContent
 }
@@ -150,9 +138,42 @@ else
         Host.Status is not null &&
         Host.Status.Screenplay.ReadyForShots;
 
-    private async Task OnProjectChanged(ChangeEventArgs e)
+    /// <summary>Import owns its own progress UI; hide the global job card there.</summary>
+    private bool ShowJobPanel =>
+        Host.Job is not null &&
+        Step is not ("import" or "book") &&
+        (Host.Job.Status is "running" or "error" or "cancelled" ||
+         (Host.Job.Status == "done" && Host.Job.Kind is "stage1" or "stage2" or "book_prepare"));
+
+    /// <summary>
+    /// Hide the banner when the current step already is the next action
+    /// (avoids “Next: import…” on the Import page).
+    /// </summary>
+    private bool ShowNextBanner
     {
-        Host.ProjectId = e.Value?.ToString() ?? Host.ProjectId;
-        await Host.LoadAsync();
+        get
+        {
+            if (Host.Status is null) return false;
+            var next = Host.Status.NextStep ?? "";
+            var step = Step ?? "";
+            if (step is "import" or "book")
+            {
+                // On import: only when they should move on (not “import a file” again)
+                return next is "sign_screenplay" or "draft_screenplay" or "run_stage1" or "run_stage2"
+                    or "replan_stage2" or "generate_clips";
+            }
+            if (step == "screenplay")
+            {
+                // Hide when the action is already “edit/approve screenplay”
+                return next is not ("sign_screenplay" or "draft_screenplay" or "run_stage1");
+            }
+            if (step == "shots")
+            {
+                // Hide plain “build shot plan”; keep replan / go elsewhere / generate
+                return next is not "run_stage2";
+            }
+            return true;
+        }
     }
+
 }

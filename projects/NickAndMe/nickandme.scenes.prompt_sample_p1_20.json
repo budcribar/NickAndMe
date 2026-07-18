@@ -2,11 +2,11 @@
   "schema_version": "stage1.v1",
   "movie_title": "Nick and Me",
   "source_book_title": "Nick and Me",
-  "adaptation_notes": "Sample Stage 1 generation from stage1_scene_bible.txt applied to book pages 1–20 only (proof of format). Not the full film bible.",
+  "adaptation_notes": "Historical sample scene list (pre-Fountain path). Not the full film bible.",
   "generation": {
     "method": "agent_apply_stage1_prompt_sample",
     "book_pages": "1-20",
-    "prompt": "prompts/stage1_scene_bible.txt"
+    "prompt": "prompts/book_to_fountain.txt"
   },
   "global_production_variables": {
     "target_aspect_ratio": "16:9",

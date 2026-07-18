@@ -20,8 +20,8 @@ All operator prompts and the Stage 1 schema live under **`prompts/`** (repo root
 | File | Purpose |
 |------|---------|
 | `prompts/adaptation_v16.txt` | Full-film / shared adaptation rules (GUI learnings append here) |
-| `prompts/stage1_scene_bible.txt` | Operator prompt: book → scene bible |
-| `prompts/stage1_scene_bible.schema.json` | JSON Schema for Stage 1 |
+| `prompts/book_to_fountain.txt` | Operator prompt: book → Fountain screenplay |
+| `prompts/stage1_scene_bible.schema.json` | Optional schema for internal scene lists (not operator-facing) |
 | `prompts/stage2_shot_planner.txt` | Operator prompt: scene bible → clip plan |
 | `prompts/compare_json_to_book.txt` | Fidelity check prompt |
 | `prompts/examples/scene_bible_minimal.json` | Tiny Stage 1 example |

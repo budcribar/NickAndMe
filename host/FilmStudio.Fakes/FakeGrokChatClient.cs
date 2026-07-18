@@ -20,7 +20,44 @@ public sealed class FakeGrokChatClient : IGrokChatClient
         CancellationToken ct = default)
     {
         _log.LogInformation("Fake chat complete model={Model} userLen={Len}", model, userPrompt.Length);
-        // Minimal Stage1-shaped stub — real Stage1 may need richer JSON; fakes for wiring only
+
+        // Book → Fountain conversion (prompt-driven path)
+        if (systemPrompt.Contains("Fountain", StringComparison.OrdinalIgnoreCase) ||
+            userPrompt.Contains("--- PAGE", StringComparison.OrdinalIgnoreCase) ||
+            userPrompt.Contains("BEGIN BOOK", StringComparison.OrdinalIgnoreCase))
+        {
+            const string fountain = """
+                Title: Fake Book Adaptation
+                Credit: Written by
+                Author: Test
+                Source: Adapted from book
+                Draft date: 1/1/2026
+
+                INT. LIVING ROOM - EVENING
+
+                = page 1
+
+                [[page 1]]
+
+                NARRATOR
+                Once upon a time, a small dog waited for bedtime.
+
+                MOMMA
+                Time for bed!
+
+                INT. BEDROOM - NIGHT
+
+                = page 2
+
+                [[page 2]]
+
+                NARRATOR
+                He curled up and slept.
+                """;
+            return Task.FromResult(fountain);
+        }
+
+        // Minimal Stage1-shaped stub
         const string json = """
             {
               "global_production_variables": {

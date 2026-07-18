@@ -9,7 +9,8 @@ using Microsoft.Extensions.Options;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Stage 1 bible → Stage 2 clip blueprint (deterministic, no API).
+/// Approved Fountain screenplay → Stage 2 clip blueprint (deterministic, no API).
+/// Reads <c>source/screenplay.fountain</c> directly (in-memory beat model).
 /// Covers plan_scene, visual prompt packing, wardrobe continuity, duration allocation.
 /// </summary>
 public sealed class Stage2PlannerService
@@ -50,13 +51,41 @@ public sealed class Stage2PlannerService
         CancellationToken ct = default)
     {
         var projectDir = await _projects.GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
-        var stage1Path = _projects.ResolveScenesJsonPath(projectId);
-        if (!File.Exists(stage1Path))
-            throw new InvalidOperationException($"Stage 1 bible not found: {stage1Path}");
 
-        onProgress?.Invoke($"Loading Stage 1: {Path.GetFileName(stage1Path)}");
-        var stage1Text = await File.ReadAllTextAsync(stage1Path, ct).ConfigureAwait(false);
-        var stage1 = GrokChatClient.ParseJsonObject(stage1Text);
+        // Fountain is the screenplay source of truth (approved draft preferred).
+        ScreenplayService.EnsureCanonicalDraft(_projects, projectId);
+        var fountainPath = ScreenplayService.GetDraftPath(_projects, projectId);
+        Dictionary<string, object?> stage1;
+        string sourceLabel;
+
+        if (File.Exists(fountainPath))
+        {
+            var screenplay = ScreenplayService.Get(_projects, projectId);
+            if (!screenplay.Status.Signed && screenplay.Status.DraftExists)
+                throw new InvalidOperationException(
+                    "Approve the screenplay before building a shot plan (draft has unapproved changes).");
+
+            onProgress?.Invoke($"Loading screenplay: {Path.GetFileName(fountainPath)}");
+            stage1 = ScreenplayService.BuildModelFromFountainText(screenplay.Text);
+            sourceLabel = Path.GetFileName(fountainPath);
+
+            // Overlay plate/voice edits from cast_seeds.json when present
+            MergeCastSeedsOverlay(_projects, projectId, stage1);
+        }
+        else
+        {
+            // Legacy: scenes.json only (no Fountain draft)
+            var stage1Path = _projects.ResolveScenesJsonPath(projectId);
+            if (!File.Exists(stage1Path))
+                throw new InvalidOperationException(
+                    "No approved screenplay. Create and approve a Fountain draft first.");
+
+            onProgress?.Invoke($"Loading legacy scene list: {Path.GetFileName(stage1Path)}");
+            var stage1Text = await File.ReadAllTextAsync(stage1Path, ct).ConfigureAwait(false);
+            stage1 = GrokChatClient.ParseJsonObject(stage1Text);
+            sourceLabel = Path.GetFileName(stage1Path);
+        }
+
         var gpv = GetDict(stage1, "global_production_variables");
         var locSeeds = GetDict(gpv, "location_seed_tokens");
         var charSeeds = GetDict(gpv, "character_seed_tokens");
@@ -71,6 +100,9 @@ public sealed class Stage2PlannerService
                 return want.Contains(n);
             })
             .ToList();
+
+        if (scenesIn.Count == 0)
+            throw new InvalidOperationException("Screenplay has no scenes to plan.");
 
         onProgress?.Invoke($"Planning {scenesIn.Count} scene(s) @ {resolution}…");
         var styleLock = CoerceString(gpv.TryGetValue("render_style_lock", out var rsl) ? rsl : null);
@@ -99,17 +131,17 @@ public sealed class Stage2PlannerService
             {
                 var existingText = await File.ReadAllTextAsync(outPath, ct).ConfigureAwait(false);
                 var existing = GrokChatClient.ParseJsonObject(existingText);
-                plan = MergePlannedScenes(existing, planned, stage1, gpv, stage1Path, resolution, scenes);
+                plan = MergePlannedScenes(existing, planned, stage1, gpv, sourceLabel, resolution, scenes);
                 onProgress?.Invoke("Merged planned scenes into existing blueprint");
             }
             catch
             {
-                plan = BuildFullPlan(stage1, gpv, planned, stage1Path, resolution, scenes);
+                plan = BuildFullPlan(stage1, gpv, planned, sourceLabel, resolution, scenes);
             }
         }
         else
         {
-            plan = BuildFullPlan(stage1, gpv, planned, stage1Path, resolution, scenes);
+            plan = BuildFullPlan(stage1, gpv, planned, sourceLabel, resolution, scenes);
         }
 
         await File.WriteAllTextAsync(
@@ -137,7 +169,7 @@ public sealed class Stage2PlannerService
         Dictionary<string, object?> stage1,
         Dictionary<string, object?> gpv,
         List<Dictionary<string, object?>> planned,
-        string stage1Path,
+        string sourceLabel,
         string resolution,
         string scenesFilter) => new()
     {
@@ -147,7 +179,7 @@ public sealed class Stage2PlannerService
         ["video_provider_profile"] = "grok",
         ["global_production_variables"] = gpv,
         ["scenes"] = planned.Cast<object?>().ToList(),
-        ["stage2_meta"] = MakeMeta(stage1, planned, stage1Path, resolution, scenesFilter),
+        ["stage2_meta"] = MakeMeta(stage1, planned, sourceLabel, resolution, scenesFilter),
     };
 
     private static Dictionary<string, object?> MergePlannedScenes(
@@ -155,7 +187,7 @@ public sealed class Stage2PlannerService
         List<Dictionary<string, object?>> planned,
         Dictionary<string, object?> stage1,
         Dictionary<string, object?> gpv,
-        string stage1Path,
+        string sourceLabel,
         string resolution,
         string scenesFilter)
     {
@@ -179,29 +211,77 @@ public sealed class Stage2PlannerService
         existing["video_provider_profile"] = "grok";
         existing["global_production_variables"] = gpv;
         existing["scenes"] = all.Cast<object?>().ToList();
-        existing["stage2_meta"] = MakeMeta(stage1, all, stage1Path, resolution, scenesFilter);
+        existing["stage2_meta"] = MakeMeta(stage1, all, sourceLabel, resolution, scenesFilter);
         return existing;
     }
 
     private static Dictionary<string, object?> MakeMeta(
         Dictionary<string, object?> stage1,
         List<Dictionary<string, object?>> planned,
-        string stage1Path,
+        string sourceLabel,
         string resolution,
         string scenesFilter) => new()
     {
-        ["source_stage1"] = Path.GetFileName(stage1Path),
+        ["source_screenplay"] = sourceLabel,
+        ["source_stage1"] = sourceLabel, // legacy key for older tooling
         ["resolution"] = resolution,
         ["scene_filter"] = scenesFilter,
-        ["planner"] = "Stage2PlannerService (C#)",
+        ["planner"] = "Stage2PlannerService (C# Fountain)",
         ["prompt_soft_max"] = PromptSoft,
         ["prompt_hard_max"] = PromptHard,
+        ["screenplay_fingerprint"] = Stage1Fingerprint(stage1),
         ["stage1_fingerprint"] = Stage1Fingerprint(stage1),
         ["planned_at"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"),
         ["total_duration_seconds"] = planned.Sum(s =>
             ToInt(s.TryGetValue("total_estimated_duration_seconds", out var d) ? d : 0)),
         ["total_clips"] = planned.Sum(s => GetList(s, "veo_clips").Count),
     };
+
+    /// <summary>
+    /// Overlay design_reference_images / voice fields from source/cast_seeds.json onto the
+    /// in-memory model derived from Fountain.
+    /// </summary>
+    private static void MergeCastSeedsOverlay(
+        ProjectStore projects,
+        string projectId,
+        Dictionary<string, object?> stage1)
+    {
+        var path = ScreenplayService.GetCastSeedsPath(projects, projectId);
+        if (!File.Exists(path))
+            return;
+        try
+        {
+            var overlay = GrokChatClient.ParseJsonObject(File.ReadAllText(path));
+            // Shapes: { character_seed_tokens } or { global_production_variables.character_seed_tokens }
+            var overlaySeeds = GetDict(overlay, "character_seed_tokens");
+            if (overlaySeeds.Count == 0)
+                overlaySeeds = GetDict(GetDict(overlay, "global_production_variables"), "character_seed_tokens");
+            if (overlaySeeds.Count == 0)
+                return;
+
+            var gpv = GetDict(stage1, "global_production_variables");
+            var seeds = GetDict(gpv, "character_seed_tokens");
+            foreach (var (key, val) in overlaySeeds)
+            {
+                if (val is not Dictionary<string, object?> ov)
+                    continue;
+                if (!seeds.TryGetValue(key, out var existing) || existing is not Dictionary<string, object?> cur)
+                {
+                    seeds[key] = ov;
+                    continue;
+                }
+                foreach (var (fk, fv) in ov)
+                    cur[fk] = fv;
+                seeds[key] = cur;
+            }
+            gpv["character_seed_tokens"] = seeds;
+            stage1["global_production_variables"] = gpv;
+        }
+        catch
+        {
+            /* non-fatal */
+        }
+    }
 
     private static Dictionary<string, object?> PlanScene(
         Dictionary<string, object?> scene,

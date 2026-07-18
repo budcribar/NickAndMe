@@ -5,8 +5,8 @@ using System.Text.RegularExpressions;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Convert a Fountain screenplay into Stage 1 (stage1.v1) screenplay JSON
-/// so shot planning / characters / scenes can proceed without LLM Stage 1.
+/// Parse Fountain into an in-memory screenplay model (beats, cast, locations)
+/// used by Stage 2 and cast tooling. Does not write scenes.json — Stage 2 reads Fountain.
 /// </summary>
 public static class FountainStage1Importer
 {
@@ -22,6 +22,10 @@ public static class FountainStage1Importer
         public string? Title { get; init; }
     }
 
+    /// <summary>
+    /// Save canonical Fountain draft only (no scenes.json). Prefer
+    /// <see cref="ScreenplayService.ImportAsDraft"/> / <see cref="ScreenplayService.SignOff"/>.
+    /// </summary>
     public static ImportResult ImportToProject(
         ProjectStore projects,
         string projectId,
@@ -32,14 +36,12 @@ public static class FountainStage1Importer
             return new ImportResult { Ok = false, Error = "Empty Fountain text" };
 
         var parsed = FountainParser.Parse(fountainText);
-        var doc = BuildStage1(parsed);
-        doc = Stage1Normalizer.Normalize(doc);
+        var doc = Stage1Normalizer.Normalize(BuildStage1(parsed));
 
         var projectDir = projects.GetProjectDir(projectId);
         var sourceDir = Path.Combine(projectDir, "source");
         Directory.CreateDirectory(sourceDir);
 
-        // Always write canonical screenplay.fountain for the editor; keep original name as a copy.
         var normalized = fountainText.Replace("\r\n", "\n").Replace('\r', '\n');
         if (!normalized.EndsWith('\n')) normalized += "\n";
         var fountainPath = Path.Combine(sourceDir, ScreenplayService.CanonicalFileName);
@@ -58,15 +60,6 @@ public static class FountainStage1Importer
             }
         }
 
-        var scenesPath = projects.ResolveScenesJsonPath(projectId);
-        if (File.Exists(scenesPath))
-        {
-            var bak = scenesPath + $".bak_fountain_{DateTime.Now:yyyyMMdd_HHmmss}";
-            File.Copy(scenesPath, bak, overwrite: true);
-        }
-
-        var json = JsonSerializer.Serialize(doc, JsonDefaults.Indented);
-        File.WriteAllText(scenesPath, json + "\n");
         projects.InvalidateSceneListCache(projectId);
 
         var gpv = doc["global_production_variables"] as Dictionary<string, object?>;
@@ -77,7 +70,7 @@ public static class FountainStage1Importer
         return new ImportResult
         {
             Ok = true,
-            OutPath = scenesPath,
+            OutPath = fountainPath,
             FountainSavedPath = fountainPath,
             SceneCount = scenes?.Count ?? 0,
             CharacterCount = chars?.Count ?? 0,

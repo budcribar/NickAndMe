@@ -2,6 +2,7 @@
 @page "/adaptation/book"
 @inherits AdaptationPageBase
 @using Microsoft.AspNetCore.Components.Forms
+@inject AdminSessionService Session
 
 <PageTitle>Adaptation · Import</PageTitle>
 
@@ -11,152 +12,70 @@
         <div class="card mb-3">
             <div class="card-header">Import</div>
             <div class="card-body">
-                <p class="small text-muted mb-3">
-                    Bring in a source for this project:
-                    a <strong>screenplay</strong> file, a <strong>PDF</strong> book, or plain <strong>TXT</strong>.
-                    You’ll review and approve the screenplay next.
-                </p>
-
-                <div class="mb-2">
-                    <label class="form-label small">Source file</label>
-                    <InputFile OnChange="OnSourceSelected"
+                <div class="mb-3">
+                    <label class="form-label small d-block">Source file</label>
+                    <InputFile OnChange="OnSourceSelectedAsync"
                                class="form-control form-control-sm"
+                               style="max-width: 22rem;"
                                accept=".fountain,.spmd,.pdf,.txt"
-                               disabled="@(Busy || JobRunning)" />
-                </div>
-                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <button class="btn btn-primary btn-sm"
-                            disabled="@(Busy || JobRunning || _sourceFile is null)"
-                            @onclick="ImportSourceAsync">
-                        Import
-                    </button>
-                    @if (_sourceFile is not null)
-                    {
-                        <span class="small text-muted">@_sourceFile.Name · @SourceKindLabel</span>
-                    }
+                               disabled="@(_importing || Busy || JobRunning)" />
+                    <div class="form-text">
+                        Screenplay (.fountain), PDF, or .txt — starts as soon as you choose a file
+                    </div>
                 </div>
 
-                @* Status snapshot *@
-                <ul class="list-unstyled small mb-3">
-                    <li>
-                        PDF:
-                        @if (Status.Book.PdfExists)
-                        {
-                            <code>@Status.Book.PdfName</code>
-                        }
-                        else
-                        {
-                            <span class="text-muted">none</span>
-                        }
-                    </li>
-                    <li>
-                        Story text:
-                        @(Status.Book.BookTextExists
-                            ? $"{Status.Book.BookTextBytes:N0} bytes · {Status.Book.TextWords ?? 0} words"
-                            : "missing")
-                        @if (Status.Book.ReadyForStage1)
-                        {
-                            <span class="badge text-bg-success ms-1">ready</span>
-                        }
-                    </li>
-                    <li>
-                        Screenplay draft:
-                        @if (Status.Screenplay.DraftExists)
-                        {
-                            <span>
-                                <strong>@(Status.Screenplay.Title ?? "Untitled")</strong>
-                                · @Status.Screenplay.SceneHeadingCount scenes
-                            </span>
-                            @if (Status.Screenplay.Signed && !Status.Screenplay.Dirty)
-                            {
-                                <span class="badge text-bg-success ms-1">approved</span>
-                            }
-                            else
-                            {
-                                <span class="badge text-bg-warning text-dark ms-1">needs review</span>
-                            }
-                        }
-                        else if (Status.Stage1.Present && Status.Stage1.SceneCount > 0)
-                        {
-                            <span>
-                                <strong>@(Status.Stage1.MovieTitle ?? "Untitled")</strong>
-                                · @Status.Stage1.SceneCount scenes
-                            </span>
-                            <span class="badge text-bg-success ms-1">ready</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">not set yet</span>
-                        }
-                    </li>
-                    @if (Status.Book.BookTextExists)
-                    {
-                        <li class="text-muted">
-                            text quality: @(Status.Book.TextQuality ?? "—")
-                            · page images: @Status.Book.PageImageCount
-                        </li>
-                    }
-                </ul>
-
-                @if (Status.Book.Notes.Count > 0)
+                @if (_importing)
                 {
-                    <ul class="small text-muted mb-3">
-                        @foreach (var n in Status.Book.Notes.Take(4))
-                        {
-                            <li>@n</li>
-                        }
-                    </ul>
-                }
-
-                @* Book-only actions after PDF/TXT import *@
-                @if (Status.Book.PdfExists || Status.Book.BookTextExists)
-                {
-                    <div class="border-top pt-3 mb-2">
-                        <div class="small fw-semibold mb-2">From book or text</div>
-                        <div class="d-flex flex-wrap gap-2 mb-2">
-                            <button class="btn btn-outline-primary btn-sm"
-                                    disabled="@(Busy || JobRunning || (!Status.Book.PdfExists && !Status.Book.BookTextExists))"
-                                    @onclick="() => PrepareBookAsync(forceVision: false)">
-                                Prepare text
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    disabled="@(Busy || JobRunning || !Status.XaiConfigured || (!Status.Book.PdfExists && Status.Book.PageImageCount == 0))"
-                                    @onclick="() => PrepareBookAsync(forceVision: true)">
-                                Re-read book pages
-                            </button>
+                    <div class="mt-2 mb-1">
+                        <div class="d-flex justify-content-between align-items-center small mb-1 gap-2">
+                            <span>@_importStatus</span>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (_importPct is int p)
+                                {
+                                    <span class="text-muted">@p%</span>
+                                }
+                                @if (JobRunning)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger py-0"
+                                            disabled="@Busy"
+                                            @onclick="CancelAsync">
+                                        Cancel
+                                    </button>
+                                }
+                            </div>
                         </div>
-                        <p class="small text-muted mb-0">
-                            Use after a PDF (or messy text). Then open Screenplay to draft and approve.
-                        </p>
-                        @if (Status.Book.BookTextExists)
+                        <div class="progress" style="height: 0.85rem;" role="progressbar"
+                             aria-valuenow="@(_importPct ?? 40)" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                 style="width: @(_importPct ?? 40)%"></div>
+                        </div>
+
+                        @if (Session.IsAdmin && Job?.Log is { Count: > 0 })
                         {
-                            <button class="btn btn-outline-success btn-sm mt-2"
-                                    disabled="@(Busy || JobRunning)"
-                                    @onclick="DraftFromBookAsync">
-                                Create screenplay draft
-                            </button>
+                            <details class="mt-2" open>
+                                <summary class="small text-muted" style="cursor:pointer">Details (admin)</summary>
+                                <div class="small text-muted mb-1 mt-1">
+                                    @if (Job.Kind is { Length: > 0 } k)
+                                    {
+                                        <span class="badge bg-info text-dark me-1">@JobKindLabel(k)</span>
+                                    }
+                                    <span class="badge bg-secondary me-1">@Job.Status</span>
+                                    @if (Job.Total > 0)
+                                    {
+                                        <span>@Job.Index / @Job.Total</span>
+                                    }
+                                </div>
+                                <pre class="small mb-0 mt-1 p-2 bg-light border rounded"
+                                     style="max-height: 220px; overflow: auto;">@string.Join("\n", Job.Log.TakeLast(50))</pre>
+                            </details>
                         }
                     </div>
                 }
-
-                @if (!string.IsNullOrEmpty(Status.Book.Preview))
+                else if (CanContinueToScreenplay)
                 {
-                    <details class="mt-3">
-                        <summary class="small text-muted">Text preview</summary>
-                        <pre class="small bg-light border rounded p-2 mt-1" style="max-height:140px; overflow:auto; white-space:pre-wrap;">@Status.Book.Preview</pre>
-                    </details>
+                    <a class="btn btn-success btn-sm" href="adaptation/screenplay">Continue to screenplay →</a>
                 }
-
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    @if (CanContinueToScreenplay)
-                    {
-                        <a class="btn btn-success btn-sm" href="adaptation/screenplay">Continue to screenplay →</a>
-                    }
-                    @if (Status.Screenplay.ReadyForShots)
-                    {
-                        <a class="btn btn-outline-success btn-sm" href="adaptation/shots">Shot plan →</a>
-                    }
-                </div>
             </div>
         </div>
     }
@@ -165,109 +84,229 @@
 @code {
     public override string StepKey => "import";
 
-    private IBrowserFile? _sourceFile;
-
-    private string SourceKindLabel =>
-        IsFountainName(_sourceFile?.Name) ? "Screenplay"
-        : IsPdfName(_sourceFile?.Name) ? "PDF"
-        : IsTxtName(_sourceFile?.Name) ? "Text"
-        : "file";
+    private bool _importing;
+    private string _importStatus = "";
+    private int? _importPct;
 
     private bool CanContinueToScreenplay =>
         Status is not null &&
         (Status.Screenplay.DraftExists ||
-         Status.Book.ReadyForStage1 ||
-         Status.Book.BookTextExists ||
          (Status.Stage1.Present && Status.Stage1.SceneCount > 0));
 
-    private void OnSourceSelected(InputFileChangeEventArgs e)
+    protected override async Task OnInitializedAsync()
     {
-        _sourceFile = e.File;
-        Message = $"Selected {_sourceFile.Name} ({_sourceFile.Size:N0} bytes)";
+        await base.OnInitializedAsync();
+        try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
     }
 
-    private async Task ImportSourceAsync()
+    private async Task OnSourceSelectedAsync(InputFileChangeEventArgs e)
     {
-        if (_sourceFile is null) return;
+        var file = e.File;
+        if (file is null || _importing) return;
+        await ImportFileAsync(file);
+    }
+
+    private async Task ImportFileAsync(IBrowserFile file)
+    {
+        _importing = true;
         Busy = true;
         Error = null;
         Message = null;
+        _importPct = 8;
+        _importStatus = $"Reading {file.Name}…";
+        StateHasChanged();
+
         try
         {
-            var name = _sourceFile.Name;
+            var name = file.Name;
+
             if (IsFountainName(name))
             {
+                _importStatus = "Loading screenplay…";
+                _importPct = 40;
+                StateHasChanged();
+
                 const long max = 20 * 1024 * 1024;
-                await using var stream = _sourceFile.OpenReadStream(max);
-                var result = await Engine.ImportFountainAsync(ProjectId, name, stream);
-                Message = result?.Message
-                          ?? "Screenplay draft ready — review and approve next";
-                _sourceFile = null;
+                await using var stream = file.OpenReadStream(max);
+                await Engine.ImportFountainAsync(ProjectId, name, stream);
+
+                _importPct = 100;
+                _importStatus = "Done";
                 await LoadAsync();
                 Nav.NavigateTo("adaptation/screenplay");
                 return;
             }
 
-            // PDF or TXT → project source
+            // PDF or TXT
+            _importStatus = "Saving file…";
+            _importPct = 15;
+            StateHasChanged();
+
             const long maxBook = 80 * 1024 * 1024;
-            await using (var stream = _sourceFile.OpenReadStream(maxBook))
+            await using (var stream = file.OpenReadStream(maxBook))
             {
                 await Engine.UploadBookAsync(ProjectId, name, stream);
             }
 
-            if (IsTxtName(name))
+            if (IsPdfName(name))
             {
-                // TXT often is already readable — offer draft immediately
-                try
-                {
-                    var draft = await Engine.CreateScreenplayFromBookAsync(ProjectId);
-                    Message = draft?.Message ?? "Draft ready — review on Screenplay";
-                    _sourceFile = null;
-                    await LoadAsync();
-                    Nav.NavigateTo("adaptation/screenplay");
+                _importStatus = "Reading book…";
+                _importPct = 25;
+                StateHasChanged();
+
+                await EnsureHubAsync();
+                await Engine.StartBookPrepareAsync(
+                    ProjectId,
+                    forceExtract: true,
+                    forceVision: false,
+                    autoVision: true);
+
+                var ok = await WaitForJobDoneAsync(
+                    "book_prepare",
+                    basePct: 25,
+                    spanPct: 50);
+                if (!ok)
                     return;
-                }
-                catch
-                {
-                    // fall through to manual prepare path
-                }
+
+                _importStatus = "Writing screenplay draft…";
+                _importPct = 85;
+                StateHasChanged();
+
+                await Engine.CreateScreenplayFromBookAsync(ProjectId);
+            }
+            else if (IsTxtName(name))
+            {
+                _importStatus = "Writing screenplay draft…";
+                _importPct = 55;
+                StateHasChanged();
+
+                await Engine.CreateScreenplayFromBookAsync(ProjectId);
+            }
+            else
+            {
+                throw new InvalidOperationException("Use a screenplay (.fountain), PDF, or .txt file.");
             }
 
-            Message = IsPdfName(name)
-                ? $"Saved {name}. Click Prepare text next."
-                : $"Saved {name}. Continue to screenplay when text looks good.";
-            _sourceFile = null;
-            await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            Error = ex.Message;
-        }
-        finally
-        {
-            Busy = false;
-        }
-    }
-
-    private async Task DraftFromBookAsync()
-    {
-        Busy = true;
-        Error = null;
-        try
-        {
-            var result = await Engine.CreateScreenplayFromBookAsync(ProjectId);
-            Message = result?.Message ?? "Draft ready";
+            _importPct = 100;
+            _importStatus = "Done";
+            StateHasChanged();
             await LoadAsync();
             Nav.NavigateTo("adaptation/screenplay");
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Error = FriendlyError(ex.Message);
+            _importStatus = "Failed";
+            _importPct = null;
         }
         finally
         {
+            _importing = false;
             Busy = false;
         }
+    }
+
+    /// <summary>Poll until the current job finishes. Returns false on error/cancel.</summary>
+    private async Task<bool> WaitForJobDoneAsync(
+        string expectedKind,
+        int basePct,
+        int spanPct)
+    {
+        await Task.Delay(400);
+        var sawRunning = false;
+
+        for (var i = 0; i < 900; i++)
+        {
+            try
+            {
+                var jobs = await Engine.GetJobAsync();
+                var snap = jobs?.Job;
+                if (snap is not null)
+                {
+                    Job = snap;
+                    AbsorbProgressFromSnapshot(snap);
+                    AbsorbProgressFromLine(snap.Message);
+
+                    _importStatus = FriendlyJobStatus(snap);
+
+                    if (snap.Total > 0)
+                    {
+                        var frac = Math.Clamp((double)snap.Index / snap.Total, 0, 1);
+                        _importPct = basePct + (int)Math.Round(spanPct * frac);
+                    }
+                    else
+                    {
+                        _importPct = Math.Min(basePct + spanPct - 5, basePct + 5 + (i % 40));
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+
+                    var st = snap.Status ?? "";
+                    var kindOk = string.IsNullOrEmpty(snap.Kind) ||
+                                 string.Equals(snap.Kind, expectedKind, StringComparison.OrdinalIgnoreCase);
+
+                    if (st is "running" or "queued")
+                        sawRunning = true;
+
+                    if (st is "error" or "cancelled")
+                    {
+                        Error = FriendlyError(snap.Error ?? snap.Message ?? "Could not prepare the book");
+                        return false;
+                    }
+
+                    if (st == "done" && kindOk && (sawRunning || i >= 2))
+                        return true;
+                }
+            }
+            catch
+            {
+                // keep polling
+            }
+
+            await Task.Delay(1000);
+        }
+
+        Error = "Timed out while preparing the book.";
+        return false;
+    }
+
+    /// <summary>Operator-facing status (no mechanism jargon). Admins still see raw log below.</summary>
+    private static string FriendlyJobStatus(JobSnapshot snap)
+    {
+        var msg = snap.Message ?? "";
+        // Page progress if present
+        var m = System.Text.RegularExpressions.Regex.Match(
+            msg, @"page\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (m.Success)
+            return $"Reading book — page {m.Groups[1].Value} of {m.Groups[2].Value}";
+
+        if (msg.Contains("extract", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("PdfPig", StringComparison.OrdinalIgnoreCase))
+            return "Extracting text from the book…";
+        if (msg.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("render", StringComparison.OrdinalIgnoreCase))
+            return "Preparing page pictures…";
+        if (msg.Contains("vision", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("OCR", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Grok", StringComparison.OrdinalIgnoreCase))
+            return "Reading book pages…";
+        if (msg.Contains("strategy", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("quality", StringComparison.OrdinalIgnoreCase))
+            return "Checking book text…";
+        if (msg.Contains("looking", StringComparison.OrdinalIgnoreCase))
+            return "Looking for the book…";
+        if (string.IsNullOrWhiteSpace(msg))
+            return "Reading book…";
+        return "Reading book…";
+    }
+
+    private static string FriendlyError(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "Something went wrong.";
+        // Keep short operator text; drop stack-ish noise
+        var s = raw.Trim();
+        if (s.Length > 200) s = s[..200] + "…";
+        return s;
     }
 
     private static bool IsFountainName(string? name) =>

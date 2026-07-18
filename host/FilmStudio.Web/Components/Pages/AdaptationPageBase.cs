@@ -11,12 +11,14 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
     [Inject] protected EngineApiClient Engine { get; set; } = null!;
     [Inject] protected JobHubClient Hub { get; set; } = null!;
     [Inject] protected NavigationManager Nav { get; set; } = null!;
+    [Inject] protected ActiveProjectState ActiveProject { get; set; } = null!;
 
     public bool Busy;
     public string? Error;
     public string? Message;
-    public string ProjectId = "Buster";
-    public List<string> ProjectIds = new();
+    public string ProjectId = "";
+    /// <summary>Display name for the active project (set on Home; read-only here).</summary>
+    public string ProjectLabel = "";
     public AdaptationStatus? Status;
     public JobSnapshot? Job;
     public IBrowserFile? PendingFile;
@@ -50,13 +52,14 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         Hub.JobLog += OnJobLog;
         try
         {
-            var projs = await Engine.GetProjectsAsync();
-            ProjectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
-                         ?? new List<string> { "Buster" };
-            if (projs?.Active?.Id is { Length: > 0 } aid)
-                ProjectId = aid;
-            else if (ProjectIds.Count > 0)
-                ProjectId = ProjectIds[0];
+            await ActiveProject.RefreshFromApiAsync(Engine);
+            if (!ActiveProject.HasProject)
+            {
+                Error = "No project selected. Create or choose one on Studio.";
+                return;
+            }
+            ProjectId = ActiveProject.ProjectId!;
+            ProjectLabel = ActiveProject.Label ?? ProjectId;
 
             try { await Hub.StartAsync(); } catch { /* optional */ }
 
@@ -271,6 +274,9 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         finally { Busy = false; }
     }
 
+    /// <summary>
+    /// Book → Fountain draft (and approve for shot build). Uses prompts/book_to_fountain.txt only.
+    /// </summary>
     public async Task RunOutlineAsync()
     {
         Busy = true;
@@ -284,12 +290,10 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
             await Engine.StartStage1Async(new StartStage1Request
             {
                 ProjectId = ProjectId,
-                ChunkPages = ChunkPages,
                 TotalMinutes = TotalMinutes,
                 Model = Model,
-                Resume = Resume,
             });
-            Message = "Building screenplay… (may take a few minutes) — live log below";
+            Message = "Building Fountain from book… (may take a few minutes) — live log below";
             var jobs = await Engine.GetJobAsync();
             Job = jobs?.Job;
             AbsorbProgressFromSnapshot(Job ?? new JobSnapshot());
@@ -387,6 +391,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         "import_book" => "Import a screenplay, PDF, or text file",
         "fix_book_text" => "Prepare imported text, or import a screenplay",
         "sign_screenplay" => "Edit the screenplay and approve when ready",
+        "draft_screenplay" => "Draft the screenplay from the book",
         "run_stage1" => "Build the screenplay from the book",
         "run_stage2" => "Build the shot plan",
         "replan_stage2" => "Update the shot plan (screenplay changed)",
@@ -416,7 +421,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         return status.NextStep switch
         {
             "import_book" or "fix_book_text" => "/adaptation/import",
-            "sign_screenplay" or "run_stage1" => "/adaptation/screenplay",
+            "sign_screenplay" or "draft_screenplay" or "run_stage1" => "/adaptation/screenplay",
             "run_stage2" or "replan_stage2" => "/adaptation/shots",
             "generate_clips" or "done" => "/adaptation/shots",
             _ => "/adaptation/import",

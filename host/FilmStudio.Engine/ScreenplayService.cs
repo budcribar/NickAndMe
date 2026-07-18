@@ -7,13 +7,17 @@ using FilmStudio.Core.Models;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Fountain draft lifecycle: load/save, create from book/import, sign-off → Stage 1.
+/// Fountain draft lifecycle: load/save, create from book/import, sign-off.
+/// Operator source of truth is <c>source/screenplay.fountain</c>.
+/// Shot planning reads Fountain directly (in-memory beat model) — no scenes.json step.
 /// Canonical file: source/screenplay.fountain (+ source/screenplay_meta.json).
 /// </summary>
 public static class ScreenplayService
 {
     public const string CanonicalFileName = "screenplay.fountain";
     public const string MetaFileName = "screenplay_meta.json";
+    /// <summary>Optional cast seed cache (plates / voice edits) under source/.</summary>
+    public const string CastSeedsFileName = "cast_seeds.json";
 
     public sealed class ScreenplayDoc
     {
@@ -57,6 +61,139 @@ public static class ScreenplayService
 
     public static string GetMetaPath(ProjectStore store, string projectId) =>
         Path.Combine(store.GetProjectDir(projectId), "source", MetaFileName);
+
+    public static string GetCastSeedsPath(ProjectStore store, string projectId) =>
+        Path.Combine(store.GetProjectDir(projectId), "source", CastSeedsFileName);
+
+    /// <summary>
+    /// Parse Fountain into the in-memory screenplay model used by Stage 2 / cast tooling
+    /// (same shape as the old stage1.v1 dict, never written to disk for planning).
+    /// </summary>
+    public static Dictionary<string, object?> BuildModelFromFountainText(string fountainText)
+    {
+        var parsed = FountainParser.Parse(fountainText);
+        var doc = FountainStage1Importer.BuildStage1(parsed);
+        return Stage1Normalizer.Normalize(doc);
+    }
+
+    /// <summary>
+    /// Load project Fountain and build the in-memory screenplay model.
+    /// Returns null if there is no draft.
+    /// </summary>
+    public static Dictionary<string, object?>? TryBuildModelFromProject(ProjectStore store, string projectId)
+    {
+        EnsureCanonicalDraft(store, projectId);
+        var path = GetDraftPath(store, projectId);
+        if (!File.Exists(path))
+            return null;
+        var text = File.ReadAllText(path);
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        return BuildModelFromFountainText(text);
+    }
+
+    /// <summary>Summarise Fountain into Stage1Status (UI / readiness). No scenes.json.</summary>
+    public static Stage1Status StatusFromFountainModel(
+        Dictionary<string, object?>? model,
+        string? fountainPath = null)
+    {
+        var status = new Stage1Status
+        {
+            ScenesFile = fountainPath is null ? CanonicalFileName : Path.GetFileName(fountainPath),
+        };
+        if (model is null)
+            return status;
+
+        status.Present = true;
+        status.MovieTitle = model.TryGetValue("movie_title", out var mt) ? mt?.ToString() : null;
+        status.SourceBookTitle = model.TryGetValue("source_book_title", out var sbt) ? sbt?.ToString() : null;
+        if (model.TryGetValue("cumulative_duration_target_seconds", out var rt) && rt is not null)
+        {
+            status.RuntimeSeconds = rt switch
+            {
+                int i => i,
+                long l => l,
+                double d => d,
+                _ => double.TryParse(rt.ToString(), out var x) ? x : null,
+            };
+        }
+
+        if (fountainPath is not null && File.Exists(fountainPath))
+        {
+            try { status.Mtime = File.GetLastWriteTime(fountainPath).ToString("yyyy-MM-dd HH:mm:ss"); }
+            catch { /* ignore */ }
+        }
+
+        if (model.TryGetValue("global_production_variables", out var gpvObj) &&
+            gpvObj is Dictionary<string, object?> gpv)
+        {
+            if (gpv.TryGetValue("character_seed_tokens", out var chars) &&
+                chars is Dictionary<string, object?> charDict)
+            {
+                status.CharacterCount = charDict.Count;
+                foreach (var (key, val) in charDict)
+                {
+                    var display = key.Replace("Character_", "").Replace("_", " ");
+                    if (val is Dictionary<string, object?> seed &&
+                        seed.TryGetValue("canonical_given_name", out var cn) &&
+                        cn is string cname && cname.Length > 0)
+                        display = cname;
+                    else if (val is Dictionary<string, object?> seed2 &&
+                             seed2.TryGetValue("voice_label", out var vl) &&
+                             vl is string lab && lab.Length > 0)
+                        display = lab;
+                    status.CastNames.Add(display);
+                }
+            }
+
+            if (gpv.TryGetValue("location_seed_tokens", out var locs) &&
+                locs is Dictionary<string, object?> locDict)
+                status.LocationCount = locDict.Count;
+        }
+
+        if (model.TryGetValue("scenes", out var scenesObj) && scenesObj is List<object?> scenes)
+        {
+            foreach (var s in scenes.OfType<Dictionary<string, object?>>())
+            {
+                var sn = s.TryGetValue("scene_number", out var sne) ? ToInt(sne) : 0;
+                var beats = 0;
+                if (s.TryGetValue("story_beats", out var sb) && sb is List<object?> beatList)
+                    beats = beatList.Count;
+                status.BeatCount += beats;
+                double? dur = null;
+                if (s.TryGetValue("duration_target_seconds", out var d) ||
+                    s.TryGetValue("estimated_duration_seconds", out d))
+                {
+                    if (d is double dd) dur = dd;
+                    else if (d is int di) dur = di;
+                    else if (double.TryParse(d?.ToString(), out var dx)) dur = dx;
+                }
+
+                status.Scenes.Add(new Stage1SceneRow
+                {
+                    SceneNumber = sn,
+                    Setting = s.TryGetValue("setting", out var set) ? set?.ToString() ?? "" : "",
+                    BeatCount = beats,
+                    DurationSeconds = dur,
+                });
+            }
+
+            status.SceneCount = status.Scenes.Count;
+            status.Scenes = status.Scenes.OrderBy(x => x.SceneNumber).ToList();
+        }
+
+        return status;
+    }
+
+    private static int ToInt(object? v) => v switch
+    {
+        null => 0,
+        int i => i,
+        long l => (int)l,
+        double d => (int)d,
+        string s when int.TryParse(s, out var n) => n,
+        _ => 0,
+    };
 
     public static string ComputeHash(string text)
     {
@@ -117,8 +254,11 @@ public static class ScreenplayService
             status.Dirty = false;
         }
 
-        status.ReadyForShots = stage1.Present && stage1.SceneCount > 0 &&
-                               (status.Signed || !status.DraftExists);
+        // Ready when approved Fountain has scenes (Stage 2 reads Fountain directly).
+        // Legacy: scenes-only projects without a draft still count as ready.
+        status.ReadyForShots =
+            (status.DraftExists && status.Signed && status.SceneHeadingCount > 0) ||
+            (!status.DraftExists && stage1.Present && stage1.SceneCount > 0);
 
         return status;
     }
@@ -260,8 +400,7 @@ public static class ScreenplayService
     }
 
     /// <summary>
-    /// Build a first-pass Fountain draft from prepared book text (or raw TXT).
-    /// Does not sign off.
+    /// Offline/test helper only — minimal stub. Production path is <see cref="CreateDraftFromBookAsync"/>.
     /// </summary>
     public static SaveResult CreateDraftFromBook(ProjectStore store, string projectId)
     {
@@ -274,7 +413,65 @@ public static class ScreenplayService
         if (string.IsNullOrWhiteSpace(book))
             return new SaveResult { Ok = false, Error = "Book text is empty" };
 
+        var (title, author) = ReadProjectTitleAuthor(projectDir, projectId);
+        var fountain = BookToFountainConverter.ConvertHeuristic(title, book, author);
+        var save = SaveDraft(store, projectId, fountain);
+        if (!save.Ok) return save;
+        save.Message = "Screenplay draft ready — review and approve";
+        return save;
+    }
+
+    /// <summary>
+    /// Build screenplay draft from book_full.txt via chat (locations, dialogue, page tags).
+    /// Requires a configured chat client.
+    /// </summary>
+    public static async Task<SaveResult> CreateDraftFromBookAsync(
+        ProjectStore store,
+        string projectId,
+        FilmStudio.Engine.Abstractions.IGrokChatClient? chat = null,
+        string model = "grok-4.5",
+        CancellationToken ct = default)
+    {
+        var projectDir = store.GetProjectDir(projectId);
+        var bookPath = Path.Combine(projectDir, "source", "book_full.txt");
+        if (!File.Exists(bookPath))
+            return new SaveResult { Ok = false, Error = "No prepared book text yet" };
+
+        var book = await File.ReadAllTextAsync(bookPath, ct).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(book))
+            return new SaveResult { Ok = false, Error = "Book text is empty" };
+
+        var (title, author) = ReadProjectTitleAuthor(projectDir, projectId);
+        var analysis = BookTextAnalyzer.Analyze(book);
+        var minutes = Math.Clamp(analysis.SuggestedTotalMinutes, 3, 180);
+
+        try
+        {
+            var fountain = await BookToFountainConverter.ConvertAsync(
+                workspaceRoot: store.WorkspaceRoot,
+                title: title,
+                bookText: book,
+                author: author,
+                totalRuntimeMinutes: minutes,
+                chat: chat,
+                model: model,
+                ct: ct).ConfigureAwait(false);
+
+            var save = SaveDraft(store, projectId, fountain);
+            if (!save.Ok) return save;
+            save.Message = "Screenplay draft ready — review and approve";
+            return save;
+        }
+        catch (Exception ex)
+        {
+            return new SaveResult { Ok = false, Error = ex.Message };
+        }
+    }
+
+    private static (string Title, string? Author) ReadProjectTitleAuthor(string projectDir, string projectId)
+    {
         var title = projectId;
+        string? author = null;
         try
         {
             var pj = Path.Combine(projectDir, "project.json");
@@ -285,15 +482,12 @@ public static class ScreenplayService
                     title = t.GetString() ?? title;
                 else if (doc.RootElement.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
                     title = n.GetString() ?? title;
+                if (doc.RootElement.TryGetProperty("author", out var a) && a.ValueKind == JsonValueKind.String)
+                    author = a.GetString();
             }
         }
         catch { /* ignore */ }
-
-        var fountain = BookTextToFountainDraft(title, book);
-        var save = SaveDraft(store, projectId, fountain);
-        if (!save.Ok) return save;
-        save.Message = "Draft from book ready — edit and approve on Screenplay";
-        return save;
+        return (title, author);
     }
 
     public static SignOffResult SignOff(ProjectStore store, string projectId, string? text = null)
@@ -314,21 +508,28 @@ public static class ScreenplayService
         if (string.IsNullOrWhiteSpace(draftText))
             return new SignOffResult { Ok = false, Error = "Screenplay draft is empty" };
 
+        draftText = NormalizeText(draftText);
+        File.WriteAllText(draftPath, draftText);
+
         var hash = ComputeHash(draftText);
         var metaBefore = ReadMeta(store, projectId);
         var hashChanged = string.IsNullOrEmpty(metaBefore.SignedHash) ||
                           !string.Equals(metaBefore.SignedHash, hash, StringComparison.OrdinalIgnoreCase);
 
-        var import = FountainStage1Importer.ImportToProject(store, projectId, draftText, CanonicalFileName);
-        if (!import.Ok)
-            return new SignOffResult { Ok = false, Error = import.Error ?? "Could not build screenplay" };
-
-        // Ensure canonical path (importer may write same name)
-        if (!string.Equals(Path.GetFullPath(import.FountainSavedPath ?? ""), Path.GetFullPath(draftPath),
-                StringComparison.OrdinalIgnoreCase))
+        // Validate Fountain has scenes (shot plan reads Fountain — no scenes.json write).
+        Dictionary<string, object?> model;
+        try
         {
-            File.WriteAllText(draftPath, NormalizeText(draftText));
+            model = BuildModelFromFountainText(draftText);
         }
+        catch (Exception ex)
+        {
+            return new SignOffResult { Ok = false, Error = $"Could not parse screenplay: {ex.Message}" };
+        }
+
+        var summary = StatusFromFountainModel(model, draftPath);
+        if (summary.SceneCount <= 0)
+            return new SignOffResult { Ok = false, Error = "Screenplay has no scenes (need INT./EXT. headings)." };
 
         var meta = ReadMeta(store, projectId);
         meta.SignedHash = hash;
@@ -343,98 +544,21 @@ public static class ScreenplayService
         return new SignOffResult
         {
             Ok = true,
-            Title = import.Title,
-            SceneCount = import.SceneCount,
-            CharacterCount = import.CharacterCount,
-            LocationCount = import.LocationCount,
+            Title = summary.MovieTitle,
+            SceneCount = summary.SceneCount,
+            CharacterCount = summary.CharacterCount,
+            LocationCount = summary.LocationCount,
             HashChanged = hashChanged,
             Status = status,
             Message =
-                $"Screenplay approved · {import.SceneCount} scenes · {import.CharacterCount} cast" +
+                $"Screenplay approved · {summary.SceneCount} scenes · {summary.CharacterCount} cast" +
                 (hashChanged ? " · update shot plan if you already built one" : ""),
         };
     }
 
-    /// <summary>
-    /// Turn plain book prose into an editable Fountain draft.
-    /// When book_full has --- PAGE N --- markers, one scene per page (heading includes PAGE n)
-    /// so the editor can show book text when a scene is selected.
-    /// </summary>
-    public static string BookTextToFountainDraft(string title, string bookText)
-    {
-        var sb = new StringBuilder();
-        sb.Append("Title: ").Append(title.Trim()).Append('\n');
-        sb.Append("Draft date: ").Append(DateTime.Now.ToString("M/d/yyyy")).Append('\n');
-        sb.Append('\n');
-
-        var pages = BookContextService.ParseBookPages(bookText);
-        if (pages.Count == 0)
-        {
-            sb.Append("INT. STORY - DAY\n\n");
-            sb.Append("[[No book text.]]\n");
-            return NormalizeText(sb.ToString());
-        }
-
-        const int maxChars = 400_000;
-        var used = sb.Length;
-        foreach (var page in pages)
-        {
-            if (string.IsNullOrWhiteSpace(page.Text))
-                continue;
-
-            var heading = $"INT. STORY - PAGE {page.PageNumber} - DAY";
-            var block = new StringBuilder();
-            block.Append(heading).Append("\n\n");
-            // Skip raw page markers if any slipped into body
-            var body = page.Text;
-            foreach (var para in Regex.Split(body.Trim(), @"\n\s*\n+"))
-            {
-                var p = para.Replace('\n', ' ').Trim();
-                if (p.Length == 0) continue;
-                if (Regex.IsMatch(p, @"^---\s*PAGE\s+\d+\s*---$", RegexOptions.IgnoreCase))
-                    continue;
-                foreach (var chunk in WrapWords(p, 100))
-                    block.Append(chunk).Append('\n');
-                block.Append('\n');
-            }
-
-            if (used + block.Length > maxChars)
-            {
-                sb.Append("\n[[Draft truncated — remaining pages omitted.]]\n");
-                break;
-            }
-            sb.Append(block);
-            used += block.Length;
-        }
-
-        return NormalizeText(sb.ToString());
-    }
-
-    private static IEnumerable<string> WrapWords(string text, int width)
-    {
-        if (text.Length <= width) { yield return text; yield break; }
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var line = new StringBuilder();
-        foreach (var w in words)
-        {
-            if (line.Length == 0)
-            {
-                line.Append(w);
-                continue;
-            }
-            if (line.Length + 1 + w.Length > width)
-            {
-                yield return line.ToString();
-                line.Clear();
-                line.Append(w);
-            }
-            else
-            {
-                line.Append(' ').Append(w);
-            }
-        }
-        if (line.Length > 0) yield return line.ToString();
-    }
+    /// <summary>Legacy entry point — structured book → Fountain conversion.</summary>
+    public static string BookTextToFountainDraft(string title, string bookText) =>
+        BookToFountainConverter.ConvertHeuristic(title, bookText);
 
     private static MetaDto ReadMeta(ProjectStore store, string projectId)
     {
@@ -459,9 +583,22 @@ public static class ScreenplayService
         File.WriteAllText(path, json + "\n");
     }
 
-    /// <summary>Lightweight Stage1 presence without full adaptation graph (avoids recursion).</summary>
-    private static Stage1Status ReadStage1Lite(ProjectStore store, string projectId)
+    /// <summary>Lightweight status from Fountain (and legacy scenes.json if no draft).</summary>
+    public static Stage1Status ReadStage1Lite(ProjectStore store, string projectId)
     {
+        try
+        {
+            EnsureCanonicalDraft(store, projectId);
+            var draftPath = GetDraftPath(store, projectId);
+            if (File.Exists(draftPath))
+            {
+                var model = TryBuildModelFromProject(store, projectId);
+                return StatusFromFountainModel(model, draftPath);
+            }
+        }
+        catch { /* fall through */ }
+
+        // Legacy projects that only have scenes.json
         var path = store.ResolveScenesJsonPath(projectId);
         if (!File.Exists(path))
             return new Stage1Status { Present = false };
@@ -478,7 +615,7 @@ public static class ScreenplayService
                 Present = scenes > 0,
                 SceneCount = scenes,
                 MovieTitle = title,
-                ScenesFile = path,
+                ScenesFile = Path.GetFileName(path),
             };
         }
         catch

@@ -1,0 +1,123 @@
+Act as an expert screenwriter adapting a book into an editable Fountain 1.1 screenplay.
+
+This is the operator-facing screenplay. Downstream shot/clip work is driven from this
+Fountain text — do NOT emit JSON, stage1.v1, story_beats arrays, or schema fields.
+
+================================================================
+GOALS (from Stage 1 learnings — narrative only)
+================================================================
+1. Cover the book’s essential story in roughly {{TOTAL_RUNTIME_MINUTES}} minutes
+   (picture books often 5–15 min). Keep the adaptation tight; do not pad.
+2. Break the story into scenes a director can schedule: one clear location + time + purpose.
+3. Inside each scene, write ordered concrete events we must SEE or HEAR (action + dialogue).
+4. Keep a closed cast: every speaker is a named CHARACTER (ALL CAPS). No “MAN #2” ghosts.
+5. Keep places stable: when the story returns to the same room/yard, reuse the same heading name.
+6. Preserve VO ↔ visual fidelity: if the book says the ball goes through the window,
+   Action/dialogue must not quietly change that to “over the wall.”
+
+PRIORITY IF CONFLICTS:
+1. Valid Fountain screenplay (parseable headings, characters, dialogue)
+2. Narrative fidelity to the book
+3. Runtime band (short and filmable)
+4. Closed cast + consistent looks/places
+
+================================================================
+OUTPUT FORMAT (HARD) — FOUNTAIN ONLY
+================================================================
+Return ONLY a complete Fountain 1.1 plain-text screenplay.
+No markdown fences. No commentary before or after.
+
+TITLE PAGE (Fountain keys, first lines):
+Title: …
+Credit: Written by
+Author: … (from book if known)
+Source: Adapted from book
+Draft date: M/D/YYYY
+
+Then blank line, then scenes.
+
+SCENE HEADINGS:
+- INT. or EXT. (or EST. / I/E.) + real location + time
+  Good: INT. LIVING ROOM - NIGHT
+  Good: EXT. BACKYARD - DAY
+  Bad: INT. STORY - PAGE 3
+  Bad: INT. SCENE - DAY
+- Do NOT put PAGE in the heading line itself.
+
+PAGE TAGS (required for book-panel tooling — every scene):
+Immediately after each scene heading, include BOTH:
+  = page N
+  [[page N]]
+N is the --- PAGE N --- marker the content mainly comes from.
+Spanning pages: = pages N-M is OK; still include [[page N]] for the start page.
+
+BODY:
+- Action lines = what we SEE (story beats / visual events)
+- Storybook / third-person narration → NARRATOR (character cue) + dialogue lines
+- Spoken book lines → CHARACTER (ALL CAPS) + dialogue under them
+- Parentheticals sparingly when delivery matters
+- Dual dialogue: caret ^ on the second speaker only when simultaneous
+
+Do NOT invent major plot. Light visual connective tissue is OK.
+Skip pure illustration / blank pages as their own scenes.
+
+================================================================
+CAST LOOKS & VOICES (Stage 1 character-seed learnings → prose)
+================================================================
+You are not writing JSON seeds, but the screenplay must lock identity in Action so
+later shots stay consistent:
+
+- Filmable identity only: species/age/build/hair/face/wardrobe + stable colors/markings
+  that must not drift (e.g. “small black-and-white dog — never brown redesign”).
+- Signature props/wardrobe that the book shows must stay on (blue nightcap, red collar, …).
+  If a character has a sticky item, restate it briefly when they re-enter later scenes.
+- One render medium for the whole film (stylized picture-book CG vs watercolor vs live-action).
+  Humans and animals share that medium — never photoreal people beside cartoon animals
+  unless the whole piece is live-action. You may state the medium once in an early Action
+  note or title-page Notes: line if helpful.
+- Nicknames / epithets belong in dialogue or titles, NOT as physical description
+  (“Biscuit-head” is not a hat; describe real fur/clothes only).
+- Metaphorical wardrobe: if the text says “black-and-white pajamas” but means fur/coat,
+  do not invent sleepwear the illustrations never show.
+- Exclusive OR in the book (“in the kitchen or the yard”): pick ONE for that beat.
+  Do not composite both options into the same Action line.
+- Pure voice-only narrator: NARRATOR dialogue; do not force a face on screen.
+
+================================================================
+LOCATIONS (Stage 1 location-seed learnings → headings)
+================================================================
+- Use real, filmable place names (LIVING ROOM, KITCHEN, BEDROOM, BACKYARD, PARK, …).
+- When the story returns to the same place, use the same heading wording.
+- Multi-place story moments can be separate scenes (preferred) or brief transitions;
+  do not invent new plot just to force a location change.
+- Rooms inside one home can still be separate headings (INT. KITCHEN vs INT. LIVING ROOM).
+
+================================================================
+FIDELITY, SPOILERS, DIALOGUE
+================================================================
+- Prefer book wording for spoken lines; do not rewrite into generic movie dialogue.
+- If the book withholds a given name or twist early, do not put it on screen or in dialogue
+  before the book does. Never “ban” a secret by writing the secret string into the script
+  as an instruction.
+- “Mom said…” / internal thought in the book → NARRATOR VO, not Mom lip-syncing unless
+  Mom is clearly speaking on camera.
+- Keep every speaker named; list recurring people consistently (same ALL-CAPS token).
+
+================================================================
+RUNTIME SHAPE
+================================================================
+Target about {{TOTAL_RUNTIME_MINUTES}} minutes of finished film.
+- Short picture books: few scenes, dense beats, little padding.
+- Longer books: more scenes, still one coherent short film — cut pure digression.
+Do not write one scene per book page unless the page is a true location/purpose change.
+
+================================================================
+OUTPUT
+================================================================
+Fountain only. No JSON. No trailing commentary.
+
+================================================================
+GUI LEARNINGS (appended from Streamlit edit log)
+================================================================
+<!-- STAGE1_LEARNINGS_START -->
+<!-- STAGE1_LEARNINGS_END -->

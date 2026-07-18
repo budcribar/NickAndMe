@@ -4,16 +4,12 @@
 <div class="page @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
     <div class="sidebar">
         <div class="sidebar-header">
-            <a class="navbar-brand sidebar-brand" href="/" title="Film Studio">
-                @if (_sidebarCollapsed)
-                {
-                    <span>FS</span>
-                }
-                else
-                {
-                    <span>Film Studio</span>
-                }
-            </a>
+            @if (!_sidebarCollapsed)
+            {
+                <a class="navbar-brand sidebar-brand" href="/" title="Film Studio">
+                    Film Studio
+                </a>
+            }
             <button type="button"
                     class="sidebar-toggle"
                     title="@(_sidebarCollapsed ? "Expand menu" : "Collapse menu")"

@@ -1021,7 +1021,7 @@ public sealed class FilmJobService
             Status = "running",
             Kind = "stage1",
             ProjectId = projectId,
-            Message = "Starting Stage 1 (C# Grok chat)…",
+            Message = "Building screenplay from book → Fountain…",
             Index = 0,
             Total = 0,
             StartedAt = DateTimeOffset.UtcNow,
@@ -1032,7 +1032,7 @@ public sealed class FilmJobService
 
         try
         {
-            await AppendLogAsync("Stage 1: Stage1Service (Grok chat)");
+            await AppendLogAsync("Screenplay: book → Fountain (prompts/book_to_fountain.txt) → approve");
             // Sequential progress pump — no GetAwaiter; preserves line order for SignalR
             var progress = System.Threading.Channels.Channel.CreateUnbounded<string>(
                 new System.Threading.Channels.UnboundedChannelOptions
@@ -1067,10 +1067,10 @@ public sealed class FilmJobService
             }
 
             var msg =
-                $"Stage 1 complete: {result.SceneCount} scenes · {result.CharacterCount} chars · " +
-                $"{result.LocationCount} locs · ~{result.RuntimeSeconds}s";
+                $"Screenplay ready: {result.SceneCount} scenes · {result.CharacterCount} cast · " +
+                $"{result.LocationCount} locations";
             if (result.HardErrors.Count > 0)
-                msg += $" · {result.HardErrors.Count} verify warning(s)";
+                msg += $" · {result.HardErrors.Count} issue(s)";
             await FinishAsync(result.Ok || result.SceneCount > 0 ? "done" : "error", msg,
                 result.Ok ? null : string.Join("; ", result.HardErrors.Take(3)));
         }

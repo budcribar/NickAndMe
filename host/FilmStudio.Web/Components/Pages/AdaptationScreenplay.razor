@@ -195,18 +195,14 @@
                         Draft from book
                     </button>
                 }
-                @if (CanRunOutline && Status?.XaiConfigured == true)
+                @if (CanRunOutline && Status?.XaiConfigured == true && Status?.Book.BookTextExists == true)
                 {
-                    <details>
-                        <summary class="small text-muted" style="cursor:pointer">Other options</summary>
-                        <div class="d-flex flex-wrap gap-2 mt-2">
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    disabled="@(Busy || JobRunning)"
-                                    @onclick="RunOutlineAsync">
-                                Build from book (advanced)
-                            </button>
-                        </div>
-                    </details>
+                    <button class="btn btn-outline-secondary btn-sm"
+                            disabled="@(Busy || JobRunning)"
+                            @onclick="RunOutlineAsync"
+                            title="Draft Fountain from book and approve for shot planning">
+                        Draft &amp; approve from book
+                    </button>
                 }
                 <a class="btn btn-outline-secondary btn-sm" href="adaptation/import">← Import</a>
                 @if (Status?.Screenplay.ReadyForShots == true ||

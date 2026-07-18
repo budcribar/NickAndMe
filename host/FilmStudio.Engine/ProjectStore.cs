@@ -159,6 +159,152 @@ public sealed class ProjectStore
     }
 
     /// <summary>
+    /// Create <c>projects/{id}/</c> with project.json + source/, then activate it.
+    /// Id is sanitized to a safe folder name.
+    /// </summary>
+    public async Task<ProjectInfo> CreateProjectAsync(
+        string idOrTitle,
+        string? title = null,
+        CancellationToken ct = default)
+    {
+        var raw = (idOrTitle ?? "").Trim();
+        if (raw.Length == 0)
+            throw new InvalidOperationException("Project name required");
+
+        var id = SanitizeProjectId(raw);
+        if (id.Length == 0)
+            throw new InvalidOperationException("Project name has no usable characters");
+
+        var dir = Path.Combine(WorkspaceRoot, "projects", id);
+        if (Directory.Exists(dir))
+            throw new InvalidOperationException($"Project already exists: {id}");
+
+        Directory.CreateDirectory(dir);
+        Directory.CreateDirectory(Path.Combine(dir, "source"));
+        Directory.CreateDirectory(Path.Combine(dir, "assets", "characters"));
+        Directory.CreateDirectory(Path.Combine(dir, "assets", "scenes"));
+        Directory.CreateDirectory(Path.Combine(dir, "assets", "video"));
+
+        var displayTitle = string.IsNullOrWhiteSpace(title) ? raw : title.Trim();
+        var meta = new Dictionary<string, object?>
+        {
+            ["id"] = id,
+            ["title"] = displayTitle,
+            ["blueprint_file"] = "blueprint.clips.grok.json",
+            ["scenes_file"] = "scenes.json",
+            ["config_file"] = "pipeline_config.json",
+            ["state_file"] = "pipeline_state.json",
+            ["description"] = "",
+        };
+        await File.WriteAllTextAsync(
+            Path.Combine(dir, "project.json"),
+            JsonSerializer.Serialize(meta, JsonOpts) + "\n",
+            ct).ConfigureAwait(false);
+
+        InvalidateReadCaches(null); // projects list
+        return await ActivateAsync(id, ct).ConfigureAwait(false);
+    }
+
+    private static string SanitizeProjectId(string raw)
+    {
+        // Prefer Pascal/camel-ish folder: strip path junk, keep letters/digits/_/-
+        var sb = new System.Text.StringBuilder(raw.Length);
+        foreach (var ch in raw.Trim())
+        {
+            if (char.IsAsciiLetterOrDigit(ch) || ch is '_' or '-')
+                sb.Append(ch);
+            else if (char.IsWhiteSpace(ch) || ch is '.' or '/')
+            {
+                if (sb.Length > 0 && sb[^1] != '_')
+                    sb.Append('_');
+            }
+        }
+        var id = sb.ToString().Trim('_');
+        if (id.Length > 64) id = id[..64].Trim('_');
+        return id;
+    }
+
+    /// <summary>
+    /// Delete <c>projects/{id}/</c> entirely. Clears active project if it was this one.
+    /// </summary>
+    public async Task DeleteProjectAsync(string projectId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(projectId))
+            throw new InvalidOperationException("Project id required");
+
+        var id = projectId.Trim();
+        // Same guards as GetProjectDir — never allow path escape
+        if (id.Contains("..", StringComparison.Ordinal) ||
+            id.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+            id.Contains('/') || id.Contains('\\') ||
+            string.Equals(id, "workspace.json", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Invalid project id: {projectId}");
+
+        var projectsRoot = Path.GetFullPath(Path.Combine(WorkspaceRoot, "projects"));
+        var dir = Path.GetFullPath(Path.Combine(projectsRoot, id));
+        if (!dir.StartsWith(projectsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(dir, projectsRoot, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Invalid project path: {projectId}");
+
+        if (!Directory.Exists(dir))
+            throw new InvalidOperationException($"Unknown project: {id}");
+
+        // Best-effort delete (files may be locked by a running job)
+        try
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Could not delete project “{id}”: {ex.Message}. Close any open files or stop jobs and try again.");
+        }
+
+        if (string.Equals(_activeProjectId, id, StringComparison.OrdinalIgnoreCase))
+            _activeProjectId = "";
+
+        // Update workspace.json active pointer
+        var wsPath = Path.Combine(WorkspaceRoot, "projects", "workspace.json");
+        try
+        {
+            string? nextActive = null;
+            if (File.Exists(wsPath))
+            {
+                try
+                {
+                    var state = JsonSerializer.Deserialize<WorkspaceState>(
+                        await File.ReadAllTextAsync(wsPath, ct).ConfigureAwait(false), JsonOpts);
+                    if (string.Equals(state?.ActiveProject, id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Pick another remaining project if any
+                        if (Directory.Exists(projectsRoot))
+                        {
+                            nextActive = Directory.GetDirectories(projectsRoot)
+                                .Select(Path.GetFileName)
+                                .FirstOrDefault(n =>
+                                    !string.IsNullOrEmpty(n) &&
+                                    !string.Equals(n, id, StringComparison.OrdinalIgnoreCase));
+                        }
+                        await File.WriteAllTextAsync(
+                            wsPath,
+                            JsonSerializer.Serialize(
+                                new WorkspaceState { ActiveProject = nextActive ?? "" },
+                                JsonOpts) + "\n",
+                            ct).ConfigureAwait(false);
+                        _activeProjectId = nextActive ?? "";
+                    }
+                }
+                catch { /* leave workspace as-is if unreadable */ }
+            }
+        }
+        catch { /* ignore workspace update failures */ }
+
+        InvalidateReadCaches(null);
+        InvalidateReadCaches(id);
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Project folder path without listing all projects (no cache / GetAwaiter).
     /// Layout: <c>{WorkspaceRoot}/projects/{projectId}</c>.
     /// </summary>
@@ -1559,18 +1705,19 @@ public sealed class ProjectStore
             stage2.Stage2Stale = true;
         var xai = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"));
 
-        // Phase 0: Fountain draft is the screenplay source of truth when present.
+        // Fountain is the screenplay source of truth (book → .fountain → approve → shots).
         var next = "done";
         var hasSource = book.PdfExists || book.BookTextExists || screenplay.DraftExists ||
                         (stage1.Present && stage1.SceneCount > 0);
         if (!hasSource)
             next = "import_book";
+        else if ((!stage1.Present || stage1.SceneCount == 0) && book.BookTextExists && !book.ReadyForStage1 &&
+                 !screenplay.DraftExists)
+            next = "fix_book_text";
+        else if (!screenplay.DraftExists && book.BookTextExists)
+            next = "draft_screenplay";
         else if (screenplay.DraftExists && (!screenplay.Signed || screenplay.Dirty))
             next = "sign_screenplay";
-        else if ((!stage1.Present || stage1.SceneCount == 0) && book.ReadyForStage1)
-            next = "run_stage1"; // legacy: build Stage 1 from book without Fountain
-        else if ((!stage1.Present || stage1.SceneCount == 0) && book.BookTextExists && !book.ReadyForStage1)
-            next = "fix_book_text";
         else if (!stage1.Present || stage1.SceneCount == 0)
             next = screenplay.DraftExists ? "sign_screenplay" : "import_book";
         else if (!stage2.Stage2Ready)
@@ -1795,6 +1942,19 @@ public sealed class ProjectStore
 
     private Stage1Status ReadStage1Status(string projectId, string projectDir)
     {
+        // Fountain is the screenplay source of truth
+        try
+        {
+            var draftPath = ScreenplayService.GetDraftPath(this, projectId);
+            if (File.Exists(draftPath) || ScreenplayService.EnsureCanonicalDraft(this, projectId))
+            {
+                var model = ScreenplayService.TryBuildModelFromProject(this, projectId);
+                if (model is not null)
+                    return ScreenplayService.StatusFromFountainModel(model, ScreenplayService.GetDraftPath(this, projectId));
+            }
+        }
+        catch { /* fall through to legacy scenes.json */ }
+
         var path = ResolveScenesJsonPath(projectId);
         var status = new Stage1Status { ScenesFile = Path.GetFileName(path) };
         if (!File.Exists(path))
@@ -1852,7 +2012,6 @@ public sealed class ProjectStore
                         beats = sb.GetArrayLength();
                     status.BeatCount += beats;
                     double? dur = null;
-                    // Stage 1 uses duration_target_seconds; accept legacy estimated_duration_seconds too
                     if (s.TryGetProperty("duration_target_seconds", out var d) ||
                         s.TryGetProperty("estimated_duration_seconds", out d))
                     {

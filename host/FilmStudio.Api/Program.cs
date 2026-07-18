@@ -385,6 +385,54 @@ app.MapPost("/api/projects/{id}/activate", async (string id, ProjectStore store,
     }
 });
 
+/// <summary>Create a new project folder under projects/ and make it active.</summary>
+app.MapPost("/api/projects", async (CreateProjectRequest? body, ProjectStore store, CancellationToken ct) =>
+{
+    try
+    {
+        var name = body?.Name ?? body?.Id ?? body?.Title ?? "";
+        var title = body?.Title;
+        var p = await store.CreateProjectAsync(name, title, ct);
+        var list = await store.ListProjectsAsync(ct);
+        return Results.Ok(new
+        {
+            ok = true,
+            active = p,
+            projects = list,
+            message = $"Created project “{p.Label ?? p.Title ?? p.Id}”",
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+/// <summary>Delete a project folder under projects/.</summary>
+app.MapDelete("/api/projects/{id}", async (string id, ProjectStore store, CancellationToken ct) =>
+{
+    try
+    {
+        await store.DeleteProjectAsync(id, ct);
+        var list = await store.ListProjectsAsync(ct);
+        var activeId = store.ActiveProjectId;
+        var active = list.FirstOrDefault(p =>
+            string.Equals(p.Id, activeId, StringComparison.OrdinalIgnoreCase));
+        return Results.Ok(new
+        {
+            ok = true,
+            deleted = id,
+            active,
+            projects = list,
+            message = $"Deleted project “{id}”",
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
 // Phase F: multi-job list only — bare GET is 400 (no single-job shim)
 app.MapGet("/api/jobs", (FilmJobService jobService, IUserContext user, string? mine, string? projectId, string? userId) =>
 {
@@ -1057,12 +1105,16 @@ app.MapPost("/api/projects/{id}/screenplay/sign-off", async (string id, HttpRequ
     }
 });
 
-/// <summary>Create an editable Fountain draft from prepared book text.</summary>
-app.MapPost("/api/projects/{id}/screenplay/from-book", (string id, ProjectStore store) =>
+/// <summary>Create an editable Fountain draft from prepared book text (structured + page tags).</summary>
+app.MapPost("/api/projects/{id}/screenplay/from-book", async (
+    string id,
+    ProjectStore store,
+    FilmStudio.Engine.Abstractions.IGrokChatClient chat,
+    CancellationToken ct) =>
 {
     try
     {
-        var result = ScreenplayService.CreateDraftFromBook(store, id);
+        var result = await ScreenplayService.CreateDraftFromBookAsync(store, id, chat, ct: ct);
         if (!result.Ok)
             return Results.BadRequest(new { ok = false, error = result.Error });
 

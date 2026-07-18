@@ -180,6 +180,35 @@ public sealed class EngineApiClient
         }
     }
 
+    public async Task<ProjectsDto?> CreateProjectAsync(
+        string name,
+        string? title = null,
+        CancellationToken ct = default)
+    {
+        using var resp = await _http.PostAsJsonAsync(
+            "/api/projects",
+            new { name, title },
+            JsonOpts,
+            ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(TryError(body) ?? resp.ReasonPhrase);
+        return JsonSerializer.Deserialize<ProjectsDto>(body, JsonOpts);
+    }
+
+    public async Task<ProjectsDto?> DeleteProjectAsync(
+        string projectId,
+        CancellationToken ct = default)
+    {
+        using var resp = await _http.DeleteAsync(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}",
+            ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(TryError(body) ?? resp.ReasonPhrase);
+        return JsonSerializer.Deserialize<ProjectsDto>(body, JsonOpts);
+    }
+
     /// <summary>
     /// Primary job for the current user (Phase F: uses list <c>?mine=1</c>, not bare GET).
     /// Prefers a running job, else most recent.

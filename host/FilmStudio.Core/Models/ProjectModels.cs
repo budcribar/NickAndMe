@@ -268,6 +268,15 @@ public sealed class StartBookPrepareRequest
     public string VisionModel { get; set; } = "grok-4.5";
 }
 
+/// <summary>POST /api/projects — create a new project folder.</summary>
+public sealed class CreateProjectRequest
+{
+    /// <summary>Display name or folder id.</summary>
+    public string? Name { get; set; }
+    public string? Id { get; set; }
+    public string? Title { get; set; }
+}
+
 public sealed class LockCharacterRequest
 {
     public string ProjectId { get; set; } = "";

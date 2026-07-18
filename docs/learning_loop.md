@@ -8,7 +8,7 @@ Goal: every review note can improve the **next** plan/render, without auto-poiso
 |-------|---------|--------|----------|
 | `clip` | One take | No | Blueprint prompt on regen |
 | `stage2` | Shot design / policy | Yes → stage2 | `prompts/stage2_shot_planner.txt` |
-| `stage1` | Story bible wrong | Yes → stage1+stage2 | `prompts/stage1_scene_bible.txt` |
+| `stage1` | Screenplay / story wrong | Yes → fountain + stage2 | `prompts/book_to_fountain.txt` + `source/screenplay.fountain` |
 | `verifier` | Detection rubric | No | `prompts/verifier_clip.txt` |
 | `engine` | Tooling / renderer | No | `review_feedback/SCRIPT_NOTES.md` |
 

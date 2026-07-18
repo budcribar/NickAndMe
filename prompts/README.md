@@ -9,15 +9,19 @@ Paths are relative to the **workspace root** (repo root with `renderer/`, `gui/`
 
 | File | Role |
 |------|------|
+| `book_to_fountain.txt` | **Product path:** book → editable Fountain screenplay |
 | `adaptation_v16.txt` | Legacy full-film adaptation rules (optional GUI append) |
-| `shared_rules.txt` | Rules Stage 1 + Stage 2 + verifier must all respect |
-| `stage1_scene_bible.txt` | Stage 1: book → scene bible (+ cast `characters_on_screen`, beat audio root fields, bare ref filenames) |
-| `stage1_scene_bible.schema.json` | Stage 1 JSON Schema |
-| `stage2_shot_planner.txt` | Stage 2: scene bible → clip plan (+ multi-cast tokens, audio_payload mapping, identity cues) |
+| `shared_rules.txt` | Rules Stage 2 + verifier must all respect |
+| `stage1_scene_bible.schema.json` | Optional schema for internal materialised scene lists (not an operator prompt) |
+| `stage2_shot_planner.txt` | Shot plan from approved screenplay build (+ multi-cast tokens, audio_payload) |
 | `verifier_clip.txt` | Clip QA verifier (routing hints for learning layers) |
 | `compare_json_to_book.txt` | Fidelity audit against book text |
-| `examples/scene_bible_minimal.json` | Minimal Stage 1 sample |
+| `examples/scene_bible_minimal.json` | Minimal scene-list sample |
 | `examples/clip_plan_minimal.json` | Minimal Stage 2 sample |
+
+**Operator flow:** book PDF → prepare text → **Fountain draft** (`book_to_fountain.txt`) → edit → approve → shots.
+There is no `stage1_scene_bible.txt` prompt; Fountain is the screenplay source of truth.
+
 
 ## Learning loop (Phase A)
 

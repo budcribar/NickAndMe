@@ -18,6 +18,14 @@ public static class BookContextService
         @"\bPAGE\s+(\d+)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    private static readonly Regex SynopsisPage = new(
+        @"(?im)^=\s*pages?\s+(\d+)(?:\s*[-–]\s*(\d+))?\s*$",
+        RegexOptions.Compiled);
+
+    private static readonly Regex NotePage = new(
+        @"\[\[\s*page\s+(\d+)\s*\]\]",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public sealed class BookPage
     {
         public int PageNumber { get; init; }
@@ -121,7 +129,30 @@ public static class BookContextService
             };
         }
 
-        // 1) Explicit PAGE n in heading
+        // 1) Page tags in scene body: = page N  or  [[page N]]
+        if (!string.IsNullOrWhiteSpace(sceneBody))
+        {
+            var nm = NotePage.Match(sceneBody);
+            if (nm.Success && int.TryParse(nm.Groups[1].Value, out var notePn))
+            {
+                var page = pages.FirstOrDefault(p => p.PageNumber == notePn);
+                if (page is not null)
+                    return Result(page, sceneHeading, sceneIndex, pages.Count, "note_page");
+            }
+
+            foreach (var line in sceneBody.Replace("\r\n", "\n").Split('\n'))
+            {
+                var sm = SynopsisPage.Match(line.Trim());
+                if (sm.Success && int.TryParse(sm.Groups[1].Value, out var synPn))
+                {
+                    var page = pages.FirstOrDefault(p => p.PageNumber == synPn);
+                    if (page is not null)
+                        return Result(page, sceneHeading, sceneIndex, pages.Count, "synopsis_page");
+                }
+            }
+        }
+
+        // 2) Explicit PAGE n in heading (legacy dump format)
         if (!string.IsNullOrWhiteSpace(sceneHeading))
         {
             var hm = HeadingPage.Match(sceneHeading);
@@ -130,95 +161,43 @@ public static class BookContextService
                 var page = pages.FirstOrDefault(p => p.PageNumber == pn) ??
                            pages.ElementAtOrDefault(Math.Clamp(pn - 1, 0, pages.Count - 1));
                 if (page is not null)
-                {
-                    return new BookContextResult
-                    {
-                        Ok = true,
-                        HasBook = true,
-                        PageNumber = page.PageNumber,
-                        Heading = sceneHeading,
-                        SceneIndex = sceneIndex,
-                        Excerpt = Truncate(page.Text, 2500),
-                        MatchReason = "heading_page",
-                        TotalPages = pages.Count,
-                    };
-                }
+                    return Result(page, sceneHeading, sceneIndex, pages.Count, "heading_page");
             }
         }
 
-        // 2) Sequential: scene i → page i (common after page-aware draft from book)
-        if (sceneIndex >= 1 && sceneIndex <= pages.Count)
-        {
-            var page = pages[sceneIndex - 1];
-            // Prefer sequential when body is empty or weak fuzzy
-            var sequential = new BookContextResult
-            {
-                Ok = true,
-                HasBook = true,
-                PageNumber = page.PageNumber,
-                Heading = sceneHeading,
-                SceneIndex = sceneIndex,
-                Excerpt = Truncate(page.Text, 2500),
-                MatchReason = "scene_index",
-                TotalPages = pages.Count,
-            };
-
-            // 3) If we have scene body text, try fuzzy — only override if clearly better
-            if (!string.IsNullOrWhiteSpace(sceneBody) && sceneBody.Trim().Length >= 24)
-            {
-                var fuzzy = BestFuzzyPage(pages, sceneBody);
-                if (fuzzy is not null && fuzzy.Score >= 3 && fuzzy.Page.PageNumber != page.PageNumber)
-                {
-                    return new BookContextResult
-                    {
-                        Ok = true,
-                        HasBook = true,
-                        PageNumber = fuzzy.Page.PageNumber,
-                        Heading = sceneHeading,
-                        SceneIndex = sceneIndex,
-                        Excerpt = Truncate(fuzzy.Page.Text, 2500),
-                        MatchReason = "text_match",
-                        TotalPages = pages.Count,
-                    };
-                }
-            }
-
-            return sequential;
-        }
-
-        // Out of range: clamp or fuzzy
+        // 3) Fuzzy match scene body to a book page
         if (!string.IsNullOrWhiteSpace(sceneBody) && sceneBody.Trim().Length >= 16)
         {
             var fuzzy = BestFuzzyPage(pages, sceneBody);
             if (fuzzy is not null && fuzzy.Score >= 2)
-            {
-                return new BookContextResult
-                {
-                    Ok = true,
-                    HasBook = true,
-                    PageNumber = fuzzy.Page.PageNumber,
-                    Heading = sceneHeading,
-                    SceneIndex = sceneIndex,
-                    Excerpt = Truncate(fuzzy.Page.Text, 2500),
-                    MatchReason = "text_match",
-                    TotalPages = pages.Count,
-                };
-            }
+                return Result(fuzzy.Page, sceneHeading, sceneIndex, pages.Count, "text_match");
         }
 
+        // 4) Sequential: scene i → page i (legacy page-per-scene dumps)
+        if (sceneIndex >= 1 && sceneIndex <= pages.Count)
+            return Result(pages[sceneIndex - 1], sceneHeading, sceneIndex, pages.Count, "scene_index");
+
         var fallback = pages[Math.Clamp(sceneIndex - 1, 0, pages.Count - 1)];
-        return new BookContextResult
+        return Result(fallback, sceneHeading, sceneIndex, pages.Count, "fallback");
+    }
+
+    private static BookContextResult Result(
+        BookPage page,
+        string? sceneHeading,
+        int sceneIndex,
+        int totalPages,
+        string reason) =>
+        new()
         {
             Ok = true,
             HasBook = true,
-            PageNumber = fallback.PageNumber,
+            PageNumber = page.PageNumber,
             Heading = sceneHeading,
             SceneIndex = sceneIndex,
-            Excerpt = Truncate(fallback.Text, 2500),
-            MatchReason = "fallback",
-            TotalPages = pages.Count,
+            Excerpt = Truncate(page.Text, 2500),
+            MatchReason = reason,
+            TotalPages = totalPages,
         };
-    }
 
     /// <summary>
     /// Extract action/dialogue body for a scene starting at 1-based line in fountain text.

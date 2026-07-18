@@ -7,9 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace FilmStudio.Engine;
 
 /// <summary>
-/// Sort book page plates onto character seeds as design_reference_images in scenes.json.
+/// Sort book page plates onto character seeds as design_reference_images.
+/// Cast comes from Fountain (in-memory); plates persist to source/cast_seeds.json
+/// and are mirrored into the blueprint when present.
 /// Preferred path: Grok vision classifies each illustrated page → which cast appears.
-/// Fallback: Stage 1 source_image_pages + heuristics (never text-only samples).
 /// pipeline_state.character_plates.sorted_by_character records completion.
 /// </summary>
 public sealed class CharacterBookPlateService
@@ -40,7 +41,7 @@ public sealed class CharacterBookPlateService
         CancellationToken ct = default)
     {
         var projectDir = _projects.GetProjectDir(projectId);
-        var scenesPath = _projects.ResolveScenesJsonPath(projectId);
+        var castSeedsPath = ScreenplayService.GetCastSeedsPath(_projects, projectId);
         var result = new FilmStudio.Core.Models.AttachCharacterPlatesResult();
         var platesState = _projects.GetCharacterPlatesState(projectId);
 
@@ -58,9 +59,21 @@ public sealed class CharacterBookPlateService
             return result;
         }
 
-        if (!File.Exists(scenesPath))
+        // Cast from Fountain (preferred), else cast_seeds, else legacy scenes.json
+        JsonObject seeds;
+        try
         {
-            result.Reason = $"no_stage1:{scenesPath}";
+            seeds = await LoadOrBuildCastSeedsAsync(projectId, castSeedsPath, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            result.Reason = $"no_cast:{ex.Message}";
+            return result;
+        }
+
+        if (seeds.Count == 0)
+        {
+            result.Reason = "no_character_seeds";
             return result;
         }
 
@@ -76,27 +89,6 @@ public sealed class CharacterBookPlateService
                 result.SortedAt = _projects.GetCharacterPlatesState(projectId).SortedAt;
                 result.Method = "none";
             }
-            return result;
-        }
-
-        JsonNode root;
-        try
-        {
-            root = JsonNode.Parse(await File.ReadAllTextAsync(scenesPath, ct))
-                   ?? throw new InvalidOperationException("empty scenes.json");
-        }
-        catch (Exception ex)
-        {
-            result.Reason = $"bad_scenes:{ex.Message}";
-            return result;
-        }
-
-        var gpv = root["global_production_variables"] as JsonObject ?? new JsonObject();
-        root["global_production_variables"] = gpv;
-        var seeds = gpv["character_seed_tokens"] as JsonObject;
-        if (seeds is null || seeds.Count == 0)
-        {
-            result.Reason = "no_character_seeds";
             return result;
         }
 
@@ -278,14 +270,27 @@ public sealed class CharacterBookPlateService
             index++;
         }
 
+        // Persist plates to cast_seeds.json (Fountain remains story source of truth)
+        var castRoot = new JsonObject
+        {
+            ["schema_version"] = "cast_seeds.v1",
+            ["character_seed_tokens"] = seeds,
+        };
         try
         {
-            var bak = scenesPath + $".bak_attach_plates_{DateTime.Now:yyyyMMdd_HHmmss}";
-            File.Copy(scenesPath, bak, overwrite: true);
+            if (File.Exists(castSeedsPath))
+            {
+                var bak = castSeedsPath + $".bak_attach_plates_{DateTime.Now:yyyyMMdd_HHmmss}";
+                File.Copy(castSeedsPath, bak, overwrite: true);
+            }
         }
         catch { /* ignore */ }
 
-        await File.WriteAllTextAsync(scenesPath, root.ToJsonString(JsonDefaults.Indented) + "\n", ct);
+        Directory.CreateDirectory(Path.GetDirectoryName(castSeedsPath)!);
+        await File.WriteAllTextAsync(
+            castSeedsPath,
+            castRoot.ToJsonString(JsonDefaults.Indented) + "\n",
+            ct).ConfigureAwait(false);
 
         await TryMirrorBlueprintAsync(projectDir, seeds);
 

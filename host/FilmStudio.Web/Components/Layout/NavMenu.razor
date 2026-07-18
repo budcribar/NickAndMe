@@ -1,4 +1,6 @@
 @inject AdminSessionService Session
+@inject ActiveProjectState ActiveProject
+@inject EngineApiClient Engine
 @implements IDisposable
 
 @* Mobile hamburger (desktop collapse is on MainLayout) *@
@@ -13,42 +15,48 @@
                 @if (!Collapsed) { <span class="nav-label">Studio</span> }
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/adaptation" Match="NavLinkMatch.Prefix" title="Adaptation">
-                <span class="bi bi-book-nav-menu" aria-hidden="true"></span>
-                @if (!Collapsed) { <span class="nav-label">Adaptation</span> }
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/scenes" title="Scenes">
-                <span class="bi bi-film-nav-menu" aria-hidden="true"></span>
-                @if (!Collapsed) { <span class="nav-label">Scenes</span> }
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/characters" title="Characters">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span>
-                @if (!Collapsed) { <span class="nav-label">Characters</span> }
-            </NavLink>
-        </div>
+
+        @if (ActiveProject.HasProject)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/adaptation" Match="NavLinkMatch.Prefix" title="Adaptation">
+                    <span class="bi bi-book-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Adaptation</span> }
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/scenes" title="Scenes">
+                    <span class="bi bi-film-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Scenes</span> }
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/characters" title="Characters">
+                    <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Characters</span> }
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/review" title="Review">
+                    <span class="bi bi-check2-square-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Review</span> }
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/cost" title="Cost">
+                    <span class="bi bi-cash-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Cost</span> }
+                </NavLink>
+            </div>
+        }
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/configuration" title="Configuration">
                 <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span>
                 @if (!Collapsed) { <span class="nav-label">Configuration</span> }
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/review" title="Review">
-                <span class="bi bi-check2-square-nav-menu" aria-hidden="true"></span>
-                @if (!Collapsed) { <span class="nav-label">Review</span> }
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/cost" title="Cost">
-                <span class="bi bi-cash-nav-menu" aria-hidden="true"></span>
-                @if (!Collapsed) { <span class="nav-label">Cost</span> }
-            </NavLink>
-        </div>
+
         @if (Session.IsAdmin)
         {
             <div class="nav-item px-3">
@@ -87,10 +95,17 @@
         _started = true;
         await Session.EnsureHydratedAsync();
         Session.Changed += OnSessionChanged;
+        ActiveProject.Changed += OnProjectChanged;
+        await ActiveProject.RefreshFromApiAsync(Engine);
         StateHasChanged();
     }
 
     private void OnSessionChanged() => InvokeAsync(StateHasChanged);
+    private void OnProjectChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Session.Changed -= OnSessionChanged;
+    public void Dispose()
+    {
+        Session.Changed -= OnSessionChanged;
+        ActiveProject.Changed -= OnProjectChanged;
+    }
 }
