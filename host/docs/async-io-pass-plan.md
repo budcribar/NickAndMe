@@ -24,12 +24,21 @@ Goal: keep Kestrel request threads free during disk/JSON work. Multi-pass by des
 
 Sync wrappers remain for older job callers (`GetAwaiter().GetResult()`). Prefer `*Async` on new code.
 
-## Pass 3 — residual
+## Pass 3 (done) — residual cost / book / stage2 / plates
 
-- `CostReportService`, character/book prepare paths
-- Blueprint seed writes / character plate sync paths still using `File.ReadAllText`
-- Directory enumeration stays sync (no good BCL async API; metadata-only)
-- Optional: convert remux staleness checks to fully async when callers allow
+| Layer | Change |
+|-------|--------|
+| `CostReportService` | `GetReportAsync`, `BackfillFromDiskAsync`, ledger append, state/hero/clip_jobs async |
+| `BookPrepareService` | Embedded extract, manifest, page inventory, extract_meta → async |
+| `CharacterBookPlateService` | scenes/blueprint/manifest reads & writes async; inventory async |
+| `Stage2PlannerService` | True `async Task` plan + blueprint write; sync overload for jobs |
+| API | cost GET/backfill async |
+
+Still sync (acceptable / later polish):
+- Directory enumeration (metadata-only)
+- Remux composite staleness check (small JSON, not request path)
+- Some `ProjectStore` character seed helpers still sync (callable via sync wrappers)
+- Runtime config startup load (once)
 
 ## Rules of thumb
 

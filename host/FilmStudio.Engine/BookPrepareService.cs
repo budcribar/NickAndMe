@@ -69,7 +69,7 @@ public sealed class BookPrepareService
             analysis.TextEngine = engine;
 
             onProgress?.Invoke("Extracting embedded images…");
-            var imageRows = ExtractEmbeddedImages(pdf, imgDir, source);
+            var imageRows = await ExtractEmbeddedImagesAsync(pdf, imgDir, source, ct).ConfigureAwait(false);
             result.ImagesExtracted = imageRows.Count;
 
             // Fallback: render full pages when embeds are sparse (vision needs plates)
@@ -89,9 +89,9 @@ public sealed class BookPrepareService
             }
 
             if (imageRows.Count > 0)
-                WriteManifest(source, imgDir, imageRows, pageCount);
+                await WriteManifestAsync(source, imgDir, imageRows, pageCount, ct).ConfigureAwait(false);
             else
-                EnsureManifestFromDisk(source, imgDir, pageCount);
+                await EnsureManifestFromDiskAsync(source, imgDir, pageCount, ct).ConfigureAwait(false);
 
             // New inventory invalidates prior character plate sort; Stage1/attach re-sorts into scenes.json
             try
@@ -122,7 +122,7 @@ public sealed class BookPrepareService
                 $"No PDF and no book_full.txt under {source}. Upload a PDF first.");
         }
 
-        var pageImages = CollectPageImages(source);
+        var pageImages = await CollectPageImagesAsync(source, ct).ConfigureAwait(false);
         result.PageImageCount = pageImages.Count;
         var strategy = DecideStrategy(analysis, pageImages.Count > 0, hasXai);
         if (forceVision && pageImages.Count > 0 && hasXai)
@@ -233,7 +233,7 @@ public sealed class BookPrepareService
 
         result.Ok = true;
 
-        WriteExtractMeta(source, result, analysis, strategy);
+        await WriteExtractMetaAsync(source, result, analysis, strategy, ct).ConfigureAwait(false);
         onProgress?.Invoke(
             result.ReadyForStage1
                 ? $"Book ready for Stage 1 (~{result.SuggestedTotalMinutes} min)"
@@ -356,10 +356,11 @@ public sealed class BookPrepareService
         return (string.Join("\n\n", parts), n);
     }
 
-    private static List<Dictionary<string, object?>> ExtractEmbeddedImages(
+    private static async Task<List<Dictionary<string, object?>>> ExtractEmbeddedImagesAsync(
         string pdfPath,
         string imgDir,
-        string sourceDir)
+        string sourceDir,
+        CancellationToken ct = default)
     {
         var rows = new List<Dictionary<string, object?>>();
         try
@@ -368,6 +369,7 @@ public sealed class BookPrepareService
             var pageIndex = 0;
             foreach (var page in doc.GetPages())
             {
+                ct.ThrowIfCancellationRequested();
                 pageIndex++;
                 var imgIndex = 0;
                 foreach (var image in page.GetImages())
@@ -394,7 +396,7 @@ public sealed class BookPrepareService
                             : "png";
                         var name = $"embedded_p{pageIndex:D3}_x{imgIndex}.{ext}";
                         var full = Path.Combine(imgDir, name);
-                        File.WriteAllBytes(full, pngBytes);
+                        await File.WriteAllBytesAsync(full, pngBytes, ct);
                         var rel = Path.GetRelativePath(sourceDir, full).Replace('\\', '/');
                         rows.Add(new Dictionary<string, object?>
                         {
@@ -486,11 +488,12 @@ public sealed class BookPrepareService
         return rows;
     }
 
-    private static void WriteManifest(
+    private static async Task WriteManifestAsync(
         string sourceDir,
         string imgDir,
         List<Dictionary<string, object?>> rows,
-        int pages)
+        int pages,
+        CancellationToken ct = default)
     {
         var man = new Dictionary<string, object?>
         {
@@ -500,20 +503,29 @@ public sealed class BookPrepareService
             ["updated_at"] = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"),
         };
         var path = Path.Combine(imgDir, "manifest.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(man, JsonDefaults.Indented) + "\n");
+        await File.WriteAllTextAsync(
+            path,
+            JsonSerializer.Serialize(man, JsonDefaults.Indented) + "\n",
+            ct).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Rebuild manifest from files already on disk when PdfPig could not pull new embeds.
     /// </summary>
-    private static void EnsureManifestFromDisk(string sourceDir, string imgDir, int pages)
+    private static async Task EnsureManifestFromDiskAsync(
+        string sourceDir,
+        string imgDir,
+        int pages,
+        CancellationToken ct = default)
     {
         var path = Path.Combine(imgDir, "manifest.json");
         if (File.Exists(path))
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                await using var stream = File.OpenRead(path);
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                    .ConfigureAwait(false);
                 if (doc.RootElement.TryGetProperty("images", out var imgs) &&
                     imgs.ValueKind == JsonValueKind.Array &&
                     imgs.GetArrayLength() > 0)
@@ -553,10 +565,17 @@ public sealed class BookPrepareService
             });
         }
         if (rows.Count == 0) return;
-        WriteManifest(sourceDir, imgDir, rows, pages > 0 ? pages : rows.Max(r => (int)r["page"]!));
+        await WriteManifestAsync(
+            sourceDir,
+            imgDir,
+            rows,
+            pages > 0 ? pages : rows.Max(r => (int)r["page"]!),
+            ct).ConfigureAwait(false);
     }
 
-    private static List<(int Page, string Path)> CollectPageImages(string sourceDir)
+    private static async Task<List<(int Page, string Path)>> CollectPageImagesAsync(
+        string sourceDir,
+        CancellationToken ct = default)
     {
         var imgDir = Path.Combine(sourceDir, "book_images");
         var byPage = new Dictionary<int, (string? Emb, string? Ren)>();
@@ -565,7 +584,9 @@ public sealed class BookPrepareService
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(manPath));
+                await using var stream = File.OpenRead(manPath);
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                    .ConfigureAwait(false);
                 if (doc.RootElement.TryGetProperty("images", out var imgs) &&
                     imgs.ValueKind == JsonValueKind.Array)
                 {
@@ -624,11 +645,12 @@ public sealed class BookPrepareService
             .ToList()!;
     }
 
-    private static void WriteExtractMeta(
+    private static async Task WriteExtractMetaAsync(
         string sourceDir,
         BookPrepareResult result,
         BookTextAnalysis analysis,
-        BookStrategy strategy)
+        BookStrategy strategy,
+        CancellationToken ct = default)
     {
         var meta = new Dictionary<string, object?>
         {
@@ -683,9 +705,10 @@ public sealed class BookPrepareService
                 : null,
         };
         var path = Path.Combine(sourceDir, "extract_meta.json");
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             path,
-            JsonSerializer.Serialize(meta, JsonDefaults.Indented) + "\n");
+            JsonSerializer.Serialize(meta, JsonDefaults.Indented) + "\n",
+            ct).ConfigureAwait(false);
     }
 
     private sealed class BookStrategy

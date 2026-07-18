@@ -547,6 +547,7 @@ app.MapGet("/api/projects/{id}/characters", (string id, ProjectStore store) =>
 {
     try
     {
+        // ListCharacters still has seed/json paths for Pass 3.5; keeps working via sync wrappers
         var chars = store.ListCharacters(id);
         var plates = store.GetCharacterPlatesState(id);
         var seedLimits = store.GetImageSeedLimits(id);
@@ -555,9 +556,7 @@ app.MapGet("/api/projects/{id}/characters", (string id, ProjectStore store) =>
             ok = true,
             projectId = id,
             characters = chars,
-            // Plates live on scenes.json seeds; this flag tracks whether import sorted them
             characterPlates = plates,
-            // Grok ≤ 3 refs, Gemini ≤ 14 — UI ranks more, sends only maxReferenceImages
             imageSeedLimits = seedLimits,
         });
     }
@@ -972,18 +971,20 @@ app.MapGet("/api/projects/{id}/clip-reviews", async (string id, EditLogService l
 });
 
 // ---- Cost (ledger + estimates) ----
-app.MapGet("/api/projects/{id}/cost", (
+app.MapGet("/api/projects/{id}/cost", async (
     string id,
     ProjectStore store,
     CostReportService costs,
     string? draftResolution,
     string? heroResolution,
-    double? assumeAvgRetries) =>
+    double? assumeAvgRetries,
+    CancellationToken ct) =>
 {
     try
     {
-        _ = store.GetProject(id) ?? throw new InvalidOperationException($"Unknown project: {id}");
-        var report = costs.GetReport(id, draftResolution, heroResolution, assumeAvgRetries);
+        _ = await store.GetProjectAsync(id, ct)
+            ?? throw new InvalidOperationException($"Unknown project: {id}");
+        var report = await costs.GetReportAsync(id, draftResolution, heroResolution, assumeAvgRetries, ct: ct);
         return Results.Ok(new { ok = true, projectId = id, cost = report });
     }
     catch (Exception ex)
@@ -992,12 +993,14 @@ app.MapGet("/api/projects/{id}/cost", (
     }
 });
 
-app.MapPost("/api/projects/{id}/cost/backfill", (string id, ProjectStore store, CostReportService costs) =>
+app.MapPost("/api/projects/{id}/cost/backfill", async (
+    string id, ProjectStore store, CostReportService costs, CancellationToken ct) =>
 {
     try
     {
-        _ = store.GetProject(id) ?? throw new InvalidOperationException($"Unknown project: {id}");
-        var result = costs.BackfillFromDisk(id, onlyMissing: true);
+        _ = await store.GetProjectAsync(id, ct)
+            ?? throw new InvalidOperationException($"Unknown project: {id}");
+        var result = await costs.BackfillFromDiskAsync(id, onlyMissing: true, ct);
         return Results.Ok(new { ok = true, projectId = id, backfill = result });
     }
     catch (Exception ex)

@@ -46,15 +46,25 @@ public sealed class Stage2PlannerService
         string projectId,
         string resolution = "720p",
         string scenes = "all",
-        Action<string>? onProgress = null)
+        Action<string>? onProgress = null) =>
+        PlanAsync(projectId, resolution, scenes, onProgress, CancellationToken.None)
+            .GetAwaiter().GetResult();
+
+    public async Task<Stage2PlanResult> PlanAsync(
+        string projectId,
+        string resolution,
+        string scenes,
+        Action<string>? onProgress,
+        CancellationToken ct)
     {
-        var projectDir = _projects.GetProjectDir(projectId);
+        var projectDir = await _projects.GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var stage1Path = _projects.ResolveScenesJsonPath(projectId);
         if (!File.Exists(stage1Path))
             throw new InvalidOperationException($"Stage 1 bible not found: {stage1Path}");
 
         onProgress?.Invoke($"Loading Stage 1: {Path.GetFileName(stage1Path)}");
-        var stage1 = GrokChatClient.ParseJsonObject(File.ReadAllText(stage1Path));
+        var stage1Text = await File.ReadAllTextAsync(stage1Path, ct).ConfigureAwait(false);
+        var stage1 = GrokChatClient.ParseJsonObject(stage1Text);
         var gpv = GetDict(stage1, "global_production_variables");
         var locSeeds = GetDict(gpv, "location_seed_tokens");
         var charSeeds = GetDict(gpv, "character_seed_tokens");
@@ -75,12 +85,13 @@ public sealed class Stage2PlannerService
         var planned = new List<Dictionary<string, object?>>();
         foreach (var s in scenesIn)
         {
+            ct.ThrowIfCancellationRequested();
             var sn = ToInt(s.TryGetValue("scene_number", out var n) ? n : 0);
             onProgress?.Invoke($"  Scene {sn}…");
             planned.Add(PlanScene(s, resolution, locSeeds, charSeeds, styleLock));
         }
 
-        var outPath = _projects.FindBlueprintPath(projectId)
+        var outPath = await _projects.FindBlueprintPathAsync(projectId, ct).ConfigureAwait(false)
             ?? Path.Combine(projectDir, "blueprint.clips.grok.json");
         if (File.Exists(outPath))
         {
@@ -89,14 +100,13 @@ public sealed class Stage2PlannerService
             onProgress?.Invoke($"Backed up blueprint → {Path.GetFileName(bak)}");
         }
 
-        // Partial scene filter: merge into existing blueprint so we don't wipe other scenes.
-        // Backup was copied FROM outPath — outPath still has prior content until we write below.
         Dictionary<string, object?> plan;
         if (want is not null && File.Exists(outPath))
         {
             try
             {
-                var existing = GrokChatClient.ParseJsonObject(File.ReadAllText(outPath));
+                var existingText = await File.ReadAllTextAsync(outPath, ct).ConfigureAwait(false);
+                var existing = GrokChatClient.ParseJsonObject(existingText);
                 plan = MergePlannedScenes(existing, planned, stage1, gpv, stage1Path, resolution, scenes);
                 onProgress?.Invoke("Merged planned scenes into existing blueprint");
             }
@@ -110,7 +120,10 @@ public sealed class Stage2PlannerService
             plan = BuildFullPlan(stage1, gpv, planned, stage1Path, resolution, scenes);
         }
 
-        File.WriteAllText(outPath, JsonSerializer.Serialize(plan, JsonWrite) + "\n");
+        await File.WriteAllTextAsync(
+            outPath,
+            JsonSerializer.Serialize(plan, JsonWrite) + "\n",
+            ct).ConfigureAwait(false);
         var meta = GetDict(plan, "stage2_meta");
         var totalClips = ToInt(meta.TryGetValue("total_clips", out var tc) ? tc : 0);
         var sceneCount = GetList(plan, "scenes").Count;

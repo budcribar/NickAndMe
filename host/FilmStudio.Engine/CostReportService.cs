@@ -24,9 +24,19 @@ public sealed class CostReportService
         string? draftResolution = null,
         string? heroResolution = null,
         double? assumeAvgRetries = null,
-        int recentLimit = 40)
+        int recentLimit = 40) =>
+        GetReportAsync(projectId, draftResolution, heroResolution, assumeAvgRetries, recentLimit)
+            .GetAwaiter().GetResult();
+
+    public async Task<CostReport> GetReportAsync(
+        string projectId,
+        string? draftResolution = null,
+        string? heroResolution = null,
+        double? assumeAvgRetries = null,
+        int recentLimit = 40,
+        CancellationToken ct = default)
     {
-        var cfg = LoadConfigMap(projectId);
+        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
         var rates = RatesFromConfig(cfg);
         var draftRes = draftResolution
             ?? GetStr(cfg, "resolution", "480p");
@@ -34,12 +44,12 @@ public sealed class CostReportService
         var retries = assumeAvgRetries
             ?? GetDouble(rates, "assume_avg_retries", 0);
 
-        var ledger = GetCostLedger(projectId);
+        var ledger = await GetCostLedgerAsync(projectId, ct).ConfigureAwait(false);
         var actual = SummarizeLedger(ledger);
 
-        var blueprintClips = LoadBlueprintClips(projectId);
+        var blueprintClips = await LoadBlueprintClipsAsync(projectId, ct).ConfigureAwait(false);
         var onDisk = IndexOnDiskClips(projectId);
-        var heroes = LoadHeroMap(projectId);
+        var heroes = await LoadHeroMapAsync(projectId, ct).ConfigureAwait(false);
 
         var draftCfg = CloneCfg(cfg, draftRes, retries);
         var heroCfg = CloneCfg(cfg, heroRes, retries);
@@ -179,11 +189,17 @@ public sealed class CostReportService
         };
     }
 
-    public CostBackfillResult BackfillFromDisk(string projectId, bool onlyMissing = true)
+    public CostBackfillResult BackfillFromDisk(string projectId, bool onlyMissing = true) =>
+        BackfillFromDiskAsync(projectId, onlyMissing).GetAwaiter().GetResult();
+
+    public async Task<CostBackfillResult> BackfillFromDiskAsync(
+        string projectId,
+        bool onlyMissing = true,
+        CancellationToken ct = default)
     {
-        var cfg = LoadConfigMap(projectId);
+        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
         var rates = RatesFromConfig(cfg);
-        var ledger = GetCostLedgerRaw(projectId);
+        var ledger = await GetCostLedgerRawAsync(projectId, ct).ConfigureAwait(false);
         var seen = new HashSet<(int, int)>();
         foreach (var e in ledger)
         {
@@ -193,9 +209,9 @@ public sealed class CostReportService
                 seen.Add((sn, cn));
         }
 
-        var blueprint = LoadBlueprintClips(projectId);
+        var blueprint = await LoadBlueprintClipsAsync(projectId, ct).ConfigureAwait(false);
         var onDisk = IndexOnDiskClips(projectId);
-        var clipJobs = LoadClipJobs(projectId);
+        var clipJobs = await LoadClipJobsAsync(projectId, ct).ConfigureAwait(false);
         var defaultRes = GetStr(cfg, "resolution", "480p");
         var defaultModel = GetStr(cfg, "model_name", "grok-imagine-video");
         var defaultDur = GetDouble(cfg, "duration_seconds", 8);
@@ -263,17 +279,13 @@ public sealed class CostReportService
                     ["currency"] = "USD",
                     ["extra"] = new Dictionary<string, object?> { ["backfill"] = true },
                 };
-                AppendCostEvent(projectId, evt, save: false);
+                await AppendCostEventAsync(projectId, evt, save: true, ct).ConfigureAwait(false);
                 seen.Add((scene.SceneNumber, clip.ClipNumber));
                 added++;
             }
         }
 
-        // Persist once
-        if (added > 0)
-            TouchStateFile(projectId);
-
-        var summary = SummarizeLedger(GetCostLedger(projectId));
+        var summary = SummarizeLedger(await GetCostLedgerAsync(projectId, ct).ConfigureAwait(false));
         return new CostBackfillResult
         {
             Added = added,
@@ -295,10 +307,27 @@ public sealed class CostReportService
         bool isExtend = false,
         string? requestId = null)
     {
-        var cfg = LoadConfigMap(projectId);
+        RecordVideoGenerationAsync(
+            projectId, scene, clip, durationSec, resolution, model, hasRefImage, isExtend, requestId)
+            .GetAwaiter().GetResult();
+    }
+
+    public async Task RecordVideoGenerationAsync(
+        string projectId,
+        int scene,
+        int clip,
+        double durationSec,
+        string resolution,
+        string model,
+        bool hasRefImage = false,
+        bool isExtend = false,
+        string? requestId = null,
+        CancellationToken ct = default)
+    {
+        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
         var rates = RatesFromConfig(cfg);
         var priced = PriceVideo(durationSec, resolution, rates, hasRefImage, isExtend, 1);
-        AppendCostEvent(projectId, new Dictionary<string, object?>
+        await AppendCostEventAsync(projectId, new Dictionary<string, object?>
         {
             ["kind"] = "video",
             ["scene"] = scene,
@@ -317,17 +346,20 @@ public sealed class CostReportService
             ["extend_input_usd"] = priced.ExtendIn,
             ["usd"] = priced.Usd,
             ["currency"] = "USD",
-        }, save: true);
+        }, save: true, ct).ConfigureAwait(false);
     }
 
-    public IReadOnlyList<CostEvent> GetCostLedger(string projectId)
+    public IReadOnlyList<CostEvent> GetCostLedger(string projectId) =>
+        GetCostLedgerAsync(projectId).GetAwaiter().GetResult();
+
+    public async Task<IReadOnlyList<CostEvent>> GetCostLedgerAsync(
+        string projectId,
+        CancellationToken ct = default)
     {
-        var raw = GetCostLedgerRaw(projectId);
+        var raw = await GetCostLedgerRawAsync(projectId, ct).ConfigureAwait(false);
         var list = new List<CostEvent>();
         foreach (var e in raw)
-        {
             list.Add(ParseEvent(e));
-        }
         return list;
     }
 
@@ -337,9 +369,19 @@ public sealed class CostReportService
         int nImages,
         string model,
         bool quality = true,
-        string? character = null)
+        string? character = null) =>
+        RecordImageGenerationAsync(projectId, nImages, model, quality, character)
+            .GetAwaiter().GetResult();
+
+    public async Task RecordImageGenerationAsync(
+        string projectId,
+        int nImages,
+        string model,
+        bool quality = true,
+        string? character = null,
+        CancellationToken ct = default)
     {
-        var cfg = LoadConfigMap(projectId);
+        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
         var rates = RatesFromConfig(cfg);
         var n = Math.Max(0, nImages);
         var unit = GetDouble(
@@ -347,7 +389,7 @@ public sealed class CostReportService
             quality ? "image_output_quality" : "image_output_standard",
             quality ? 0.05 : 0.02);
         var usd = Math.Round(unit * n, 4);
-        AppendCostEvent(projectId, new Dictionary<string, object?>
+        await AppendCostEventAsync(projectId, new Dictionary<string, object?>
         {
             ["kind"] = "image",
             ["model"] = model,
@@ -357,7 +399,7 @@ public sealed class CostReportService
             ["usd"] = usd,
             ["currency"] = "USD",
             ["source"] = "list_rate",
-        }, save: true);
+        }, save: true, ct).ConfigureAwait(false);
     }
 
     // ---- internals ----
@@ -523,14 +565,23 @@ public sealed class CostReportService
         };
     }
 
-    private List<JsonElement> GetCostLedgerRaw(string projectId)
+    private Task<List<JsonElement>> GetCostLedgerRawAsync(
+        string projectId,
+        CancellationToken ct = default) =>
+        GetCostLedgerRawCoreAsync(projectId, ct);
+
+    private async Task<List<JsonElement>> GetCostLedgerRawCoreAsync(
+        string projectId,
+        CancellationToken ct)
     {
-        var path = StatePath(projectId);
+        var path = await StatePathAsync(projectId, ct).ConfigureAwait(false);
         if (!File.Exists(path))
             return new List<JsonElement>();
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            await using var stream = File.OpenRead(path);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                .ConfigureAwait(false);
             if (!doc.RootElement.TryGetProperty("cost_ledger", out var ledger) ||
                 ledger.ValueKind != JsonValueKind.Array)
                 return new List<JsonElement>();
@@ -542,108 +593,101 @@ public sealed class CostReportService
         }
     }
 
-    private void AppendCostEvent(string projectId, Dictionary<string, object?> evt, bool save)
+    private async Task AppendCostEventAsync(
+        string projectId,
+        Dictionary<string, object?> evt,
+        bool save,
+        CancellationToken ct = default)
     {
-        var path = StatePath(projectId);
-        Dictionary<string, object?> state;
+        var path = await StatePathAsync(projectId, ct).ConfigureAwait(false);
+
+        JsonDocument rawDoc;
         if (File.Exists(path))
         {
             try
             {
-                state = JsonSerializer.Deserialize<Dictionary<string, object?>>(
-                    File.ReadAllText(path),
-                    JsonDefaults.CaseInsensitive)
-                    ?? new Dictionary<string, object?>();
+                var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+                rawDoc = JsonDocument.Parse(bytes);
             }
             catch
             {
-                state = new Dictionary<string, object?>();
+                rawDoc = JsonDocument.Parse("{}");
             }
         }
         else
         {
-            state = new Dictionary<string, object?>();
+            rawDoc = JsonDocument.Parse("{}");
         }
 
-        // Re-parse ledger as List of JsonElement via JsonDocument for safer merge
-        using var rawDoc = File.Exists(path)
-            ? JsonDocument.Parse(File.ReadAllText(path))
-            : JsonDocument.Parse("{}");
-        var ledgerList = new List<object?>();
-        if (rawDoc.RootElement.TryGetProperty("cost_ledger", out var existing) &&
-            existing.ValueKind == JsonValueKind.Array)
+        using (rawDoc)
         {
-            foreach (var item in existing.EnumerateArray())
-                ledgerList.Add(JsonSerializer.Deserialize<object>(item.GetRawText()));
-        }
+            var ledgerList = new List<object?>();
+            if (rawDoc.RootElement.TryGetProperty("cost_ledger", out var existing) &&
+                existing.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in existing.EnumerateArray())
+                    ledgerList.Add(JsonSerializer.Deserialize<object>(item.GetRawText()));
+            }
 
-        var ts = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
-        evt.TryAdd("id", $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{ledgerList.Count:D4}");
-        evt.TryAdd("ts", ts);
-        evt.TryAdd("currency", "USD");
-        ledgerList.Add(evt);
-        if (ledgerList.Count > 20000)
-            ledgerList = ledgerList.TakeLast(20000).ToList();
+            var ts = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+            evt.TryAdd("id", $"{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{ledgerList.Count:D4}");
+            evt.TryAdd("ts", ts);
+            evt.TryAdd("currency", "USD");
+            ledgerList.Add(evt);
+            if (ledgerList.Count > 20000)
+                ledgerList = ledgerList.TakeLast(20000).ToList();
 
-        // Rebuild state from raw to preserve other keys
-        var merged = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        foreach (var p in rawDoc.RootElement.EnumerateObject())
-        {
-            if (p.Name is "cost_ledger" or "cost_totals")
-                continue;
-            merged[p.Name] = JsonSerializer.Deserialize<object>(p.Value.GetRawText());
-        }
+            var merged = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in rawDoc.RootElement.EnumerateObject())
+            {
+                if (p.Name is "cost_ledger" or "cost_totals")
+                    continue;
+                merged[p.Name] = JsonSerializer.Deserialize<object>(p.Value.GetRawText());
+            }
 
-        merged["cost_ledger"] = ledgerList;
-        var prevUsd = 0.0;
-        var prevEvents = 0;
-        if (rawDoc.RootElement.TryGetProperty("cost_totals", out var tot) &&
-            tot.ValueKind == JsonValueKind.Object)
-        {
-            if (tot.TryGetProperty("usd", out var u) && u.TryGetDouble(out var ud))
-                prevUsd = ud;
-            if (tot.TryGetProperty("events", out var ev) && ev.TryGetInt32(out var en))
-                prevEvents = en;
-        }
+            merged["cost_ledger"] = ledgerList;
+            var prevUsd = 0.0;
+            var prevEvents = 0;
+            if (rawDoc.RootElement.TryGetProperty("cost_totals", out var tot) &&
+                tot.ValueKind == JsonValueKind.Object)
+            {
+                if (tot.TryGetProperty("usd", out var u) && u.TryGetDouble(out var ud))
+                    prevUsd = ud;
+                if (tot.TryGetProperty("events", out var ev) && ev.TryGetInt32(out var en))
+                    prevEvents = en;
+            }
 
-        var addUsd = 0.0;
-        if (evt.TryGetValue("usd", out var usdObj) && usdObj is not null)
-        {
-            addUsd = Convert.ToDouble(usdObj, CultureInfo.InvariantCulture);
-        }
+            var addUsd = 0.0;
+            if (evt.TryGetValue("usd", out var usdObj) && usdObj is not null)
+                addUsd = Convert.ToDouble(usdObj, CultureInfo.InvariantCulture);
 
-        merged["cost_totals"] = new Dictionary<string, object?>
-        {
-            ["usd"] = Math.Round(prevUsd + addUsd, 4),
-            ["events"] = prevEvents + 1,
-            ["updated_at"] = ts,
-        };
+            merged["cost_totals"] = new Dictionary<string, object?>
+            {
+                ["usd"] = Math.Round(prevUsd + addUsd, 4),
+                ["events"] = prevEvents + 1,
+                ["updated_at"] = ts,
+            };
 
-        if (save || true)
-        {
-            var json = JsonSerializer.Serialize(merged, JsonDefaults.Indented);
-            File.WriteAllText(path, json + "\n");
+            if (save)
+            {
+                var json = JsonSerializer.Serialize(merged, JsonDefaults.Indented);
+                await File.WriteAllTextAsync(path, json + "\n", ct).ConfigureAwait(false);
+            }
         }
     }
 
-    private void TouchStateFile(string projectId)
+    private async Task<string> StatePathAsync(string projectId, CancellationToken ct)
     {
-        // AppendCostEvent already saves; no-op for batch end when we used save:false incorrectly.
-        // Re-read and re-write to ensure file exists after last append with save true was skipped.
-        // Last Append with save:false still wrote because of `if (save || true)`. Keep as is.
-        _ = projectId;
-    }
-
-    private string StatePath(string projectId)
-    {
-        var dir = _projects.GetProjectDir(projectId);
+        var dir = await _projects.GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var meta = Path.Combine(dir, "project.json");
         var name = "pipeline_state.json";
         if (File.Exists(meta))
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(meta));
+                await using var stream = File.OpenRead(meta);
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                    .ConfigureAwait(false);
                 if (doc.RootElement.TryGetProperty("state_file", out var sf) &&
                     sf.GetString() is { Length: > 0 } n)
                     name = n;
@@ -653,9 +697,11 @@ public sealed class CostReportService
         return Path.Combine(dir, name);
     }
 
-    private Dictionary<string, JsonElement> LoadConfigMap(string projectId)
+    private async Task<Dictionary<string, JsonElement>> LoadConfigMapAsync(
+        string projectId,
+        CancellationToken ct)
     {
-        var cfg = _projects.GetConfig(projectId);
+        var cfg = await _projects.GetConfigAsync(projectId, ct).ConfigureAwait(false);
         return new Dictionary<string, JsonElement>(cfg, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -671,17 +717,19 @@ public sealed class CostReportService
         return cfg;
     }
 
-    private List<BlueprintSceneClips> LoadBlueprintClips(string projectId)
+    private async Task<List<BlueprintSceneClips>> LoadBlueprintClipsAsync(
+        string projectId,
+        CancellationToken ct)
     {
         var list = new List<BlueprintSceneClips>();
-        using var bp = _projects.LoadBlueprint(projectId);
+        using var bp = await _projects.LoadBlueprintAsync(projectId, ct).ConfigureAwait(false);
         if (bp is null ||
             !bp.RootElement.TryGetProperty("scenes", out var scenes) ||
             scenes.ValueKind != JsonValueKind.Array)
             return list;
 
         var defaultDur = 8.0;
-        var cfg = LoadConfigMap(projectId);
+        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
         defaultDur = GetDouble(cfg, "duration_seconds", 8);
 
         foreach (var s in scenes.EnumerateArray())
@@ -805,14 +853,18 @@ public sealed class CostReportService
         return map;
     }
 
-    private Dictionary<int, string> LoadHeroMap(string projectId)
+    private async Task<Dictionary<int, string>> LoadHeroMapAsync(
+        string projectId,
+        CancellationToken ct)
     {
         var map = new Dictionary<int, string>();
-        var path = StatePath(projectId);
+        var path = await StatePathAsync(projectId, ct).ConfigureAwait(false);
         if (!File.Exists(path)) return map;
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            await using var stream = File.OpenRead(path);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                .ConfigureAwait(false);
             if (!doc.RootElement.TryGetProperty("scene_hero", out var hero) ||
                 hero.ValueKind != JsonValueKind.Object)
                 return map;
@@ -831,14 +883,18 @@ public sealed class CostReportService
         return map;
     }
 
-    private Dictionary<string, Dictionary<string, JsonElement>> LoadClipJobs(string projectId)
+    private async Task<Dictionary<string, Dictionary<string, JsonElement>>> LoadClipJobsAsync(
+        string projectId,
+        CancellationToken ct)
     {
         var map = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.Ordinal);
-        var path = StatePath(projectId);
+        var path = await StatePathAsync(projectId, ct).ConfigureAwait(false);
         if (!File.Exists(path)) return map;
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            await using var stream = File.OpenRead(path);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                .ConfigureAwait(false);
             if (!doc.RootElement.TryGetProperty("clip_jobs", out var jobs) ||
                 jobs.ValueKind != JsonValueKind.Object)
                 return map;

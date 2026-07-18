@@ -79,7 +79,7 @@ public sealed class CharacterBookPlateService
             return result;
         }
 
-        var inventoryAll = LoadBookImageInventory(projectDir);
+        var inventoryAll = await LoadBookImageInventoryAsync(projectDir).ConfigureAwait(false);
         var inventory = inventoryAll.Where(r => !IsLikelyTextLayout(r)).ToList();
         if (inventory.Count == 0)
         {
@@ -97,7 +97,7 @@ public sealed class CharacterBookPlateService
         JsonNode root;
         try
         {
-            root = JsonNode.Parse(File.ReadAllText(scenesPath))
+            root = JsonNode.Parse(await File.ReadAllTextAsync(scenesPath, ct))
                    ?? throw new InvalidOperationException("empty scenes.json");
         }
         catch (Exception ex)
@@ -300,11 +300,9 @@ public sealed class CharacterBookPlateService
         }
         catch { /* ignore */ }
 
-        File.WriteAllText(
-            scenesPath,
-            root.ToJsonString(JsonDefaults.Indented) + "\n");
+        await File.WriteAllTextAsync(scenesPath, root.ToJsonString(JsonDefaults.Indented) + "\n", ct);
 
-        TryMirrorBlueprint(projectDir, seeds);
+        await TryMirrorBlueprintAsync(projectDir, seeds);
 
         if (string.IsNullOrWhiteSpace(onlyCharKey))
         {
@@ -605,7 +603,7 @@ public sealed class CharacterBookPlateService
         }
     }
 
-    private void TryMirrorBlueprint(string projectDir, JsonObject stage1Seeds)
+    private async Task TryMirrorBlueprintAsync(string projectDir, JsonObject stage1Seeds)
     {
         try
         {
@@ -614,7 +612,7 @@ public sealed class CharacterBookPlateService
             var bp = _projects.FindBlueprintPath(projectId);
             if (bp is null || !File.Exists(bp)) return;
 
-            var root = JsonNode.Parse(File.ReadAllText(bp)) as JsonObject;
+            var root = JsonNode.Parse(await File.ReadAllTextAsync(bp, CancellationToken.None)) as JsonObject;
             if (root is null) return;
             var gpv = root["global_production_variables"] as JsonObject ?? new JsonObject();
             root["global_production_variables"] = gpv;
@@ -643,7 +641,7 @@ public sealed class CharacterBookPlateService
                     dest["source_image_pages"] = pages.DeepClone();
             }
 
-            File.WriteAllText(bp, root.ToJsonString(JsonDefaults.Indented) + "\n");
+            await File.WriteAllTextAsync(bp, root.ToJsonString(JsonDefaults.Indented) + "\n");
         }
         catch (Exception ex)
         {
@@ -792,7 +790,7 @@ public sealed class CharacterBookPlateService
         return false;
     }
 
-    private static List<BookImageRow> LoadBookImageInventory(string projectDir)
+    private static async Task<List<BookImageRow>> LoadBookImageInventoryAsync(string projectDir)
     {
         var rows = new List<BookImageRow>();
         var source = Path.Combine(projectDir, "source");
@@ -803,7 +801,7 @@ public sealed class CharacterBookPlateService
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(man));
+                using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(man));
                 if (doc.RootElement.TryGetProperty("images", out var imgs) &&
                     imgs.ValueKind == JsonValueKind.Array)
                 {
