@@ -9,9 +9,7 @@
 
 <h1>Adaptation</h1>
 <p class="text-muted">
-    Book → Stage 1 scene bible → Stage 2 clip plan.
-    <strong>All steps run in native C#</strong>: PdfPig + page render + Grok vision,
-    Stage 1 Grok chat, Stage 2 deterministic planner.
+    Book → story outline → shot plan.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -120,7 +118,7 @@ else
         <strong>Next:</strong> @NextStepLabel(_status.NextStep)
         @if (!_status.XaiConfigured)
         {
-            <span class="ms-2">· <code>XAI_API_KEY</code> not set on API process (Stage 1 / vision need it)</span>
+            <span class="ms-2">· <a href="configuration">Connect service</a> required for prepare and story outline</span>
         }
     </div>
 
@@ -133,7 +131,7 @@ else
                     @if (_status.Book.ReadyForStage1)
                     {
                         <div class="alert alert-success py-2 small">
-                            Book text ready for Stage 1
+                            Book text ready for story outline
                             @if (!string.IsNullOrEmpty(_status.Book.BookKind))
                             {
                                 <span>· @_status.Book.BookKind</span>
@@ -147,7 +145,7 @@ else
                     else if (_status.Book.PdfExists || _status.Book.BookTextExists)
                     {
                         <div class="alert alert-warning py-2 small">
-                            Source on disk but text may need re-import / vision cleanup.
+                            Source on disk but text may need a cleaner re-read of the pages.
                         </div>
                     }
                     else
@@ -159,17 +157,16 @@ else
                         <button class="btn btn-primary btn-sm"
                                 disabled="@(_busy || JobRunning || (!_status.Book.PdfExists && !_status.Book.BookTextExists))"
                                 @onclick="() => PrepareBookAsync(forceVision: false)">
-                            Prepare book (extract + auto vision)
+                            Prepare book
                         </button>
                         <button class="btn btn-outline-primary btn-sm"
                                 disabled="@(_busy || JobRunning || !_status.XaiConfigured || (!_status.Book.PdfExists && _status.Book.PageImageCount == 0))"
                                 @onclick="() => PrepareBookAsync(forceVision: true)">
-                            Force Grok vision OCR
+                            Re-read book pages
                         </button>
                     </div>
                     <p class="small text-muted mb-3">
-                        C# path: PdfPig text extract → score quality → if picture book / garbled text,
-                        rebuild <code>book_full.txt</code> page-by-page with Grok vision (needs key).
+                        Extracts text from the book; for picture books, re-reads pages when text is unclear.
                     </p>
 
                     <ul class="list-unstyled small mb-3">
@@ -185,7 +182,7 @@ else
                             }
                         </li>
                         <li>
-                            book_full.txt:
+                            Story text:
                             @(_status.Book.BookTextExists
                                 ? $"{_status.Book.BookTextBytes:N0} bytes · {_status.Book.TextWords ?? 0} words"
                                 : "missing")
@@ -216,7 +213,7 @@ else
                         Save upload to project
                     </button>
                     <p class="small text-muted mt-2 mb-0">
-                        After upload, click <strong>Prepare book</strong>. Plain TXT unlocks Stage 1 immediately when quality is good.
+                        After upload, click <strong>Prepare book</strong>. Plain TXT unlocks the story outline when quality is good.
                     </p>
 
                     @if (!string.IsNullOrEmpty(_status.Book.Preview))
@@ -234,7 +231,7 @@ else
         <div class="col-lg-6">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between">
-                    <span>2) Stage 1 — scene bible</span>
+                    <span>2) Story outline</span>
                     @if (_status.Stage1.Present && _status.Stage1.SceneCount > 0)
                     {
                         <span class="badge bg-success">ready</span>
@@ -265,7 +262,7 @@ else
                     }
                     else
                     {
-                        <p class="small text-muted">No Stage 1 bible yet (<code>@(_status.Stage1.ScenesFile ?? "scenes.json")</code>).</p>
+                        <p class="small text-muted">No story outline yet.</p>
                     }
 
                     <div class="row g-2 mb-2">
@@ -278,8 +275,8 @@ else
                             <input type="number" class="form-control form-control-sm" min="5" max="30" @bind="_chunkPages" disabled="@_busy" />
                         </div>
                         <div class="col-8">
-                            <label class="form-label small">Model</label>
-                            <input class="form-control form-control-sm" @bind="_model" disabled="@_busy" />
+                            <label class="form-label small text-muted">Advanced</label>
+                            <input class="form-control form-control-sm" @bind="_model" disabled="@_busy" title="Optional override" />
                         </div>
                         <div class="col-4 form-check align-self-end mb-2">
                             <input class="form-check-input" type="checkbox" id="s1resume" @bind="_resume" disabled="@_busy" />
@@ -290,11 +287,11 @@ else
                     <button class="btn btn-primary"
                             disabled="@(_busy || JobRunning || !CanRunStage1 || !_status.XaiConfigured)"
                             @onclick="RunStage1Async">
-                        @(_status.Stage1.SceneCount > 0 ? "Re-run Stage 1" : "Run Stage 1")
+                        @(_status.Stage1.SceneCount > 0 ? "Rebuild story outline" : "Build story outline")
                     </button>
                     @if (!_status.XaiConfigured)
                     {
-                        <span class="small text-muted ms-2">Needs XAI_API_KEY on API</span>
+                        <span class="small text-muted ms-2"><a href="configuration">Connect service</a></span>
                     }
                     else if (!CanRunStage1)
                     {
@@ -302,11 +299,10 @@ else
                     }
                     else if (!_status.Book.ReadyForStage1 && _status.Stage1.SceneCount > 0)
                     {
-                        <span class="small text-success ms-2">Re-run allowed (existing bible)</span>
+                        <span class="small text-success ms-2">Re-run allowed (outline exists)</span>
                     }
                     <p class="small text-muted mt-2 mb-0">
-                        C# Stage1Service (Grok chat) · writes <code>@(_status.Stage1.ScenesFile ?? "scenes.json")</code>.
-                        Re-run rewrites seeds (nickname scrub + new prompt) and backs up the previous file.
+                        Creates the cast and scene list for this project.
                     </p>
                 </div>
             </div>
@@ -316,7 +312,7 @@ else
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <span>3) Stage 2 — clip plan</span>
+                    <span>3) Shot plan</span>
                     @if (_status.Stage2.Stage2Ready && !_status.Stage2.Stage2Stale)
                     {
                         <span class="badge bg-success">ready</span>
@@ -330,13 +326,13 @@ else
                     @if (_status.Stage2.Stage2Stale)
                     {
                         <div class="alert alert-warning py-2 small">
-                            Stage 1 is newer than the blueprint — re-plan before generating video so prompts match the bible.
+                            Story outline changed — update the shot plan before making video.
                         </div>
                     }
                     else if (_status.Stage2.Stage2Ready)
                     {
                         <div class="alert alert-success py-2 small">
-                            Stage 2 ready — <strong>@_status.Stage2.Stage2Scenes</strong> scenes ·
+                            Shot plan ready — <strong>@_status.Stage2.Stage2Scenes</strong> scenes ·
                             <strong>@_status.Stage2.Stage2Clips</strong> clips
                             @if (!string.IsNullOrEmpty(_status.Stage2.LastCompletedAt))
                             {
@@ -347,29 +343,28 @@ else
                     else if (_status.Stage2.Stage1Exists)
                     {
                         <div class="alert alert-warning py-2 small">
-                            Stage 1 has @_status.Stage2.Stage1Scenes scene(s) but no clip plan yet.
+                            Story outline has @_status.Stage2.Stage1Scenes scene(s) but no shot plan yet.
                         </div>
                     }
                     else
                     {
-                        <div class="alert alert-secondary py-2 small">Finish Stage 1 first.</div>
+                        <div class="alert alert-secondary py-2 small">Finish the story outline first.</div>
                     }
 
                     <p class="small text-muted">
-                        Blueprint: <code>@(_status.Stage2.BlueprintFileName ?? "—")</code>
                         @if (!string.IsNullOrEmpty(_status.Stage2.LastRunMessage))
                         {
-                            <span>· @_status.Stage2.LastRunMessage</span>
+                            <span>@_status.Stage2.LastRunMessage</span>
                         }
                         @if (_status.Stage2.ValidationIssueCount > 0)
                         {
-                            <span>· @_status.Stage2.ValidationIssueCount validation note(s)</span>
+                            <span>· @_status.Stage2.ValidationIssueCount note(s)</span>
                         }
                     </p>
 
                     <div class="d-flex flex-wrap gap-2 align-items-end">
                         <div>
-                            <label class="form-label small mb-0">Resolution tag</label>
+                            <label class="form-label small mb-0">Resolution</label>
                             <select class="form-select form-select-sm" style="width:auto" @bind="_s2Resolution" disabled="@_busy">
                                 <option value="480p">480p</option>
                                 <option value="720p">720p</option>
@@ -379,13 +374,13 @@ else
                                 disabled="@(_busy || JobRunning || !_status.Stage2.Stage1Exists)"
                                 @onclick="RunStage2Async">
                             @(_status.Stage2.Stage2Ready
-                                ? (_status.Stage2.Stage2Stale ? "▶ Re-plan Stage 2" : "🔁 Re-generate Stage 2")
-                                : "▶ Generate Stage 2 plan")
+                                ? (_status.Stage2.Stage2Stale ? "▶ Update shot plan" : "🔁 Rebuild shot plan")
+                                : "▶ Build shot plan")
                         </button>
                         <a class="btn btn-outline-primary" href="scenes">Open Scenes →</a>
                     </div>
                     <p class="small text-muted mt-2 mb-0">
-                        Deterministic C# planner — no API key. Backs up existing blueprint before write.
+                        Builds the shot plan (clips per scene).
                     </p>
                 </div>
             </div>
@@ -396,7 +391,7 @@ else
         {
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">Stage 1 scenes preview</div>
+                    <div class="card-header">Story outline preview</div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-sm mb-0">
@@ -682,8 +677,8 @@ else
                 forceVision: forceVision,
                 autoVision: true);
             _message = forceVision
-                ? "Book prepare started (force Grok vision OCR) — watch the job log"
-                : "Book prepare started (PdfPig extract + auto vision) — watch the job log";
+                ? "Re-reading book pages… watch the log below"
+                : "Preparing book… watch the log below";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
             StartJobPolling();
@@ -711,7 +706,7 @@ else
                 Model = _model,
                 Resume = _resume,
             });
-            _message = "Stage 1 started — live log below (Grok can take minutes per chunk)";
+            _message = "Building story outline… (may take a few minutes) — live log below";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
             AbsorbProgressFromSnapshot(_job ?? new JobSnapshot());
@@ -735,7 +730,7 @@ else
                 Resolution = _s2Resolution,
                 Scenes = "all",
             });
-            _message = "Stage 2 planner started — live log below";
+            _message = "Building shot plan… — live log below";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
             StartJobPolling();
@@ -807,13 +802,13 @@ else
 
     private static string NextStepLabel(string step) => step switch
     {
-        "import_book" => "Import a PDF or TXT into the project source folder",
-        "fix_book_text" => "Prepare book (extract + Grok vision OCR) or paste a clean book_full.txt",
-        "run_stage1" => "Run Stage 1 to build the scene bible",
-        "run_stage2" => "Generate Stage 2 clip plan",
-        "replan_stage2" => "Re-plan Stage 2 (Stage 1 changed)",
-        "generate_clips" => "Open Scenes and generate video clips",
-        _ => "Pipeline looks complete — refine on Scenes / Characters",
+        "import_book" => "Upload a PDF or text file for this project",
+        "fix_book_text" => "Prepare book, or upload a clean text file",
+        "run_stage1" => "Build the story outline",
+        "run_stage2" => "Build the shot plan",
+        "replan_stage2" => "Update the shot plan (story outline changed)",
+        "generate_clips" => "Open Scenes and create video clips",
+        _ => "Looks complete — refine on Scenes or Characters",
     };
 
     private static string NextStepAlertClass(string step) => step switch

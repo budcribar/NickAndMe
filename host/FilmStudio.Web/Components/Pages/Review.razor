@@ -8,11 +8,11 @@
 
 <h1>Review</h1>
 <p class="text-muted mb-1">
-    Pass / fail clips, approve scenes, rebuild scene composites (ffmpeg concat of clips), and rebuild the full WIP movie.
+    Mark clips pass/fail, approve scenes, rebuild scene videos, and rebuild the full movie draft.
 </p>
 <p class="small text-muted">
-    <strong>Rebuild scene</strong> = ffmpeg-concat that scene’s clips → <code>scene_XX_composite.mp4</code> (not the full movie).
-    <strong>Rebuild WIP</strong> = stitch all scene composites → <code>movie_wip.mp4</code>.
+    <strong>Rebuild scene</strong> combines that scene’s clips into one video (not the full movie).
+    <strong>Rebuild movie draft</strong> stitches all scene videos into one full draft.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -190,7 +190,7 @@
             <div class="card-body p-0">
                 @if (_scenes.Count == 0)
                 {
-                    <p class="text-muted p-3 mb-0">No scenes — run Adaptation Stage 1 / 2 first.</p>
+                    <p class="text-muted p-3 mb-0">No scenes — finish Adaptation first.</p>
                 }
                 else
                 {

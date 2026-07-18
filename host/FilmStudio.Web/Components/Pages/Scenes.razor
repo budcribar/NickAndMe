@@ -8,12 +8,12 @@
 
 <h1>Scenes &amp; Clips</h1>
 <p class="text-muted mb-1">
-    Stage 2 blueprint browse + generate via the C# engine.
-    Pass/fail on <a href="review">Review</a>; replan Stage 2 from <a href="adaptation">Adaptation</a>.
+    Browse scenes and create video clips.
+    Pass/fail on <a href="review">Review</a>; update the shot plan from <a href="adaptation">Adaptation</a>.
 </p>
 <p class="small text-muted">
-    <strong>Rebuild scene</strong> = ffmpeg concat of this scene’s clips → composite (not full WIP).
-    Clip <strong>Regen</strong> force-regenerates one clip; rebuild the scene after to update the composite.
+    <strong>Rebuild scene</strong> combines this scene’s clips into one video (not the full movie draft).
+    Clip <strong>Regen</strong> recreates one clip; rebuild the scene after to update the combined video.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -218,7 +218,7 @@
     else if (_scenes.Count == 0)
     {
         <div class="alert alert-warning">
-            No Stage 2 scenes. Open <strong>Adaptation</strong> and run Stage 2 first.
+            No scenes yet. Finish the <strong>shot plan</strong> in Adaptation first.
         </div>
     }
     else
@@ -330,7 +330,7 @@
             </div>
 
             <div class="batch-panel__foot">
-                Uses <code>XAI_API_KEY</code> on the API process · selection respects character/location/setting filters.
+                Selection respects character, location, and setting filters.
                 Video gen is blocked until on-screen cast (non-narrator) has locked character refs — lock them under Characters.
             </div>
         </div>
@@ -405,7 +405,7 @@
                                     <span title="Measured from composite or clips">@FormatClock(act)</span>
                                     @if (s.PlannedDurationSeconds is double plan && Math.Abs(plan - act) > 1.5)
                                     {
-                                        <div class="text-muted" style="font-size:0.75rem;" title="Stage 2 plan">plan @FormatClock(plan)</div>
+                                        <div class="text-muted" style="font-size:0.75rem;" title="Planned length">plan @FormatClock(plan)</div>
                                     }
                                 }
                                 else if (s.PlannedDurationSeconds is double planOnly)

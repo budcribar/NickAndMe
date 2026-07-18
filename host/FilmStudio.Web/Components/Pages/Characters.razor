@@ -8,27 +8,24 @@
 
 <h1>Characters</h1>
 <p class="text-muted">
-    Click a cast member → choose how to create portraits. The <strong>current preferred image</strong>
-    (lock or best-so-far) plus the written description are always sent to Grok.
-    Book plates are the illustrated pages sorted onto each character in <code>scenes.json</code>
-    (never text-only samples). If none exist, Grok still generates from the description.
+    Click a character → set their look. Your <strong>preferred picture</strong> and
+    <strong>description</strong> are used when creating new portraits.
+    <strong>Book pictures</strong> from the story can help if you’ve matched them.
 </p>
-@* Grok vision job: which cast appears on each book page → scenes.json plates. User start + cancel. *@
 @if (_plates is not null && !_plates.SortedByCharacter)
 {
     <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 mb-3">
         <div>
-            <strong>Character plates not sorted yet.</strong>
+            <strong>Book pictures aren’t matched to the cast yet.</strong>
             <span class="small d-block text-muted">
-                Grok looks at each book image and assigns illustrated figures to cast members
-                in <code>scenes.json</code>. Text-only pages are never attached.
+                Match each book picture to the right character. Text-only pages are skipped.
             </span>
         </div>
         <div class="d-flex gap-2">
             @if (PlateSortRunning)
             {
                 <button type="button" class="btn btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">
-                    Cancel sort
+                    Cancel
                 </button>
             }
             else
@@ -36,7 +33,7 @@
                 <button type="button" class="btn btn-warning"
                         disabled="@(_busy || JobRunning)"
                         @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
-                    Sort plates with Grok
+                    Find characters
                 </button>
             }
         </div>
@@ -45,14 +42,9 @@
 else if (_plates is not null && _plates.SortedByCharacter)
 {
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <span class="badge text-bg-success">Character plates sorted</span>
+        <span class="badge text-bg-success">Book pictures matched</span>
         <span class="small text-muted">
             @_plates.SortedAt
-            @if (!string.IsNullOrEmpty(_plates.Method))
-            {
-                <text> · @_plates.Method</text>
-            }
-            · scenes.json
         </span>
         @if (PlateSortRunning)
         {
@@ -65,8 +57,8 @@ else if (_plates is not null && _plates.SortedByCharacter)
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     disabled="@(_busy || JobRunning)"
                     @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)"
-                    title="Re-run Grok vision classification on book images">
-                Re-sort with Grok
+                    title="Match book pictures to cast again">
+                Find characters again
             </button>
         }
     </div>
@@ -148,7 +140,7 @@ else if (_plates is not null && _plates.SortedByCharacter)
 else if (_chars.Count == 0)
 {
     <div class="alert alert-warning">
-        No character seeds. Run <strong>Adaptation → Stage 1</strong> first.
+        No cast yet. Finish the <strong>story outline</strong> in Adaptation first.
     </div>
 }
 else
@@ -193,7 +185,7 @@ else
                     </div>
                     <div class="card-body">
                         <p class="small text-muted mb-3">
-                            Used as <strong>VOICE LOCK</strong> in Grok video prompts when this character speaks (e.g. narrator VO).
+                            <strong>Voice style</strong> — used when this character speaks (for example narrator voice-over).
                         </p>
                         @RenderVoiceEditor()
                     </div>
@@ -236,8 +228,8 @@ else
                                 <div class="small"><strong>Description</strong> — @Trunc(_selected.Description, 160)</div>
                                 <div class="small mt-1"><strong>Visual</strong> — @Trunc(_selected.VisualLock, 120)</div>
                                 <div class="small mt-1">
-                                    <strong>Book hints</strong>
-                                    (@(_selected.BookRefs.Count(b => b.Exists)) plate(s))
+                                    <strong>Book pictures</strong>
+                                    (@(_selected.BookRefs.Count(b => b.Exists)) picture(s))
                                 </div>
                                 <button type="button" class="btn btn-sm btn-link px-0 mt-1" @onclick="BackToSource">← Back to regenerate</button>
                             }
@@ -257,8 +249,7 @@ else
                     <div class="card-header py-2">Voice (video gen)</div>
                     <div class="card-body">
                         <p class="small text-muted mb-3">
-                            Injected as <strong>VOICE LOCK</strong> when this character is the clip speaker.
-                            Save writes <code>scenes.json</code> (and blueprint if present).
+                            <strong>Voice style</strong> when this character speaks. Save stores it for this project.
                         </p>
                         @RenderVoiceEditor()
                     </div>
@@ -269,13 +260,9 @@ else
                     <div class="card mb-3 border-primary">
                         <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <div>
-                                <strong>1) Pick seeds → edit text → regenerate → compare</strong>
+                                <strong>1) Pick pictures → edit description → generate → compare</strong>
                                 <span class="small text-muted ms-2">
-                                    select any · send top @ApiMaxSeedRefs
-                                    @if (_imageSeedLimits is not null)
-                                    {
-                                        <text>(@_imageSeedLimits.Provider)</text>
-                                    }
+                                    select any · use top @ApiMaxSeedRefs
                                 </span>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
@@ -296,7 +283,7 @@ else
                         </div>
                         <div class="card-body">
                             <div class="mb-2 small fw-semibold">
-                                Image seeds — click to select (order = priority · badge = send rank)
+                                Reference pictures — click to use (order = priority)
                             </div>
                             <div class="d-flex flex-wrap gap-2 mb-2">
                                 @* Preferred *@
@@ -322,7 +309,7 @@ else
                                             }
                                             <span class="char-seed-tile__label">Preferred</span>
                                         </button>
-                                        <button type="button" class="char-seed-hide" title="Hide this seed"
+                                        <button type="button" class="char-seed-hide" title="Hide this picture"
                                                 disabled="@(_busy || JobRunning)"
                                                 @onclick="@(() => HideSeedKey(prefKey))">×</button>
                                     </div>
@@ -351,7 +338,7 @@ else
                                             <img src="@vsrc" alt="V@(idx)" />
                                             <span class="char-seed-tile__label">V@(idx)</span>
                                         </button>
-                                        <button type="button" class="char-seed-hide" title="Hide this seed"
+                                        <button type="button" class="char-seed-hide" title="Hide this picture"
                                                 disabled="@(_busy || JobRunning)"
                                                 @onclick="@(() => HideSeedKey(key))">×</button>
                                     </div>
@@ -380,7 +367,7 @@ else
                                             <img src="@src" alt="B@(bi)" />
                                             <span class="char-seed-tile__label">B@(bi)</span>
                                         </button>
-                                        <button type="button" class="char-seed-hide" title="Hide this seed"
+                                        <button type="button" class="char-seed-hide" title="Hide this picture"
                                                 disabled="@(_busy || JobRunning)"
                                                 @onclick="@(() => HideSeedKey(key))">×</button>
                                     </div>
@@ -389,7 +376,7 @@ else
                                      !_selected.Variants.Any(v => v.Exists) &&
                                      !_selected.BookRefs.Any(b => b.Exists))
                                 {
-                                    <span class="small text-muted">No images yet — generate from description only, or re-sort book plates.</span>
+                                    <span class="small text-muted">No images yet — generate from description only, or find characters again.</span>
                                 }
                             </div>
                             <div class="small text-muted mb-3">
@@ -397,23 +384,22 @@ else
                                 @if (SelectedSeedCount > 0)
                                 {
                                     <text>
-                                        · sending <strong>@Math.Min(SelectedSeedCount, ApiMaxSeedRefs)</strong>
-                                        to @(_imageSeedLimits?.Provider ?? "image API")
+                                        · using <strong>@Math.Min(SelectedSeedCount, ApiMaxSeedRefs)</strong>
                                         (max @ApiMaxSeedRefs)
                                     </text>
                                 }
                                 @if (SelectedSeedCount > ApiMaxSeedRefs)
                                 {
-                                    <span class="text-muted"> — ranks @(ApiMaxSeedRefs + 1)+ ranked only, not sent</span>
+                                    <span class="text-muted"> — lower ranks kept for ordering only</span>
                                 }
                             </div>
 
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold mb-1">Description (sent to Grok; saved to scenes.json)</label>
+                                <label class="form-label small fw-semibold mb-1">Description</label>
                                 <textarea class="form-control form-control-sm" rows="3"
                                           @bind="_editDescription" @bind:event="oninput"
                                           disabled="@(_busy || JobRunning)"
-                                          placeholder="Character appearance for portrait continuity…"></textarea>
+                                          placeholder="How this character looks for portrait continuity…"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold mb-1">Visual lock (optional)</label>
@@ -443,7 +429,7 @@ else
                     </div>
 
                     <p class="small text-muted mb-0">
-                        Needs <code>XAI_API_KEY</code> on the API. After generate finishes, pick a champion and lock for video.
+                        After generate finishes, pick a champion and lock for video.
                     </p>
                 }
                 else if (_mode == Mode.WaitingGenerate)
@@ -516,14 +502,14 @@ else
                                 <button type="button" class="btn btn-primary btn-lg"
                                         disabled="@(_busy || JobRunning)"
                                         @onclick="TryRegenFromCompareAsync"
-                                        title="Generate new options using the same seeds / description">
+                                        title="Generate new options using the same references / description">
                                     ↻ Try regen again
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary btn-lg"
                                         disabled="@(_busy || JobRunning)"
                                         @onclick="BackToSource"
-                                        title="Change seeds or description first">
-                                    Adjust seeds
+                                        title="Change references or description first">
+                                    Change references
                                 </button>
                             }
                             <button type="button" class="btn btn-success btn-lg"
@@ -536,7 +522,7 @@ else
                             {
                                 <text>
                                     Happy with the left? Lock it. Want another round? <strong>Try regen again</strong>
-                                    uses the same seeds, or <strong>Adjust seeds</strong> to change them.
+                                    uses the same references, or <strong>Change references</strong> to pick different pictures.
                                 </text>
                             }
                             else
@@ -649,7 +635,7 @@ else
         <div class="mb-2">
             <label class="form-label small mb-0">Voice profile</label>
             <textarea class="form-control form-control-sm" rows="4" @bind="_editVoiceProfile" disabled="@_busy"
-                      placeholder="Pitch, pace, accent, energy — used as VOICE LOCK in video prompts"></textarea>
+                      placeholder="Pitch, pace, accent, energy — for spoken lines"></textarea>
         </div>
         <button type="button" class="btn btn-sm btn-primary" disabled="@_busy" @onclick="SaveVoiceAsync">
             Save voice
@@ -709,7 +695,7 @@ else
             {
                 await SoftReloadAsync();
                 if (snap.Status == "done")
-                    _message = snap.Message ?? "Character plates sorted with Grok.";
+                    _message = snap.Message ?? "Matching complete.";
                 else if (snap.Status == "error")
                     _error = snap.Error ?? snap.Message ?? "Plate sort failed";
                 else if (snap.Status == "cancelled")
@@ -937,8 +923,8 @@ else
         if (_selected is null) return;
         var bookCount = _selected.BookRefs.Count(b => b.Exists);
         _message = bookCount == 0
-            ? $"No book plates for {_selected.DisplayName} — auto seed = preferred + description."
-            : $"Auto seed for {_selected.DisplayName}: preferred + up to 2 of {bookCount} book plate(s).";
+            ? $"No book pictures for {_selected.DisplayName} — using preferred + description."
+            : $"Using preferred + up to 2 of {bookCount} book picture(s) for {_selected.DisplayName}.";
         await StartGenerateCoreAsync(new StartCharacterVariantsRequest
         {
             ProjectId = _projectId,
@@ -954,7 +940,7 @@ else
     {
         if (_selected is null) return;
         _message = _selected.HasPreferred
-            ? $"Preferred-only seed for {_selected.DisplayName}."
+            ? $"Preferred picture only for {_selected.DisplayName}."
             : $"No preferred image — text-only generate for {_selected.DisplayName}.";
         await StartGenerateCoreAsync(new StartCharacterVariantsRequest
         {
@@ -977,7 +963,7 @@ else
         if (_selected is null) return;
         if (SelectedSeedCount == 0 && string.IsNullOrWhiteSpace(_editDescription))
         {
-            _error = "Select at least one seed image, or enter a description.";
+            _error = "Select at least one reference picture, or enter a description.";
             return;
         }
 
@@ -998,7 +984,7 @@ else
         var providerLabel = _imageSeedLimits?.Provider ?? "image API";
         if (SelectedSeedCount > maxSend)
             _message =
-                $"Sending ranks 1–{maxSend} of {SelectedSeedCount} selected seeds ({providerLabel} max {maxSend}).";
+                $"Using ranks 1–{maxSend} of {SelectedSeedCount} selected pictures (max {maxSend}).";
 
         var seedMode = SelectedSeedCount == 0 ? "none" : "explicit";
         await StartGenerateCoreAsync(new StartCharacterVariantsRequest
@@ -1030,7 +1016,7 @@ else
             _seedOrder.RemoveAll(k => string.Equals(k, "p", StringComparison.OrdinalIgnoreCase));
             _seedOrder.Insert(0, "p");
         }
-        _message = "Generating another round with the same seeds…";
+        _message = "Generating another round with the same references…";
         await StartRegenerateAsync();
     }
 
@@ -1049,9 +1035,7 @@ else
         {
             try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
             await Engine.StartSortCharacterPlatesAsync(_projectId, useGrok: useGrok, maxImages: 32);
-            _message = useGrok
-                ? "Grok is sorting book images onto characters…"
-                : "Heuristic plate sort started…";
+            _message = "Matching book pictures…";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
         }
@@ -1095,7 +1079,7 @@ else
         {
             Kind = "variant",
             Index = v.Index ?? 1,
-            Label = $"Grok · variant {v.Index}",
+            Label = $"Option {v.Index}",
             Url = CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, v.Index ?? 1)),
         }).ToList();
 
@@ -1194,7 +1178,7 @@ else
                 _selected.Key,
                 voiceProfile: _editVoiceProfile,
                 voiceLabel: _editVoiceLabel);
-            _message = $"Saved voice for {_selected.DisplayName} → scenes.json";
+            _message = $"Saved voice for {_selected.DisplayName}";
             await LoadAsync();
             // re-bind edit fields after reload
             if (_selected is not null)
@@ -1221,12 +1205,12 @@ else
             else if (_champion.Kind == "book")
             {
                 await Engine.LockCharacterBookRefAsync(_projectId, _selected.Key, _champion.Index);
-                _message = $"Locked book plate for {_selected.DisplayName}";
+                _message = $"Locked book picture for {_selected.DisplayName}";
             }
             else if (_champion.Kind == "variant")
             {
                 await Engine.LockCharacterVariantAsync(_projectId, _selected.Key, _champion.Index);
-                _message = $"Locked Grok variant {_champion.Index} for {_selected.DisplayName}";
+                _message = $"Locked portrait for {_selected.DisplayName}";
             }
 
             await LoadAsync();
@@ -1247,7 +1231,7 @@ else
             await Engine.UnlockCharacterAsync(_projectId, _selected.Key);
             _message =
                 $"Unlocked {_selected.DisplayName} — previous lock is now the preferred image (variant 1). " +
-                "Choose Search book → generate or Generate with Grok to refine, then re-lock.";
+                "Generate portraits to refine, then lock again.";
             await LoadAsync();
             ResetCompare();
             _mode = Mode.PickSource;
