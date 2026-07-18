@@ -423,7 +423,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         };
     }
 
-    public async ValueTask DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         _pollCts?.Cancel();
         Hub.JobUpdated -= OnJobUpdated;

@@ -1,7 +1,7 @@
 @page "/adaptation/screenplay"
 @inherits AdaptationPageBase
-@using System.Timers
-@implements IDisposable
+@implements IAsyncDisposable
+@inject IJSRuntime Js
 
 <PageTitle>Adaptation · Screenplay</PageTitle>
 
@@ -14,7 +14,7 @@
                 {
                     <span class="badge bg-success">approved</span>
                 }
-                else if (_screenplayStatus?.DraftExists == true)
+                else if (_screenplayStatus?.DraftExists == true || !string.IsNullOrWhiteSpace(_text))
                 {
                     <span class="badge bg-warning text-dark">draft</span>
                 }
@@ -26,23 +26,29 @@
                 {
                     <span class="small text-muted">saved</span>
                 }
+                @if (_sceneCount > 0)
+                {
+                    <span class="badge text-bg-light border">@_sceneCount scenes</span>
+                }
             </div>
         </div>
         <div class="card-body">
-            <p class="small text-muted mb-3">
-                Edit the screenplay below. When it looks right, approve it to unlock the shot plan.
+            <p class="small text-muted mb-2">
+                Edit on the left, preview on the right. Approve when ready for the shot plan.
             </p>
 
             @if (_screenplayStatus is not null)
             {
-                <ul class="list-unstyled small mb-3">
+                <ul class="list-unstyled small mb-2">
                     <li>
-                        @if (_screenplayStatus.DraftExists)
+                        @if (_screenplayStatus.DraftExists || !string.IsNullOrWhiteSpace(_text))
                         {
                             <span>
                                 @(_screenplayStatus.Title is { Length: > 0 } t ? t : "Untitled")
-                                · @_screenplayStatus.SceneHeadingCount scenes
-                                · @_screenplayStatus.DraftBytes.ToString("N0") characters
+                                @if (_screenplayStatus.DraftBytes > 0)
+                                {
+                                    <span class="text-muted"> · @_screenplayStatus.DraftBytes.ToString("N0") characters</span>
+                                }
                             </span>
                         }
                         else
@@ -54,7 +60,7 @@
                     {
                         <li class="text-muted">
                             Approved build: @Status.Stage1.SceneCount scenes · @Status.Stage1.CharacterCount cast
-                            @if (_screenplayStatus.Dirty)
+                            @if (_screenplayStatus.Dirty || _dirtyLocal)
                             {
                                 <span class="text-warning"> · draft changed since last approval</span>
                             }
@@ -63,9 +69,9 @@
                 </ul>
             }
 
-            @if (!_editorLoaded && string.IsNullOrEmpty(_text) && Status?.Book.BookTextExists == true)
+            @if (!_editorReady && string.IsNullOrEmpty(_text) && Status?.Book.BookTextExists == true)
             {
-                <div class="alert alert-light border small mb-3">
+                <div class="alert alert-light border small mb-2">
                     You have book text ready.
                     <button class="btn btn-sm btn-outline-primary ms-1"
                             disabled="@(Busy || JobRunning)"
@@ -75,28 +81,72 @@
                 </div>
             }
 
-            <div class="mb-2">
-                <textarea class="form-control font-monospace screenplay-editor"
-                          style="min-height: calc(100vh - 16rem); font-size: 0.9rem; line-height: 1.45; white-space: pre; tab-size: 4;"
-                          @bind="_text"
-                          @bind:event="oninput"
-                          @bind:after="OnTextChanged"
-                          disabled="@(Busy || JobRunning)"
-                          spellcheck="false"
-                          placeholder="Write or paste your screenplay here (INT. ROOM - DAY, action, CHARACTER, dialogue)…"></textarea>
+            @if (_signOffWarnings.Count > 0)
+            {
+                <div class="alert alert-warning py-2 small fe-warnings">
+                    <strong>Before approving:</strong>
+                    <ul class="mb-0 ps-3">
+                        @foreach (var w in _signOffWarnings)
+                        {
+                            <li>@w</li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <div class="fe-wrap">
+                <div class="fe-toolbar">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nINT.  - DAY\n\n")'>
+                        New scene
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCHARACTER\n")'>
+                        Character
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCUT TO:\n\n")'>
+                        Transition
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n> THE END <\n\n")'>
+                        Centered
+                    </button>
+                    <details class="d-inline-block">
+                        <summary class="small text-muted" style="cursor:pointer">More</summary>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n.FORCED HEADING\n\n")'>Force scene</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n@Name\n")'>Force character</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n!ACTION LINE\n")'>Force action</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n~Lyric line\n")'>Lyric</button>
+                        </div>
+                    </details>
+                    <span class="flex-grow-1"></span>
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            disabled="@(Busy || JobRunning || !_dirtyLocal)"
+                            @onclick="() => SaveDraftAsync(manual: true)">
+                        Save draft
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm"
+                            disabled="@(Busy || JobRunning || string.IsNullOrWhiteSpace(_text))"
+                            @onclick="SignOffAsync">
+                        Looks good — continue
+                    </button>
+                </div>
+
+                <div class="fe-main">
+                    <div class="fe-panel fe-scenes-col">
+                        <div class="fe-panel-header">Scenes</div>
+                        <div class="fe-panel-body" @ref="_scenesEl"></div>
+                    </div>
+                    <div class="fe-panel fe-editor-col">
+                        <div class="fe-panel-header">Edit</div>
+                        <div class="fe-editor-host" @ref="_editorHost"></div>
+                    </div>
+                    <div class="fe-panel fe-preview-col">
+                        <div class="fe-panel-header">Preview</div>
+                        <div class="fe-preview-body" @ref="_previewEl"></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                <button class="btn btn-outline-primary btn-sm"
-                        disabled="@(Busy || JobRunning || !_dirtyLocal)"
-                        @onclick="() => SaveDraftAsync(manual: true)">
-                    Save draft
-                </button>
-                <button class="btn btn-success btn-sm"
-                        disabled="@(Busy || JobRunning || string.IsNullOrWhiteSpace(_text))"
-                        @onclick="SignOffAsync">
-                    Looks good — continue
-                </button>
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
                 @if (Status?.Book.BookTextExists == true)
                 {
                     <button class="btn btn-outline-secondary btn-sm"
@@ -108,7 +158,7 @@
                 }
                 @if (CanRunOutline && Status?.XaiConfigured == true)
                 {
-                    <details class="ms-1">
+                    <details>
                         <summary class="small text-muted" style="cursor:pointer">Other options</summary>
                         <div class="d-flex flex-wrap gap-2 mt-2">
                             <button class="btn btn-outline-secondary btn-sm"
@@ -121,18 +171,18 @@
                 }
                 <a class="btn btn-outline-secondary btn-sm" href="adaptation/import">← Import</a>
                 @if (Status?.Screenplay.ReadyForShots == true ||
-                     (Status?.Stage1.Present == true && Status.Stage1.SceneCount > 0 && Status?.Screenplay.Dirty != true))
+                     (Status?.Stage1.Present == true && Status.Stage1.SceneCount > 0 && Status?.Screenplay.Dirty != true && !_dirtyLocal))
                 {
                     <a class="btn btn-outline-success btn-sm" href="adaptation/shots">Shot plan →</a>
                 }
             </div>
             <p class="small text-muted mt-2 mb-0">
-                Changes save automatically while you type. Approve when ready for the shot plan.
+                Changes save automatically. Scene list and preview update as you type.
             </p>
         </div>
     </div>
 
-    @if (Status?.Stage1.Present == true && Status.Stage1.Scenes.Count > 0 && Status.Screenplay.Signed)
+    @if (Status?.Stage1.Present == true && Status.Stage1.Scenes.Count > 0 && Status.Screenplay.Signed && !_dirtyLocal)
     {
         <div class="card">
             <div class="card-header">Approved scenes</div>
@@ -168,22 +218,65 @@
 @code {
     public override string StepKey => "screenplay";
 
+    private const string EditorId = "screenplay-main";
+
     private string _text = "";
     private string _loadedText = "";
     private bool _dirtyLocal;
-    private bool _editorLoaded;
+    private bool _editorReady;
+    private bool _jsInitStarted;
     private DateTime? _lastSavedUtc;
     private ScreenplayStatus? _screenplayStatus;
-    private Timer? _debounce;
     private int _saveGeneration;
+    private int _sceneCount;
+    private List<string> _signOffWarnings = new();
+    private CancellationTokenSource? _saveCts;
+    private DotNetObjectReference<AdaptationScreenplay>? _dotNetRef;
+
+    private ElementReference _editorHost;
+    private ElementReference _previewEl;
+    private ElementReference _scenesEl;
+
+    private bool CanEdit => _editorReady && !Busy && !JobRunning;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await LoadEditorAsync();
+        await LoadEditorDataAsync();
     }
 
-    private async Task LoadEditorAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_jsInitStarted || string.IsNullOrEmpty(ProjectId)) return;
+        // Wait until we have loaded draft at least once
+        if (!_editorDataLoaded) return;
+
+        _jsInitStarted = true;
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync(
+                "fountainEditor.init",
+                EditorId,
+                _editorHost,
+                _text,
+                _dotNetRef,
+                _previewEl,
+                _scenesEl,
+                Busy || JobRunning);
+            _editorReady = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Error = "Could not start the editor: " + ex.Message;
+            _jsInitStarted = false;
+        }
+    }
+
+    private bool _editorDataLoaded;
+
+    private async Task LoadEditorDataAsync()
     {
         try
         {
@@ -192,9 +285,115 @@
             _loadedText = _text;
             _dirtyLocal = false;
             _screenplayStatus = doc?.Screenplay ?? Status?.Screenplay;
+            _sceneCount = _screenplayStatus?.SceneHeadingCount ?? 0;
             if (doc?.Adaptation is not null)
                 Status = doc.Adaptation;
-            _editorLoaded = true;
+            _editorDataLoaded = true;
+            UpdateWarningsFromText(_text);
+
+            if (_editorReady)
+            {
+                await Js.InvokeVoidAsync("fountainEditor.setValue", EditorId, _text);
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            _editorDataLoaded = true; // still try to init empty editor
+        }
+    }
+
+    public override async Task LoadAsync()
+    {
+        await base.LoadAsync();
+        await LoadEditorDataAsync();
+        if (_editorReady)
+        {
+            await Js.InvokeVoidAsync("fountainEditor.setValue", EditorId, _text);
+            await Js.InvokeVoidAsync("fountainEditor.refresh", EditorId);
+        }
+        else
+        {
+            _jsInitStarted = false; // allow re-init after project switch
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnEditorChanged(string text, string[] warnings, int sceneCount)
+    {
+        _text = text ?? "";
+        _sceneCount = sceneCount;
+        _dirtyLocal = !string.Equals(_text, _loadedText, StringComparison.Ordinal);
+        MapWarnings(warnings);
+        ScheduleAutosave();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void MapWarnings(string[]? codes)
+    {
+        _signOffWarnings = new List<string>();
+        if (codes is null) return;
+        foreach (var c in codes)
+        {
+            switch (c)
+            {
+                case "empty":
+                    _signOffWarnings.Add("The screenplay is empty.");
+                    break;
+                case "no_scenes":
+                    _signOffWarnings.Add("No scene headings found — add lines like INT. ROOM - DAY.");
+                    break;
+                case "very_short":
+                    _signOffWarnings.Add("This draft is very short.");
+                    break;
+            }
+        }
+    }
+
+    private void UpdateWarningsFromText(string text)
+    {
+        var codes = new List<string>();
+        if (string.IsNullOrWhiteSpace(text)) codes.Add("empty");
+        else
+        {
+            if (text.Trim().Length < 40) codes.Add("very_short");
+            // crude scene check until JS reports
+            if (!System.Text.RegularExpressions.Regex.IsMatch(text, @"(?im)^(INT|EXT|EST|I/E|\.)"))
+                codes.Add("no_scenes");
+        }
+        MapWarnings(codes.ToArray());
+    }
+
+    private void ScheduleAutosave()
+    {
+        _saveCts?.Cancel();
+        _saveCts = new CancellationTokenSource();
+        var ct = _saveCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(900, ct);
+                await InvokeAsync(async () =>
+                {
+                    if (_dirtyLocal && !Busy && !ct.IsCancellationRequested)
+                        await SaveDraftAsync(manual: false);
+                });
+            }
+            catch (OperationCanceledException) { /* expected */ }
+        });
+    }
+
+    private async Task InsertAsync(string snippet)
+    {
+        if (!_editorReady) return;
+        try
+        {
+            await Js.InvokeVoidAsync("fountainEditor.insertAtCursor", EditorId, snippet);
+            _text = await Js.InvokeAsync<string>("fountainEditor.getValue", EditorId);
+            _dirtyLocal = !string.Equals(_text, _loadedText, StringComparison.Ordinal);
+            ScheduleAutosave();
         }
         catch (Exception ex)
         {
@@ -202,33 +401,19 @@
         }
     }
 
-    public override async Task LoadAsync()
+    private async Task SyncTextFromEditorAsync()
     {
-        await base.LoadAsync();
-        await LoadEditorAsync();
-    }
-
-    private void OnTextChanged()
-    {
-        _dirtyLocal = !string.Equals(_text, _loadedText, StringComparison.Ordinal);
-        _debounce?.Stop();
-        _debounce?.Dispose();
-        _debounce = new Timer(900);
-        _debounce.Elapsed += async (_, _) =>
+        if (!_editorReady) return;
+        try
         {
-            _debounce?.Stop();
-            await InvokeAsync(async () =>
-            {
-                if (_dirtyLocal && !Busy)
-                    await SaveDraftAsync(manual: false);
-            });
-        };
-        _debounce.AutoReset = false;
-        _debounce.Start();
+            _text = await Js.InvokeAsync<string>("fountainEditor.getValue", EditorId) ?? _text;
+        }
+        catch { /* keep local */ }
     }
 
     private async Task SaveDraftAsync(bool manual)
     {
+        await SyncTextFromEditorAsync();
         if (string.IsNullOrEmpty(_text) && !_dirtyLocal && !manual)
             return;
 
@@ -237,7 +422,7 @@
         {
             if (manual) Busy = true;
             var result = await Engine.SaveScreenplayAsync(ProjectId, _text);
-            if (gen != _saveGeneration) return; // superseded
+            if (gen != _saveGeneration) return;
             _loadedText = _text;
             _dirtyLocal = false;
             _lastSavedUtc = DateTime.UtcNow;
@@ -261,12 +446,35 @@
 
     private async Task SignOffAsync()
     {
-        Busy = true;
-        Error = null;
-        Message = null;
+        await SyncTextFromEditorAsync();
+
+        // Soft gate: confirm if warnings
+        if (string.IsNullOrWhiteSpace(_text))
+        {
+            Error = "Add some screenplay text before approving.";
+            return;
+        }
+
         try
         {
-            _debounce?.Stop();
+            var warnings = await Js.InvokeAsync<string[]>("fountainEditor.getWarnings", EditorId);
+            MapWarnings(warnings);
+        }
+        catch { /* use local */ }
+
+        if (_signOffWarnings.Count > 0)
+        {
+            // Still allow, but set message so user sees why
+            Message = "Approving with notes: " + string.Join(" ", _signOffWarnings);
+        }
+
+        Busy = true;
+        Error = null;
+        try
+        {
+            if (_editorReady)
+                await Js.InvokeVoidAsync("fountainEditor.setReadOnly", EditorId, true);
+
             var result = await Engine.SignOffScreenplayAsync(ProjectId, _text);
             _loadedText = _text;
             _dirtyLocal = false;
@@ -278,10 +486,7 @@
                 await SoftLoadAsync();
             Message = result?.Message ?? "Screenplay approved";
             if (result?.Ok == true)
-            {
-                // Navigate to shot plan after successful approval
                 Nav.NavigateTo("adaptation/shots");
-            }
         }
         catch (Exception ex)
         {
@@ -290,6 +495,11 @@
         finally
         {
             Busy = false;
+            if (_editorReady)
+            {
+                try { await Js.InvokeVoidAsync("fountainEditor.setReadOnly", EditorId, false); }
+                catch { /* ignore */ }
+            }
         }
     }
 
@@ -297,8 +507,6 @@
     {
         if (_dirtyLocal && !string.IsNullOrWhiteSpace(_text))
         {
-            // Soft confirm via message if they have edits — still allow overwrite on second click path
-            // For MVP: always create after saving current draft first when dirty
             try { await SaveDraftAsync(manual: false); } catch { /* ignore */ }
         }
 
@@ -310,7 +518,9 @@
             Message = result?.Message ?? "Draft created from book";
             if (result?.Adaptation is not null)
                 Status = result.Adaptation;
-            await LoadEditorAsync();
+            await LoadEditorDataAsync();
+            if (_editorReady)
+                await Js.InvokeVoidAsync("fountainEditor.setValue", EditorId, _text);
         }
         catch (Exception ex)
         {
@@ -322,9 +532,16 @@
         }
     }
 
-    public void Dispose()
+    public override async ValueTask DisposeAsync()
     {
-        _debounce?.Stop();
-        _debounce?.Dispose();
+        _saveCts?.Cancel();
+        try
+        {
+            if (_jsInitStarted)
+                await Js.InvokeVoidAsync("fountainEditor.dispose", EditorId);
+        }
+        catch { /* ignore */ }
+        _dotNetRef?.Dispose();
+        await base.DisposeAsync();
     }
 }
