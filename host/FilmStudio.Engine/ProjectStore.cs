@@ -1641,15 +1641,12 @@ public sealed class ProjectStore
         {
             try
             {
-                pdfName = Directory.EnumerateFiles(source, "*.pdf")
-                    .Concat(Directory.EnumerateFiles(source, "*.PDF"))
-                    .Select(Path.GetFileName)
-                    .OrderBy(n => n?.Contains("nick", StringComparison.OrdinalIgnoreCase) == true ? 0 : 1)
-                    .ThenByDescending(n =>
-                    {
-                        try { return new FileInfo(Path.Combine(source, n!)).Length; }
-                        catch { return 0L; }
-                    })
+                // One DirectoryInfo scan (Length already available; avoid re-stat via FileInfo).
+                pdfName = new DirectoryInfo(source).EnumerateFiles()
+                    .Where(f => f.Extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(f => f.Name.Contains("nick", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                    .ThenByDescending(f => f.Length)
+                    .Select(f => f.Name)
                     .FirstOrDefault();
             }
             catch { /* ignore */ }
@@ -1668,10 +1665,10 @@ public sealed class ProjectStore
         {
             try
             {
-                status.PageImageCount = Directory.EnumerateFiles(imgDir)
+                status.PageImageCount = new DirectoryInfo(imgDir).EnumerateFiles()
                     .Count(f =>
                     {
-                        var e = Path.GetExtension(f).ToLowerInvariant();
+                        var e = f.Extension.ToLowerInvariant();
                         return e is ".jpg" or ".jpeg" or ".png" or ".webp";
                     });
             }
@@ -2333,12 +2330,11 @@ public sealed class ProjectStore
     {
         var clipsByScene = new Dictionary<int, List<FileInfo>>();
         if (!Directory.Exists(videoDir)) return clipsByScene;
-        foreach (var f in Directory.EnumerateFiles(videoDir, "scene_*_clip_*.mp4"))
+        foreach (var fi in new DirectoryInfo(videoDir).EnumerateFiles("scene_*_clip_*.mp4"))
         {
-            var name = Path.GetFileName(f);
+            var name = fi.Name;
             if (!FfmpegRemuxService.IsExactClipFileName(name)) continue;
             if (!int.TryParse(name.AsSpan(6, 2), out var sn) || sn <= 0) continue;
-            var fi = new FileInfo(f);
             if (fi.Length < 1024) continue;
             if (!clipsByScene.TryGetValue(sn, out var list))
             {
@@ -2513,11 +2509,10 @@ public sealed class ProjectStore
             return map;
         try
         {
-            foreach (var f in Directory.EnumerateFiles(dir))
+            foreach (var info in new DirectoryInfo(dir).EnumerateFiles())
             {
                 try
                 {
-                    var info = new FileInfo(f);
                     map[info.Name] = info.Length;
                 }
                 catch { /* skip */ }

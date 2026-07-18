@@ -342,27 +342,29 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
         if (!Directory.Exists(videoDir))
             return new List<string>();
 
-        var sceneFiles = Directory.GetFiles(videoDir, "scene_*.mp4")
-            .Where(f => RegexSceneOnly(Path.GetFileName(f)))
+        var sceneFiles = new DirectoryInfo(videoDir).GetFiles("scene_*.mp4")
+            .Where(f => RegexSceneOnly(f.Name))
             .Where(f =>
             {
-                try { return new FileInfo(f).Length >= 1024; }
+                try { return f.Length >= 1024; }
                 catch { return false; }
             })
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(f => f.FullName)
             .ToList();
 
         if (sceneFiles.Count > 0)
             return sceneFiles;
 
-        return Directory.GetFiles(videoDir, "scene_*_clip_*.mp4")
-            .Where(f => IsExactClipFileName(Path.GetFileName(f)))
+        return new DirectoryInfo(videoDir).GetFiles("scene_*_clip_*.mp4")
+            .Where(f => IsExactClipFileName(f.Name))
             .Where(f =>
             {
-                try { return new FileInfo(f).Length >= 1024; }
+                try { return f.Length >= 1024; }
                 catch { return false; }
             })
-            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(f => f.FullName)
             .ToList();
     }
 
@@ -541,20 +543,20 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
         if (!Directory.Exists(videoDir)) return new();
 
         var byClip = new SortedDictionary<int, string>();
-        foreach (var f in Directory.EnumerateFiles(videoDir, $"scene_{sceneNum:D2}_clip_*.mp4"))
+        foreach (var fi in new DirectoryInfo(videoDir).EnumerateFiles($"scene_{sceneNum:D2}_clip_*.mp4"))
         {
-            var name = Path.GetFileName(f);
+            var name = fi.Name;
             var m = ExactClipNameRe.Match(name);
             if (!m.Success) continue;
             if (!int.TryParse(m.Groups[1].Value, out var sn) || sn != sceneNum) continue;
             if (!int.TryParse(m.Groups[2].Value, out var cn) || cn <= 0) continue;
             try
             {
-                if (new FileInfo(f).Length < 1024) continue;
+                if (fi.Length < 1024) continue;
             }
             catch { continue; }
 
-            byClip[cn] = f;
+            byClip[cn] = fi.FullName;
         }
 
         var allowed = TryBlueprintClipNumbers(projectId, sceneNum);

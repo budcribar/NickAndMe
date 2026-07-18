@@ -331,14 +331,15 @@ public sealed class BookPrepareService
     private static string? FindPdf(string sourceDir)
     {
         if (!Directory.Exists(sourceDir)) return null;
-        var cands = Directory.GetFiles(sourceDir, "*.pdf")
-            .Concat(Directory.GetFiles(sourceDir, "*.PDF"))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        // Case-insensitive filter once (Windows); Length from FileInfo avoids re-stat.
+        var cands = new DirectoryInfo(sourceDir).EnumerateFiles()
+            .Where(f => f.Extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (cands.Count == 0) return null;
         return cands
-            .OrderBy(p => Path.GetFileName(p).Contains("nick", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-            .ThenByDescending(p => new FileInfo(p).Length)
+            .OrderBy(p => p.Name.Contains("nick", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenByDescending(p => p.Length)
+            .Select(p => p.FullName)
             .First();
     }
 
@@ -536,11 +537,12 @@ public sealed class BookPrepareService
 
         if (!Directory.Exists(imgDir)) return;
         var rows = new List<Dictionary<string, object?>>();
-        foreach (var f in Directory.EnumerateFiles(imgDir)
-                     .Where(f => Regex.IsMatch(Path.GetFileName(f), @"\.(png|jpe?g|webp)$", RegexOptions.IgnoreCase))
-                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        foreach (var fi in new DirectoryInfo(imgDir).EnumerateFiles()
+                     .Where(f => Regex.IsMatch(f.Name, @"\.(png|jpe?g|webp)$", RegexOptions.IgnoreCase))
+                     .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
         {
-            var name = Path.GetFileName(f);
+            var name = fi.Name;
+            var f = fi.FullName;
             var m = Regex.Match(name, @"embedded_p(\d+)", RegexOptions.IgnoreCase);
             var kind = "embedded";
             int page = 0;
@@ -616,9 +618,10 @@ public sealed class BookPrepareService
 
         if (byPage.Count == 0 && Directory.Exists(imgDir))
         {
-            foreach (var f in Directory.EnumerateFiles(imgDir))
+            foreach (var fi in new DirectoryInfo(imgDir).EnumerateFiles())
             {
-                var name = Path.GetFileName(f);
+                var name = fi.Name;
+                var f = fi.FullName;
                 var m = Regex.Match(name, @"embedded_p(\d+)", RegexOptions.IgnoreCase);
                 if (m.Success && int.TryParse(m.Groups[1].Value, out var page))
                 {

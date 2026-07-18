@@ -781,9 +781,10 @@ public sealed class CostReportService
             return map;
         try
         {
-            foreach (var f in Directory.EnumerateFiles(videoDir, "scene_*_clip_*.mp4"))
+            // DirectoryInfo avoids a second FileInfo stat per path for Length.
+            foreach (var fi in new DirectoryInfo(videoDir).EnumerateFiles("scene_*_clip_*.mp4"))
             {
-                var name = Path.GetFileName(f);
+                var name = fi.Name;
                 // Exact scene_01_clip_02.mp4 only (not .native.mp4 sidecars)
                 if (!FfmpegRemuxService.IsExactClipFileName(name)) continue;
                 var stem = Path.GetFileNameWithoutExtension(name);
@@ -794,7 +795,7 @@ public sealed class CostReportService
                 {
                     try
                     {
-                        if (new FileInfo(f).Length < 1024) continue;
+                        if (fi.Length < 1024) continue;
                     }
                     catch { continue; }
 

@@ -561,29 +561,29 @@ public sealed class CharacterBookPlateService
     {
         if (!Directory.Exists(charsDir)) return;
         var prefix = key.ToLowerInvariant() + "_bookref_";
-        foreach (var f in Directory.EnumerateFiles(charsDir))
+        foreach (var fi in new DirectoryInfo(charsDir).EnumerateFiles())
         {
-            var name = Path.GetFileName(f);
+            var name = fi.Name;
             if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
             // character_x_bookref_2.png → index 2
             var m = Regex.Match(name, @"_bookref_(\d+)\.", RegexOptions.IgnoreCase);
             if (!m.Success || !int.TryParse(m.Groups[1].Value, out var idx)) continue;
             if (idx > keepCount)
             {
-                try { File.Delete(f); } catch { /* ignore */ }
+                try { File.Delete(fi.FullName); } catch { /* ignore */ }
             }
         }
         // Also drop alternate extensions for slots we rewrote (e.g. keep .jpg, delete old .png)
         if (keepCount <= 0) return;
         for (var i = 1; i <= keepCount; i++)
         {
-            var matches = Directory.GetFiles(charsDir, $"{prefix}{i}.*");
+            var matches = new DirectoryInfo(charsDir).GetFiles($"{prefix}{i}.*");
             if (matches.Length <= 1) continue;
             // Keep newest
-            var ordered = matches.OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc).ToList();
+            var ordered = matches.OrderByDescending(f => f.LastWriteTimeUtc).ToList();
             foreach (var stale in ordered.Skip(1))
             {
-                try { File.Delete(stale); } catch { /* ignore */ }
+                try { File.Delete(stale.FullName); } catch { /* ignore */ }
             }
         }
     }
@@ -813,11 +813,12 @@ public sealed class CharacterBookPlateService
 
         if (rows.Count == 0 && Directory.Exists(imgDir))
         {
-            foreach (var f in Directory.EnumerateFiles(imgDir)
-                         .Where(f => Regex.IsMatch(Path.GetExtension(f), @"\.(png|jpe?g|webp)$", RegexOptions.IgnoreCase))
-                         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            foreach (var fi in new DirectoryInfo(imgDir).EnumerateFiles()
+                         .Where(f => Regex.IsMatch(f.Extension, @"\.(png|jpe?g|webp)$", RegexOptions.IgnoreCase))
+                         .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
             {
-                var name = Path.GetFileName(f);
+                var name = fi.Name;
+                var f = fi.FullName;
                 var m = Regex.Match(name, @"(?:page|p|embedded_p)0*(\d+)", RegexOptions.IgnoreCase);
                 var page = m.Success && int.TryParse(m.Groups[1].Value, out var pn) ? pn : 0;
                 var pathRel = Path.GetRelativePath(projectDir, f).Replace('\\', '/');
