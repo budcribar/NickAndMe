@@ -336,20 +336,22 @@ app.MapGet("/api/capacity", (FilmJobService jobService, IOptions<FilmStudioOptio
     });
 });
 
-app.MapGet("/api/projects", (ProjectStore store) =>
+app.MapGet("/api/projects", async (ProjectStore store, CancellationToken ct) =>
 {
-    var list = store.ListProjects();
+    var list = await store.ListProjectsAsync(ct);
     var activeId = store.ActiveProjectId;
+    if (string.IsNullOrWhiteSpace(activeId) && list.Count > 0)
+        activeId = list[0].Id;
     var active = list.FirstOrDefault(p =>
         string.Equals(p.Id, activeId, StringComparison.OrdinalIgnoreCase));
     return Results.Ok(new { ok = true, active, projects = list });
 });
 
-app.MapPost("/api/projects/{id}/activate", (string id, ProjectStore store) =>
+app.MapPost("/api/projects/{id}/activate", async (string id, ProjectStore store, CancellationToken ct) =>
 {
     try
     {
-        var p = store.Activate(id);
+        var p = await store.ActivateAsync(id, ct);
         return Results.Ok(new { ok = true, active = p });
     }
     catch (Exception ex)
@@ -1004,13 +1006,20 @@ app.MapPost("/api/projects/{id}/cost/backfill", (string id, ProjectStore store, 
 
 // ---- Scenes & Clips ----
 // light=1 skips ffprobe duration probes (required for LoadSim / high concurrency)
-app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockService locks, IUserContext user, string? light) =>
+// Async I/O on the browse path so Kestrel threads are not blocked on disk (Pass 1).
+app.MapGet("/api/projects/{id}/scenes", async (
+    string id,
+    ProjectStore store,
+    ILockService locks,
+    IUserContext user,
+    string? light,
+    CancellationToken ct) =>
 {
     try
     {
         var probe = !string.Equals(light, "1", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(light, "true", StringComparison.OrdinalIgnoreCase);
-        var scenes = store.ListScenes(id, probeDurations: probe).ToList();
+        var scenes = (await store.ListScenesAsync(id, probeDurations: probe, ct)).ToList();
         var active = locks.ListActive();
         foreach (var s in scenes)
         {
@@ -1040,13 +1049,18 @@ app.MapGet("/api/projects/{id}/scenes", (string id, ProjectStore store, ILockSer
     }
 });
 
-app.MapGet("/api/projects/{id}/scenes/{sceneNumber:int}", (string id, int sceneNumber, ProjectStore store, string? light) =>
+app.MapGet("/api/projects/{id}/scenes/{sceneNumber:int}", async (
+    string id,
+    int sceneNumber,
+    ProjectStore store,
+    string? light,
+    CancellationToken ct) =>
 {
     try
     {
         var probe = !string.Equals(light, "1", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(light, "true", StringComparison.OrdinalIgnoreCase);
-        var detail = store.GetSceneDetail(id, sceneNumber, probeDurations: probe);
+        var detail = await store.GetSceneDetailAsync(id, sceneNumber, probeDurations: probe, ct);
         if (detail is null)
             return Results.NotFound(new { ok = false, error = $"Scene {sceneNumber} not found" });
         return Results.Ok(new { ok = true, projectId = id, scene = detail, light = !probe });

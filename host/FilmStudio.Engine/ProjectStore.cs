@@ -86,15 +86,23 @@ public sealed class ProjectStore
     public IReadOnlyList<ProjectInfo> ListProjects() =>
         _readCache.GetOrBuildProjects(ListProjectsCore);
 
-    private IReadOnlyList<ProjectInfo> ListProjectsCore()
+    public Task<IReadOnlyList<ProjectInfo>> ListProjectsAsync(CancellationToken ct = default) =>
+        _readCache.GetOrBuildProjectsAsync(ListProjectsCoreAsync, ct);
+
+    private IReadOnlyList<ProjectInfo> ListProjectsCore() =>
+        ListProjectsCoreAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<IReadOnlyList<ProjectInfo>> ListProjectsCoreAsync(CancellationToken ct)
     {
         var projectsDir = Path.Combine(WorkspaceRoot, "projects");
         if (!Directory.Exists(projectsDir))
             return Array.Empty<ProjectInfo>();
 
         var list = new List<ProjectInfo>();
+        // Directory.GetDirectories has no async API — metadata only
         foreach (var dir in Directory.GetDirectories(projectsDir))
         {
+            ct.ThrowIfCancellationRequested();
             var id = Path.GetFileName(dir);
             if (string.Equals(id, "workspace.json", StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -105,7 +113,9 @@ public sealed class ProjectStore
             {
                 try
                 {
-                    using var doc = JsonDocument.Parse(File.ReadAllText(metaPath));
+                    await using var stream = File.OpenRead(metaPath);
+                    using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                        .ConfigureAwait(false);
                     if (doc.RootElement.TryGetProperty("title", out var t))
                         title = t.GetString();
                     if (doc.RootElement.TryGetProperty("label", out var l))
@@ -130,16 +140,27 @@ public sealed class ProjectStore
             string.Equals(p.Id, projectId, StringComparison.OrdinalIgnoreCase));
     }
 
-    public ProjectInfo Activate(string projectId)
+    public async Task<ProjectInfo?> GetProjectAsync(string projectId, CancellationToken ct = default)
     {
-        var p = GetProject(projectId)
+        var list = await ListProjectsAsync(ct).ConfigureAwait(false);
+        return list.FirstOrDefault(p =>
+            string.Equals(p.Id, projectId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public ProjectInfo Activate(string projectId) =>
+        ActivateAsync(projectId).GetAwaiter().GetResult();
+
+    public async Task<ProjectInfo> ActivateAsync(string projectId, CancellationToken ct = default)
+    {
+        var p = await GetProjectAsync(projectId, ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Unknown project: {projectId}");
         _activeProjectId = p.Id;
         var wsPath = Path.Combine(WorkspaceRoot, "projects", "workspace.json");
         Directory.CreateDirectory(Path.GetDirectoryName(wsPath)!);
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             wsPath,
-            JsonSerializer.Serialize(new WorkspaceState { ActiveProject = p.Id }, JsonOpts));
+            JsonSerializer.Serialize(new WorkspaceState { ActiveProject = p.Id }, JsonOpts),
+            ct).ConfigureAwait(false);
         return p;
     }
 
@@ -150,19 +171,37 @@ public sealed class ProjectStore
         return p.Path;
     }
 
+    public async Task<string> GetProjectDirAsync(string projectId, CancellationToken ct = default)
+    {
+        var p = await GetProjectAsync(projectId, ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Unknown project: {projectId}");
+        return p.Path;
+    }
+
     public string? FindBlueprintPath(string projectId) =>
         _readCache.GetOrFindBlueprintPath(projectId, () => FindBlueprintPathCore(projectId));
 
-    private string? FindBlueprintPathCore(string projectId)
+    public Task<string?> FindBlueprintPathAsync(string projectId, CancellationToken ct = default) =>
+        _readCache.GetOrFindBlueprintPathAsync(
+            projectId,
+            c => FindBlueprintPathCoreAsync(projectId, c),
+            ct);
+
+    private string? FindBlueprintPathCore(string projectId) =>
+        FindBlueprintPathCoreAsync(projectId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<string?> FindBlueprintPathCoreAsync(string projectId, CancellationToken ct)
     {
-        var dir = GetProjectDir(projectId);
+        var dir = await GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var configPath = Path.Combine(dir, "pipeline_config.json");
         var name = "blueprint.clips.grok.json";
         if (File.Exists(configPath))
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
+                await using var stream = File.OpenRead(configPath);
+                using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct)
+                    .ConfigureAwait(false);
                 if (doc.RootElement.TryGetProperty("blueprint_file", out var bf))
                 {
                     var n = bf.GetString();
@@ -198,6 +237,14 @@ public sealed class ProjectStore
         return ProjectReadCache.CloneBlueprintDocument(shared);
     }
 
+    public async Task<JsonDocument?> LoadBlueprintAsync(string projectId, CancellationToken ct = default)
+    {
+        if (!_opts.EnableReadCaches)
+            return await LoadBlueprintUncachedAsync(projectId, ct).ConfigureAwait(false);
+        var shared = await LoadBlueprintSharedAsync(projectId, ct).ConfigureAwait(false);
+        return ProjectReadCache.CloneBlueprintDocument(shared);
+    }
+
     /// <summary>
     /// Shared cached blueprint — <b>do not dispose</b>. Invalidated on gen/remux/config/blueprint write.
     /// When <see cref="FilmStudioOptions.EnableReadCaches"/> is false, returns null (use owned load).
@@ -210,13 +257,30 @@ public sealed class ProjectStore
         return _readCache.GetOrLoadBlueprintDocument(path);
     }
 
-    /// <summary>Always disk+parse; caller owns and must dispose.</summary>
-    private JsonDocument? LoadBlueprintUncached(string projectId)
+    public async Task<JsonDocument?> LoadBlueprintSharedAsync(
+        string projectId,
+        CancellationToken ct = default)
     {
-        var path = FindBlueprintPathCore(projectId);
+        if (!_opts.EnableReadCaches)
+            return null;
+        var path = await FindBlueprintPathAsync(projectId, ct).ConfigureAwait(false);
+        return await _readCache.GetOrLoadBlueprintDocumentAsync(path, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Always disk+parse; caller owns and must dispose.</summary>
+    private JsonDocument? LoadBlueprintUncached(string projectId) =>
+        LoadBlueprintUncachedAsync(projectId, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<JsonDocument?> LoadBlueprintUncachedAsync(string projectId, CancellationToken ct)
+    {
+        var path = await FindBlueprintPathCoreAsync(projectId, ct).ConfigureAwait(false);
         if (path is null || !File.Exists(path))
             return null;
-        try { return JsonDocument.Parse(File.ReadAllBytes(path)); }
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+            return JsonDocument.Parse(bytes);
+        }
         catch { return null; }
     }
 
@@ -1043,10 +1107,43 @@ public sealed class ProjectStore
             () => ListScenesCore(projectId, probeDurations));
     }
 
-    private IReadOnlyList<SceneSummary> ListScenesCore(string projectId, bool probeDurations)
+    public Task<IReadOnlyList<SceneSummary>> ListScenesAsync(
+        string projectId,
+        bool probeDurations = true,
+        CancellationToken ct = default)
     {
-        using var owned = _opts.EnableReadCaches ? null : LoadBlueprintUncached(projectId);
-        var bp = owned ?? LoadBlueprintShared(projectId);
+        if (_sceneListCache is null)
+            return ListScenesCoreAsync(projectId, probeDurations, ct);
+
+        return _sceneListCache.GetOrBuildAsync(
+            projectId,
+            probeDurations,
+            c => ListScenesCoreAsync(projectId, probeDurations, c),
+            ct);
+    }
+
+    private IReadOnlyList<SceneSummary> ListScenesCore(string projectId, bool probeDurations) =>
+        ListScenesCoreAsync(projectId, probeDurations, CancellationToken.None).GetAwaiter().GetResult();
+
+    private async Task<IReadOnlyList<SceneSummary>> ListScenesCoreAsync(
+        string projectId,
+        bool probeDurations,
+        CancellationToken ct)
+    {
+        JsonDocument? owned = null;
+        JsonDocument? bp;
+        if (_opts.EnableReadCaches)
+        {
+            bp = await LoadBlueprintSharedAsync(projectId, ct).ConfigureAwait(false);
+        }
+        else
+        {
+            owned = await LoadBlueprintUncachedAsync(projectId, ct).ConfigureAwait(false);
+            bp = owned;
+        }
+
+        try
+        {
         if (bp is null ||
             !bp.RootElement.TryGetProperty("scenes", out var scenesEl) ||
             scenesEl.ValueKind != JsonValueKind.Array)
@@ -1054,11 +1151,11 @@ public sealed class ProjectStore
             return Array.Empty<SceneSummary>();
         }
 
-        var projectDir = GetProjectDir(projectId);
+        var projectDir = await GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var videoDir = Path.Combine(projectDir, "assets", "video");
         var scenesDir = Path.Combine(projectDir, "assets", "scenes");
-        var videoIndex = GetDirIndex(videoDir);
-        var scenesIndex = GetDirIndex(scenesDir);
+        var videoIndex = await GetDirIndexAsync(videoDir, ct).ConfigureAwait(false);
+        var scenesIndex = await GetDirIndexAsync(scenesDir, ct).ConfigureAwait(false);
 
         var rows = new List<SceneSummary>();
         foreach (var s in scenesEl.EnumerateArray())
@@ -1159,12 +1256,34 @@ public sealed class ProjectStore
         }
 
         return rows.OrderBy(r => r.SceneNumber).ToList();
+        }
+        finally
+        {
+            owned?.Dispose();
+        }
     }
 
-    public SceneDetail? GetSceneDetail(string projectId, int sceneNumber, bool probeDurations = true)
+    public SceneDetail? GetSceneDetail(string projectId, int sceneNumber, bool probeDurations = true) =>
+        GetSceneDetailAsync(projectId, sceneNumber, probeDurations).GetAwaiter().GetResult();
+
+    public async Task<SceneDetail?> GetSceneDetailAsync(
+        string projectId,
+        int sceneNumber,
+        bool probeDurations = true,
+        CancellationToken ct = default)
     {
-        using var owned = _opts.EnableReadCaches ? null : LoadBlueprintUncached(projectId);
-        var bp = owned ?? LoadBlueprintShared(projectId);
+        JsonDocument? owned = null;
+        JsonDocument? bp;
+        if (_opts.EnableReadCaches)
+            bp = await LoadBlueprintSharedAsync(projectId, ct).ConfigureAwait(false);
+        else
+        {
+            owned = await LoadBlueprintUncachedAsync(projectId, ct).ConfigureAwait(false);
+            bp = owned;
+        }
+
+        try
+        {
         if (bp is null)
             return null;
 
@@ -1188,11 +1307,11 @@ public sealed class ProjectStore
             return null;
 
         var sEl = sceneEl.Value;
-        var projectDir = GetProjectDir(projectId);
+        var projectDir = await GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var videoDir = Path.Combine(projectDir, "assets", "video");
         var scenesDir = Path.Combine(projectDir, "assets", "scenes");
-        var videoIndex = GetDirIndex(videoDir);
-        var scenesIndex = GetDirIndex(scenesDir);
+        var videoIndex = await GetDirIndexAsync(videoDir, ct).ConfigureAwait(false);
+        var scenesIndex = await GetDirIndexAsync(scenesDir, ct).ConfigureAwait(false);
 
         var clips = new List<ClipSummary>();
         if (sEl.TryGetProperty("veo_clips", out var vc) && vc.ValueKind == JsonValueKind.Array)
@@ -1325,6 +1444,11 @@ public sealed class ProjectStore
                 : null,
             Clips = clips,
         };
+        }
+        finally
+        {
+            owned?.Dispose();
+        }
     }
 
     public string? ResolveClipVideoPath(string projectId, int sceneNumber, int clipNumber)
@@ -2336,8 +2460,15 @@ public sealed class ProjectStore
     private Dictionary<string, long> GetDirIndex(string dir) =>
         _readCache.GetOrIndexDir(dir, IndexDirFiles);
 
+    private Task<Dictionary<string, long>> GetDirIndexAsync(string dir, CancellationToken ct) =>
+        _readCache.GetOrIndexDirAsync(
+            dir,
+            (d, _) => Task.FromResult(IndexDirFiles(d)),
+            ct);
+
     private static Dictionary<string, long> IndexDirFiles(string dir)
     {
+        // Directory metadata is sync-only; cheap compared to reading file contents.
         var map = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         if (!Directory.Exists(dir))
             return map;

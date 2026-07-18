@@ -7,12 +7,14 @@ namespace FilmStudio.Engine;
 /// <summary>
 /// Hot-path read caches for multi-user browse: project list, blueprint file bytes, asset dir indexes.
 /// Entries are mtime/size validated (or short TTL for the project list) and explicitly invalidated on writes.
+/// Prefer async APIs on request threads; sync APIs remain for job workers until Pass 2.
 /// </summary>
 public sealed class ProjectReadCache
 {
     private static readonly TimeSpan ProjectsListTtl = TimeSpan.FromSeconds(10);
 
     private readonly object _projectsGate = new();
+    private readonly SemaphoreSlim _projectsBuild = new(1, 1);
     private IReadOnlyList<ProjectInfo>? _projects;
     private DateTimeOffset _projectsAt;
 
@@ -28,11 +30,17 @@ public sealed class ProjectReadCache
     /// <summary>When false, every call is a full rebuild (A/B soaks).</summary>
     public bool Enabled { get; set; } = true;
 
+    public IReadOnlyList<ProjectInfo> GetOrBuildProjects(Func<IReadOnlyList<ProjectInfo>> build) =>
+        GetOrBuildProjectsAsync(_ => Task.FromResult(build() ?? Array.Empty<ProjectInfo>()))
+            .GetAwaiter().GetResult();
+
     /// <summary>Cached project list with short TTL (new folders appear within ~10s).</summary>
-    public IReadOnlyList<ProjectInfo> GetOrBuildProjects(Func<IReadOnlyList<ProjectInfo>> build)
+    public async Task<IReadOnlyList<ProjectInfo>> GetOrBuildProjectsAsync(
+        Func<CancellationToken, Task<IReadOnlyList<ProjectInfo>>> build,
+        CancellationToken ct = default)
     {
         if (!Enabled)
-            return build() ?? Array.Empty<ProjectInfo>();
+            return await build(ct).ConfigureAwait(false) ?? Array.Empty<ProjectInfo>();
 
         lock (_projectsGate)
         {
@@ -40,13 +48,27 @@ public sealed class ProjectReadCache
                 return CloneProjects(_projects);
         }
 
-        var built = build() ?? Array.Empty<ProjectInfo>();
-        var snap = CloneProjects(built);
-        lock (_projectsGate)
+        await _projectsBuild.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            _projects = snap;
-            _projectsAt = DateTimeOffset.UtcNow;
-            return CloneProjects(snap);
+            lock (_projectsGate)
+            {
+                if (_projects is not null && DateTimeOffset.UtcNow - _projectsAt <= ProjectsListTtl)
+                    return CloneProjects(_projects);
+            }
+
+            var built = await build(ct).ConfigureAwait(false) ?? Array.Empty<ProjectInfo>();
+            var snap = CloneProjects(built);
+            lock (_projectsGate)
+            {
+                _projects = snap;
+                _projectsAt = DateTimeOffset.UtcNow;
+                return CloneProjects(snap);
+            }
+        }
+        finally
+        {
+            _projectsBuild.Release();
         }
     }
 
@@ -59,53 +81,65 @@ public sealed class ProjectReadCache
         }
     }
 
-    /// <summary>
-    /// Resolve blueprint path once per project until invalidated (config / blueprint rename).
-    /// </summary>
-    public string? GetOrFindBlueprintPath(string projectId, Func<string?> find)
+    public string? GetOrFindBlueprintPath(string projectId, Func<string?> find) =>
+        GetOrFindBlueprintPathAsync(projectId, _ => Task.FromResult(find()))
+            .GetAwaiter().GetResult();
+
+    public async Task<string?> GetOrFindBlueprintPathAsync(
+        string projectId,
+        Func<CancellationToken, Task<string?>> find,
+        CancellationToken ct = default)
     {
         if (!Enabled || string.IsNullOrWhiteSpace(projectId))
-            return find();
+            return await find(ct).ConfigureAwait(false);
 
         var key = projectId.Trim();
         if (_blueprintPaths.TryGetValue(key, out var hit))
             return hit;
 
-        var path = find();
+        var path = await find(ct).ConfigureAwait(false);
         _blueprintPaths[key] = path;
         return path;
     }
 
+    public JsonDocument? GetOrLoadBlueprintDocument(string? absolutePath) =>
+        GetOrLoadBlueprintDocumentAsync(absolutePath).GetAwaiter().GetResult();
+
     /// <summary>
-    /// Shared parsed blueprint, reloaded only when file mtime/size changes.
-    /// <para>
-    /// <b>Do not dispose</b> the returned document — it is owned by the cache and is safe for concurrent reads.
-    /// Use <see cref="CloneBlueprintDocument"/> when a caller needs an owned <see cref="JsonDocument"/>.
-    /// </para>
+    /// Shared parsed blueprint — <b>do not dispose</b>. Reloaded when file mtime/size changes.
     /// </summary>
-    public JsonDocument? GetOrLoadBlueprintDocument(string? absolutePath)
+    public async Task<JsonDocument?> GetOrLoadBlueprintDocumentAsync(
+        string? absolutePath,
+        CancellationToken ct = default)
     {
-        var entry = GetOrLoadBlueprintEntry(absolutePath);
+        var entry = await GetOrLoadBlueprintEntryAsync(absolutePath, ct).ConfigureAwait(false);
         return entry?.Doc;
     }
 
-    /// <summary>UTF-8 bytes (same validity as the shared document).</summary>
     public byte[]? GetOrLoadBlueprintUtf8(string? absolutePath) =>
-        GetOrLoadBlueprintEntry(absolutePath)?.Utf8;
+        GetOrLoadBlueprintUtf8Async(absolutePath).GetAwaiter().GetResult();
 
-    /// <summary>Owned copy for APIs that historically used <c>using var bp = LoadBlueprint(...)</c>.</summary>
+    public async Task<byte[]?> GetOrLoadBlueprintUtf8Async(
+        string? absolutePath,
+        CancellationToken ct = default)
+    {
+        var entry = await GetOrLoadBlueprintEntryAsync(absolutePath, ct).ConfigureAwait(false);
+        return entry?.Utf8;
+    }
+
     public static JsonDocument? CloneBlueprintDocument(JsonDocument? shared)
     {
         if (shared is null) return null;
         return JsonDocument.Parse(shared.RootElement.GetRawText());
     }
 
-    private BlueprintEntry? GetOrLoadBlueprintEntry(string? absolutePath)
+    private async Task<BlueprintEntry?> GetOrLoadBlueprintEntryAsync(
+        string? absolutePath,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(absolutePath) || !File.Exists(absolutePath))
             return null;
 
-        // Disabled: no shared entry (caller should use owned parse via ProjectStore uncached path)
         if (!Enabled)
             return null;
 
@@ -120,7 +154,7 @@ public sealed class ProjectReadCache
             return hit;
 
         var gate = _buildLocks.GetOrAdd("bp:" + key, _ => new SemaphoreSlim(1, 1));
-        gate.Wait();
+        await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             try { fi.Refresh(); }
@@ -131,7 +165,7 @@ public sealed class ProjectReadCache
                 hit.Length == fi.Length)
                 return hit;
 
-            var utf8 = File.ReadAllBytes(absolutePath);
+            var utf8 = await File.ReadAllBytesAsync(absolutePath, ct).ConfigureAwait(false);
             var doc = JsonDocument.Parse(utf8);
             var entry = new BlueprintEntry
             {
@@ -155,14 +189,24 @@ public sealed class ProjectReadCache
         }
     }
 
-    /// <summary>File name → length map for a media directory (mtime-validated + single-flight).</summary>
-    public Dictionary<string, long> GetOrIndexDir(string dir, Func<string, Dictionary<string, long>> index)
+    public Dictionary<string, long> GetOrIndexDir(string dir, Func<string, Dictionary<string, long>> index) =>
+        GetOrIndexDirAsync(dir, (d, _) => Task.FromResult(index(d))).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// File name → length map. Directory enumeration stays sync (cheap metadata);
+    /// single-flight uses async wait so request threads are not blocked on the gate.
+    /// </summary>
+    public async Task<Dictionary<string, long>> GetOrIndexDirAsync(
+        string dir,
+        Func<string, CancellationToken, Task<Dictionary<string, long>>> index,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(dir))
             return new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
         if (!Enabled)
-            return index(dir) ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            return await index(dir, ct).ConfigureAwait(false)
+                   ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
         long dirTicks = 0;
         var exists = Directory.Exists(dir);
@@ -177,7 +221,7 @@ public sealed class ProjectReadCache
             return CloneDir(hit.Files);
 
         var gate = _buildLocks.GetOrAdd("dir:" + key, _ => new SemaphoreSlim(1, 1));
-        gate.Wait();
+        await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             exists = Directory.Exists(dir);
@@ -194,7 +238,8 @@ public sealed class ProjectReadCache
             if (_dirs.TryGetValue(key, out hit) && hit.Exists == exists && hit.DirTicks == dirTicks)
                 return CloneDir(hit.Files);
 
-            var map = index(dir) ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var map = await index(dir, ct).ConfigureAwait(false)
+                      ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
             var stored = CloneDir(map);
             _dirs[key] = new DirEntry
             {
@@ -210,7 +255,6 @@ public sealed class ProjectReadCache
         }
     }
 
-    /// <summary>Drop blueprint path/bytes and asset dir indexes for a project (or everything if null).</summary>
     public void InvalidateProject(string? projectId, string? projectDir = null)
     {
         if (string.IsNullOrWhiteSpace(projectId))

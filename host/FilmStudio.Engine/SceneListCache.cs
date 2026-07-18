@@ -20,25 +20,32 @@ public sealed class SceneListCache
     public IReadOnlyList<SceneSummary> GetOrBuild(
         string projectId,
         bool probeDurations,
-        Func<IReadOnlyList<SceneSummary>> build)
+        Func<IReadOnlyList<SceneSummary>> build) =>
+        GetOrBuildAsync(projectId, probeDurations, _ => Task.FromResult(build() ?? Array.Empty<SceneSummary>()))
+            .GetAwaiter().GetResult();
+
+    public async Task<IReadOnlyList<SceneSummary>> GetOrBuildAsync(
+        string projectId,
+        bool probeDurations,
+        Func<CancellationToken, Task<IReadOnlyList<SceneSummary>>> build,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(projectId))
-            return build();
+            return await build(ct).ConfigureAwait(false) ?? Array.Empty<SceneSummary>();
 
         var key = MakeKey(projectId, probeDurations);
         if (TryGetFresh(key, out var hit))
             return CloneList(hit);
 
         var gate = _buildLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
-        gate.Wait();
+        await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (TryGetFresh(key, out hit))
                 return CloneList(hit);
 
-            var built = build() ?? Array.Empty<SceneSummary>();
+            var built = await build(ct).ConfigureAwait(false) ?? Array.Empty<SceneSummary>();
             var list = built is List<SceneSummary> l ? l : built.ToList();
-            // Store a deep-ish clone so callers can't mutate the cache
             var stored = CloneList(list);
             _entries[key] = new CacheEntry
             {
