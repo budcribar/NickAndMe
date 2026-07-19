@@ -139,7 +139,7 @@ public sealed class ReviewEventStore
             EventCount = events.Count,
             From = from ?? events.LastOrDefault()?.Ts,
             To = to ?? events.FirstOrDefault()?.Ts,
-            Recent = events.Take(Math.Clamp(recentTake, 5, 200)).ToList(),
+            Recent = events.Take(Math.Clamp(recentTake <= 0 ? 40 : recentTake, 1, 200)).ToList(),
         };
 
         foreach (var e in events)

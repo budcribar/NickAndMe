@@ -27,13 +27,18 @@ public sealed class LearningProposalService
         CancellationToken ct = default)
     {
         var n = Math.Clamp(req.LastNFails <= 0 ? 50 : req.LastNFails, 5, 200);
-        var fails = _learning.Query(projectId: req.ProjectId, take: 3000)
+        // Scan full log then filter fails — Query(take:N) of mixed events can bury fails under passes
+        var fails = _learning.ReadAll()
+            .Where(e =>
+                string.IsNullOrWhiteSpace(req.ProjectId) ||
+                string.Equals(e.ProjectId, req.ProjectId, StringComparison.OrdinalIgnoreCase))
             .Where(e =>
                 string.Equals(e.Type, "clip_fail", StringComparison.OrdinalIgnoreCase) ||
                 (string.Equals(e.Type, "auto_review", StringComparison.OrdinalIgnoreCase) &&
                  string.Equals(e.Suggestion, "fail", StringComparison.OrdinalIgnoreCase)))
             .Where(e => string.IsNullOrWhiteSpace(req.Category) ||
                         string.Equals(e.Category, req.Category, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(e => e.Ts)
             .Take(n)
             .ToList();
 

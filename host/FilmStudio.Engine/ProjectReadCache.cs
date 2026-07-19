@@ -86,11 +86,15 @@ public sealed class ProjectReadCache
             return await find(ct).ConfigureAwait(false);
 
         var key = projectId.Trim();
-        if (_blueprintPaths.TryGetValue(key, out var hit))
+        // Only cache positive hits — a miss may become a hit after Stage 2 writes the blueprint
+        if (_blueprintPaths.TryGetValue(key, out var hit) && !string.IsNullOrWhiteSpace(hit))
             return hit;
 
         var path = await find(ct).ConfigureAwait(false);
-        _blueprintPaths[key] = path;
+        if (!string.IsNullOrWhiteSpace(path))
+            _blueprintPaths[key] = path;
+        else
+            _blueprintPaths.TryRemove(key, out _);
         return path;
     }
 

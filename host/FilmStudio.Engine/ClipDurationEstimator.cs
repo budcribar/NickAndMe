@@ -32,6 +32,8 @@ public static class ClipDurationEstimator
     /// </summary>
     public static int EstimateForBeat(Dictionary<string, object?> beat)
     {
+        if (beat is null)
+            return MinSeconds;
         var dialogue = Coerce(beat, "dialogue");
         var visual = Coerce(beat, "visual_event");
         var actionClass = Coerce(beat, "action_class").ToLowerInvariant();

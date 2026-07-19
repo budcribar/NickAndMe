@@ -23,8 +23,14 @@ public static class LockKeys
     public static string Stage(string projectId) =>
         $"project:{projectId}:stage";
 
-    public static string Character(string projectId, string charKey) =>
-        $"project:{projectId}:char:{charKey}";
+    public static string Character(string projectId, string charKey)
+    {
+        if (string.IsNullOrWhiteSpace(projectId))
+            throw new ArgumentException("projectId required", nameof(projectId));
+        if (string.IsNullOrWhiteSpace(charKey))
+            throw new ArgumentException("charKey required", nameof(charKey));
+        return $"project:{projectId.Trim()}:char:{charKey.Trim()}";
+    }
 }
 
 /// <summary>Thrown when a required resource lock cannot be acquired (HTTP 409).</summary>

@@ -125,7 +125,20 @@ public sealed class LocalWorkerPool
         _sem = new SemaphoreSlim(n, n);
     }
 
-    public int InFlight => _configured - _sem.CurrentCount;
+    public int InFlight
+    {
+        get
+        {
+            try
+            {
+                return Math.Max(0, _configured - _sem.CurrentCount);
+            }
+            catch (ObjectDisposedException)
+            {
+                return 0;
+            }
+        }
+    }
 
     public async Task RunAsync(Func<CancellationToken, Task> work, CancellationToken ct)
     {
@@ -138,7 +151,7 @@ public sealed class LocalWorkerPool
         }
         finally
         {
-            _sem.Release();
+            try { _sem.Release(); } catch (ObjectDisposedException) { /* resized */ }
             _metrics?.NoteFfmpegSlotReleased();
         }
     }

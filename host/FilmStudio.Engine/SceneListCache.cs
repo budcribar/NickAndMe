@@ -99,8 +99,8 @@ public sealed class SceneListCache
         ActualDurationSeconds = s.ActualDurationSeconds,
         DurationSeconds = s.DurationSeconds,
         CompositeExists = s.CompositeExists,
-        CharactersOnScreen = s.CharactersOnScreen.ToList(),
-        LocationIds = s.LocationIds.ToList(),
+        CharactersOnScreen = s.CharactersOnScreen?.ToList() ?? new List<string>(),
+        LocationIds = s.LocationIds?.ToList() ?? new List<string>(),
         PrimaryLocationId = s.PrimaryLocationId,
         Status = s.Status,
         // Locks applied per-request — leave empty in cache

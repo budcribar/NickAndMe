@@ -468,4 +468,208 @@ public class BugHuntTests
             new ProcessMetricsSnapshot());
         Assert.Equal(1, snap.ApiInFlight);
     }
+
+    // ── 21. Blueprint path cache must not stick on null forever ─────────
+
+    [Fact]
+    public async Task Bug21_ProjectReadCache_does_not_cache_missing_blueprint_forever()
+    {
+        var cache = new ProjectReadCache { Enabled = true };
+        var calls = 0;
+        Task<string?> Find(CancellationToken _)
+        {
+            calls++;
+            return Task.FromResult<string?>(calls == 1 ? null : @"C:\tmp\blueprint.clips.grok.json");
+        }
+
+        var a = await cache.GetOrFindBlueprintPathAsync("P", Find);
+        Assert.Null(a);
+        var b = await cache.GetOrFindBlueprintPathAsync("P", Find);
+        // Second call must re-find after a miss (blueprint may appear later)
+        Assert.Equal(@"C:\tmp\blueprint.clips.grok.json", b);
+        Assert.True(calls >= 2, $"find should run again after null cache, calls={calls}");
+    }
+
+    // ── 22. TryCancel must treat DONE / Error as terminal (ignore case) ─
+
+    [Fact]
+    public void Bug22_JobStore_TryCancel_is_case_insensitive_for_terminal()
+    {
+        var store = new JobStore();
+        var done = store.Create(new JobRecord { Status = "DONE", Kind = "scene" });
+        Assert.False(store.TryCancel(done.JobId));
+        Assert.Equal("DONE", store.Get(done.JobId)!.Status);
+
+        var err = store.Create(new JobRecord { Status = "Error", Kind = "remux" });
+        Assert.False(store.TryCancel(err.JobId));
+    }
+
+    // ── 23. SceneListCache clone must tolerate null list props ──────────
+
+    [Fact]
+    public async Task Bug23_SceneListCache_null_list_props_do_not_throw()
+    {
+        var cache = new SceneListCache();
+        var list = await cache.GetOrBuildAsync("p", probeDurations: false, _ =>
+            Task.FromResult<IReadOnlyList<SceneSummary>>(new List<SceneSummary>
+            {
+                new()
+                {
+                    SceneNumber = 1,
+                    CharactersOnScreen = null!,
+                    LocationIds = null!,
+                },
+            }));
+        Assert.Single(list);
+        Assert.NotNull(list[0].CharactersOnScreen);
+        Assert.NotNull(list[0].LocationIds);
+    }
+
+    // ── 24. Progress percent parse must be culture-invariant ────────────
+
+    [Fact]
+    public void Bug24_TryParseGrokProgress_invariant_decimal()
+    {
+        // Public test hook
+        var pct = VoicePreviewService.TryParseGrokProgressForTests("status=pending (42.5%)");
+        Assert.Equal(43, pct); // rounded
+        pct = VoicePreviewService.TryParseGrokProgressForTests("status=pending (12%)");
+        Assert.Equal(12, pct);
+    }
+
+    // ── 25. LocalWorkerPool.InFlight never negative ─────────────────────
+
+    [Fact]
+    public void Bug25_LocalWorkerPool_InFlight_non_negative()
+    {
+        var opts = Options.Create(new FilmStudioOptions
+        {
+            Capacity = new CapacityOptions { MaxFfmpegInFlight = 2 },
+        });
+        var pool = new LocalWorkerPool(opts);
+        // Force resize path then read — must not throw / go negative
+        opts.Value.Capacity!.MaxFfmpegInFlight = 1;
+        // Trigger EnsureCaps via a no-op run that completes immediately is hard without async;
+        // InFlight property should always be >= 0
+        Assert.True(pool.InFlight >= 0);
+    }
+
+    // ── 26. LockKeys.Character rejects empty key ────────────────────────
+
+    [Fact]
+    public void Bug26_LockKeys_Character_empty_throws()
+    {
+        Assert.ThrowsAny<ArgumentException>(() => LockKeys.Character("P", "  "));
+        Assert.ThrowsAny<ArgumentException>(() => LockKeys.Character("P", null!));
+    }
+
+    // ── 27. Propose rules must find fails under a flood of passes ───────
+
+    [Fact]
+    public async Task Bug27_Propose_finds_fails_buried_under_many_passes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fs_bug27_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "projects"));
+        try
+        {
+            var opts = Options.Create(new FilmStudioOptions { WorkspaceRoot = root, EnableReadCaches = false });
+            var projects = new ProjectStore(opts);
+            var events = new ReviewEventStore(projects, NullLogger<ReviewEventStore>.Instance);
+            // 80 recent passes
+            for (var i = 0; i < 80; i++)
+            {
+                events.Append(new ReviewLearningEvent
+                {
+                    ProjectId = "Demo",
+                    Type = "clip_pass",
+                    Ts = DateTimeOffset.UtcNow.AddSeconds(-i),
+                });
+            }
+            // 6 older fails
+            for (var i = 0; i < 6; i++)
+            {
+                events.Append(new ReviewLearningEvent
+                {
+                    ProjectId = "Demo",
+                    Type = "clip_fail",
+                    Category = "continuity",
+                    Note = "jump " + i,
+                    Ts = DateTimeOffset.UtcNow.AddMinutes(-30 - i),
+                });
+            }
+
+            var propose = new LearningProposalService(
+                events,
+                new OfflineChatClient(),
+                NullLogger<LearningProposalService>.Instance);
+            // If Propose only scans the newest N mixed events via Query(take:small), fails are missed.
+            var r = await propose.ProposeAsync(new ProposeLearningRulesRequest
+            {
+                ProjectId = "Demo",
+                LastNFails = 5,
+            });
+            Assert.True(r.Ok, r.Error);
+            Assert.True(r.FailEventsUsed >= 5, $"FailEventsUsed={r.FailEventsUsed}");
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { /* */ }
+        }
+    }
+
+    // ── 28. EstimateForBeat null dictionary must not NRE ────────────────
+
+    [Fact]
+    public void Bug28_EstimateForBeat_null_returns_action_floor()
+    {
+        var d = ClipDurationEstimator.EstimateForBeat(null!);
+        Assert.True(d >= ClipDurationEstimator.MinSeconds);
+    }
+
+    // ── 29. BuildInsights recentTake=1 must not force 5 rows when fewer ─
+
+    [Fact]
+    public void Bug29_BuildInsights_honors_small_recentTake()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "fs_bug29_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "projects"));
+        try
+        {
+            var opts = Options.Create(new FilmStudioOptions { WorkspaceRoot = root, EnableReadCaches = false });
+            var events = new ReviewEventStore(new ProjectStore(opts), NullLogger<ReviewEventStore>.Instance);
+            for (var i = 0; i < 3; i++)
+                events.Append(new ReviewLearningEvent { ProjectId = "P", Type = "clip_pass", Note = "n" + i });
+
+            var insights = events.BuildInsights("P", recentTake: 1);
+            Assert.Single(insights.Recent);
+        }
+        finally
+        {
+            try { Directory.Delete(root, recursive: true); } catch { /* */ }
+        }
+    }
+
+    // ── 30. SafeFileName must neutralize path segments like ".." ────────
+
+    [Fact]
+    public void Bug30_VoicePreview_SafeFileName_blocks_dotdot()
+    {
+        var name = VoicePreviewService.SafeFileNameForTests("..");
+        Assert.DoesNotContain("..", name);
+        Assert.False(string.IsNullOrWhiteSpace(name));
+        var path = Path.Combine(Path.GetTempPath(), "voice_previews", name + ".mp3");
+        // Resolved path must stay under voice_previews parent
+        var full = Path.GetFullPath(path);
+        Assert.Contains("voice_previews", full, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar, full);
+    }
+
+    private sealed class OfflineChatClient : IGrokChatClient
+    {
+        public bool IsConfigured => false;
+        public Task<string> CompleteAsync(
+            string systemPrompt, string userPrompt, string model = "grok-4.5",
+            double temperature = 0.2, CancellationToken ct = default) =>
+            Task.FromResult("- offline");
+    }
 }

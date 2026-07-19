@@ -348,13 +348,24 @@ public sealed class VoicePreviewService
         }
     }
 
+    /// <summary>Test hook for progress percent parsing.</summary>
+    public static int? TryParseGrokProgressForTests(string? msg) => TryParseGrokProgress(msg);
+
+    /// <summary>Test hook for safe file names under voice_previews/.</summary>
+    public static string SafeFileNameForTests(string charKey) => SafeFileName(charKey);
+
     private static int? TryParseGrokProgress(string? msg)
     {
         if (string.IsNullOrWhiteSpace(msg)) return null;
         // status=pending (42%) or (42%)
         var m = System.Text.RegularExpressions.Regex.Match(msg, @"\((\d+(?:\.\d+)?)\s*%\)");
-        if (m.Success && double.TryParse(m.Groups[1].Value, out var d))
-            return (int)Math.Round(d);
+        if (m.Success &&
+            double.TryParse(
+                m.Groups[1].Value,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var d))
+            return (int)Math.Round(d, MidpointRounding.AwayFromZero);
         return null;
     }
 
@@ -369,7 +380,11 @@ public sealed class VoicePreviewService
         var s = (charKey ?? "char").Trim();
         foreach (var c in Path.GetInvalidFileNameChars())
             s = s.Replace(c, '_');
-        return s.Length == 0 ? "char" : s;
+        // Neutralize path segments that are not always in GetInvalidFileNameChars
+        s = s.Replace("..", "_", StringComparison.Ordinal);
+        while (s.StartsWith('.'))
+            s = s.TrimStart('.');
+        return string.IsNullOrWhiteSpace(s) ? "char" : s;
     }
 }
 

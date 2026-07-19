@@ -107,7 +107,9 @@ public sealed class JobStore : IJobStore
         {
             if (!_jobs.TryGetValue(jobId, out var j))
                 return false;
-            if (j.Status is "done" or "error" or "cancelled")
+            if (string.Equals(j.Status, "done", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(j.Status, "error", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(j.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
                 return false;
             j.Status = "cancelled";
             j.Message = "Cancel requested";
