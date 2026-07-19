@@ -41,22 +41,14 @@
                 Match each book picture to the right character. Text-only pages are skipped.
             </span>
         </div>
-        <div class="d-flex gap-2">
-            @if (PlateSortRunning)
-            {
-                <button type="button" class="btn btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">
-                    Cancel
-                </button>
-            }
-            else
-            {
-                <button type="button" class="btn btn-warning"
-                        disabled="@(_busy || JobRunning)"
-                        @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
-                    Find characters
-                </button>
-            }
-        </div>
+        @if (!PlateSortRunning)
+        {
+            <button type="button" class="btn btn-warning"
+                    disabled="@(_busy || JobRunning)"
+                    @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
+                Find characters
+            </button>
+        }
     </div>
 }
 else if (_plates is not null && _plates.SortedByCharacter)
@@ -66,16 +58,10 @@ else if (_plates is not null && _plates.SortedByCharacter)
         <span class="small text-muted">
             @_plates.SortedAt
         </span>
-        @if (PlateSortRunning)
-        {
-            <button type="button" class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">
-                Cancel
-            </button>
-        }
-        else
+        @if (!PlateSortRunning && !JobRunning)
         {
             <button type="button" class="btn btn-sm btn-outline-secondary"
-                    disabled="@(_busy || JobRunning)"
+                    disabled="@_busy"
                     @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)"
                     title="Match book pictures to cast again">
                 Find characters again
@@ -88,7 +74,8 @@ else if (_plates is not null && _plates.SortedByCharacter)
 {
     <div class="alert alert-danger">@_error</div>
 }
-@if (!string.IsNullOrEmpty(_message))
+@* Success / idle messages only — never use the green card as an in-progress indicator *@
+@if (!string.IsNullOrEmpty(_message) && !_extractingCast && !JobRunning)
 {
     <div class="alert alert-success">@_message</div>
 }
@@ -104,16 +91,30 @@ else if (_plates is not null && _plates.SortedByCharacter)
         </select>
     </div>
     <div class="col-md-4 d-flex gap-2">
-        <button class="btn btn-outline-primary" disabled="@_busy" @onclick="LoadAsync">Reload</button>
-        @if (JobRunning)
-        {
-            <button class="btn btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">Cancel job</button>
-        }
+        <button class="btn btn-outline-primary" disabled="@(_busy || JobRunning)" @onclick="LoadAsync">Reload</button>
     </div>
 </div>
 
-@* Character / plate job progress — operators get simple status; admin gets debug log *@
-@if (_job is not null &&
+@* In-progress work: progress bar card (cast build + character / plate jobs) *@
+@if (_extractingCast)
+{
+    <div class="card mb-3 border-primary">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small">Building cast from screenplay…</span>
+            </div>
+            <div class="progress mt-2" style="height: 0.5rem;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: 100%"
+                     aria-valuemin="0"
+                     aria-valuemax="100"
+                     aria-label="Building cast"></div>
+            </div>
+        </div>
+    </div>
+}
+else if (_job is not null &&
      (_job.Kind is "character" or "character-plates") &&
      _job.Status is "running" or "error" or "cancelled")
 {
@@ -149,11 +150,18 @@ else if (_plates is not null && _plates.SortedByCharacter)
                     </button>
                 }
             </div>
-            @if (_job.Status == "running" && _job.Total > 0)
+            @if (_job.Status == "running")
             {
-                var pct = (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total));
+                var pct = _job.Total > 0
+                    ? (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total))
+                    : 100;
                 <div class="progress mt-2" style="height: 0.5rem;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: @(Math.Max(8, pct))%"></div>
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         style="width: @(_job.Total > 0 ? Math.Max(8, pct) : 100)%"
+                         aria-valuenow="@(_job.Total > 0 ? pct : 0)"
+                         aria-valuemin="0"
+                         aria-valuemax="100"></div>
                 </div>
             }
             @if (Session.IsAdmin && _job.Log.Count > 0)
@@ -716,7 +724,7 @@ else
         _extractingCast = true;
         _busy = true;
         _error = null;
-        _message = "Building cast from screenplay…";
+        _message = null; // progress card owns in-progress UI (not the green success alert)
         StateHasChanged();
         try
         {
@@ -1170,7 +1178,8 @@ else
         {
             try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
             await Engine.StartSortCharacterPlatesAsync(_projectId, useGrok: useGrok, maxImages: 32);
-            _message = "Matching book pictures…";
+            // Progress card owns in-progress UI (one Cancel there) — no green status banner
+            _message = null;
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
         }
