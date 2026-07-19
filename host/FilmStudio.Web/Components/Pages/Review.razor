@@ -49,12 +49,12 @@ else
         </select>
     </div>
     <div class="col-md-8 d-flex flex-wrap gap-2">
-        <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="LoadAsync">Reload</button>
-        <button class="btn btn-outline-primary" disabled="@(_busy || JobRunning || !_wipCanBuild)" @onclick="RebuildWipAsync"
+        <button class="btn btn-outline-secondary" data-testid="review-reload" disabled="@_busy" @onclick="LoadAsync">Reload</button>
+        <button class="btn btn-outline-primary" data-testid="review-rebuild-wip" disabled="@(_busy || JobRunning || !_wipCanBuild)" @onclick="RebuildWipAsync"
                 title="FFmpeg: refresh stale scene composites if needed, then stitch WIP">
             Rebuild WIP movie
         </button>
-        <button class="btn btn-success" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
+        <button class="btn btn-success" data-testid="review-play-wip" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
                 @onclick="PlayWipAsync"
                 title="@WipPlayTitle">
             @(_showWipPlayer && _wipExists && !_wipStale ? "Hide WIP player" : _wipStale || !_wipExists ? "▶ Play WIP (refresh)" : "▶ Play WIP")
@@ -336,6 +336,9 @@ else
                                             title="Play this clip"
                                             @onclick="() => PlayClip(sel, cn)">▶</button>
                                     <button class="btn btn-outline-primary"
+                                            data-testid="@($"review-auto-{sel}-{cn}")"
+                                            data-scene="@sel"
+                                            data-clip="@cn"
                                             disabled="@(_busy || !onDisk || JobRunning || autoBusy)"
                                             title="AI review: this clip + end of previous (does not change files)"
                                             @onclick="() => StartAutoReviewAsync(sel, cn)">
@@ -344,6 +347,7 @@ else
                                     @if (draft is not null && !editing && !autoBusy)
                                     {
                                         <button class="btn btn-primary"
+                                                data-testid="@($"review-apply-open-{sel}-{cn}")"
                                                 disabled="@_busy"
                                                 title="Show suggested edits to accept or change"
                                                 @onclick="() => OpenApplyPanel(sel, cn)">
@@ -353,6 +357,7 @@ else
                                     @if (editing)
                                     {
                                         <button class="btn btn-warning"
+                                                data-testid="@($"review-apply-regen-{sel}-{cn}")"
                                                 disabled="@(_busy || JobRunning || !HasIncludedEdits())"
                                                 title="Save accepted edits and re-generate this clip"
                                                 @onclick="() => ApplyAndRegenAsync(sel, cn)">
@@ -363,13 +368,13 @@ else
                                     }
                                     else
                                     {
-                                        <button class="btn btn-outline-warning" disabled="@(_busy || JobRunning)"
+                                        <button class="btn btn-outline-warning" data-testid="@($"review-regen-{sel}-{cn}")" disabled="@(_busy || JobRunning)"
                                                 title="Force re-generate this clip (same plan)"
                                                 @onclick="() => RegenClipAsync(sel, cn)">Regen</button>
                                     }
-                                    <button class="btn btn-outline-success" disabled="@_busy"
+                                    <button class="btn btn-outline-success" data-testid="@($"review-pass-{sel}-{cn}")" disabled="@_busy"
                                             @onclick="() => ReviewAsync(sel, cn, passStatus)">Pass</button>
-                                    <button class="btn btn-outline-danger" disabled="@_busy"
+                                    <button class="btn btn-outline-danger" data-testid="@($"review-fail-{sel}-{cn}")" disabled="@_busy"
                                             @onclick="() => ReviewAsync(sel, cn, failStatus)">Fail</button>
                                 </div>
                                 @if (autoBusy && _job is not null)

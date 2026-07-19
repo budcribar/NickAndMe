@@ -10,7 +10,7 @@
      onclick="document.querySelector('.navbar-toggler')?.click()">
     <nav class="nav flex-column" aria-label="Main">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" title="Studio">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All" title="Studio" data-testid="nav-studio">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
                 @if (!Collapsed) { <span class="nav-label">Studio</span> }
             </NavLink>
@@ -19,7 +19,7 @@
         @if (ActiveProject.HasProject)
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/adaptation" Match="NavLinkMatch.Prefix" title="Adaptation">
+                <NavLink class="nav-link" href="/adaptation" Match="NavLinkMatch.Prefix" title="Adaptation" data-testid="nav-adaptation">
                     <span class="bi bi-book-nav-menu" aria-hidden="true"></span>
                     @if (!Collapsed) { <span class="nav-label">Adaptation</span> }
                 </NavLink>
@@ -30,21 +30,24 @@
                 href: "/characters",
                 title: ActiveProject.CanCharacters ? "Characters" : ActiveProject.CharactersBlockedReason,
                 iconClass: "bi-people-fill-nav-menu",
-                label: "Characters")
+                label: "Characters",
+                testId: "nav-characters")
 
             @NavItem(
                 enabled: ActiveProject.CanScenes,
                 href: "/scenes",
                 title: ActiveProject.CanScenes ? "Scenes" : ActiveProject.ScenesBlockedReason,
                 iconClass: "bi-film-nav-menu",
-                label: "Scenes")
+                label: "Scenes",
+                testId: "nav-scenes")
 
             @NavItem(
                 enabled: ActiveProject.CanReview,
                 href: "/review",
                 title: ActiveProject.CanReview ? "Review" : ActiveProject.ReviewBlockedReason,
                 iconClass: "bi-check2-square-nav-menu",
-                label: "Review")
+                label: "Review",
+                testId: "nav-review")
 
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="/cost" title="Cost">
@@ -76,7 +79,7 @@
                 </NavLink>
             </div>
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/admin/learning" title="Learning from reviews">
+                <NavLink class="nav-link" href="/admin/learning" title="Learning from reviews" data-testid="nav-learning">
                     <span class="bi bi-lightbulb-nav-menu" aria-hidden="true"></span>
                     @if (!Collapsed) { <span class="nav-label">Learning</span> }
                 </NavLink>
@@ -99,12 +102,12 @@
 
     private bool _started;
 
-    private RenderFragment NavItem(bool enabled, string href, string title, string iconClass, string label) => __builder =>
+    private RenderFragment NavItem(bool enabled, string href, string title, string iconClass, string label, string? testId = null) => __builder =>
     {
         <div class="nav-item px-3">
             @if (enabled)
             {
-                <NavLink class="nav-link" href="@href" title="@title">
+                <NavLink class="nav-link" href="@href" title="@title" data-testid="@testId">
                     <span class="bi @iconClass" aria-hidden="true"></span>
                     @if (!Collapsed) { <span class="nav-label">@label</span> }
                 </NavLink>
@@ -113,6 +116,7 @@
             {
                 <span class="nav-link nav-link-disabled"
                       title="@title"
+                      data-testid="@(testId is null ? null : testId + "-disabled")"
                       aria-disabled="true">
                     <span class="bi @iconClass" aria-hidden="true"></span>
                     @if (!Collapsed) { <span class="nav-label">@label</span> }

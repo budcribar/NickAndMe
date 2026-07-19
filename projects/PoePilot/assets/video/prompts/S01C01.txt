@@ -1,0 +1,23 @@
+# S01C01  mode=fresh chars=1 refs=0 startFrame=no promptLen=1429 · learning-addenda
+# refs: 
+# startFrame: (none)
+# characters: Character_Narrator
+
+CHARACTER VARIABLES (use these identities consistently; do not redesign faces or wardrobe):
+- Character_Narrator [Narrator] VOICE ONLY — not on screen. Voice: Consistent character voice every scene.
+
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_Narrator narrates exactly: "THE TELL-TALE HEART. True!-nervous-very, very dreadfully nervous I had been and am; but why will you say that I am mad? The disease had sharpened my senses-not destroyed-not dulled them. Above all was the sense of hearing acute. I heard all things in the heaven and in the earth. I heard many things in hell. How, then, am I mad? Hearken! and observe how healthily-how calmly I can tell you the whole…". Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_Narrator: Consistent character voice every scene.
+
+Follow the camera framing and location in this prompt exactly. Prioritize the PRIMARY subject and ONE clear action with visible motion; background characters may stay mostly still.
+
+THIS CLIP:
+End cleanly when the spoken line and primary action finish — do not hold a frozen pose or empty silence after dialogue.
+INT. ROOM - DAY. Character_Narrator NARRATOR speaks. OFF-CAMERA VOICEOVER Character_Narrator says "THE TELL-TALE HEART. True!-nervous-very, very dreadfully nervous I had been and am; but…". Character_Narrator: Narrator, as described in the scr… / 480p, 24fps
+
+# Film Studio gen pack (active addendum)
+
+Apply these house rules when building clip video prompts:
+- Dialogue clips must have audible speech and visible lip motion for the speaker; never silent mouths on dialogue.
+- Continuity: when extending from previous clip, match wardrobe, place, and facing from the last frames.
+- Respect VOICE LOCK and character visual locks exactly.
+- Prefer tight action after speech; avoid long empty holds.

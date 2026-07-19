@@ -1,0 +1,47 @@
+{
+  "Version": 1,
+  "Entries": [
+    {
+      "Id": "63e67c80",
+      "Ts": "2026-07-19T14:58:01",
+      "Type": "clip_fail",
+      "LearningLayer": "clip",
+      "Scene": 1,
+      "Clip": 4,
+      "Character": null,
+      "UserNote": "fail",
+      "ActionTaken": "review_status=fail",
+      "Before": "",
+      "After": "",
+      "SuggestedRule": "Review fail at S01C4: fail"
+    },
+    {
+      "Id": "6070b44c",
+      "Ts": "2026-07-19T14:58:01",
+      "Type": "clip_fail",
+      "LearningLayer": "clip",
+      "Scene": 1,
+      "Clip": 2,
+      "Character": null,
+      "UserNote": "fail",
+      "ActionTaken": "review_status=fail",
+      "Before": "",
+      "After": "",
+      "SuggestedRule": "Review fail at S01C2: fail"
+    },
+    {
+      "Id": "8ecd990e",
+      "Ts": "2026-07-19T14:58:00",
+      "Type": "clip_fail",
+      "LearningLayer": "clip",
+      "Scene": 1,
+      "Clip": 1,
+      "Character": null,
+      "UserNote": "fail",
+      "ActionTaken": "review_status=fail",
+      "Before": "",
+      "After": "",
+      "SuggestedRule": "Review fail at S01C1: fail"
+    }
+  ]
+}

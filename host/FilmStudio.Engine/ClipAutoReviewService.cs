@@ -560,23 +560,24 @@ public sealed class ClipAutoReviewService
 
     private async Task RunFfmpegAsync(string args, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo
+        // Quiet log + drain pipes: WaitForExit without reading stderr deadlocks on verbose encodes
+        var fullArgs = $"-hide_banner -nostats -loglevel error {args}";
+        var r = await FfmpegProcess.RunAsync(
+                _ffmpeg.FfmpegPath,
+                fullArgs,
+                ct,
+                timeoutMs: 60_000)
+            .ConfigureAwait(false);
+        if (r.TimedOut)
         {
-            FileName = _ffmpeg.FfmpegPath,
-            Arguments = args,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        using var proc = Process.Start(psi);
-        if (proc is null) throw new InvalidOperationException("Could not start ffmpeg.");
-        await proc.WaitForExitAsync(ct);
-        if (proc.ExitCode != 0)
+            _log.LogWarning("ffmpeg frame extract timed out: {Args}", args.Length > 120 ? args[..120] : args);
+            return;
+        }
+        if (!r.Success)
         {
-            var err = await proc.StandardError.ReadToEndAsync(ct);
+            var err = r.StdErr;
             _log.LogWarning("ffmpeg frame extract exit {Code}: {Err}",
-                proc.ExitCode, err.Length > 300 ? err[..300] : err);
+                r.ExitCode, err.Length > 300 ? err[..300] : err);
         }
     }
 

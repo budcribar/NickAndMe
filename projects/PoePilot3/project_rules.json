@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "active": [
+    {
+      "id": "e2a266c28e",
+      "text": "Address repeated review fails in category \u0027other\u0027.",
+      "category": "other",
+      "approvedAt": "2026-07-19T20:58:09.8846251+00:00",
+      "approvedBy": "admin",
+      "sourceFailCount": 3
+    }
+  ],
+  "pending": []
+}

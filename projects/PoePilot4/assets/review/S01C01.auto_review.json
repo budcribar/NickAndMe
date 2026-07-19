@@ -1,0 +1,16 @@
+{
+  "Ok": true,
+  "ProjectId": "PoePilot4",
+  "Scene": 1,
+  "Clip": 1,
+  "Suggestion": "unclear",
+  "Category": "other",
+  "Confidence": "low",
+  "Note": "Fake review \u2014 connect API for real analysis.",
+  "Continuity": "unclear",
+  "IncludedPreviousTail": false,
+  "GeneratedAt": "2026-07-19T21:13:46.2552037+00:00",
+  "Suggestions": [],
+  "RawSummary": "{\n  \u0022suggestion\u0022: \u0022unclear\u0022,\n  \u0022category\u0022: \u0022other\u0022,\n  \u0022confidence\u0022: \u0022low\u0022,\n  \u0022continuity\u0022: \u0022unclear\u0022,\n  \u0022note\u0022: \u0022Fake review \u2014 connect API for real analysis.\u0022,\n  \u0022suggestions\u0022: []\n}",
+  "Error": null
+}

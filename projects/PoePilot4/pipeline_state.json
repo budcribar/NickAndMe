@@ -1,0 +1,42 @@
+{
+  "cost_ledger": [
+    {
+      "kind": "video",
+      "scene": 1,
+      "clip": 1,
+      "model": "grok-imagine-video",
+      "request_id": "fake-fd000d5219cf",
+      "has_ref_image": false,
+      "is_extend": false,
+      "source": "list_rate",
+      "duration_sec": 4,
+      "attempts": 1,
+      "resolution": "480p",
+      "output_rate_per_sec": 0.05,
+      "video_output_usd": 0.2,
+      "ref_image_usd": 0,
+      "extend_input_usd": 0,
+      "usd": 0.2,
+      "currency": "USD",
+      "id": "1784495523_0000",
+      "ts": "2026-07-19T15:12:03"
+    }
+  ],
+  "cost_totals": {
+    "usd": 0.2,
+    "events": 1,
+    "updated_at": "2026-07-19T15:12:03"
+  },
+  "clip_review": {
+    "S01C01": {
+      "status": "fail",
+      "note": "",
+      "ts": "2026-07-19T15:13:46"
+    },
+    "S01C02": {
+      "status": "fail",
+      "note": "",
+      "ts": "2026-07-19T15:13:47"
+    }
+  }
+}

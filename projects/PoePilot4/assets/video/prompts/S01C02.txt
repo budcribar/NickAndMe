@@ -1,0 +1,26 @@
+# S01C02  mode=video-extend chars=1 refs=0 startFrame=no promptLen=1617 prevVideo=scene_01_clip_01.mp4 · learning-addenda
+# refs: 
+# startFrame: (none)
+# characters: Character_Narrator
+
+CHARACTER VARIABLES (use these identities consistently; do not redesign faces or wardrobe):
+- Character_Narrator [Narrator] VOICE ONLY — not on screen. Voice: Consistent character voice every scene.
+
+PREVIOUS CLIP (already provided as video input — continue from its last frame):
+INT. CHAMBER - NIGHT. Character_Narrator Candlelight. A pale NARRATOR faces us - too calm. Character_Narrator: Narrator, as described in the scr… / 480p, 24fps
+
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_Narrator narrates exactly: "True! Nervous - very, very dreadfully nervous I had been and am. But why will you say that I am mad?". Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_Narrator: Consistent character voice every scene.
+
+CONTINUITY: This is a seamless EXTENSION of the provided previous video. Pick up from its last frame. Same character identity, wardrobe, lighting, and location. Natural progressive motion only — do not invent a new establishing shot or redesign faces/outfits.
+
+THIS CLIP:
+End cleanly when the spoken line and primary action finish — do not hold a frozen pose or empty silence after dialogue.
+INT. CHAMBER - NIGHT. Character_Narrator NARRATOR speaks. OFF-CAMERA VOICEOVER Character_Narrator says "True! Nervous - very, very dreadfully nervous I had been and am. But why will you say t…". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps
+
+# Film Studio gen pack (active addendum)
+
+Apply these house rules when building clip video prompts:
+- Dialogue clips must have audible speech and visible lip motion for the speaker; never silent mouths on dialogue.
+- Continuity: when extending from previous clip, match wardrobe, place, and facing from the last frames.
+- Respect VOICE LOCK and character visual locks exactly.
+- Prefer tight action after speech; avoid long empty holds.

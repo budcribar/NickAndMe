@@ -1991,22 +1991,15 @@ public sealed class FilmJobService
             if (!_remux.IsAvailable()) return false;
             Directory.CreateDirectory(Path.GetDirectoryName(outClipPath)!);
             var sec = Math.Max(1, extensionSeconds);
-            // -sseof -N seeks N seconds before EOF; -t N takes that tail
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = _remux.FfmpegPath,
-                Arguments =
-                    $"-y -sseof -{sec} -i \"{extendedVideoPath}\" -t {sec} " +
-                    $"-c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k \"{outClipPath}\"",
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            using var proc = System.Diagnostics.Process.Start(psi);
-            if (proc is null) return false;
-            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
-            return proc.ExitCode == 0 &&
+            // -sseof -N seeks N seconds before EOF; -t N takes that tail.
+            // Drain pipes via FfmpegProcess — WaitForExit without reading stderr deadlocks on re-encode.
+            var args =
+                $"-hide_banner -nostats -loglevel error -y -sseof -{sec} -i \"{extendedVideoPath}\" " +
+                $"-t {sec} -c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k \"{outClipPath}\"";
+            var r = await FfmpegProcess.RunAsync(
+                    _remux.FfmpegPath, args, ct, timeoutMs: 180_000)
+                .ConfigureAwait(false);
+            return r.Success &&
                    File.Exists(outClipPath) &&
                    new FileInfo(outClipPath).Length >= 1024;
         }

@@ -1,0 +1,467 @@
+{
+  "schema_version": "stage2.v1",
+  "movie_title": "The Tell-Tale Heart",
+  "source_book_title": "The Tell-Tale Heart",
+  "video_provider_profile": "grok",
+  "global_production_variables": {
+    "target_aspect_ratio": "16:9",
+    "resolution": "720p",
+    "frame_rate": 24,
+    "directorial_treatment": "Cinematic lighting, clear coverage, natural performances.",
+    "total_runtime_target_seconds": 92,
+    "character_seed_tokens": {
+      "Character_Narrator": {
+        "description": "Narrator, as described in the screenplay.",
+        "canonical_given_name": "Narrator",
+        "display_name_policy": "ok_anytime",
+        "voice_profile": "Consistent character voice every scene.",
+        "voice_label": "Narrator",
+        "reference_image_placeholder": "character_narrator_ref.png"
+      },
+      "Character_Officer": {
+        "description": "Officer, as described in the screenplay.",
+        "canonical_given_name": "Officer",
+        "display_name_policy": "ok_anytime",
+        "voice_profile": "Consistent character voice every scene.",
+        "voice_label": "Officer",
+        "reference_image_placeholder": "character_officer_ref.png",
+        "visual_lock": "Match Officer as cast for this production."
+      }
+    },
+    "location_seed_tokens": {
+      "Loc_Chamber": {
+        "display_name": "CHAMBER",
+        "description": "INT. CHAMBER - NIGHT",
+        "visual_lock": "INT. CHAMBER - NIGHT",
+        "reference_image_placeholder": "loc_chamber_ref.png"
+      },
+      "Loc_Chamber_Night": {
+        "display_name": "CHAMBER - NIGHT",
+        "description": "INT. CHAMBER - NIGHT - LATER",
+        "visual_lock": "INT. CHAMBER - NIGHT - LATER",
+        "reference_image_placeholder": "loc_chamber_night_ref.png"
+      }
+    }
+  },
+  "scenes": [
+    {
+      "scene_number": 1,
+      "setting": "INT. CHAMBER - NIGHT",
+      "location_ids": [],
+      "primary_location_id": "Loc_Chamber",
+      "characters_on_screen": [
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc01_chamber",
+      "transition_type": "fade_in",
+      "lighting_continuity_token": "consistent scene lighting",
+      "total_estimated_duration_seconds": 25,
+      "music_bed": {
+        "style_description": "cinematic underscore",
+        "duration_seconds": 25
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:04",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator Candlelight. A pale NARRATOR faces us - too calm. Character_Narrator: Narrator, as described in the scr… / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b1",
+          "primary_subject": null,
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:04-00:13",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator NARRATOR speaks. OFF-CAMERA VOICEOVER Character_Narrator says \"True! Nervous - very, very dreadfully nervous I had been and am. But why will you say t…\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "True! Nervous - very, very dreadfully nervous I had been and am. But why will you say that I am mad?",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 9
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:13-00:17",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator He leans closer. A floorboard creaks. Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": null,
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:17-00:25",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator NARRATOR (CONT'D). OFF-CAMERA VOICEOVER Character_Narrator says \"The disease had sharpened my senses - not destroyed them. Above all was the sense of he…\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "The disease had sharpened my senses - not destroyed them. Above all was the sense of hearing acute.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 8
+        }
+      ],
+      "stage1_scene_number": 1,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": []
+    },
+    {
+      "scene_number": 2,
+      "setting": "INT. CHAMBER - NIGHT - LATER",
+      "location_ids": [],
+      "primary_location_id": "Loc_Chamber_Night",
+      "characters_on_screen": [
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc02_chamber_night",
+      "transition_type": "cut",
+      "lighting_continuity_token": "consistent scene lighting",
+      "total_estimated_duration_seconds": 24,
+      "music_bed": {
+        "style_description": "cinematic underscore",
+        "duration_seconds": 24
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:04",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator An OLD MAN sleeps behind a curtained bed. One pale blue eye glints. Character_Narrator: Narrator, as described in the scr… / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b1",
+          "primary_subject": null,
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:04-00:13",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator NARRATOR (V.O.). OFF-CAMERA VOICEOVER Character_Narrator says \"I loved the old man. He had never wronged me. I think it was his eye! Yes, it was this!\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I loved the old man. He had never wronged me. I think it was his eye! Yes, it was this!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 9
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:13-00:17",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator The Narrator opens the door a crack. Lantern light crawls in. Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": null,
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:17-00:24",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator NARRATOR (V.O.). OFF-CAMERA VOICEOVER Character_Narrator says \"You should have seen how wisely I proceeded - with what caution - with what foresight.\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "You should have seen how wisely I proceeded - with what caution - with what foresight.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 7
+        }
+      ],
+      "stage1_scene_number": 2,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3",
+        "b4"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": []
+    },
+    {
+      "scene_number": 3,
+      "setting": "INT. CHAMBER - NIGHT - THE EIGHTH NIGHT",
+      "location_ids": [],
+      "primary_location_id": "Loc_Chamber_Night",
+      "characters_on_screen": [
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc03_chamber_night",
+      "transition_type": "cut",
+      "lighting_continuity_token": "consistent scene lighting",
+      "total_estimated_duration_seconds": 12,
+      "music_bed": {
+        "style_description": "cinematic underscore",
+        "duration_seconds": 12
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:04",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator The veiled eye opens. The Narrator's breath shakes. Character_Narrator: Narrator, as described in the scr… / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b1",
+          "primary_subject": null,
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:04-00:08",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator NARRATOR (whisper). OFF-CAMERA VOICEOVER Character_Narrator says \"It is the beating of his hideous heart!\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "It is the beating of his hideous heart!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:08-00:12",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber_Night",
+          "visual_prompt": "INT. CHAMBER - NIGHT - LATER. Character_Narrator A single terrible moment. Then stillness. Planks. Dark wood floor. Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": null,
+          "duration_seconds": 4
+        }
+      ],
+      "stage1_scene_number": 3,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": []
+    },
+    {
+      "scene_number": 4,
+      "setting": "INT. CHAMBER - DAY",
+      "location_ids": [],
+      "primary_location_id": "Loc_Chamber",
+      "characters_on_screen": [
+        "Character_Officer",
+        "Character_Narrator"
+      ],
+      "scene_filename": "sc04_chamber",
+      "transition_type": "cut",
+      "lighting_continuity_token": "consistent scene lighting",
+      "total_estimated_duration_seconds": 32,
+      "music_bed": {
+        "style_description": "cinematic underscore",
+        "duration_seconds": 32
+      },
+      "veo_clips": [
+        {
+          "clip_number": 1,
+          "timestamp": "00:00-00:06",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. also on screen: Character_Narrator. Character_Officer Three OFFICERS sit over the very boards. Polite. Suspecting nothing. Character_Officer: Match Officer as cast for this pro… / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b1",
+          "primary_subject": null,
+          "duration_seconds": 6
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:06-00:12",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Officer OFFICER speaks. OFF-CAMERA VOICEOVER Character_Officer says \"A cry was heard in the night. We were obliged to investigate.\". Character_Officer: Match Officer as cast for this pro…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Officer",
+            "dialogue": "A cry was heard in the night. We were obliged to investigate.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Officer",
+          "duration_seconds": 6
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:12-00:17",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator NARRATOR speaks. OFF-CAMERA VOICEOVER Character_Narrator says \"The old man is away in the country. Search - search well.\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "The old man is away in the country. Search - search well.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:17-00:22",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. also on screen: Character_Narrator. Character_Officer He smiles. The smile dies. A sound - soft at first - under the floor. Character_Officer: Match Officer as cast for this pro…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "none",
+            "speaker": "",
+            "dialogue": "",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": null,
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 5,
+          "timestamp": "00:22-00:32",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Chamber",
+          "visual_prompt": "INT. CHAMBER - NIGHT. Character_Narrator NARRATOR (CONT'D). OFF-CAMERA VOICEOVER Character_Narrator says \"Villains! Dissemble no more! I admit the deed! Tear up the planks! Here, here! - It is …\". Character_Narrator: Narrator, as described in the scr…. CONTINUE from previous last frame — same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+          "negative_prompt": "no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props",
+          "audio_payload": {
+            "delivery": "on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Villains! Dissemble no more! I admit the deed! Tear up the planks! Here, here! - It is the beating of his hideous heart!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Narrator",
+          "duration_seconds": 10
+        }
+      ],
+      "stage1_scene_number": 4,
+      "stage1_beat_map": [
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
+      ],
+      "video_provider_profile": "grok",
+      "spoiler_constraints": [],
+      "source_book_refs": []
+    }
+  ],
+  "stage2_meta": {
+    "source_screenplay": "screenplay.fountain",
+    "source_stage1": "screenplay.fountain",
+    "resolution": "480p",
+    "scene_filter": "all",
+    "planner": "Stage2PlannerService (C# Fountain)",
+    "prompt_soft_max": 500,
+    "prompt_hard_max": 800,
+    "screenplay_fingerprint": "3f0dd4a31cedfc5f",
+    "stage1_fingerprint": "3f0dd4a31cedfc5f",
+    "planned_at": "2026-07-19T14:45:25",
+    "total_duration_seconds": 93,
+    "total_clips": 16
+  }
+}

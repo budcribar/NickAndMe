@@ -1,0 +1,13 @@
+{
+  "name": "filmstudio-playwright",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "pilot": "node pilot-poe.mjs",
+    "pilot:headed": "cross-env HEADED=1 node pilot-poe.mjs",
+    "install:browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

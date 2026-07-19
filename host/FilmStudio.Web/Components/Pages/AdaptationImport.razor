@@ -18,6 +18,7 @@
                                class="form-control form-control-sm"
                                style="max-width: 22rem;"
                                accept=".fountain,.spmd,.pdf,.txt"
+                               data-testid="import-file-input"
                                disabled="@(_importing || Busy || JobRunning)" />
                     <div class="form-text">
                         Screenplay (.fountain), PDF, or .txt — starts as soon as you choose a file
@@ -74,8 +75,13 @@
                 }
                 else if (CanContinueToScreenplay)
                 {
-                    <a class="btn btn-success btn-sm" href="adaptation/screenplay">Continue to screenplay →</a>
+                    <a class="btn btn-success btn-sm" data-testid="import-continue-screenplay" href="adaptation/screenplay">Continue to screenplay →</a>
                 }
+                <div data-testid="import-status"
+                     data-importing="@(_importing ? "true" : "false")"
+                     data-can-continue="@(CanContinueToScreenplay ? "true" : "false")"
+                     class="visually-hidden"
+                     aria-hidden="true">@_importStatus</div>
             </div>
         </div>
     }

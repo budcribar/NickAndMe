@@ -46,6 +46,7 @@ else
     <div class="mb-3">
         <button type="button"
                 class="btn btn-primary btn-sm"
+                data-testid="characters-extract-cast"
                 disabled="@(_busy || JobRunning || _extractingCast)"
                 @onclick="ExtractCastAsync">
             @(_extractingCast ? "Building cast…" : "Build cast from screenplay")
@@ -61,6 +62,7 @@ else if (NeedsFindCharacters)
         @if (!PlateSortRunning)
         {
             <button type="button" class="btn btn-warning"
+                    data-testid="characters-find-plates"
                     disabled="@(_busy || JobRunning)"
                     @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
                 Find characters
@@ -103,13 +105,18 @@ else if (IsCastComplete && !JobRunning && !_extractingCast)
         @if (ActiveProject.CanScenes)
         {
             <span class="small text-muted">Next</span>
-            <a class="btn btn-sm btn-primary" href="scenes">Open Scenes →</a>
+            <a class="btn btn-sm btn-primary" data-testid="characters-to-scenes" href="scenes">Open Scenes →</a>
         }
         else
         {
             <span class="small text-muted">Next</span>
-            <a class="btn btn-sm btn-primary" href="adaptation/shots">Build shot plan →</a>
+            <a class="btn btn-sm btn-primary" data-testid="characters-to-shots" href="adaptation/shots">Build shot plan →</a>
         }
+        <div data-testid="characters-status"
+             data-cast-complete="@(IsCastComplete ? "true" : "false")"
+             data-has-cast="@(HasCast ? "true" : "false")"
+             class="visually-hidden"
+             aria-hidden="true"></div>
     </div>
 }
 

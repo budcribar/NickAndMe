@@ -46,11 +46,15 @@
 @* Job panel: skip on Import (progress lives in the Import card). Show on screenplay/shots. *@
 @if (ShowJobPanel)
 {
-    <div class="card mb-3 border-@(Host.Job!.Status == "running" ? "primary" : Host.Job.Status == "error" ? "danger" : "secondary")">
+    <div class="card mb-3 border-@(Host.Job!.Status == "running" ? "primary" : Host.Job.Status == "error" ? "danger" : "secondary")"
+         data-testid="job-panel"
+         data-job-status="@Host.Job.Status"
+         data-job-kind="@(Host.Job.Kind ?? "")"
+         data-job-running="@(Host.JobRunning ? "true" : "false")">
         <div class="card-body py-2">
             <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
                 <div>
-                    <span class="badge bg-secondary">@Host.Job.Status</span>
+                    <span class="badge bg-secondary" data-testid="job-status">@Host.Job.Status</span>
                     @if (Host.Job.Kind is { Length: > 0 } k)
                     {
                         <span class="badge bg-info text-dark ms-1">@AdaptationPageBase.JobKindLabel(k)</span>

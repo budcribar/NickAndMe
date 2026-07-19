@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -66,9 +65,11 @@ public static class ClipSilenceTrimmer
         try
         {
             if (File.Exists(tmp)) File.Delete(tmp);
+            // -nostats -loglevel error: less pipe noise; still drain both streams in FfmpegProcess
             var ok = await RunFfmpegAsync(
                 ffmpegPath,
-                $"-y -i \"{videoPath}\" -t {cutAt.Value.ToString("0.###", CultureInfo.InvariantCulture)} " +
+                $"-hide_banner -nostats -loglevel error -y -i \"{videoPath}\" " +
+                $"-t {cutAt.Value.ToString("0.###", CultureInfo.InvariantCulture)} " +
                 $"-c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k -movflags +faststart \"{tmp}\"",
                 ct).ConfigureAwait(false);
             if (!ok || !File.Exists(tmp) || new FileInfo(tmp).Length < 1024)
@@ -176,24 +177,13 @@ public static class ClipSilenceTrimmer
         double minSilenceSec,
         CancellationToken ct)
     {
-        // silencedetect writes to stderr
+        // silencedetect writes to stderr; drain both pipes (avoid deadlock)
         var args =
-            $"-hide_banner -i \"{videoPath}\" -af silencedetect=noise={noiseDb.ToString(CultureInfo.InvariantCulture)}dB:" +
+            $"-hide_banner -nostats -i \"{videoPath}\" -af silencedetect=noise={noiseDb.ToString(CultureInfo.InvariantCulture)}dB:" +
             $"d={minSilenceSec.ToString(CultureInfo.InvariantCulture)} -f null -";
-        var psi = new ProcessStartInfo
-        {
-            FileName = ffmpegPath,
-            Arguments = args,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        using var proc = Process.Start(psi);
-        if (proc is null) return "";
-        var err = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-        await proc.WaitForExitAsync(ct).ConfigureAwait(false);
-        return err;
+        var r = await FfmpegProcess.RunAsync(ffmpegPath, args, ct, timeoutMs: 60_000)
+            .ConfigureAwait(false);
+        return r.StdErr;
     }
 
     private static async Task<double?> ProbeDurationAsync(
@@ -203,19 +193,13 @@ public static class ClipSilenceTrimmer
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = ffmpegPath,
-                Arguments = $"-hide_banner -i \"{videoPath}\"",
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            using var proc = Process.Start(psi);
-            if (proc is null) return null;
-            var err = await proc.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
-            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            var r = await FfmpegProcess.RunAsync(
+                    ffmpegPath,
+                    $"-hide_banner -i \"{videoPath}\"",
+                    ct,
+                    timeoutMs: 30_000)
+                .ConfigureAwait(false);
+            var err = r.StdErr;
             var m = DurationRe.Match(err);
             if (!m.Success) return null;
             var h = int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture);
@@ -231,19 +215,10 @@ public static class ClipSilenceTrimmer
 
     private static async Task<bool> RunFfmpegAsync(string ffmpegPath, string args, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = ffmpegPath,
-            Arguments = args,
-            RedirectStandardError = true,
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        using var proc = Process.Start(psi);
-        if (proc is null) return false;
-        await proc.WaitForExitAsync(ct).ConfigureAwait(false);
-        return proc.ExitCode == 0;
+        // Re-encode can take a while on long clips; 3 min cap
+        var r = await FfmpegProcess.RunAsync(ffmpegPath, args, ct, timeoutMs: 180_000)
+            .ConfigureAwait(false);
+        return r.Success;
     }
 
     public readonly record struct TrimResult(bool Trimmed, double? BeforeSec, double? AfterSec, string Message)

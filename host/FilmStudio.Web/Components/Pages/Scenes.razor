@@ -69,8 +69,8 @@ else
         <input class="form-control" @bind="_filter" @bind:event="oninput" disabled="@_busy" placeholder="e.g. pajamas" />
     </div>
     <div class="col-md-3 d-flex gap-2 flex-wrap">
-        <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ReloadListAsync">Reload</button>
-        <button class="btn btn-success" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
+        <button class="btn btn-outline-secondary" data-testid="scenes-reload" disabled="@_busy" @onclick="ReloadListAsync">Reload</button>
+        <button class="btn btn-success" data-testid="scenes-play-wip" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
                 @onclick="PlayWipAsync"
                 title="@WipPlayTitle">
             @(_showWipPlayer && _wipExists && !_wipStale ? "Hide WIP" : _wipStale || !_wipExists ? "▶ Play WIP (refresh)" : "▶ Play WIP")
@@ -340,6 +340,7 @@ else if (Session.IsAdmin && _job is not null &&
                     <div class="d-flex align-items-center gap-1">
                         <label class="small text-muted mb-0" for="genResBatch">Resolution</label>
                         <select id="genResBatch"
+                                data-testid="scenes-resolution"
                                 class="form-select form-select-sm"
                                 style="width:auto"
                                 @bind="_genResolution"
@@ -351,6 +352,7 @@ else if (Session.IsAdmin && _job is not null &&
                     </div>
 
                     <button type="button"
+                            data-testid="scenes-generate-batch"
                             class="btn batch-go @(_selected.Count > 0 && !JobRunning ? "batch-go--ready" : "")"
                             disabled="@(_busy || _selected.Count == 0 || JobRunning || (_onlyMissing && EstimateSelectedClips() == 0) || SelectedLockedByOther)"
                             title="@(SelectedLockedByOther ? "Selection includes scenes locked by another user" : null)"
@@ -478,6 +480,8 @@ else if (Session.IsAdmin && _job is not null &&
                                         ▶
                                     </button>
                                     <button class="btn btn-sm batch-row-gen"
+                                            data-testid="@($"scenes-gen-{sn}")"
+                                            data-scene="@sn"
                                             disabled="@(_busy || JobRunning || s.LockedByOther)"
                                             title="@(s.LockedByOther ? $"Locked by {s.LockOwnerUserId}" : "Generate this scene")"
                                             @onclick="() => GenOneSceneAsync(sn)">

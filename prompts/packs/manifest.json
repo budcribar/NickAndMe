@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "activeGenPackId": "gen-v1",
+  "activeAutoReviewPackId": "auto_review-v1",
+  "packs": [
+    {
+      "id": "gen-v1",
+      "kind": "gen",
+      "version": "1",
+      "relativePath": "prompts/packs/gen-v1.txt",
+      "active": true,
+      "updatedAt": "2026-07-19T20:27:09.3871079+00:00",
+      "notes": "Default video gen addendum (house rules \u002B continuity)."
+    },
+    {
+      "id": "auto_review-v1",
+      "kind": "auto_review",
+      "version": "1",
+      "relativePath": "prompts/packs/auto_review-v1.txt",
+      "active": true,
+      "updatedAt": "2026-07-19T20:27:09.389286+00:00",
+      "notes": "Default auto-review QC instructions addendum."
+    }
+  ]
+}

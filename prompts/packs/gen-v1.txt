@@ -1,0 +1,7 @@
+# Film Studio gen pack (active addendum)
+
+Apply these house rules when building clip video prompts:
+- Dialogue clips must have audible speech and visible lip motion for the speaker; never silent mouths on dialogue.
+- Continuity: when extending from previous clip, match wardrobe, place, and facing from the last frames.
+- Respect VOICE LOCK and character visual locks exactly.
+- Prefer tight action after speech; avoid long empty holds.

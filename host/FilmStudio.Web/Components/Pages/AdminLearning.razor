@@ -176,7 +176,7 @@
             <div class="card-body small">
                 <div class="d-flex flex-wrap gap-2 mb-2">
                     <input type="number" class="form-control form-control-sm" style="max-width:6rem" @bind="_proposeN" min="5" max="200" />
-                    <button class="btn btn-sm btn-primary" disabled="@_busy" @onclick="ProposeAsync">Propose from last N fails</button>
+                    <button class="btn btn-sm btn-primary" data-testid="learning-propose" disabled="@_busy" @onclick="ProposeAsync">Propose from last N fails</button>
                 </div>
                 @if (!string.IsNullOrEmpty(_proposal))
                 {
@@ -191,10 +191,10 @@
                 <div class="d-flex flex-wrap gap-2 mb-2 align-items-end">
                     <div>
                         <label class="form-label small mb-0">Project</label>
-                        <input class="form-control form-control-sm" @bind="_rulesProject" placeholder="project id" />
+                        <input class="form-control form-control-sm" data-testid="learning-rules-project" @bind="_rulesProject" placeholder="project id" />
                     </div>
-                    <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="LoadRulesAsync">Load</button>
-                    <button class="btn btn-sm btn-outline-secondary" disabled="@(_busy || string.IsNullOrWhiteSpace(_rulesProject))"
+                    <button class="btn btn-sm btn-outline-primary" data-testid="learning-rules-load" disabled="@_busy" @onclick="LoadRulesAsync">Load</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-testid="learning-rules-suggest" disabled="@(_busy || string.IsNullOrWhiteSpace(_rulesProject))"
                             @onclick="SuggestRulesAsync">Suggest from fails</button>
                 </div>
                 @if (_rules is not null)
@@ -229,9 +229,9 @@
                                     <div><code>@s.Category</code> · @s.FailCount fails</div>
                                     <div class="mb-1">@s.Text</div>
                                     <div class="text-muted mb-1">@s.Rationale</div>
-                                    <button class="btn btn-sm btn-success me-1" disabled="@_busy"
+                                    <button class="btn btn-sm btn-success me-1" data-testid="@($"learning-approve-{s.Id}")" data-rule-id="@s.Id" disabled="@_busy"
                                             @onclick="() => ApproveRuleAsync(s.Id)">Approve</button>
-                                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy"
+                                    <button class="btn btn-sm btn-outline-danger" data-testid="@($"learning-reject-{s.Id}")" data-rule-id="@s.Id" disabled="@_busy"
                                             @onclick="() => RejectRuleAsync(s.Id)">Reject</button>
                                 </div>
                             }

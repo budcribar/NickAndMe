@@ -75,6 +75,7 @@
                 <div class="alert alert-light border small mb-2">
                     You have book text ready.
                     <button class="btn btn-sm btn-outline-primary ms-1"
+                            data-testid="screenplay-from-book"
                             disabled="@(Busy || JobRunning)"
                             @onclick="CreateFromBookAsync">
                         Create draft from book
@@ -120,15 +121,23 @@
                     </details>
                     <span class="flex-grow-1"></span>
                     <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-testid="screenplay-save"
                             disabled="@(Busy || JobRunning || !_dirtyLocal)"
                             @onclick="() => SaveDraftAsync(manual: true)">
                         Save draft
                     </button>
                     <button type="button" class="btn btn-success btn-sm"
+                            data-testid="screenplay-signoff"
                             disabled="@(Busy || JobRunning || string.IsNullOrWhiteSpace(_text))"
                             @onclick="SignOffAsync">
                         Looks good — continue
                     </button>
+                    <div data-testid="screenplay-status"
+                         data-signed="@(_screenplayStatus?.Signed == true && _screenplayStatus.Dirty != true ? "true" : "false")"
+                         data-draft="@(!string.IsNullOrWhiteSpace(_text) ? "true" : "false")"
+                         data-scenes="@_sceneCount"
+                         class="visually-hidden"
+                         aria-hidden="true"></div>
                 </div>
 
                 <div class="fe-main @(_scenesExpanded ? "fe-scenes-expanded" : "")">

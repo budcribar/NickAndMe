@@ -47,17 +47,24 @@
 
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <button class="btn btn-primary"
+                            data-testid="shots-build"
                             disabled="@(Busy || JobRunning || !Status.Stage2.Stage1Exists)"
                             @onclick="RunShotsAsync">
                         @(Status.Stage2.Stage2Ready
                             ? (Status.Stage2.Stage2Stale ? "▶ Update shot plan" : "🔁 Rebuild shot plan")
                             : "▶ Build shot plan")
                     </button>
-                    <a class="btn btn-outline-secondary" href="characters">← Characters</a>
+                    <a class="btn btn-outline-secondary" data-testid="shots-to-characters" href="characters">← Characters</a>
                     @if (Status.Stage2.Stage2Ready && !Status.Stage2.Stage2Stale)
                     {
-                        <a class="btn btn-outline-primary" href="scenes">Open Scenes →</a>
+                        <a class="btn btn-outline-primary" data-testid="shots-to-scenes" href="scenes">Open Scenes →</a>
                     }
+                    <div data-testid="shots-status"
+                         data-ready="@(Status.Stage2.Stage2Ready && !Status.Stage2.Stage2Stale ? "true" : "false")"
+                         data-scenes="@Status.Stage2.Stage2Scenes"
+                         data-clips="@Status.Stage2.Stage2Clips"
+                         class="visually-hidden"
+                         aria-hidden="true"></div>
                     <a class="btn btn-outline-secondary" href="adaptation/screenplay">Screenplay</a>
                 </div>
             </div>

@@ -1,0 +1,7 @@
+# Film Studio auto-review pack (QC addendum)
+
+When reviewing clips:
+- Always judge start of current clip against previous clip tail when provided.
+- Flag silent dialogue, identity drift, and hard continuity jumps as fail when confidence is high.
+- Prefer clip visual_prompt rewrites over character rewrites unless look/voice is clearly wrong for the whole cast member.
+- Keep Character_* keys intact in suggestions.
