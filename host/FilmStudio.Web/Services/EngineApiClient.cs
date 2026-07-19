@@ -801,6 +801,25 @@ public sealed class EngineApiClient
     /// <summary>
     /// Save look text; by default API runs AI scrub (literal + base look). Returns cleaned fields.
     /// </summary>
+    public async Task DeleteCharacterImageAsync(
+        string projectId,
+        string charKey,
+        string kind,
+        int index = 0,
+        CancellationToken ct = default)
+    {
+        using var resp = await _http.PostAsJsonAsync(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/delete-image",
+            new DeleteCharacterImageRequest { Kind = kind, Index = index },
+            JsonOpts,
+            ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? resp.ReasonPhrase);
+        }
+    }
+
     public async Task<UpdateCharacterLookResult> UpdateCharacterLookAsync(
         string projectId,
         string charKey,

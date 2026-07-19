@@ -41,11 +41,19 @@ public static class JobListHelpers
     public static JobSnapshot? PickPrimary(IReadOnlyList<JobSnapshot>? jobs)
     {
         if (jobs is null || jobs.Count == 0) return null;
+        // Prefer active work over finished: running → queued → newest finished.
+        // Without "queued", a second generate briefly surfaces the previous done job
+        // (Index==Total) and the progress bar looks stuck full.
         var running = jobs
             .Where(j => string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
             .FirstOrDefault();
         if (running is not null) return running;
+        var queued = jobs
+            .Where(j => string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(j => j.QueuedAt)
+            .FirstOrDefault();
+        if (queued is not null) return queued;
         return jobs
             .OrderByDescending(j => j.FinishedAt ?? j.StartedAt ?? j.QueuedAt)
             .FirstOrDefault();
@@ -328,6 +336,13 @@ public sealed class UpdateCharacterLookResult
     public string? VisualLock { get; set; }
     public string? Message { get; set; }
     public string? Error { get; set; }
+}
+
+/// <summary>Delete preferred, variant, or book-ref picture for a character.</summary>
+public sealed class DeleteCharacterImageRequest
+{
+    public string Kind { get; set; } = ""; // preferred | variant | bookref
+    public int Index { get; set; }
 }
 
 public sealed class SceneSummary

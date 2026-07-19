@@ -500,23 +500,71 @@ public sealed class CharacterDesignService
 
     private void FinalizeLock(string projectId, string charKey, string destPath, string changeNote)
     {
-        var projectDir = _projects.GetProjectDir(projectId);
-        // Clear open variants so UI focuses on lock
-        for (var i = 1; i <= 3; i++)
-        {
-            var vp = Path.Combine(
-                projectDir, "assets", "characters",
-                $"{charKey.ToLowerInvariant()}_variant_0{i}.png");
-            try
-            {
-                if (File.Exists(vp)) File.Delete(vp);
-            }
-            catch { /* ignore */ }
-        }
-
+        // Keep generated variants on disk so they stay available as reference tiles
+        // for the next regenerate (preferred lock is a separate *_ref.png copy).
         _projects.UpdateCharacterSeedPlaceholder(projectId, charKey, ProjectStore.CharacterRefFileName(charKey));
         _projects.MarkCharacterChanged(projectId, charKey, changeNote);
         _ = destPath;
+    }
+
+    /// <summary>
+    /// Delete a character reference image: preferred lock, generated variant, or book plate.
+    /// Book plates are also removed from cast seed design_reference_images.
+    /// </summary>
+    public void DeleteImage(string projectId, string charKey, string kind, int index = 0)
+    {
+        var seeds = _projects.GetCharacterSeed(projectId, charKey)
+            ?? throw new InvalidOperationException($"Unknown character: {charKey}");
+        if (IsVoiceOnly(charKey, seeds))
+            throw new InvalidOperationException($"{charKey} is voice-only — no image to delete.");
+
+        var projectDir = _projects.GetProjectDir(projectId);
+        var charDir = Path.Combine(projectDir, "assets", "characters");
+        var k = (kind ?? "").Trim().ToLowerInvariant();
+
+        if (k is "preferred" or "p" or "ref" or "lock" or "locked")
+        {
+            foreach (var name in ProjectStore.CharacterRefFileCandidates(charKey))
+            {
+                var full = Path.Combine(charDir, name);
+                try { if (File.Exists(full)) File.Delete(full); } catch { /* ignore */ }
+            }
+            _projects.UpdateCharacterSeedPlaceholder(projectId, charKey, "");
+            _projects.MarkCharacterChanged(projectId, charKey, "Deleted preferred/locked picture");
+            return;
+        }
+
+        if (k is "variant" or "v")
+        {
+            var i = Math.Clamp(index, 1, 9);
+            var full = Path.Combine(charDir, $"{charKey.ToLowerInvariant()}_variant_0{i}.png");
+            if (!File.Exists(full))
+                throw new InvalidOperationException($"Variant {i} not found.");
+            File.Delete(full);
+            _projects.MarkCharacterChanged(projectId, charKey, $"Deleted variant {i}");
+            return;
+        }
+
+        if (k is "book" or "bookref" or "b")
+        {
+            // Seed paths are 0-based indices into design_reference_images
+            _projects.RemoveCharacterBookRef(projectId, charKey, index);
+            // Also delete common bookref filename if present
+            var prefix = charKey.ToLowerInvariant() + "_bookref_";
+            // index is 0-based in seeds; files are 1-based bookref_1
+            var fileIdx = index + 1;
+            if (Directory.Exists(charDir))
+            {
+                foreach (var fi in new DirectoryInfo(charDir).GetFiles($"{prefix}{fileIdx}.*"))
+                {
+                    try { fi.Delete(); } catch { /* ignore */ }
+                }
+            }
+            _projects.MarkCharacterChanged(projectId, charKey, $"Deleted book picture {index}");
+            return;
+        }
+
+        throw new InvalidOperationException($"Unknown image kind: {kind}");
     }
 
     /// <summary>

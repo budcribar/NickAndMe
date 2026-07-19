@@ -1,9 +1,12 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FilmStudio.Core.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SkiaSharp;
 
 using FilmStudio.Engine.Abstractions;
 
@@ -104,14 +107,12 @@ public sealed class GrokImageClient : IGrokImageClient
         if (refs.Count == 0)
             throw new InvalidOperationException("No usable reference images for character edit.");
 
-        // xAI /v1/images/edits expects image as:
-        //   - string data URI / URL (single), or
-        //   - array of strings (multi-ref, up to 3)
-        // Objects like { "url": "...", "type": "image_url" } work in some curl samples for
-        // single-image only; multi-ref rejects maps with 422 "image[0]: expected a string".
+        // Downscale book plates — three full-page PNGs as data URIs (~7MB+) often fail;
+        // two can succeed by luck under the request size limit.
         var imageUris = new List<string>(refs.Count);
         foreach (var path in refs)
-            imageUris.Add(await FileToDataUriAsync(path, ct).ConfigureAwait(false));
+            imageUris.Add(await FileToDataUriAsync(path, ct, maxEdge: 1024, jpegQuality: 85)
+                .ConfigureAwait(false));
 
         var images = new List<byte[]>();
         for (var i = 0; i < n; i++)
@@ -119,10 +120,8 @@ public sealed class GrokImageClient : IGrokImageClient
             ct.ThrowIfCancellationRequested();
             onProgress?.Invoke($"edit variant {i + 1}/{n}");
 
-            // Multi-ref: first image = identity (preferred), later = book style plates
             var orderHint = imageUris.Count > 1
-                ? "Image 1 = identity + art-style lock (highest priority). " +
-                  "Images 2+ = same character for markings/style only — not a new costume or photo style. "
+                ? BuildMultiImageOrderHint(imageUris.Count)
                 : "Match the attached reference identity AND illustration style (highest priority over text). ";
             var variantTail = n > 1
                 ? $" Variation {i + 1} of {n}: tiny pose/expression change only; " +
@@ -136,34 +135,125 @@ public sealed class GrokImageClient : IGrokImageClient
                 "If refs show no clothing, do not invent costumes. " +
                 "No labels, no redesign, no model sheet.";
 
-            // Always send string(s) — single as string, multi as string[]
-            object imageField = imageUris.Count == 1
-                ? imageUris[0]
-                : imageUris.ToArray();
-
-            var payload = new Dictionary<string, object?>
-            {
-                ["model"] = modelName,
-                ["prompt"] = variantPrompt,
-                ["response_format"] = "b64_json",
-                ["aspect_ratio"] = aspectRatio,
-                // Keep order: preferred first (caller must sort)
-                ["image"] = imageField,
-            };
-
-            using var resp = await _http.PostAsJsonAsync("images/edits", payload, ct);
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            if (!resp.IsSuccessStatusCode)
+            var body = await PostImageEditAsync(
+                modelName, variantPrompt, aspectRatio, imageUris, onProgress, ct)
+                .ConfigureAwait(false);
+            if (body is null)
                 throw new InvalidOperationException(
-                    $"Grok image edits HTTP {(int)resp.StatusCode} (variant {i + 1}): {Trim(body, 400)}");
+                    $"Image edit failed (variant {i + 1}): empty response");
 
             var batch = ParseImageResponse(body, 1, $"edits variant {i + 1}");
             images.AddRange(batch);
         }
 
         if (images.Count < 1)
-            throw new InvalidOperationException("Grok image edit returned no variants.");
+            throw new InvalidOperationException("Image edit returned no variants.");
         return images.Take(n).ToList();
+    }
+
+    /// <summary>
+    /// xAI multi-image: use <c>images</c> (array of data URI strings), mutually exclusive with <c>image</c>.
+    /// Prompt cites &lt;IMAGE_0&gt;, &lt;IMAGE_1&gt;, … Single-image keeps <c>image</c> as a string / {url}.
+    /// </summary>
+    private async Task<string?> PostImageEditAsync(
+        string modelName,
+        string variantPrompt,
+        string aspectRatio,
+        IReadOnlyList<string> imageUris,
+        Action<string>? onProgress,
+        CancellationToken ct)
+    {
+        async Task<(bool Ok, int Code, string Body)> SendAsync(JsonObject payload)
+        {
+            using var content = new StringContent(
+                payload.ToJsonString(),
+                Encoding.UTF8,
+                "application/json");
+            using var resp = await _http.PostAsync("images/edits", content, ct).ConfigureAwait(false);
+            var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            return (resp.IsSuccessStatusCode, (int)resp.StatusCode, body);
+        }
+
+        JsonObject BasePayload() => new()
+        {
+            ["model"] = modelName,
+            ["prompt"] = variantPrompt,
+            ["response_format"] = "b64_json",
+            ["aspect_ratio"] = aspectRatio,
+        };
+
+        if (imageUris.Count > 1)
+        {
+            // Primary multi-ref shape per xAI: "images": [ dataUri, ... ]
+            var arr = new JsonArray();
+            foreach (var u in imageUris)
+                arr.Add(u);
+            var multi = BasePayload();
+            multi["images"] = arr;
+            var (ok, _, body) = await SendAsync(multi).ConfigureAwait(false);
+            if (ok) return body;
+
+            // Fallback: "image" as string[] (older / alternate parsers)
+            var alt = BasePayload();
+            alt["image"] = arr.DeepClone();
+            var (ok2, _, body2) = await SendAsync(alt).ConfigureAwait(false);
+            if (ok2) return body2;
+
+            // Last resort: drop last ref(s) so 3→2 still produces a portrait
+            if (imageUris.Count >= 3)
+            {
+                onProgress?.Invoke(
+                    $"3 reference images rejected by API — retrying with first 2…");
+                var two = imageUris.Take(2).ToList();
+                var prompt2 = variantPrompt
+                    .Replace("<IMAGE_2>", "", StringComparison.Ordinal)
+                    .Replace("Image 3", "Image 2", StringComparison.OrdinalIgnoreCase);
+                // Rebuild shorter multi prompt tip
+                prompt2 = BuildMultiImageOrderHint(2) +
+                          // strip old multi-hint if present by only using short prompt tail after first period? keep full
+                          variantPrompt;
+                // Simpler: just use 2-image order hint + original user prompt body
+                var cut = variantPrompt.IndexOf("CHARACTER CONTINUITY", StringComparison.OrdinalIgnoreCase);
+                if (cut < 0)
+                    cut = variantPrompt.IndexOf("IDENTITY", StringComparison.OrdinalIgnoreCase);
+                var core = cut >= 0 ? variantPrompt[cut..] : variantPrompt;
+                prompt2 = BuildMultiImageOrderHint(2) + core;
+
+                return await PostImageEditAsync(
+                    modelName, prompt2, aspectRatio, two, onProgress, ct).ConfigureAwait(false);
+            }
+
+            throw new InvalidOperationException(
+                $"Image edit failed: {Trim(body.Length > 0 ? body : body2, 400)}");
+        }
+
+        // Single image: "image" as data-URI string, then { "url": ... }
+        {
+            var p = BasePayload();
+            p["image"] = imageUris[0];
+            var (ok, _, body) = await SendAsync(p).ConfigureAwait(false);
+            if (ok) return body;
+
+            var p2 = BasePayload();
+            p2["image"] = new JsonObject { ["url"] = imageUris[0] };
+            var (ok2, _, body2) = await SendAsync(p2).ConfigureAwait(false);
+            if (ok2) return body2;
+
+            throw new InvalidOperationException(
+                $"Image edit failed: {Trim(body2.Length > 0 ? body2 : body, 400)}");
+        }
+    }
+
+    private static string BuildMultiImageOrderHint(int count)
+    {
+        var sb = new StringBuilder();
+        sb.Append("Multi-reference edit. ");
+        for (var i = 0; i < count; i++)
+            sb.Append($"<IMAGE_{i}> is reference {i + 1}. ");
+        sb.Append("<IMAGE_0> is the identity / style lock (highest priority). ");
+        if (count > 1)
+            sb.Append("Later images are the SAME character for markings and style only. ");
+        return sb.ToString();
     }
 
     private static List<byte[]> ParseImageResponse(string json, int n, string label)
@@ -197,33 +287,67 @@ public sealed class GrokImageClient : IGrokImageClient
     }
 
     /// <summary>
-    /// Encode a local image as a data URI without third-party image libraries
-    /// (ImageSharp is dual-licensed; we stay dependency-free here).
-    /// Oversized book plates may need pre-downscaling offline if the API rejects them.
+    /// Encode a local image as a data URI. Large book pages are downscaled (Skia)
+    /// so multi-ref edits (up to 3) stay under API body limits.
     /// </summary>
-    private async Task<string> FileToDataUriAsync(string path, CancellationToken ct)
+    private async Task<string> FileToDataUriAsync(
+        string path,
+        CancellationToken ct,
+        int maxEdge = 1280,
+        int jpegQuality = 88)
     {
-        const long warnBytes = 2_500_000; // ~2.5 MB raw
-        var info = new FileInfo(path);
-        if (info.Length > warnBytes)
+        var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        try
         {
-            _log.LogWarning(
-                "Reference image {Path} is {Kb:0} KB — sending without resize. " +
-                "If the API rejects it, downscale the book plate offline first.",
-                path, info.Length / 1024.0);
-        }
+            using var original = SKBitmap.Decode(bytes);
+            if (original is null)
+                return $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
 
-        var bytes = await File.ReadAllBytesAsync(path, ct);
-        var ext = Path.GetExtension(path).ToLowerInvariant();
-        var mime = ext switch
+            var w = original.Width;
+            var h = original.Height;
+            var edge = Math.Max(w, h);
+            SKBitmap work = original;
+            SKBitmap? scaled = null;
+            if (edge > maxEdge && edge > 0)
+            {
+                var scale = maxEdge / (float)edge;
+                var nw = Math.Max(1, (int)Math.Round(w * scale));
+                var nh = Math.Max(1, (int)Math.Round(h * scale));
+                scaled = original.Resize(new SKImageInfo(nw, nh), SKFilterQuality.Medium);
+                if (scaled is not null)
+                    work = scaled;
+            }
+
+            using (scaled)
+            using (var image = SKImage.FromBitmap(work))
+            using (var data = image.Encode(SKEncodedImageFormat.Jpeg, jpegQuality))
+            {
+                if (data is null)
+                    return $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+                var encoded = data.ToArray();
+                if (encoded.Length < bytes.Length || edge > maxEdge)
+                {
+                    _log.LogDebug(
+                        "Ref {File}: {SrcKb:0} KB → {DstKb:0} KB (maxEdge={Edge})",
+                        Path.GetFileName(path), bytes.Length / 1024.0, encoded.Length / 1024.0, maxEdge);
+                }
+                return $"data:image/jpeg;base64,{Convert.ToBase64String(encoded)}";
+            }
+        }
+        catch (Exception ex)
         {
-            ".png" => "image/png",
-            ".webp" => "image/webp",
-            ".gif" => "image/gif",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            _ => "image/jpeg",
-        };
-        return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            _log.LogWarning(ex, "Could not re-encode {Path}; sending original bytes", path);
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            var mime = ext switch
+            {
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                _ => "image/jpeg",
+            };
+            return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+        }
     }
 
     private void EnsureAuthHeader()

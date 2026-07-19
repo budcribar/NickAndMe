@@ -1,3 +1,114 @@
+.char-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+}
+
+.char-list-name {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.char-list-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 0.35rem;
+    object-fit: cover;
+    background: #f1f3f5;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+}
+
+.char-list-thumb--empty,
+.char-list-thumb--voice,
+.char-list-thumb--voice-missing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Red = needs work; green = ready */
+.char-list-thumb--empty {
+    background: #f8d7da;
+    border-color: #dc3545;
+}
+
+.char-list-thumb--empty .char-list-thumb__icon {
+    color: #842029;
+}
+
+.char-list-thumb--voice {
+    background: #d1e7dd;
+    border-color: #198754;
+}
+
+.char-list-thumb--voice .char-list-thumb__icon {
+    color: #0f5132;
+}
+
+.char-list-thumb--voice-missing {
+    background: #f8d7da;
+    border-color: #dc3545;
+}
+
+.char-list-thumb--voice-missing .char-list-thumb__icon {
+    color: #842029;
+}
+
+/* On-screen cast with a picture but no voice_profile */
+.char-list-voice-miss {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 0.3rem;
+    background: #f8d7da;
+    border: 1px solid #dc3545;
+    color: #842029;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.char-list-thumb__icon {
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #495057;
+    user-select: none;
+}
+
+.list-group-item.active .char-list-thumb--empty,
+.list-group-item.active .char-list-thumb--voice-missing {
+    background: rgba(248, 215, 218, 0.95);
+    border-color: rgba(220, 53, 69, 0.9);
+}
+
+.list-group-item.active .char-list-thumb--empty .char-list-thumb__icon,
+.list-group-item.active .char-list-thumb--voice-missing .char-list-thumb__icon {
+    color: #842029;
+}
+
+.list-group-item.active .char-list-thumb--voice {
+    background: rgba(209, 231, 221, 0.95);
+    border-color: rgba(25, 135, 84, 0.9);
+}
+
+.list-group-item.active .char-list-thumb--voice .char-list-thumb__icon {
+    color: #0f5132;
+}
+
+.list-group-item.active .char-list-voice-miss {
+    background: rgba(248, 215, 218, 0.95);
+    border-color: rgba(220, 53, 69, 0.9);
+    color: #842029;
+}
+
 .char-seed-tile-wrap {
     position: relative;
     display: inline-block;
@@ -333,4 +444,45 @@
 .char-panel-toggle:focus-visible {
     outline: 2px solid #1b6ec2;
     outline-offset: -2px;
+}
+
+.char-pick__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.65rem;
+}
+
+.char-pick__card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    background: #fff;
+    cursor: pointer;
+}
+
+.char-pick__card:hover:not(:disabled) {
+    border-color: #1b6ec2;
+    box-shadow: 0 0 0 1px rgba(27, 110, 194, 0.25);
+}
+
+.char-pick__card:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.char-pick__card img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    background: #f8f9fa;
+    border-radius: 0.35rem;
+}
+
+.char-pick__card span {
+    font-size: 0.8rem;
+    color: #495057;
 }

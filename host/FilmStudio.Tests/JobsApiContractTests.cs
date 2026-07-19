@@ -21,6 +21,19 @@ public class JobsApiContractTests
     }
 
     [Fact]
+    public void PickPrimary_prefers_queued_over_done()
+    {
+        var jobs = new List<JobSnapshot>
+        {
+            new() { JobId = "done", Status = "done", Index = 3, Total = 3, FinishedAt = DateTimeOffset.UtcNow },
+            new() { JobId = "queued", Status = "queued", Index = 0, Total = 0, QueuedAt = DateTimeOffset.UtcNow },
+        };
+        var p = JobListHelpers.PickPrimary(jobs);
+        Assert.Equal("queued", p!.JobId);
+        Assert.Equal(0, p.Index);
+    }
+
+    [Fact]
     public void PickPrimary_falls_back_to_newest_finished()
     {
         var older = DateTimeOffset.UtcNow.AddMinutes(-10);

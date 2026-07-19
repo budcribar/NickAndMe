@@ -1010,6 +1010,69 @@ public sealed class ProjectStore
         return map;
     }
 
+    /// <summary>
+    /// Remove one design_reference_images / book_reference_images entry by 0-based index
+    /// from cast_seeds (and blueprint / scenes when present).
+    /// </summary>
+    public void RemoveCharacterBookRef(string projectId, string charKey, int index)
+    {
+        void PatchSeedsObject(System.Text.Json.Nodes.JsonObject seeds)
+        {
+            System.Text.Json.Nodes.JsonObject? seed = null;
+            string? foundKey = null;
+            foreach (var (k, v) in seeds)
+            {
+                if (string.Equals(k, charKey, StringComparison.OrdinalIgnoreCase) &&
+                    v is System.Text.Json.Nodes.JsonObject jo)
+                {
+                    seed = jo;
+                    foundKey = k;
+                    break;
+                }
+            }
+            if (seed is null || foundKey is null) return;
+
+            foreach (var prop in new[] { "design_reference_images", "book_reference_images" })
+            {
+                if (seed[prop] is not System.Text.Json.Nodes.JsonArray arr) continue;
+                if (index < 0 || index >= arr.Count) continue;
+                arr.RemoveAt(index);
+            }
+            seeds[foundKey] = seed;
+        }
+
+        void PatchFile(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return;
+                var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))
+                           as System.Text.Json.Nodes.JsonObject;
+                if (root is null) return;
+                System.Text.Json.Nodes.JsonObject? seeds = null;
+                if (root["character_seed_tokens"] is System.Text.Json.Nodes.JsonObject direct)
+                    seeds = direct;
+                else if (root["global_production_variables"] is System.Text.Json.Nodes.JsonObject gpv &&
+                         gpv["character_seed_tokens"] is System.Text.Json.Nodes.JsonObject nested)
+                    seeds = nested;
+                if (seeds is null) return;
+                PatchSeedsObject(seeds);
+                File.WriteAllText(path, root.ToJsonString(JsonDefaults.Indented) + "\n");
+            }
+            catch { /* non-fatal */ }
+        }
+
+        PatchFile(ScreenplayService.GetCastSeedsPath(this, projectId));
+        var castAlias = Path.Combine(GetProjectDir(projectId), "source", "cast.json");
+        PatchFile(castAlias);
+        var bp = FindBlueprintPathSync(projectId);
+        if (bp is not null) PatchFile(bp);
+        var legacy = ResolveScenesJsonPath(projectId);
+        if (File.Exists(legacy)) PatchFile(legacy);
+        InvalidateSceneListCache(projectId);
+        InvalidateReadCaches(projectId);
+    }
+
     public void UpdateCharacterSeedPlaceholder(string projectId, string charKey, string refFileName)
     {
         var bpPath = FindBlueprintPathSync(projectId);

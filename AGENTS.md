@@ -37,6 +37,24 @@ Buster (and other fixtures) are **eval / demo projects**, not product requiremen
 Apply to **workflow pages** users operate day to day: Adaptation, Characters, Scenes, Review, Home, Cost, and similar.  
 **Configuration** (and a dedicated connection/settings area) may name providers and models when the user is *choosing* them.
 
+### 0. No commentary or decision process on the UI
+
+- **Do not** put agent/dev thinking on the page: why a control exists, what the backend does next, ranking rules, caps (“top 3 go to the API”), scrubbing notes, “after X, do Y” tutorials.
+- **Do not** duplicate status (same error in a banner *and* a job card; same lock state on list *and* detail strip).
+- Labels = short outcomes (**Save look**, **Generate → compare**, **Find characters**). Tooltips only when a label is ambiguous.
+- Project selection lives on **Home** — do not re-add project pickers on workflow pages unless the user asked for multi-project on that screen.
+
+### 0b. Technical job details are Admin-only
+
+Operators see **short outcome status** only (e.g. “Creating portrait…”, “Portrait generation failed. Try again.”).
+
+**Admin only** (collapsible “Details (admin)” or admin badge views):
+
+- Job log lines such as `Character design (C# / Grok image API)…`, seed paths, `Seed mode=explicit · refs=3/3`, model names, HTTP bodies, file names under `assets/…`.
+- Stacking the same error three times (list row + Current message + red alert) is forbidden — **one** operator-facing error surface.
+
+Never show raw engine progress dumps to non-admin users on Home, Characters, Scenes, or Adaptation.
+
 ### 1. Outcome only — not mechanism
 
 - Describe **what the user gets** (imported source, screenplay, cast, portraits, clips, movie draft).
@@ -115,4 +133,4 @@ Slightly more technical language is OK on **About** or a collapsible “For deve
 
 ---
 
-*Last updated: 2026-07-19 — general solutions only (no book-specific product code); UI outcome-only principles.*
+*Last updated: 2026-07-19 — no UI commentary/decision process; general solutions only; UI outcome-only principles.*

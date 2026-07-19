@@ -1014,6 +1014,27 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/unlock",
     }
 });
 
+/// <summary>
+/// Delete a character picture: preferred/lock, variant, or book plate.
+/// Body: { "kind": "preferred"|"variant"|"bookref", "index": 0 }
+/// </summary>
+app.MapPost("/api/projects/{id}/characters/{charKey}/delete-image",
+    (string id, string charKey, DeleteCharacterImageRequest? body, CharacterDesignService characters) =>
+{
+    try
+    {
+        body ??= new DeleteCharacterImageRequest();
+        if (string.IsNullOrWhiteSpace(body.Kind))
+            return Results.BadRequest(new { ok = false, error = "kind required" });
+        characters.DeleteImage(id, charKey, body.Kind, body.Index);
+        return Results.Ok(new { ok = true, projectId = id, charKey, kind = body.Kind, index = body.Index });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
 static string GuessImageContentType(string path) =>
     path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png"
     : path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||

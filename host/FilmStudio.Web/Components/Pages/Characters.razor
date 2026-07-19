@@ -10,10 +10,7 @@
 
 <h1>Characters</h1>
 <p class="text-muted mb-1">
-    Pin cast likeness <strong>before</strong> generating clips on Scenes.
-    Click a character → set their look. Your <strong>preferred picture</strong> and
-    <strong>description</strong> are used when creating new portraits.
-    <strong>Book pictures</strong> from the story can help if you’ve matched them.
+    Set each cast member’s look before generating clips.
 </p>
 <p class="small text-muted mb-3">
     <a href="adaptation/screenplay">← Screenplay</a>
@@ -23,23 +20,23 @@
     <a href="scenes">Scenes →</a>
 </p>
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <button type="button"
-            class="btn btn-primary btn-sm"
-            disabled="@(_busy || JobRunning || _extractingCast)"
-            @onclick="ExtractCastAsync">
-        @(_extractingCast ? "Building cast…" : "Build cast from screenplay")
-    </button>
-</div>
-
-@if (_plates is not null && !_plates.SortedByCharacter)
+@* Setup actions only when needed — hide once cast exists / book pictures are matched *@
+@if (NeedsCastBuild)
+{
+    <div class="mb-3">
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                disabled="@(_busy || JobRunning || _extractingCast)"
+                @onclick="ExtractCastAsync">
+            @(_extractingCast ? "Building cast…" : "Build cast from screenplay")
+        </button>
+    </div>
+}
+else if (NeedsFindCharacters)
 {
     <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 mb-3">
         <div>
-            <strong>Book pictures aren’t matched to the cast yet.</strong>
-            <span class="small d-block text-muted">
-                Match each book picture to the right character. Text-only pages are skipped.
-            </span>
+            <strong>Match book pictures to the cast</strong>
         </div>
         @if (!PlateSortRunning)
         {
@@ -51,119 +48,77 @@
         }
     </div>
 }
-else if (_plates is not null && _plates.SortedByCharacter)
+else if (Session.IsAdmin && HasCast && !JobRunning && !_extractingCast)
 {
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <span class="badge text-bg-success">Book pictures matched</span>
-        <span class="small text-muted">
-            @_plates.SortedAt
-        </span>
-        @if (!PlateSortRunning && !JobRunning)
-        {
+    @* Advanced re-run only for admin — operators are not offered redo of finished setup *@
+    <details class="mb-2">
+        <summary class="small text-muted" style="cursor:pointer">Setup again (admin)</summary>
+        <div class="d-flex flex-wrap gap-2 mt-2">
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     disabled="@_busy"
-                    @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)"
-                    title="Match book pictures to cast again">
+                    @onclick="ExtractCastAsync">
+                Rebuild cast
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    disabled="@_busy"
+                    @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
                 Find characters again
             </button>
-        }
-    </div>
+        </div>
+    </details>
 }
 
-@if (!string.IsNullOrEmpty(_error))
+@if (!string.IsNullOrEmpty(_error) && !JobRunning)
 {
     <div class="alert alert-danger">@_error</div>
 }
-@* Success / idle messages only — never use the green card as an in-progress indicator *@
 @if (!string.IsNullOrEmpty(_message) && !_extractingCast && !JobRunning)
 {
     <div class="alert alert-success">@_message</div>
 }
 
-<div class="row mb-3 g-2 align-items-end">
-    <div class="col-md-4">
-        <label class="form-label">Project</label>
-        <select class="form-select" @bind="_projectId" @bind:after="OnProjectChangedAsync" disabled="@_busy">
-            @foreach (var p in _projectIds)
-            {
-                <option value="@p">@p</option>
-            }
-        </select>
-    </div>
-    <div class="col-md-4 d-flex gap-2">
-        <button class="btn btn-outline-primary" disabled="@(_busy || JobRunning)" @onclick="LoadAsync">Reload</button>
-    </div>
-</div>
-
-@* In-progress work: progress bar card (cast build + character / plate jobs) *@
+@* In-progress: progress only (errors land in the single alert above when the job ends) *@
 @if (_extractingCast)
 {
     <div class="card mb-3 border-primary">
         <div class="card-body py-2">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="small">Building cast from screenplay…</span>
-            </div>
+            <div class="small">Building cast…</div>
             <div class="progress mt-2" style="height: 0.5rem;">
                 <div class="progress-bar progress-bar-striped progress-bar-animated"
-                     role="progressbar"
-                     style="width: 100%"
-                     aria-valuemin="0"
-                     aria-valuemax="100"
-                     aria-label="Building cast"></div>
+                     role="progressbar" style="width: 100%" aria-label="Building cast"></div>
             </div>
         </div>
     </div>
 }
 else if (_job is not null &&
      (_job.Kind is "character" or "character-plates") &&
-     _job.Status is "running" or "error" or "cancelled")
+     (_job.Status is "running" or "queued"))
 {
-    <div class="card mb-3 border-@(_job.Status == "running" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
+    <div class="card mb-3 border-primary" @key="_job.JobId">
         <div class="card-body py-2">
             <div class="d-flex flex-wrap align-items-center gap-2">
-                @if (Session.IsAdmin)
+                <span class="small">@FriendlyCharacterJobStatus(_job)</span>
+                @if (_job.Total > 0 && _job.Status == "running")
                 {
-                    <span class="badge bg-secondary">@_job.Status</span>
-                    <span class="badge bg-info text-dark">@_job.Kind</span>
-                    @if (!string.IsNullOrEmpty(_job.CharKey))
-                    {
-                        <code class="small">@_job.CharKey</code>
-                    }
-                    @if (_job.Total > 0)
-                    {
-                        <span class="small text-muted">@_job.Index / @_job.Total</span>
-                    }
-                    <span class="small">@_job.Message</span>
+                    <span class="small text-muted">@_job.Index / @_job.Total</span>
                 }
-                else
-                {
-                    <span class="small">@FriendlyCharacterJobStatus(_job)</span>
-                    @if (_job.Status == "running" && _job.Total > 0)
-                    {
-                        <span class="small text-muted">@_job.Index / @_job.Total</span>
-                    }
-                }
-                @if (_job.Status == "running")
-                {
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-auto" disabled="@_busy" @onclick="CancelAsync">
-                        Cancel
-                    </button>
-                }
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto" disabled="@_busy" @onclick="CancelAsync">
+                    Cancel
+                </button>
             </div>
-            @if (_job.Status == "running")
-            {
-                var pct = _job.Total > 0
-                    ? (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total))
-                    : 100;
-                <div class="progress mt-2" style="height: 0.5rem;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                         role="progressbar"
-                         style="width: @(_job.Total > 0 ? Math.Max(8, pct) : 100)%"
-                         aria-valuenow="@(_job.Total > 0 ? pct : 0)"
-                         aria-valuemin="0"
-                         aria-valuemax="100"></div>
-                </div>
+            @{
+                // Index 0 → empty bar (not min 8%). Remount via @key so CSS width resets on new JobId.
+                var pct = _job.Status == "queued" || _job.Total <= 0
+                    ? 8
+                    : (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total));
+                if (_job.Status == "running" && _job.Index <= 0)
+                    pct = 0;
             }
+            <div class="progress mt-2" style="height: 0.5rem;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: @(pct)%"></div>
+            </div>
             @if (Session.IsAdmin && _job.Log.Count > 0)
             {
                 <details class="mt-2">
@@ -182,8 +137,7 @@ else if (_job is not null &&
 else if (_chars.Count == 0)
 {
     <div class="alert alert-warning">
-        No cast yet. Approve the <strong>screenplay</strong> in Adaptation, then click
-        <strong>Build cast from screenplay</strong> (AI reads the Fountain + book).
+        No cast yet. Approve the screenplay, then build the cast.
     </div>
 }
 else
@@ -194,21 +148,33 @@ else
                 @foreach (var c in _chars)
                 {
                     var active = c.Key == _selectedKey;
+                    var thumb = ListThumbUrl(c);
+                    var hasVoice = HasVoiceProfile(c);
                     <button type="button"
-                            class="list-group-item list-group-item-action @(active ? "active" : "")"
+                            class="list-group-item list-group-item-action char-list-item @(active ? "active" : "")"
                             @onclick="() => Select(c.Key)">
-                        @(c.DisplayName)
                         @if (c.VoiceOnly)
                         {
-                            <span class="badge bg-secondary ms-1">voice</span>
+                            <span class="char-list-thumb @(hasVoice ? "char-list-thumb--voice" : "char-list-thumb--voice-missing")"
+                                  title="@(hasVoice ? "Voice" : "No voice profile")"
+                                  aria-hidden="true">
+                                <span class="char-list-thumb__icon">♪</span>
+                            </span>
                         }
-                        else if (c.Locked)
+                        else if (thumb is { Length: > 0 })
                         {
-                            <span class="badge bg-success ms-1">locked</span>
+                            <img src="@thumb" alt="" class="char-list-thumb" />
                         }
                         else
                         {
-                            <span class="badge bg-warning text-dark ms-1">no ref</span>
+                            <span class="char-list-thumb char-list-thumb--empty" title="No picture" aria-hidden="true">
+                                <span class="char-list-thumb__icon">?</span>
+                            </span>
+                        }
+                        <span class="char-list-name text-truncate">@c.DisplayName</span>
+                        @if (!c.VoiceOnly && !hasVoice)
+                        {
+                            <span class="char-list-voice-miss" title="No voice profile" aria-label="No voice profile">♪</span>
                         }
                     </button>
                 }
@@ -236,27 +202,14 @@ else
             }
             else
             {
-                @* ---- Compact identity strip (single row) ---- *@
-                <div class="char-id-strip d-flex flex-wrap align-items-center gap-2 mb-2 px-2 py-1 border rounded bg-white">
+                @* Name + actions only — lock status already on the left list badges *@
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                     @if (PreferredImageUrl is { Length: > 0 } prefUrl)
                     {
                         <img src="@prefUrl" alt="" class="char-id-strip__thumb rounded border" />
                     }
-                    <div class="flex-grow-1 min-w-0">
-                        <div class="fw-semibold text-truncate">@_selected.DisplayName
-                            <code class="small text-muted ms-1">@_selected.Key</code>
-                        </div>
-                        <div class="small text-muted text-truncate">
-                            @if (_selected.Locked) { <span class="badge bg-success">locked</span> }
-                            else { <span class="badge bg-warning text-dark">needs lock</span> }
-                            <span class="ms-1">@(_selected.BookRefs.Count(b => b.Exists)) book</span>
-                            @if (!string.IsNullOrEmpty(PreferredImageLabel))
-                            {
-                                <span class="ms-1">· @PreferredImageLabel</span>
-                            }
-                        </div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-1">
+                    <div class="fw-semibold">@_selected.DisplayName</div>
+                    <div class="ms-auto d-flex flex-wrap gap-1">
                         @if (_mode != Mode.PickSource)
                         {
                             <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="BackToSource">← Edit</button>
@@ -264,21 +217,16 @@ else
                         @if (_selected.Locked)
                         {
                             <button type="button" class="btn btn-sm btn-outline-warning" disabled="@_busy"
-                                    title="Clear lock; keep as preferred"
                                     @onclick="UnlockAsync">Unlock</button>
                         }
                     </div>
                 </div>
 
-                @* ---- Picture (look + refs + generate) — collapsed while comparing ---- *@
                 <div class="card mb-2 @(_mode == Mode.PickSource ? "border-primary" : "")">
                     <button type="button"
                             class="card-header py-1 px-2 d-flex justify-content-between align-items-center gap-2 char-panel-toggle border-0 bg-transparent w-100 text-start"
                             @onclick="() => _panelPictureOpen = !_panelPictureOpen">
-                        <span>
-                            <strong>Picture</strong>
-                            <span class="small text-muted ms-1">look · refs · generate</span>
-                        </span>
+                        <span><strong>Picture</strong></span>
                         <span class="small text-muted">@(_panelPictureOpen ? "▲" : "▼")</span>
                     </button>
                     @if (_panelPictureOpen)
@@ -290,16 +238,14 @@ else
                                     <textarea class="form-control form-control-sm" rows="2"
                                               @bind="_editDescription" @bind:event="oninput"
                                               disabled="@(_busy || JobRunning)"
-                                              placeholder="Base look (not later-story clothes)…"
-                                              title="Base look for portraits — not later-story clothes like pajamas"></textarea>
+                                              placeholder="How they look"></textarea>
                                 </div>
                                 <div class="col-md-5">
                                     <label class="form-label small fw-semibold mb-0">Visual lock</label>
                                     <textarea class="form-control form-control-sm" rows="2"
                                               @bind="_editVisualLock" @bind:event="oninput"
                                               disabled="@(_busy || JobRunning)"
-                                              placeholder="Coat, markings, proportions…"
-                                              title="Hard constraints that never change"></textarea>
+                                              placeholder="Coat, markings, proportions"></textarea>
                                 </div>
                             </div>
                             <div class="mb-2">
@@ -308,49 +254,24 @@ else
                                         @onclick="SaveLookAsync">
                                     Save look
                                 </button>
-                                <span class="small text-muted ms-1">AI scrubs figurative / later wardrobe</span>
                             </div>
 
                             @if (_mode == Mode.PickSource)
                             {
                                 <hr class="my-3" />
-                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                                    <div class="small fw-semibold mb-0">
-                                        Reference pictures — click to use (order = priority)
-                                        <span class="fw-normal text-muted">· top @ApiMaxSeedRefs go to the API</span>
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <div class="form-check form-check-inline mb-0">
-                                            <input class="form-check-input" type="checkbox" id="hideUnsel"
-                                                   @bind="_hideUnselectedSeeds" disabled="@(_busy || JobRunning)" />
-                                            <label class="form-check-label small" for="hideUnsel">Hide unselected</label>
-                                        </div>
-                                        @if (_hiddenSeedKeys.Count > 0)
-                                        {
-                                            <button type="button" class="btn btn-sm btn-link py-0"
-                                                    disabled="@(_busy || JobRunning)"
-                                                    @onclick="() => { _hiddenSeedKeys.Clear(); }">
-                                                Show @_hiddenSeedKeys.Count hidden
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="d-flex flex-wrap gap-2 mb-2">
-                                    @if (_selected.HasPreferred && SeedTileVisible("p", isOn: SeedRank("p") > 0))
+                                <div class="small fw-semibold mb-2">Reference pictures</div>
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    @if (_selected.HasPreferred)
                                     {
-                                        var prefKey = "p";
-                                        var prefOn = SeedRank(prefKey) > 0;
-                                        var prefRank = SeedRank(prefKey);
-                                        var prefSend = prefRank > 0 && prefRank <= ApiMaxSeedRefs;
+                                        var prefOn = SeedRank("p") > 0;
                                         <div class="char-seed-tile-wrap">
                                             <button type="button"
-                                                    class="char-seed-tile @(prefOn ? "char-seed-tile--on" : "") @(prefSend ? "char-seed-tile--send" : "")"
+                                                    class="char-seed-tile @(prefOn ? "char-seed-tile--on char-seed-tile--send" : "")"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => ToggleSeedKey(prefKey))"
-                                                    title="@(_selected.PreferredLabel ?? "Preferred")">
-                                                @if (prefRank > 0)
+                                                    @onclick="@(() => ToggleSeedKey("p"))">
+                                                @if (prefOn)
                                                 {
-                                                    <span class="char-seed-tile__rank @(prefSend ? "char-seed-tile__rank--send" : "")">@prefRank</span>
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank("p")</span>
                                                 }
                                                 @if (PreferredImageUrl is { Length: > 0 } pu)
                                                 {
@@ -358,88 +279,66 @@ else
                                                 }
                                                 <span class="char-seed-tile__label">Preferred</span>
                                             </button>
-                                            <button type="button" class="char-seed-hide" title="Hide this picture"
+                                            <button type="button" class="char-seed-hide" title="Delete"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => HideSeedKey(prefKey))">×</button>
+                                                    @onclick="@(() => RequestDeleteImage("preferred", 0))">×</button>
                                         </div>
                                     }
                                     @foreach (var v in _selected.Variants.Where(x => x.Exists))
                                     {
                                         var idx = v.Index ?? 0;
                                         var key = $"v{idx}";
-                                        if (!SeedTileVisible(key, isOn: SeedRank(key) > 0)) continue;
                                         var on = SeedRank(key) > 0;
-                                        var rank = SeedRank(key);
-                                        var send = rank > 0 && rank <= ApiMaxSeedRefs;
                                         var vsrc = !string.IsNullOrEmpty(v.Url)
                                             ? CacheBust(v.Url!)
                                             : CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, idx));
                                         <div class="char-seed-tile-wrap">
                                             <button type="button"
-                                                    class="char-seed-tile @(on ? "char-seed-tile--on" : "") @(send ? "char-seed-tile--send" : "")"
+                                                    class="char-seed-tile @(on ? "char-seed-tile--on char-seed-tile--send" : "")"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => ToggleSeedKey(key))"
-                                                    title="Variant @idx">
-                                                @if (rank > 0)
+                                                    @onclick="@(() => ToggleSeedKey(key))">
+                                                @if (on)
                                                 {
-                                                    <span class="char-seed-tile__rank @(send ? "char-seed-tile__rank--send" : "")">@rank</span>
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank(key)</span>
                                                 }
                                                 <img src="@vsrc" alt="V@(idx)" />
-                                                <span class="char-seed-tile__label">V@(idx)</span>
+                                                <span class="char-seed-tile__label">Option @idx</span>
                                             </button>
-                                            <button type="button" class="char-seed-hide" title="Hide this picture"
+                                            <button type="button" class="char-seed-hide" title="Delete"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => HideSeedKey(key))">×</button>
+                                                    @onclick="@(() => RequestDeleteImage("variant", idx))">×</button>
                                         </div>
                                     }
                                     @foreach (var b in _selected.BookRefs.Where(x => x.Exists))
                                     {
                                         var bi = b.Index ?? 0;
                                         var key = $"b{bi}";
-                                        if (!SeedTileVisible(key, isOn: SeedRank(key) > 0)) continue;
                                         var on = SeedRank(key) > 0;
-                                        var rank = SeedRank(key);
-                                        var send = rank > 0 && rank <= ApiMaxSeedRefs;
                                         var src = !string.IsNullOrEmpty(b.Url)
                                             ? CacheBust(b.Url!)
                                             : CacheBust(Engine.CharacterBookRefUrl(_projectId, _selected.Key, bi));
                                         <div class="char-seed-tile-wrap">
                                             <button type="button"
-                                                    class="char-seed-tile @(on ? "char-seed-tile--on" : "") @(send ? "char-seed-tile--send" : "")"
+                                                    class="char-seed-tile @(on ? "char-seed-tile--on char-seed-tile--send" : "")"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => ToggleSeedKey(key))"
-                                                    title="@b.FileName">
-                                                @if (rank > 0)
+                                                    @onclick="@(() => ToggleSeedKey(key))">
+                                                @if (on)
                                                 {
-                                                    <span class="char-seed-tile__rank @(send ? "char-seed-tile__rank--send" : "")">@rank</span>
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank(key)</span>
                                                 }
-                                                <img src="@src" alt="B@(bi)" />
-                                                <span class="char-seed-tile__label">B@(bi)</span>
+                                                <img src="@src" alt="Book" />
+                                                <span class="char-seed-tile__label">Book</span>
                                             </button>
-                                            <button type="button" class="char-seed-hide" title="Hide this picture"
+                                            <button type="button" class="char-seed-hide" title="Delete"
                                                     disabled="@(_busy || JobRunning)"
-                                                    @onclick="@(() => HideSeedKey(key))">×</button>
+                                                    @onclick="@(() => RequestDeleteImage("bookref", bi))">×</button>
                                         </div>
                                     }
                                     @if (!_selected.HasPreferred &&
                                          !_selected.Variants.Any(v => v.Exists) &&
                                          !_selected.BookRefs.Any(b => b.Exists))
                                     {
-                                        <span class="small text-muted">No images yet — generate from description only, or find characters again.</span>
-                                    }
-                                </div>
-                                <div class="small text-muted mb-3">
-                                    Selected: <strong>@SelectedSeedCount</strong>
-                                    @if (SelectedSeedCount > 0)
-                                    {
-                                        <text>
-                                            · using <strong>@Math.Min(SelectedSeedCount, ApiMaxSeedRefs)</strong>
-                                            (max @ApiMaxSeedRefs)
-                                        </text>
-                                    }
-                                    @if (SelectedSeedCount > ApiMaxSeedRefs)
-                                    {
-                                        <span class="text-muted"> — lower ranks kept for ordering only</span>
+                                        <span class="small text-muted">No pictures yet.</span>
                                     }
                                 </div>
 
@@ -447,55 +346,55 @@ else
                                     <button type="button" class="btn btn-primary"
                                             disabled="@(_busy || JobRunning || string.IsNullOrWhiteSpace(_editDescription) && SelectedSeedCount == 0)"
                                             @onclick="StartRegenerateAsync">
-                                        Generate → compare
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm"
-                                            disabled="@(_busy || JobRunning)"
-                                            @onclick="StartGeneratePreferred"
-                                            title="Preferred image only + description">
-                                        Preferred only
+                                        Generate
                                     </button>
                                     <label class="btn btn-outline-primary btn-sm mb-0 @(_busy || JobRunning ? "disabled" : "")">
-                                        Upload picture…
+                                        Upload…
                                         <InputFile OnChange="OnUploadRefAsync"
                                                    accept=".png,.jpg,.jpeg,.webp,.gif"
                                                    class="d-none"
                                                    disabled="@(_busy || JobRunning)" />
                                     </label>
-                                    <span class="small text-muted">
-                                        @(_selected.Locked || _selected.HasPreferred ? "1 refine" : "3 variants") then left/right compare
-                                    </span>
                                 </div>
-                                <p class="small text-muted mb-0 mt-2">
-                                    After generate, pick a champion and lock — or upload your own picture as the lock.
-                                </p>
                             }
                             else if (_mode == Mode.WaitingGenerate)
                             {
-                                <div class="alert alert-info mb-0">
-                                    Generating portraits with preferred image + description
-                                    @if (_selected.BookRefs.Any(b => b.Exists))
-                                    {
-                                        <text> + book hints</text>
-                                    }
-                                    … left/right comparison starts when ready.
+                                <div class="alert alert-info mb-0">Generating portraits…</div>
+                            }
+                            else if (_mode == Mode.Compare && _allCandidates.Count > 0)
+                            {
+                                <div class="char-pick">
+                                    <div class="small fw-semibold mb-2">Pick the best look</div>
+                                    <div class="char-pick__grid">
+                                        @foreach (var c in _allCandidates)
+                                        {
+                                            <button type="button"
+                                                    class="char-pick__card"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => LockCandidateAsync(c))">
+                                                <img src="@c.Url" alt="@c.Label" />
+                                                <span>@c.Label</span>
+                                            </button>
+                                        }
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
+                                            disabled="@(_busy || JobRunning)"
+                                            @onclick="BackToSource">
+                                        ← Back
+                                    </button>
                                 </div>
                             }
                         </div>
                     }
                 </div>
 
-                @* ---- Voice — collapsed by default; hidden chrome during compare ---- *@
                 @if (_mode == Mode.PickSource || _panelVoiceOpen)
                 {
                     <div class="card mb-2">
                         <button type="button"
                                 class="card-header py-1 px-2 d-flex justify-content-between align-items-center gap-2 char-panel-toggle border-0 bg-transparent w-100 text-start"
                                 @onclick="() => _panelVoiceOpen = !_panelVoiceOpen">
-                            <span>
-                                <strong>Voice</strong>
-                                <span class="small text-muted ms-1">spoken lines</span>
-                            </span>
+                            <span><strong>Voice</strong></span>
                             <span class="small text-muted">@(_panelVoiceOpen ? "▲" : "▼")</span>
                         </button>
                         @if (_panelVoiceOpen)
@@ -507,112 +406,12 @@ else
                     </div>
                 }
 
-                @if (_mode == Mode.Compare && _champion is not null)
+                @if (_deleteConfirm is not null)
                 {
-                    <div class="char-compare">
-                        <div class="char-compare__head">
-                            <div class="char-compare__title">2) Pick the better look</div>
-                            <div class="char-compare__step">
-                                @if (_challenger is null)
-                                {
-                                    <text>Champion ready · no more candidates</text>
-                                }
-                                else
-                                {
-                                    <text>Round @_round of @_totalRounds · @_remainingAfter challenger(s) left after this</text>
-                                }
-                            </div>
-                        </div>
-
-                        <div class="char-compare__pair">
-                            <div class="char-compare__side @(_highlight == Side.Left ? "char-compare__side--pick" : "")">
-                                <div class="char-compare__label">Left — current best</div>
-                                <div class="char-compare__img-wrap">
-                                    <img src="@_champion.Url" alt="@_champion.Label" />
-                                </div>
-                                <div class="char-compare__caption">@_champion.Label</div>
-                            </div>
-                            <div class="char-compare__vs">VS</div>
-                            <div class="char-compare__side @(_highlight == Side.Right ? "char-compare__side--pick" : "")">
-                                <div class="char-compare__label">Right — candidate</div>
-                                <div class="char-compare__img-wrap">
-                                    @if (_challenger is not null)
-                                    {
-                                        <img src="@_challenger.Url" alt="@_challenger.Label" />
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">No more candidates</span>
-                                    }
-                                </div>
-                                <div class="char-compare__caption">@(_challenger?.Label ?? "—")</div>
-                            </div>
-                        </div>
-
-                        <div class="char-compare__actions">
-                            @if (_challenger is not null)
-                            {
-                                <button type="button" class="btn btn-outline-primary btn-lg"
-                                        disabled="@(_busy || JobRunning)" @onclick="PreferLeft">
-                                    ◀ Left better
-                                </button>
-                                <button type="button" class="btn btn-outline-primary btn-lg"
-                                        disabled="@(_busy || JobRunning)" @onclick="PreferRight">
-                                    Right better ▶
-                                </button>
-                            }
-                            else
-                            {
-                                <button type="button" class="btn btn-primary btn-lg"
-                                        disabled="@(_busy || JobRunning)"
-                                        @onclick="TryRegenFromCompareAsync"
-                                        title="Generate new options using the same references / description">
-                                    ↻ Try regen again
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-lg"
-                                        disabled="@(_busy || JobRunning)"
-                                        @onclick="BackToSource"
-                                        title="Change references or description first">
-                                    Change references
-                                </button>
-                            }
-                            <button type="button" class="btn btn-success btn-lg"
-                                    disabled="@(_busy || JobRunning)" @onclick="LockChampionAsync">
-                                ✓ Lock left as final
-                            </button>
-                        </div>
-                        <div class="char-compare__hint">
-                            @if (_challenger is null)
-                            {
-                                <text>
-                                    Happy with the left? Lock it. Want another round? <strong>Try regen again</strong>
-                                    uses the same references, or <strong>Change references</strong> to pick different pictures.
-                                </text>
-                            }
-                            else
-                            {
-                                <text>
-                                    Like an eye exam: keep the better image on the left until you’re happy, then lock.
-                                    Keyboard: <kbd>L</kbd> left · <kbd>R</kbd> right · <kbd>Enter</kbd> lock
-                                </text>
-                            }
-                        </div>
-
-                        @if (_allCandidates.Count > 0)
-                        {
-                            <div class="char-thumb-strip" title="Candidate queue">
-                                @for (var i = 0; i < _allCandidates.Count; i++)
-                                {
-                                    var c = _allCandidates[i];
-                                    var cls = i < _queueIndex
-                                        ? "char-thumb char-thumb--done"
-                                        : i == _queueIndex && _challenger is not null
-                                            ? "char-thumb char-thumb--current"
-                                            : "char-thumb";
-                                    <img src="@c.Url" alt="@c.Label" class="@cls" />
-                                }
-                            </div>
-                        }
+                    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 py-2">
+                        <span class="small">Delete this picture?</span>
+                        <button type="button" class="btn btn-sm btn-danger" disabled="@_busy" @onclick="ConfirmDeleteImageAsync">Delete</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="CancelDeleteImage">Cancel</button>
                     </div>
                 }
             }
@@ -622,7 +421,6 @@ else
 
 @code {
     private enum Mode { PickSource, WaitingGenerate, Compare }
-    private enum Side { None, Left, Right }
 
     private sealed class Candidate
     {
@@ -632,21 +430,49 @@ else
         public string Url { get; init; } = "";
     }
 
+    private sealed class PendingDelete
+    {
+        public string Kind { get; init; } = "";
+        public int Index { get; init; }
+    }
+
     private string? PreferredImageUrl
     {
         get
         {
             if (_selected is null || !_selected.HasPreferred) return null;
-            // Always go through Engine API base (not Blazor host) — relative /api/... 404s on :7206
-            if (_selected.Locked)
-                return CacheBust(Engine.CharacterRefUrl(_projectId, _selected.Key));
-            if (_selected.Variants.Any(v => v.Index == 1 && v.Exists))
-                return CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, 1));
-            if (_selected.PreferredUrl is { Length: > 0 } u)
-                return CacheBust(Engine.AbsolutizeMediaUrl(u) ?? u);
-            return null;
+            return ListThumbUrl(_selected);
         }
     }
+
+    /// <summary>List thumbnail: preferred/lock/variant1, else first book pic, else null (empty placeholder).</summary>
+    private string? ListThumbUrl(CharacterSummary c)
+    {
+        if (c.VoiceOnly) return null;
+        if (c.Locked)
+            return CacheBust(Engine.CharacterRefUrl(_projectId, c.Key));
+        if (c.HasPreferred)
+        {
+            if (c.Variants.Any(v => v.Index == 1 && v.Exists))
+                return CacheBust(Engine.CharacterVariantUrl(_projectId, c.Key, 1));
+            if (c.PreferredUrl is { Length: > 0 } u)
+                return CacheBust(Engine.AbsolutizeMediaUrl(u) ?? u);
+            if (c.RefUrl is { Length: > 0 } r)
+                return CacheBust(Engine.AbsolutizeMediaUrl(r) ?? r);
+        }
+        var book = c.BookRefs.FirstOrDefault(b => b.Exists);
+        if (book is not null)
+        {
+            if (!string.IsNullOrEmpty(book.Url))
+                return CacheBust(Engine.AbsolutizeMediaUrl(book.Url) ?? book.Url);
+            if (book.Index is int bi)
+                return CacheBust(Engine.CharacterBookRefUrl(_projectId, c.Key, bi));
+        }
+        return null;
+    }
+
+    private static bool HasVoiceProfile(CharacterSummary c) =>
+        !string.IsNullOrWhiteSpace(c.VoiceProfile);
 
     private string PreferredImageLabel =>
         _selected is null ? ""
@@ -667,26 +493,16 @@ else
     private long _imgBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     private Mode _mode = Mode.PickSource;
-    private Candidate? _champion;
-    private Candidate? _challenger;
     private List<Candidate> _allCandidates = new();
-    private int _queueIndex; // next challenger index into _allCandidates (champion may be locked not in list)
-    private int _round;
-    private int _totalRounds;
-    private Side _highlight = Side.None;
+    private PendingDelete? _deleteConfirm;
 
-    // Multi-seed (ordered) + hide + editable description
-    /// <summary>Active image API max refs (Grok 3 / Gemini 14). From API imageSeedLimits.</summary>
     private int ApiMaxSeedRefs => Math.Max(1, _imageSeedLimits?.MaxReferenceImages ?? 3);
     private ImageSeedLimits? _imageSeedLimits;
     private readonly List<string> _seedOrder = new(); // "p", "v1", "b0"… click order = priority
-    private readonly HashSet<string> _hiddenSeedKeys = new(StringComparer.OrdinalIgnoreCase);
-    private bool _hideUnselectedSeeds;
     private string _editDescription = "";
     private string _editVisualLock = "";
     private string _editVoiceLabel = "";
     private string _editVoiceProfile = "";
-    /// <summary>Expandable work panels — Picture open by default; Voice collapsed so pics stay on screen.</summary>
     private bool _panelPictureOpen = true;
     private bool _panelVoiceOpen;
 
@@ -717,6 +533,19 @@ else
     private bool PlateSortRunning =>
         JobRunning &&
         string.Equals(_job?.Kind, "character-plates", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasCast => _chars is { Count: > 0 };
+
+    /// <summary>Show primary Build cast only when there is no cast yet.</summary>
+    private bool NeedsCastBuild =>
+        _chars is not null && _chars.Count == 0 && !_extractingCast;
+
+    /// <summary>Show Find characters only when cast exists but book pictures are not matched.</summary>
+    private bool NeedsFindCharacters =>
+        HasCast &&
+        _plates is not null &&
+        !_plates.SortedByCharacter &&
+        !PlateSortRunning;
 
     private async Task ExtractCastAsync()
     {
@@ -754,9 +583,6 @@ else
         }
     }
 
-    private int _remainingAfter =>
-        Math.Max(0, _allCandidates.Count - _queueIndex - 1);
-
     protected override async Task OnInitializedAsync()
     {
         Hub.JobUpdated += OnJobUpdated;
@@ -792,34 +618,22 @@ else
         await Task.CompletedTask;
     }
 
-    /// <summary>Operator-facing job line — no file names, vision model, or kind badges.</summary>
     private static string FriendlyCharacterJobStatus(JobSnapshot job)
     {
-        if (job.Status == "error")
-            return "Something went wrong matching book pictures. Try again.";
-        if (job.Status == "cancelled")
-            return "Matching cancelled.";
-
         var kind = job.Kind ?? "";
         if (string.Equals(kind, "character-plates", StringComparison.OrdinalIgnoreCase))
-        {
-            if (job.Total > 0)
-                return $"Matching book pictures… ({job.Index} of {job.Total})";
-            return "Matching book pictures…";
-        }
-
+            return job.Total > 0
+                ? $"Matching book pictures… ({job.Index} of {job.Total})"
+                : "Matching book pictures…";
         if (string.Equals(kind, "character", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!string.IsNullOrWhiteSpace(job.CharKey))
-                return "Creating portrait…";
-            return "Working on character look…";
-        }
-
+            return "Creating portrait…";
         return "Working…";
     }
 
     private void OnJobUpdated(JobSnapshot snap)
     {
+        // New job id → always take the snapshot (Index may be 0)
+        // Same job → update as usual
         _job = snap;
         if ((snap.Status is "done" or "error" or "cancelled") &&
             string.Equals(snap.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
@@ -828,15 +642,22 @@ else
             {
                 await SoftReloadAsync();
                 if (snap.Status == "done")
-                    _message = Session.IsAdmin
-                        ? (snap.Message ?? "Matching complete.")
-                        : "Book pictures matched to the cast.";
+                {
+                    _error = null;
+                    _message = "Book pictures matched.";
+                }
                 else if (snap.Status == "error")
+                {
+                    _message = null;
                     _error = Session.IsAdmin
-                        ? (snap.Error ?? snap.Message ?? "Plate sort failed")
+                        ? (snap.Error ?? snap.Message ?? "Could not match book pictures.")
                         : "Could not match book pictures. Try again.";
+                }
                 else if (snap.Status == "cancelled")
+                {
+                    _error = null;
                     _message = "Matching cancelled.";
+                }
                 StateHasChanged();
             });
         }
@@ -845,16 +666,30 @@ else
         {
             _ = InvokeAsync(async () =>
             {
+                // Leave "Generating…" as soon as the job finishes (even if files need a moment)
+                if (snap.Status is "done" or "error" or "cancelled")
+                {
+                    if (_mode == Mode.WaitingGenerate)
+                        _mode = Mode.PickSource;
+                }
+
                 await SoftReloadAsync();
                 if (snap.Status == "done" &&
                     string.Equals(snap.CharKey, _selectedKey, StringComparison.OrdinalIgnoreCase))
                 {
-                    _message = "Portraits ready — compare left vs right.";
+                    _error = null;
+                    _message = null;
+                    // Brief delay so variant files are visible after write/flush
+                    await Task.Delay(150);
+                    await SoftReloadAsync();
                     BeginCompareFromVariants();
                 }
                 else if (snap.Status == "error")
                 {
-                    _error = snap.Error ?? snap.Message ?? "Portrait generation failed";
+                    _message = null;
+                    _error = Session.IsAdmin
+                        ? (snap.Error ?? snap.Message ?? "Portrait generation failed.")
+                        : "Portrait generation failed. Try again.";
                     _mode = Mode.PickSource;
                 }
                 else if (snap.Status == "cancelled")
@@ -956,10 +791,9 @@ else
         }
         if (switched)
         {
-            _hiddenSeedKeys.Clear();
-            // Fresh character: open Picture (look + refs), keep Voice collapsed
             _panelPictureOpen = true;
             _panelVoiceOpen = false;
+            _deleteConfirm = null;
         }
         if (resetMode)
         {
@@ -975,24 +809,26 @@ else
     private void ResetSeedSelection()
     {
         _seedOrder.Clear();
-        // Keep hidden keys across reselect of same char; clear when switching char in Select()
-        // Default: preferred + up to 2 book plates (priority for API top-3)
         if (_selected is null) return;
+        // Default select: preferred, then recent generate options, then book pics (cap by API)
         if (_selected.HasPreferred)
             _seedOrder.Add("p");
-        var bookBudget = _selected.HasPreferred ? 2 : 3;
-        foreach (var b in _selected.BookRefs
-                     .Where(x => x.Exists && !IsWeakBookPlate(x.FileName))
-                     .Take(bookBudget))
+        foreach (var v in _selected.Variants.Where(x => x.Exists).OrderBy(x => x.Index))
         {
-            if (b.Index is int i)
-                _seedOrder.Add($"b{i}");
+            if (_seedOrder.Count >= ApiMaxSeedRefs) break;
+            var key = $"v{v.Index ?? 0}";
+            if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                _seedOrder.Add(key);
         }
-        if (_seedOrder.Count(k => k.StartsWith('b')) == 0)
+        foreach (var b in _selected.BookRefs.Where(x => x.Exists))
         {
-            foreach (var b in _selected.BookRefs.Where(x => x.Exists).Take(bookBudget))
-                if (b.Index is int i)
-                    _seedOrder.Add($"b{i}");
+            if (_seedOrder.Count >= ApiMaxSeedRefs) break;
+            if (b.Index is int i)
+            {
+                var key = $"b{i}";
+                if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                    _seedOrder.Add(key);
+            }
         }
     }
 
@@ -1000,13 +836,6 @@ else
     {
         var i = _seedOrder.FindIndex(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
         return i < 0 ? 0 : i + 1;
-    }
-
-    private bool SeedTileVisible(string key, bool isOn)
-    {
-        if (_hiddenSeedKeys.Contains(key)) return false;
-        if (_hideUnselectedSeeds && !isOn) return false;
-        return true;
     }
 
     private void ToggleSeedKey(string key)
@@ -1018,13 +847,31 @@ else
             _seedOrder.Add(key);
     }
 
-    private void HideSeedKey(string key)
+    private void RequestDeleteImage(string kind, int index)
     {
-        // Deselect if selected, then hide from grid
-        var i = _seedOrder.FindIndex(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
-        if (i >= 0)
-            _seedOrder.RemoveAt(i);
-        _hiddenSeedKeys.Add(key);
+        _deleteConfirm = new PendingDelete { Kind = kind, Index = index };
+        _error = null;
+        _message = null;
+    }
+
+    private void CancelDeleteImage() => _deleteConfirm = null;
+
+    private async Task ConfirmDeleteImageAsync()
+    {
+        if (_selected is null || _deleteConfirm is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.DeleteCharacterImageAsync(
+                _projectId, _selected.Key, _deleteConfirm.Kind, _deleteConfirm.Index);
+            _deleteConfirm = null;
+            await SoftReloadAsync();
+            ResetSeedSelection();
+            _message = "Picture deleted.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private static bool IsWeakBookPlate(string? fileName)
@@ -1052,65 +899,18 @@ else
 
     private void ResetCompare()
     {
-        _champion = null;
-        _challenger = null;
         _allCandidates = new();
-        _queueIndex = 0;
-        _round = 0;
-        _totalRounds = 0;
-        _highlight = Side.None;
     }
 
-    private async Task StartBookHintGenerate()
-    {
-        if (_selected is null) return;
-        var bookCount = _selected.BookRefs.Count(b => b.Exists);
-        _message = bookCount == 0
-            ? $"No book pictures for {_selected.DisplayName} — using preferred + description."
-            : $"Using preferred + up to 2 of {bookCount} book picture(s) for {_selected.DisplayName}.";
-        await StartGenerateCoreAsync(new StartCharacterVariantsRequest
-        {
-            ProjectId = _projectId,
-            CharKey = _selected.Key,
-            SeedMode = "auto",
-            IncludePreferred = true,
-            MaxBookHints = 2,
-            MaxRefs = 3,
-        });
-    }
-
-    private async Task StartGeneratePreferred()
-    {
-        if (_selected is null) return;
-        _message = _selected.HasPreferred
-            ? $"Preferred picture only for {_selected.DisplayName}."
-            : $"No preferred image — text-only generate for {_selected.DisplayName}.";
-        await StartGenerateCoreAsync(new StartCharacterVariantsRequest
-        {
-            ProjectId = _projectId,
-            CharKey = _selected.Key,
-            SeedMode = _selected.HasPreferred ? "preferred_only" : "none",
-            IncludePreferred = true,
-            MaxRefs = 1,
-            DescriptionOverride = _editDescription,
-            VisualLockOverride = _editVisualLock,
-            PersistDescription = true,
-        });
-    }
-
-    /// <summary>
-    /// Primary path: multi-select preferred + plates, optional description edit, regenerate → compare.
-    /// </summary>
     private async Task StartRegenerateAsync()
     {
         if (_selected is null) return;
         if (SelectedSeedCount == 0 && string.IsNullOrWhiteSpace(_editDescription))
         {
-            _error = "Select at least one reference picture, or enter a description.";
+            _error = "Select a picture or enter a description.";
             return;
         }
 
-        // Send ranked order (top N for active image provider); keep full order for ranking UI
         var maxSend = ApiMaxSeedRefs;
         var sendOrder = _seedOrder.Take(maxSend).ToList();
         var includePref = sendOrder.Any(k => k is "p");
@@ -1124,17 +924,14 @@ else
                 books.Add(bi);
         }
 
-        var providerLabel = _imageSeedLimits?.Provider ?? "image API";
-        if (SelectedSeedCount > maxSend)
-            _message =
-                $"Using ranks 1–{maxSend} of {SelectedSeedCount} selected pictures (max {maxSend}).";
-
-        var seedMode = SelectedSeedCount == 0 ? "none" : "explicit";
+        // Always 3 options so the pick grid is useful on first and later generates
+        // (engine otherwise uses 1 when the character is already locked).
         await StartGenerateCoreAsync(new StartCharacterVariantsRequest
         {
             ProjectId = _projectId,
             CharKey = _selected.Key,
-            SeedMode = seedMode,
+            Count = 3,
+            SeedMode = SelectedSeedCount == 0 ? "none" : "explicit",
             IncludePreferred = includePref,
             IncludeLockedRef = includePref,
             BookRefIndices = books,
@@ -1147,28 +944,6 @@ else
         });
     }
 
-    /// <summary>
-    /// From compare (no more candidates): run another generate with the same seeds/description.
-    /// </summary>
-    private async Task TryRegenFromCompareAsync()
-    {
-        if (_selected is null) return;
-        // Ensure preferred/locked is first so the next round refines the current best
-        if (_selected.HasPreferred)
-        {
-            _seedOrder.RemoveAll(k => string.Equals(k, "p", StringComparison.OrdinalIgnoreCase));
-            _seedOrder.Insert(0, "p");
-        }
-        _message = "Generating another round with the same references…";
-        await StartRegenerateAsync();
-    }
-
-    private async Task StartExplicitGenerate() => await StartRegenerateAsync();
-
-    /// <summary>
-    /// Start Grok vision job: classify who appears on each book page → scenes.json plates.
-    /// Progress via SignalR; cancel with CancelAsync.
-    /// </summary>
     private async Task StartSortCharacterPlatesAsync(bool useGrok = true)
     {
         _busy = true;
@@ -1192,125 +967,108 @@ else
         if (_selected is null) return;
         _busy = true;
         _error = null;
+        _message = null;
+        // Reset progress UI immediately so a prior 3/3 bar never carries over
+        var total = req.Count > 0 ? req.Count : 3;
+        _job = new JobSnapshot
+        {
+            Status = "queued",
+            Kind = "character",
+            ProjectId = _projectId,
+            CharKey = req.CharKey,
+            Message = "Starting…",
+            Index = 0,
+            Total = total,
+            Log = new List<string>(),
+            JobId = Guid.NewGuid().ToString("N"), // temporary until server job id arrives
+        };
+        _mode = Mode.WaitingGenerate;
+        StateHasChanged();
         try
         {
             try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
             await Engine.StartCharacterVariantsAsync(req);
-            _mode = Mode.WaitingGenerate;
             var jobs = await Engine.GetJobAsync();
-            _job = jobs?.Job;
+            if (jobs?.Job is { } j &&
+                (string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Never adopt a finished job's Index/Total for the new run
+                if (j.Index > 0 && string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase))
+                    j.Index = 0;
+                _job = j;
+            }
         }
         catch (Exception ex)
         {
             _error = ex.Message;
             _mode = Mode.PickSource;
+            _job = null;
         }
         finally { _busy = false; }
     }
 
     private void BeginCompareFromVariants()
     {
-        if (_selected is null) return;
+        if (_selected is null)
+        {
+            _mode = Mode.PickSource;
+            return;
+        }
+
         var vars = _selected.Variants.Where(v => v.Exists).OrderBy(v => v.Index).ToList();
         if (vars.Count == 0)
         {
             _mode = Mode.PickSource;
-            _error = "Generate finished but no variant files found.";
+            _error = "Generate finished but no pictures found.";
             return;
         }
 
-        var candidates = vars.Select(v => new Candidate
+        _allCandidates = vars.Select(v => new Candidate
         {
             Kind = "variant",
             Index = v.Index ?? 1,
             Label = $"Option {v.Index}",
+            // Bust cache so second generate doesn't show stale first-round images
             Url = CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, v.Index ?? 1)),
         }).ToList();
 
-        BeginCompare(candidates);
-    }
-
-    private void BeginCompare(List<Candidate> candidates)
-    {
-        ResetCompare();
-        _allCandidates = candidates;
-        _totalRounds = candidates.Count;
-
-        // Seed champion: existing lock if any, else first candidate
-        if (_selected?.Locked == true && !string.IsNullOrEmpty(_selected.RefUrl))
-        {
-            _champion = new Candidate
-            {
-                Kind = "locked",
-                Index = 0,
-                Label = $"Locked · {_selected.RefFileName}",
-                Url = CacheBust(Engine.CharacterRefUrl(_projectId, _selected.Key)),
-            };
-            _queueIndex = 0;
-            _challenger = candidates.Count > 0 ? candidates[0] : null;
-            _round = candidates.Count > 0 ? 1 : 0;
-        }
-        else if (candidates.Count > 0)
-        {
-            _champion = candidates[0];
-            _queueIndex = 1;
-            _challenger = candidates.Count > 1 ? candidates[1] : null;
-            _round = candidates.Count > 1 ? 1 : 0;
-            // if only one candidate, queue past end so UI shows lock-only
-            if (candidates.Count == 1)
-                _queueIndex = 1;
-        }
-
         _mode = Mode.Compare;
-        _highlight = Side.None;
-        // Free vertical space for the eye-exam compare
-        _panelPictureOpen = false;
+        _panelPictureOpen = true;
         _panelVoiceOpen = false;
+        _message = null;
     }
 
-    private void PreferLeft()
+    private async Task LockCandidateAsync(Candidate c)
     {
-        if (_challenger is null) return;
-        _highlight = Side.Left;
-        AdvanceChallenger();
-    }
-
-    private void PreferRight()
-    {
-        if (_challenger is null) return;
-        _highlight = Side.Right;
-        _champion = _challenger;
-        AdvanceChallenger();
-    }
-
-    private void AdvanceChallenger()
-    {
-        // Move past the challenger we just judged
-        _queueIndex++;
-        if (_queueIndex < _allCandidates.Count)
+        if (_selected is null) return;
+        _busy = true;
+        _error = null;
+        try
         {
-            // If champion was taken from candidates[0] and queue points at same ref, skip
-            _challenger = _allCandidates[_queueIndex];
-            // Don't compare champion to itself
-            if (_champion is not null &&
-                _challenger.Kind == _champion.Kind &&
-                _challenger.Index == _champion.Index)
+            if (c.Kind == "variant")
+                await Engine.LockCharacterVariantAsync(_projectId, _selected.Key, c.Index);
+            else if (c.Kind == "book")
+                await Engine.LockCharacterBookRefAsync(_projectId, _selected.Key, c.Index);
+            _message = $"Locked look for {_selected.DisplayName}";
+            await LoadAsync();
+            ResetCompare();
+            _mode = Mode.PickSource;
+            _panelPictureOpen = true;
+            // Include preferred + remaining generated options as seeds for next regen
+            ResetSeedSelection();
+            if (_selected is not null)
             {
-                _queueIndex++;
-                _challenger = _queueIndex < _allCandidates.Count ? _allCandidates[_queueIndex] : null;
+                foreach (var v in _selected.Variants.Where(x => x.Exists))
+                {
+                    var key = $"v{v.Index ?? 0}";
+                    if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                        _seedOrder.Add(key);
+                }
             }
-            _round++;
         }
-        else
-        {
-            _challenger = null;
-        }
-        _ = InvokeAsync(async () =>
-        {
-            await Task.Delay(120);
-            _highlight = Side.None;
-            StateHasChanged();
-        });
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
     }
 
     private async Task SaveLookAsync()
@@ -1318,7 +1076,7 @@ else
         if (_selected is null) return;
         _busy = true;
         _error = null;
-        _message = "Scrubbing look via AI…";
+        _message = null;
         try
         {
             var result = await Engine.UpdateCharacterLookAsync(
@@ -1332,9 +1090,7 @@ else
                 _editDescription = result.Description!;
             if (result.VisualLock is not null)
                 _editVisualLock = result.VisualLock;
-            _message = result.ScrubbedWithAi
-                ? $"Saved + AI-scrubbed look for {_selected.DisplayName} (base + literal)"
-                : (result.Message ?? $"Saved look for {_selected.DisplayName}");
+            _message = $"Saved look for {_selected.DisplayName}";
             await SoftReloadAsync();
             if (_selected is not null)
             {
@@ -1377,36 +1133,6 @@ else
         finally { _busy = false; }
     }
 
-    private async Task LockChampionAsync()
-    {
-        if (_selected is null || _champion is null) return;
-        _busy = true;
-        _error = null;
-        try
-        {
-            if (_champion.Kind == "locked")
-            {
-                _message = $"{_selected.DisplayName} already uses this lock.";
-            }
-            else if (_champion.Kind == "book")
-            {
-                await Engine.LockCharacterBookRefAsync(_projectId, _selected.Key, _champion.Index);
-                _message = $"Locked book picture for {_selected.DisplayName}";
-            }
-            else if (_champion.Kind == "variant")
-            {
-                await Engine.LockCharacterVariantAsync(_projectId, _selected.Key, _champion.Index);
-                _message = $"Locked portrait for {_selected.DisplayName}";
-            }
-
-            await LoadAsync();
-            ResetCompare();
-            _mode = Mode.PickSource;
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        finally { _busy = false; }
-    }
-
     private async Task UnlockAsync()
     {
         if (_selected is null) return;
@@ -1415,9 +1141,7 @@ else
         try
         {
             await Engine.UnlockCharacterAsync(_projectId, _selected.Key);
-            _message =
-                $"Unlocked {_selected.DisplayName} — previous lock is now the preferred image (variant 1). " +
-                "Generate portraits to refine, then lock again.";
+            _message = $"Unlocked {_selected.DisplayName}";
             await LoadAsync();
             ResetCompare();
             _mode = Mode.PickSource;

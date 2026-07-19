@@ -4,6 +4,7 @@
 @inject JobHubClient Hub
 @inject NavigationManager Nav
 @inject ActiveProjectState ActiveProject
+@inject AdminSessionService Session
 @using FilmStudio.Core.Models
 
 <PageTitle>Film Studio</PageTitle>
@@ -145,37 +146,45 @@
                         @foreach (var j in _myJobs.Take(8))
                         {
                             <li class="list-group-item px-0 py-2 small">
-                                <span class="badge bg-secondary">@j.Status</span>
-                                @(j.Kind ?? "job")
-                                @if (j.Scene is int sn) { <span>S@(sn.ToString("D2"))</span> }
+                                <span class="badge bg-secondary">@FriendlyStatus(j.Status)</span>
+                                <span>@FriendlyKind(j.Kind)</span>
                                 @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
-                                <div class="text-muted">@j.Message</div>
+                                <div class="text-muted">@FriendlyJobLine(j)</div>
                             </li>
                         }
                     </ul>
                 }
                 @if (_job is not null)
                 {
+                    var jobLine = FriendlyJobLine(_job);
+                    var showError = string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase)
+                                    && !string.IsNullOrWhiteSpace(_job.Error);
                     <p class="mb-1">
                         <strong>Current:</strong>
-                        <span class="badge bg-secondary">@_job.Status</span>
-                        @if (_job.Scene is int sn && _job.Clip is int cn)
-                        {
-                            <span class="ms-1">S@(sn.ToString("D2")) C@(cn.ToString("D2"))</span>
-                        }
+                        <span class="badge bg-secondary">@FriendlyStatus(_job.Status)</span>
                         @if (_job.Total > 0)
                         {
                             <span class="ms-1">@_job.Index / @_job.Total</span>
                         }
                     </p>
-                    <p class="small">@_job.Message</p>
-                    @if (!string.IsNullOrEmpty(_job.Error))
+                    @if (showError)
                     {
-                        <div class="alert alert-danger py-1 small">@_job.Error</div>
+                        <div class="alert alert-danger py-1 small mb-2">
+                            @(Session.IsAdmin
+                                ? (_job.Error ?? jobLine)
+                                : FriendlyOperatorError(_job))
+                        </div>
                     }
-                    @if (_job.Log.Count > 0)
+                    else if (!string.IsNullOrWhiteSpace(jobLine))
                     {
-                        <pre class="small mb-0" style="max-height: 220px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(40))</pre>
+                        <p class="small mb-2">@jobLine</p>
+                    }
+                    @if (Session.IsAdmin && _job.Log.Count > 0)
+                    {
+                        <details class="mb-2">
+                            <summary class="small text-muted" style="cursor:pointer">Details (admin)</summary>
+                            <pre class="small mb-0 mt-1" style="max-height: 220px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(40))</pre>
+                        </details>
                     }
                     @if (string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(_job.Status, "queued", StringComparison.OrdinalIgnoreCase))
@@ -213,6 +222,7 @@
     {
         Hub.JobUpdated += OnJobUpdated;
         Hub.JobLog += OnJobLog;
+        try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
         await LoadAsync();
         try
         {
@@ -399,6 +409,47 @@
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
+    }
+
+    private static string FriendlyStatus(string? status) =>
+        string.IsNullOrWhiteSpace(status) ? "…" : status!;
+
+    private static string FriendlyKind(string? kind) => kind switch
+    {
+        "character" => "Portrait",
+        "character-plates" => "Book pictures",
+        "stage1" => "Screenplay",
+        "stage2" => "Shot plan",
+        "video" or "clip" => "Clip",
+        _ => string.IsNullOrWhiteSpace(kind) ? "Job" : kind!,
+    };
+
+    /// <summary>Short operator line — no paths, seed lists, or API jargon.</summary>
+    private static string FriendlyJobLine(JobSnapshot j)
+    {
+        if (string.Equals(j.Status, "error", StringComparison.OrdinalIgnoreCase))
+            return FriendlyOperatorError(j);
+        if (string.Equals(j.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
+            return "Cancelled.";
+        if (string.Equals(j.Status, "done", StringComparison.OrdinalIgnoreCase))
+            return "Done.";
+        // Running / queued: prefer a short outcome phrase over raw Message (which may be technical)
+        if (string.Equals(j.Kind, "character", StringComparison.OrdinalIgnoreCase))
+            return "Creating portrait…";
+        if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+            return "Matching book pictures…";
+        var msg = j.Message ?? "";
+        if (msg.Length > 120) msg = msg[..117] + "…";
+        return msg;
+    }
+
+    private static string FriendlyOperatorError(JobSnapshot j)
+    {
+        if (string.Equals(j.Kind, "character", StringComparison.OrdinalIgnoreCase))
+            return "Portrait generation failed. Try again.";
+        if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+            return "Could not match book pictures. Try again.";
+        return "Something went wrong. Try again.";
     }
 
     public async ValueTask DisposeAsync()
