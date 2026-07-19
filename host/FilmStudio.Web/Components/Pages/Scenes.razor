@@ -3,6 +3,7 @@
 @inject EngineApiClient Engine
 @inject JobHubClient Hub
 @inject ActiveProjectState ActiveProject
+@inject AdminSessionService Session
 @using FilmStudio.Core.Models
 
 <PageTitle>Scenes &amp; Clips</PageTitle>
@@ -20,15 +21,8 @@
 }
 else
 {
-<p class="text-muted mb-1">
+<p class="text-muted mb-3">
     Browse scenes and create video clips.
-    Pin cast on <a href="characters">Characters</a> first;
-    update the shot plan from <a href="adaptation/shots">Adaptation</a>;
-    pass/fail on <a href="review">Review</a>.
-</p>
-<p class="small text-muted">
-    <strong>Rebuild scene</strong> combines this scene’s clips into one video (not the full movie draft).
-    Clip <strong>Regen</strong> recreates one clip; rebuild the scene after to update the combined video.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -151,10 +145,39 @@ else
     </div>
 }
 
-@* ---- Live job banner ---- *@
-@if (_job is not null && (_job.Status is "running" or "done" or "error" or "cancelled"))
+@* Operator: short gen progress only. Admin: full job card + log + My jobs. *@
+@if (ShowOperatorGenProgress && _job is not null)
 {
-    <div class="card mb-3 border-@(_job.Status == "running" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
+    <div class="card mb-3 border-primary">
+        <div class="card-body py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="small">
+                @OperatorGenStatusText(_job)
+                @if (_job.Total > 0)
+                {
+                    <span class="text-muted">· @_job.Index / @_job.Total</span>
+                }
+            </span>
+            <div class="d-flex gap-2">
+                @if (JobRunning)
+                {
+                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">Cancel</button>
+                }
+                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="ReloadListAsync">Refresh</button>
+            </div>
+        </div>
+    </div>
+}
+else if (ShowOperatorGenError && _job is not null)
+{
+    <div class="alert alert-danger py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="small">@(_job.Error ?? _job.Message ?? "Generation failed")</span>
+        <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="ReloadListAsync">Refresh</button>
+    </div>
+}
+else if (Session.IsAdmin && _job is not null &&
+         (_job.Status is "running" or "queued" or "done" or "error" or "cancelled"))
+{
+    <div class="card mb-3 border-@(_job.Status is "running" or "queued" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
         <div class="card-body py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
@@ -178,7 +201,7 @@ else
                     <span class="ms-2 small">@_job.Message</span>
                 </div>
                 <div class="d-flex gap-2">
-                    @if (_job.Status == "running")
+                    @if (_job.Status is "running" or "queued")
                     {
                         <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">Cancel</button>
                     }
@@ -193,11 +216,11 @@ else
     </div>
 }
 
-@if (_myJobs.Count > 0)
+@if (Session.IsAdmin && _myJobs.Count > 0)
 {
     <div class="card mb-3 border-secondary">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">
-            <span>My jobs <span class="badge text-bg-secondary">@_myJobs.Count</span></span>
+            <span>My jobs <span class="badge text-bg-secondary">@_myJobs.Count</span> <span class="badge text-bg-dark">admin</span></span>
             <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="RefreshMyJobsAsync">Refresh</button>
         </div>
         <ul class="list-group list-group-flush small">
@@ -256,9 +279,9 @@ else
                             {
                                 <span class="batch-panel__warn"> · @IncompleteCount incomplete</span>
                             }
-                            @if (_myJobs.Count > 0)
+                            @if (Session.IsAdmin && _myJobs.Count > 0)
                             {
-                                <span> · <strong>@_myJobs.Count</strong> my job@(_myJobs.Count == 1 ? "" : "s")</span>
+                                <span> · <strong>@_myJobs.Count</strong> job@(_myJobs.Count == 1 ? "" : "s")</span>
                             }
                         </div>
                     </div>
@@ -313,6 +336,19 @@ else
                         <input type="checkbox" class="form-check-input" @bind="_onlyMissing" disabled="@_busy" />
                         <span>Only missing clips</span>
                     </label>
+
+                    <div class="d-flex align-items-center gap-1">
+                        <label class="small text-muted mb-0" for="genResBatch">Resolution</label>
+                        <select id="genResBatch"
+                                class="form-select form-select-sm"
+                                style="width:auto"
+                                @bind="_genResolution"
+                                disabled="@_busy">
+                            <option value="480p">480p</option>
+                            <option value="720p">720p</option>
+                            <option value="1080p">1080p</option>
+                        </select>
+                    </div>
 
                     <button type="button"
                             class="btn batch-go @(_selected.Count > 0 && !JobRunning ? "batch-go--ready" : "")"
@@ -473,6 +509,18 @@ else
                 <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="onlyMissingDetail" @bind="_onlyMissing" disabled="@_busy" />
                     <label class="form-check-label" for="onlyMissingDetail">Only missing</label>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <label class="small text-muted mb-0" for="genResDetail">Res</label>
+                    <select id="genResDetail"
+                            class="form-select form-select-sm"
+                            style="width:auto"
+                            @bind="_genResolution"
+                            disabled="@_busy">
+                        <option value="480p">480p</option>
+                        <option value="720p">720p</option>
+                        <option value="1080p">1080p</option>
+                    </select>
                 </div>
                 <button class="btn btn-sm btn-success"
                         disabled="@(_busy || JobRunning || (_detail.ClipsOnDisk == 0 && !_detail.CompositeExists))"
@@ -737,6 +785,8 @@ else
     private string _filterCharacter = "";
     private string _filterLocation = "";
     private bool _onlyMissing = true;
+    /// <summary>Video gen resolution (defaults from Configuration).</summary>
+    private string _genResolution = "720p";
     private List<SceneSummary>? _scenes;
     private HashSet<int> _selected = new();
     private string _selectionMode = ""; // "" | incomplete | all
@@ -769,6 +819,31 @@ else
         _myJobs.Any(j =>
             string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Jobs that belong on Scenes (not leftover stage2 / character jobs).</summary>
+    private static bool IsScenesWorkflowJob(string? kind) =>
+        kind is "scene" or "batch" or "remux";
+
+    private bool ShowOperatorGenProgress =>
+        !Session.IsAdmin &&
+        _job is not null &&
+        IsScenesWorkflowJob(_job.Kind) &&
+        (_job.Status is "running" or "queued");
+
+    private bool ShowOperatorGenError =>
+        !Session.IsAdmin &&
+        _job is not null &&
+        IsScenesWorkflowJob(_job.Kind) &&
+        string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase);
+
+    private static string OperatorGenStatusText(JobSnapshot job) => job.Kind switch
+    {
+        "remux" => "Combining video…",
+        "batch" => "Generating clips…",
+        "scene" when job.Clip is int => "Generating clip…",
+        "scene" => "Generating scene…",
+        _ => "Working…",
+    };
 
     private bool SelectedLockedByOther =>
         _scenes is not null &&
@@ -872,6 +947,8 @@ else
         Hub.JobLog += OnJobLog;
         try
         {
+            try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
+
             var projs = await Engine.GetProjectsAsync();
             _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
                           ?? new List<string> { "Buster" };
@@ -888,6 +965,8 @@ else
             if (!ActiveProject.CanScenes)
                 return;
 
+            await LoadGenResolutionFromConfigAsync();
+
             try
             {
                 await Hub.StartAsync();
@@ -896,7 +975,8 @@ else
 
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
-            await RefreshMyJobsAsync();
+            if (Session.IsAdmin)
+                await RefreshMyJobsAsync();
 
             await ReloadListAsync();
         }
@@ -905,6 +985,28 @@ else
             _error = ex.Message;
             _gateChecked = true;
         }
+    }
+
+    private async Task LoadGenResolutionFromConfigAsync()
+    {
+        try
+        {
+            var dto = await Engine.GetConfigAsync(_projectId);
+            if (dto?.Config is { } cfg &&
+                cfg.TryGetValue("resolution", out var el) &&
+                el.ValueKind == JsonValueKind.String &&
+                el.GetString() is { Length: > 0 } res)
+            {
+                _genResolution = res.Trim().ToLowerInvariant() switch
+                {
+                    "480" or "480p" => "480p",
+                    "720" or "720p" => "720p",
+                    "1080" or "1080p" => "1080p",
+                    _ => res.Trim(),
+                };
+            }
+        }
+        catch { /* keep default */ }
     }
 
     private void OnJobUpdated(JobSnapshot snap)
@@ -978,6 +1080,7 @@ else
         _clip = null;
         _selected.Clear();
         ClearFilters();
+        await LoadGenResolutionFromConfigAsync();
         await ReloadListAsync();
     }
 
@@ -1184,8 +1287,8 @@ else
         try
         {
             await EnsureHubAsync();
-            await Engine.StartSceneGenAsync(_projectId, sn, onlyMissing: false, clip: cn);
-            _message = $"Regenerating S{sn:D2}C{cn:D2}…";
+            await Engine.StartSceneGenAsync(_projectId, sn, onlyMissing: false, clip: cn, resolution: _genResolution);
+            _message = $"Regenerating S{sn:D2}C{cn:D2} @ {_genResolution}…";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
         }
@@ -1242,8 +1345,8 @@ else
         _message = null;
         try
         {
-            await Engine.StartSceneGenAsync(_projectId, sn, _onlyMissing);
-            _message = $"Started scene {sn}";
+            await Engine.StartSceneGenAsync(_projectId, sn, _onlyMissing, resolution: _genResolution);
+            _message = $"Started scene {sn} @ {_genResolution}";
             await EnsureHubAsync();
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
@@ -1261,8 +1364,8 @@ else
         try
         {
             var list = _selected.OrderBy(x => x).ToList();
-            await Engine.StartBatchGenAsync(_projectId, list, _onlyMissing);
-            _message = $"Started batch for {list.Count} scene(s)";
+            await Engine.StartBatchGenAsync(_projectId, list, _onlyMissing, resolution: _genResolution);
+            _message = $"Started batch for {list.Count} scene(s) @ {_genResolution}";
             await EnsureHubAsync();
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;

@@ -92,20 +92,22 @@ else if (Session.IsAdmin && HasCast && !JobRunning && !_extractingCast)
 {
     <div class="alert alert-danger">@_error</div>
 }
-@if (!string.IsNullOrEmpty(_message) && !_extractingCast && !JobRunning)
+@* One outcome surface: success flash OR next-step CTA — not both saying “ready” *@
+@if (!string.IsNullOrEmpty(_message) && !_extractingCast && !JobRunning && !IsCastComplete)
 {
     <div class="alert alert-success">@_message</div>
 }
-@if (IsCastComplete && !JobRunning && !_extractingCast)
+else if (IsCastComplete && !JobRunning && !_extractingCast)
 {
     <div class="alert alert-info py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <span>Cast ready.</span>
         @if (ActiveProject.CanScenes)
         {
+            <span class="small text-muted">Next</span>
             <a class="btn btn-sm btn-primary" href="scenes">Open Scenes →</a>
         }
         else
         {
+            <span class="small text-muted">Next</span>
             <a class="btn btn-sm btn-primary" href="adaptation/shots">Build shot plan →</a>
         }
     </div>
@@ -1219,8 +1221,9 @@ else
             }
             // Nav tooltips / Scenes gate depend on cast + shot-plan readiness
             try { await ActiveProject.RefreshReadinessAsync(Engine); } catch { /* nav */ }
-            if (IsCastComplete && !ActiveProject.CanScenes)
-                _message = $"Saved voice for {_selected?.DisplayName}. Cast ready — build the shot plan next.";
+            // Next-step CTA handles “cast complete” — don’t stack another “ready” message
+            if (IsCastComplete)
+                _message = null;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }

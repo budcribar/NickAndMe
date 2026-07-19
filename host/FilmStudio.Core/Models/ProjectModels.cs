@@ -108,6 +108,8 @@ public sealed class StartSceneGenRequest
     /// <summary>When set, only generate this clip within the scene.</summary>
     public int? Clip { get; set; }
     public bool OnlyMissing { get; set; } = true;
+    /// <summary>Video resolution for this gen (e.g. 480p / 720p). Empty → project Configuration.</summary>
+    public string? Resolution { get; set; }
     /// <summary>Block gen when on-screen (non-narrator) cast lacks locked ref images. Default true.</summary>
     public bool RequireLockedCharacters { get; set; } = true;
     /// <summary>
@@ -122,6 +124,8 @@ public sealed class StartBatchGenRequest
     public string ProjectId { get; set; } = "";
     public List<int> Scenes { get; set; } = new();
     public bool OnlyMissing { get; set; } = true;
+    /// <summary>Video resolution for this gen (e.g. 480p / 720p). Empty → project Configuration.</summary>
+    public string? Resolution { get; set; }
     /// <summary>Block gen when on-screen (non-narrator) cast lacks locked ref images. Default true.</summary>
     public bool RequireLockedCharacters { get; set; } = true;
     /// <summary>When true, 409 if any scene lock is held by another user (default wait).</summary>
@@ -531,7 +535,8 @@ public sealed class StartStage1Request
 public sealed class StartStage2Request
 {
     public string ProjectId { get; set; } = "";
-    public string Resolution { get; set; } = "720p";
+    /// <summary>Optional; empty uses project Configuration resolution (prompt tag only).</summary>
+    public string? Resolution { get; set; }
     public string Scenes { get; set; } = "all";
 }
 

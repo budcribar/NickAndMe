@@ -259,6 +259,7 @@ public sealed class EngineApiClient
         int scene,
         bool onlyMissing = true,
         int? clip = null,
+        string? resolution = null,
         CancellationToken ct = default)
     {
         SyncIdentityHeaders();
@@ -270,6 +271,7 @@ public sealed class EngineApiClient
                 Scene = scene,
                 Clip = clip,
                 OnlyMissing = onlyMissing,
+                Resolution = resolution,
             },
             JsonOpts,
             ct);
@@ -284,6 +286,7 @@ public sealed class EngineApiClient
         string projectId,
         IReadOnlyList<int> scenes,
         bool onlyMissing = true,
+        string? resolution = null,
         CancellationToken ct = default)
     {
         SyncIdentityHeaders();
@@ -292,6 +295,7 @@ public sealed class EngineApiClient
             new StartBatchGenRequest
             {
                 ProjectId = projectId,
+                Resolution = resolution,
                 Scenes = scenes.ToList(),
                 OnlyMissing = onlyMissing,
             },

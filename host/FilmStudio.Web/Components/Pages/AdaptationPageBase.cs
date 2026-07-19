@@ -27,7 +27,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
     public int ChunkPages = 10;
     public string Model = "grok-4.5";
     public bool Resume;
-    public string S2Resolution = "720p";
+
 
     private CancellationTokenSource? _pollCts;
     public int ProgressIndex;
@@ -324,10 +324,11 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         try
         {
             await EnsureHubAsync();
+            // Resolution comes from project Configuration (shot plan structure is resolution-independent;
+            // config is only used as a default tag if the planner still stamps prompts).
             await Engine.StartStage2Async(new StartStage2Request
             {
                 ProjectId = ProjectId,
-                Resolution = S2Resolution,
                 Scenes = "all",
             });
             Message = "Building shot plan… — live log below";

@@ -1108,9 +1108,10 @@ public sealed class FilmJobService
         {
             await AppendLogAsync("Stage 2: C# Stage2PlannerService (deterministic, no API)");
             ct.ThrowIfCancellationRequested();
+            var resolution = await ResolveVideoResolutionAsync(projectId, req.Resolution, ct);
             var result = await _stage2.PlanAsync(
                 projectId,
-                resolution: string.IsNullOrWhiteSpace(req.Resolution) ? "720p" : req.Resolution,
+                resolution: resolution,
                 scenes: string.IsNullOrWhiteSpace(req.Scenes) ? "all" : req.Scenes,
                 onProgress: line =>
                 {
@@ -1333,11 +1334,12 @@ public sealed class FilmJobService
                 return;
             }
 
+            var resolution = await ResolveVideoResolutionAsync(projectId, req.Resolution, ct);
             await UpdateAsync(s =>
             {
                 s.Total = work.Count;
                 s.Index = 0;
-                s.Message = $"Batch: {work.Count} clip(s) across {scenes.Count} scene(s)";
+                s.Message = $"Batch: {work.Count} clip(s) across {scenes.Count} scene(s) @ {resolution}";
             });
             await AppendLogAsync(Snapshot.Message!);
 
@@ -1358,7 +1360,7 @@ public sealed class FilmJobService
 
                 try
                 {
-                    await GenerateOneClipAsync(projectId, projectDir, sn, cn, clip, ct);
+                    await GenerateOneClipAsync(projectId, projectDir, sn, cn, clip, resolution, ct);
                     done++;
                     await AppendLogAsync($"Done S{sn:D2} C{cn}");
                 }
@@ -1458,7 +1460,8 @@ public sealed class FilmJobService
                 return;
             }
 
-            var startMsg = $"Scene {req.Scene}: {todo.Count} clip(s)";
+            var resolution = await ResolveVideoResolutionAsync(projectId, req.Resolution, ct);
+            var startMsg = $"Scene {req.Scene}: {todo.Count} clip(s) @ {resolution}";
             await UpdateAsync(s =>
             {
                 s.Total = todo.Count;
@@ -1483,7 +1486,7 @@ public sealed class FilmJobService
 
                 try
                 {
-                    await GenerateOneClipAsync(projectId, projectDir, req.Scene, cn, clip, ct);
+                    await GenerateOneClipAsync(projectId, projectDir, req.Scene, cn, clip, resolution, ct);
                     done++;
                     await AppendLogAsync($"Done S{req.Scene:D2} C{cn}");
                 }
@@ -1523,6 +1526,7 @@ public sealed class FilmJobService
         int scene,
         int clip,
         JsonElement clipEl,
+        string resolution,
         CancellationToken ct)
     {
         var voices = _projects.LoadCharacterVoiceMap(projectId);
@@ -1545,7 +1549,8 @@ public sealed class FilmJobService
             duration = Math.Min(duration, 10);
 
         var model = _opts.DefaultModel;
-        var resolution = _opts.DefaultResolution;
+        if (string.IsNullOrWhiteSpace(resolution))
+            resolution = await ResolveVideoResolutionAsync(projectId, null, ct);
 
         await AppendLogAsync(
             $"  [Grok] Submit S{scene:D2}C{clip} duration={duration}s res={resolution} " +
@@ -1600,6 +1605,53 @@ public sealed class FilmJobService
                 return s;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Prefer explicit request resolution, else project Configuration, else app default.
+    /// </summary>
+    private async Task<string> ResolveVideoResolutionAsync(
+        string projectId,
+        string? requested,
+        CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(requested))
+            return NormalizeResolution(requested);
+
+        try
+        {
+            var cfg = await _projects.GetConfigAsync(projectId, ct).ConfigureAwait(false);
+            if (cfg.TryGetValue("resolution", out var el))
+            {
+                var fromCfg = el.ValueKind switch
+                {
+                    JsonValueKind.String => el.GetString(),
+                    JsonValueKind.Number => el.ToString(),
+                    _ => null,
+                };
+                if (!string.IsNullOrWhiteSpace(fromCfg))
+                    return NormalizeResolution(fromCfg);
+            }
+        }
+        catch
+        {
+            // fall through to app default
+        }
+
+        return NormalizeResolution(
+            string.IsNullOrWhiteSpace(_opts.DefaultResolution) ? "720p" : _opts.DefaultResolution);
+    }
+
+    private static string NormalizeResolution(string? value)
+    {
+        var v = (value ?? "720p").Trim().ToLowerInvariant();
+        return v switch
+        {
+            "480" or "480p" => "480p",
+            "720" or "720p" => "720p",
+            "1080" or "1080p" => "1080p",
+            _ => v.EndsWith('p') ? v : $"{v}p",
+        };
     }
 
     private void EnsureCharactersLocked(string projectId, int sceneNumber)

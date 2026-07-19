@@ -44,6 +44,14 @@ Apply to **workflow pages** users operate day to day: Adaptation, Characters, Sc
 - Labels = short outcomes (**Save look**, **Generate → compare**, **Find characters**). Tooltips only when a label is ambiguous.
 - Project selection lives on **Home** — do not re-add project pickers on workflow pages unless the user asked for multi-project on that screen.
 
+### 0a. No redundant messages on the UI
+
+- **One fact, one place.** Never show the same status twice (e.g. badge **ready** *and* alert “Shot plan ready”, or success “Cast ready…” *and* a second “Cast ready” banner).
+- Prefer **actionable next step** or **counts** over repeating a word like “ready” when the primary control already implies state (button says **Rebuild shot plan** → no green “ready” badge needed).
+- Success flash **or** next-step CTA — not both stacking the same outcome.
+- Help lines that restate the step strip or button labels (“Pin cast… then build… then generate…”) are noise — drop them unless they add a non-obvious constraint.
+- When state is already visible (list green/red, header counts, enabled/disabled nav), do not add another sentence that only restates it.
+
 ### 0b. Technical job details are Admin-only
 
 Operators see **short outcome status** only (e.g. “Creating portrait…”, “Portrait generation failed. Try again.”).
@@ -51,9 +59,12 @@ Operators see **short outcome status** only (e.g. “Creating portrait…”, �
 **Admin only** (collapsible “Details (admin)” or admin badge views):
 
 - Job log lines such as `Character design (C# / Grok image API)…`, seed paths, `Seed mode=explicit · refs=3/3`, model names, HTTP bodies, file names under `assets/…`.
+- Full job cards with kind badges (`stage2`, `done`), multi-line logs, and **My jobs** lists on Scenes / Adaptation.
 - Stacking the same error three times (list row + Current message + red alert) is forbidden — **one** operator-facing error surface.
 
 Never show raw engine progress dumps to non-admin users on Home, Characters, Scenes, or Adaptation.
+
+On **Scenes**: operators never see leftover Stage 2 / adaptation job cards. Show only compact **Generating…** / error for active clip gen or remux; admin keeps the full job panel.
 
 ### 1. Outcome only — not mechanism
 
@@ -133,4 +144,4 @@ Slightly more technical language is OK on **About** or a collapsible “For deve
 
 ---
 
-*Last updated: 2026-07-19 — no UI commentary/decision process; general solutions only; UI outcome-only principles.*
+*Last updated: 2026-07-19 — no redundant UI messages; no UI commentary/decision process; general solutions only; UI outcome-only principles.*

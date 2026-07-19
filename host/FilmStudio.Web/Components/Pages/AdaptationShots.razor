@@ -11,7 +11,14 @@
                 <span>Shot plan</span>
                 @if (Status.Stage2.Stage2Ready && !Status.Stage2.Stage2Stale)
                 {
-                    <span class="badge bg-success">ready</span>
+                    <span class="small text-muted">
+                        <strong>@Status.Stage2.Stage2Scenes</strong> scenes ·
+                        <strong>@Status.Stage2.Stage2Clips</strong> clips
+                        @if (!string.IsNullOrEmpty(Status.Stage2.LastCompletedAt))
+                        {
+                            <span>· @Status.Stage2.LastCompletedAt</span>
+                        }
+                    </span>
                 }
                 else if (Status.Stage2.Stage2Stale)
                 {
@@ -21,53 +28,24 @@
             <div class="card-body">
                 @if (!Status.Stage1.Present || Status.Stage1.SceneCount <= 0)
                 {
-                    <div class="alert alert-secondary py-2 small">
+                    <div class="alert alert-secondary py-2 small mb-3">
                         Approve the <a href="adaptation/screenplay">screenplay</a> first.
                     </div>
                 }
                 else if (Status.Stage2.Stage2Stale)
                 {
-                    <div class="alert alert-warning py-2 small">
+                    <div class="alert alert-warning py-2 small mb-3">
                         Screenplay changed — update the shot plan before making video.
                     </div>
                 }
-                else if (Status.Stage2.Stage2Ready)
+                else if (!Status.Stage2.Stage2Ready)
                 {
-                    <div class="alert alert-success py-2 small">
-                        Shot plan ready — <strong>@Status.Stage2.Stage2Scenes</strong> scenes ·
-                        <strong>@Status.Stage2.Stage2Clips</strong> clips
-                        @if (!string.IsNullOrEmpty(Status.Stage2.LastCompletedAt))
-                        {
-                            <span>· last @Status.Stage2.LastCompletedAt</span>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="alert alert-warning py-2 small">
+                    <div class="alert alert-warning py-2 small mb-3">
                         Screenplay has @Status.Stage2.Stage1Scenes scene(s) but no shot plan yet.
                     </div>
                 }
 
-                <p class="small text-muted">
-                    @if (!string.IsNullOrEmpty(Status.Stage2.LastRunMessage))
-                    {
-                        <span>@Status.Stage2.LastRunMessage</span>
-                    }
-                    @if (Status.Stage2.ValidationIssueCount > 0)
-                    {
-                        <span>· @Status.Stage2.ValidationIssueCount note(s)</span>
-                    }
-                </p>
-
-                <div class="d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                        <label class="form-label small mb-0">Resolution</label>
-                        <select class="form-select form-select-sm" style="width:auto" @bind="S2Resolution" disabled="@Busy">
-                            <option value="480p">480p</option>
-                            <option value="720p">720p</option>
-                        </select>
-                    </div>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
                     <button class="btn btn-primary"
                             disabled="@(Busy || JobRunning || !Status.Stage2.Stage1Exists)"
                             @onclick="RunShotsAsync">
@@ -76,12 +54,12 @@
                             : "▶ Build shot plan")
                     </button>
                     <a class="btn btn-outline-secondary" href="characters">← Characters</a>
-                    <a class="btn btn-outline-primary" href="scenes">Open Scenes →</a>
+                    @if (Status.Stage2.Stage2Ready && !Status.Stage2.Stage2Stale)
+                    {
+                        <a class="btn btn-outline-primary" href="scenes">Open Scenes →</a>
+                    }
                     <a class="btn btn-outline-secondary" href="adaptation/screenplay">Screenplay</a>
                 </div>
-                <p class="small text-muted mt-2 mb-0">
-                    Pin cast on Characters first, then build the shot plan, then generate clips on Scenes.
-                </p>
             </div>
         </div>
     }
