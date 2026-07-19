@@ -70,6 +70,8 @@ public static class FountainParser
     public static ParseResult Parse(string text)
     {
         text ??= "";
+        // Normalize typographic punctuation so CONT'D / MARLEY'S match ASCII rules
+        text = NormalizeTypographicPunctuation(text);
         // Boneyard /* ... */ may span lines — remove entirely
         text = Regex.Replace(text, @"/\*.*?\*/", "\n", RegexOptions.Singleline);
 
@@ -542,8 +544,26 @@ public static class FountainParser
         var namePart = core.Split('(')[0].Trim();
         if (namePart.Length < 1) return false;
         if (!namePart.Any(char.IsLetter)) return false; // "23" invalid; "R2D2" ok
-        // Entire character line name must be uppercase letters (extensions can be mixed)
-        return namePart.All(c => !char.IsLetter(c) || char.IsUpper(c));
+        // Allow multi-word ALL CAPS including apostrophes / ampersands
+        // (MARLEY'S GHOST, SCROOGE & MARLEY'S, GHOST OF CHRISTMAS PAST)
+        return namePart.All(c =>
+            !char.IsLetter(c) || char.IsUpper(c));
+    }
+
+    /// <summary>
+    /// Map curly quotes/apostrophes/dashes to ASCII so CONT'D and MARLEY'S parse reliably.
+    /// </summary>
+    public static string NormalizeTypographicPunctuation(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? "";
+        return text
+            .Replace('\u2018', '\'') // ‘
+            .Replace('\u2019', '\'') // ’
+            .Replace('\u201C', '"')  // “
+            .Replace('\u201D', '"')  // ”
+            .Replace('\u2013', '-')  // –
+            .Replace('\u2014', '-')  // —
+            .Replace('\u00A0', ' '); // nbsp
     }
 
     private static bool IsAllCapsLine(string s) =>

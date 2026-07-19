@@ -28,6 +28,8 @@ public static class BookToFountainConverter
         Target runtime about {{TOTAL_RUNTIME_MINUTES}} minutes. Real INT./EXT. locations.
         No page numbers in the script. NARRATOR for narration; CHARACTER cues for speech.
         Closed cast. VO↔visual fidelity. No major invented plot.
+        DIALOGUE: prefer the book’s actual spoken words — do not paraphrase iconic lines
+        into generic modern dialogue (classics, verse, first-person monologues especially).
         """;
 
     /// <summary>
@@ -449,6 +451,7 @@ public static class BookToFountainConverter
         sb.AppendLine("- Full story arc across all parts (do not drop the ending).");
         sb.AppendLine("- Remove duplicate cold opens / repeated setups when chunks overlap.");
         sb.AppendLine("- One FADE OUT / THE END at the finish.");
+        sb.AppendLine("- Preserve book-faithful dialogue from the parts; do not re-paraphrase iconic lines.");
         sb.AppendLine("- No markdown fences, no JSON, no commentary.");
         sb.AppendLine("- Do not include = page N or [[page N]] tags — strip them if present in parts.");
         sb.AppendLine();

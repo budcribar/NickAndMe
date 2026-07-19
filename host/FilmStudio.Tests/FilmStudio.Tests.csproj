@@ -27,6 +27,7 @@
     <None Include="Fixtures\Fountain\**\*.fountain" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\FountainOpenSource\**\*.fountain" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\FountainOpenSource\**\*.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\BookToFountainPackage\**\*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

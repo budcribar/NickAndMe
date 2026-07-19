@@ -67,9 +67,21 @@ BODY:
 - Action lines = what we SEE (story beats / visual events)
 - Third-person narration / storybook voice → NARRATOR (character cue) + dialogue lines
 - Spoken book lines → CHARACTER (ALL CAPS) + dialogue under them
-- Prefer book wording for important spoken lines; do not genericize famous dialogue
 - Parentheticals sparingly when delivery matters
 - Dual dialogue: caret ^ on the second speaker only when simultaneous
+
+DIALOGUE FIDELITY (HARD — book wording over paraphrase):
+- Prefer the book’s actual spoken words. Do not modernize, soften, or “movie-ize” dialogue.
+- Iconic / famous lines must stay close to the book (wording and cadence), e.g.:
+  Scrooge “Bah! Humbug!”, “Are there no prisons?”, “decrease the surplus population”,
+  Tiny Tim “God bless us, every one!”, Alice “Curiouser and curiouser!”,
+  Dracula “Welcome to my house…”, Tell-Tale Heart opening “True! — nervous — very, very dreadfully nervous…”,
+  Raven refrain “Nevermore”, Magi / Jungle Book set pieces, etc.
+- First-person monologues and verse: keep the book’s voice; compress by cutting
+  secondary lines, not by rewriting the narrator into generic modern speech.
+- When runtime forces cuts: drop whole minor beats; do not paraphrase the lines you keep.
+- Narration in the book that is clearly spoken or recited on-camera may become dialogue;
+  pure prose description stays Action or NARRATOR VO — still use book phrases when VO quotes the text.
 
 Do NOT invent major plot. Light visual connective tissue is OK.
 Skip pure illustration / blank pages as their own scenes.
@@ -107,15 +119,17 @@ LOCATIONS
 ================================================================
 FIDELITY, SPOILERS, DIALOGUE
 ================================================================
-- Prefer book wording for spoken lines; do not rewrite into generic movie dialogue.
+- Dialogue = book wording first. Paraphrase is a last resort when a line is too long for
+  film time; never replace an iconic phrase with a modern rewrite.
 - If the book withholds a given name or twist early, do not put it on screen or in dialogue
   before the book does. Never “ban” a secret by writing the secret string into the script
   as an instruction.
 - “X said…” / internal thought in the book → NARRATOR VO unless the character is clearly
-  speaking on camera.
+  speaking on camera. Keep distinctive book diction in that VO when it is quoting the text.
 - Keep every speaker named; list recurring people consistently (same ALL-CAPS token).
-- For classics (Scrooge, Alice, Frankenstein’s creature, Dracula, Della/Jim, Mowgli, …):
-  hit the book’s iconic beats and turns; do not substitute a vague “similar” plot.
+- For classics (Scrooge, Alice, Frankenstein’s creature, Dracula, Della/Jim, Mowgli, Poe, …):
+  hit the book’s iconic beats, turns, AND quotable lines; do not substitute a vague
+  “similar” plot or softened dialogue.
 
 ================================================================
 RUNTIME SHAPE
