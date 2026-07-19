@@ -941,69 +941,68 @@ public sealed class ProjectStore
     /// </summary>
     public Dictionary<string, Dictionary<string, string>> LoadCharacterVoiceMap(string projectId)
     {
+        var profiles = LoadCharacterPromptProfiles(projectId);
         var map = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, p) in profiles)
+        {
+            if (string.IsNullOrWhiteSpace(p.VoiceProfile) && string.IsNullOrWhiteSpace(p.VoiceLabel))
+                continue;
+            map[key] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["voice_profile"] = p.VoiceProfile,
+                ["voice_label"] = p.VoiceLabel,
+            };
+        }
+        return map;
+    }
 
-        void Ingest(Dictionary<string, JsonElement> seeds)
+    /// <summary>
+    /// Full character profiles for video CHARACTER VARIABLES (description, visual lock, voice).
+    /// Prefer cast_seeds / scenes seeds; fall back to blueprint seeds.
+    /// </summary>
+    public Dictionary<string, ClipVideoPromptBuilder.CharacterProfile> LoadCharacterPromptProfiles(
+        string projectId)
+    {
+        var map = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase);
+
+        void Ingest(Dictionary<string, JsonElement> seeds, bool overwrite)
         {
             foreach (var (key, info) in seeds)
             {
-                var profile = info.TryGetProperty("voice_profile", out var vp)
-                    ? (vp.GetString() ?? "").Trim()
+                if (!overwrite && map.ContainsKey(key)) continue;
+                var desc = info.TryGetProperty("description", out var d) ? (d.GetString() ?? "").Trim() : "";
+                var vlock = info.TryGetProperty("visual_lock", out var vl) ? (vl.GetString() ?? "").Trim() : "";
+                var profile = info.TryGetProperty("voice_profile", out var vp) ? (vp.GetString() ?? "").Trim() : "";
+                var label = info.TryGetProperty("voice_label", out var vlab) ? (vlab.GetString() ?? "").Trim() : "";
+                var display = info.TryGetProperty("canonical_given_name", out var cn)
+                    ? (cn.GetString() ?? "").Trim()
                     : "";
-                var label = info.TryGetProperty("voice_label", out var vl)
-                    ? (vl.GetString() ?? "").Trim()
-                    : "";
-                if (profile.Length == 0 && label.Length == 0)
+                if (display.Length == 0)
+                    display = key.Replace("Character_", "", StringComparison.OrdinalIgnoreCase).Replace('_', ' ');
+                var voiceOnly = key.Contains("narrator", StringComparison.OrdinalIgnoreCase) ||
+                                (info.TryGetProperty("display_name_policy", out var pol) &&
+                                 (pol.GetString() ?? "").Contains("never", StringComparison.OrdinalIgnoreCase));
+                if (desc.Length == 0 && vlock.Length == 0 && profile.Length == 0 && label.Length == 0)
                     continue;
-                map[key] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                map[key] = new ClipVideoPromptBuilder.CharacterProfile
                 {
-                    ["voice_profile"] = profile,
-                    ["voice_label"] = label,
+                    Key = key,
+                    DisplayName = display,
+                    Description = desc,
+                    VisualLock = vlock,
+                    VoiceProfile = profile,
+                    VoiceLabel = label,
+                    VoiceOnly = voiceOnly,
                 };
             }
         }
 
-        // scenes.json first so Characters page edits win
-        try
-        {
-            var scenesPath = ResolveScenesJsonPath(projectId);
-            if (File.Exists(scenesPath))
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(scenesPath));
-                if (doc.RootElement.TryGetProperty("global_production_variables", out var gpv) &&
-                    gpv.TryGetProperty("character_seed_tokens", out var seeds) &&
-                    seeds.ValueKind == JsonValueKind.Object)
-                {
-                    var dict = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var p in seeds.EnumerateObject())
-                        dict[p.Name] = p.Value.Clone();
-                    Ingest(dict);
-                }
-            }
-        }
-        catch { /* ignore */ }
-
-        // Fill any missing keys from blueprint / full seed load
+        // cast_seeds.json / scenes first so Characters page edits win
         try
         {
             var all = LoadCharacterSeeds(projectId);
-            foreach (var (key, info) in all)
-            {
-                if (map.ContainsKey(key)) continue;
-                var profile = info.TryGetProperty("voice_profile", out var vp)
-                    ? (vp.GetString() ?? "").Trim()
-                    : "";
-                var label = info.TryGetProperty("voice_label", out var vl)
-                    ? (vl.GetString() ?? "").Trim()
-                    : "";
-                if (profile.Length == 0 && label.Length == 0)
-                    continue;
-                map[key] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["voice_profile"] = profile,
-                    ["voice_label"] = label,
-                };
-            }
+            Ingest(all, overwrite: true);
         }
         catch { /* ignore */ }
 

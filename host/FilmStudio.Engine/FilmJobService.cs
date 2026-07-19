@@ -1323,7 +1323,7 @@ public sealed class FilmJobService
                     var path = Path.Combine(projectDir, "assets", "video", $"scene_{sn:D2}_clip_{cn:D2}.mp4");
                     var missing = !File.Exists(path) || new FileInfo(path).Length < 1024;
                     if (!req.OnlyMissing || missing)
-                        work.Add((sn, cn, c.Clone()));
+                        work.Add((Scene: sn, Clip: cn, ClipEl: c.Clone()));
                 }
             }
 
@@ -1360,7 +1360,19 @@ public sealed class FilmJobService
 
                 try
                 {
-                    await GenerateOneClipAsync(projectId, projectDir, sn, cn, clip, resolution, ct);
+                    // Previous clip element in same scene (for prompt context)
+                    JsonElement? prevClipEl = null;
+                    if (cn > 1)
+                    {
+                        var sceneEl = FindScene(bp.RootElement, sn);
+                        if (sceneEl is not null)
+                            prevClipEl = FindClipInScene(sceneEl.Value, cn - 1);
+                    }
+
+                    await GenerateOneClipAsync(
+                        projectId, projectDir, sn, cn, clip, resolution, ct,
+                        previousClipEl: prevClipEl,
+                        blueprintRoot: bp.RootElement);
                     done++;
                     await AppendLogAsync($"Done S{sn:D2} C{cn}");
                 }
@@ -1486,7 +1498,22 @@ public sealed class FilmJobService
 
                 try
                 {
-                    await GenerateOneClipAsync(projectId, projectDir, req.Scene, cn, clip, resolution, ct);
+                    JsonElement? prevClipEl = null;
+                    if (cn > 1)
+                    {
+                        foreach (var (pcn, pclip) in todo)
+                        {
+                            if (pcn == cn - 1) { prevClipEl = pclip; break; }
+                        }
+                        // Also scan full scene clips for prev not in todo
+                        if (prevClipEl is null)
+                            prevClipEl = FindClipInScene(sceneEl, cn - 1);
+                    }
+
+                    await GenerateOneClipAsync(
+                        projectId, projectDir, req.Scene, cn, clip, resolution, ct,
+                        previousClipEl: prevClipEl,
+                        blueprintRoot: bp.RootElement);
                     done++;
                     await AppendLogAsync($"Done S{req.Scene:D2} C{cn}");
                 }
@@ -1527,36 +1554,98 @@ public sealed class FilmJobService
         int clip,
         JsonElement clipEl,
         string resolution,
-        CancellationToken ct)
+        CancellationToken ct,
+        JsonElement? previousClipEl = null,
+        JsonElement? blueprintRoot = null)
     {
-        var voices = _projects.LoadCharacterVoiceMap(projectId);
-        var prompt = ClipVideoPromptBuilder.BuildPrompt(clipEl, projectDir, characterVoiceByKey: voices);
-        if (string.IsNullOrWhiteSpace(prompt))
+        var profiles = _projects.LoadCharacterPromptProfiles(projectId);
+
+        // Previous clip in this scene — Imagine /videos/extensions continues from that video
+        string? prevVisual = null;
+        string? prevVideoPath = null;
+        var cont = clipEl.TryGetProperty("veo_continuation_source", out var ce)
+            ? (ce.GetString() ?? "none")
+            : "none";
+        var wantContinue =
+            string.Equals(cont, "extend_previous", StringComparison.OrdinalIgnoreCase) ||
+            clip > 1;
+
+        if (previousClipEl is { } prevEl &&
+            prevEl.TryGetProperty("visual_prompt", out var pvp))
+            prevVisual = pvp.GetString();
+
+        if (prevVisual is null && wantContinue && blueprintRoot is { } root)
+            prevVisual = FindClipVisualInBlueprint(root, scene, clip - 1);
+
+        if (wantContinue && clip > 1)
+        {
+            prevVideoPath = Path.Combine(
+                projectDir, "assets", "video", $"scene_{scene:D2}_clip_{clip - 1:D2}.mp4");
+            if (!File.Exists(prevVideoPath) || new FileInfo(prevVideoPath).Length < 1024)
+            {
+                await AppendLogAsync(
+                    $"  [Continuity] no previous clip file S{scene:D2}C{clip - 1:D2} — fresh gen");
+                prevVideoPath = null;
+            }
+            else
+            {
+                await AppendLogAsync(
+                    $"  [Continuity] Imagine video-extend from S{scene:D2}C{clip - 1:D2} " +
+                    $"({Path.GetFileName(prevVideoPath)})");
+            }
+        }
+
+        // When extending video, skip start-frame stills — API uses the previous video itself
+        var built = ClipVideoPromptBuilder.Build(
+            clipEl,
+            projectDir,
+            characters: profiles,
+            previousClipVisualPrompt: prevVisual,
+            previousClipVideoPath: prevVideoPath,
+            startFrameImagePath: null,
+            maxRefs: 5);
+
+        if (string.IsNullOrWhiteSpace(built.Prompt))
             throw new InvalidOperationException("clip missing visual_prompt");
 
-        if (prompt.Contains("VOICE LOCK", StringComparison.OrdinalIgnoreCase))
-            await AppendLogAsync("  [Voice] VOICE LOCK applied from character seed voice_profile");
+        // Persist + log full prompt for evaluation (admin logs surface this)
+        await WriteAndLogPromptAsync(projectDir, scene, clip, built, ct).ConfigureAwait(false);
 
-        var refPaths = ClipVideoPromptBuilder.FindCharacterRefPaths(clipEl, projectDir, maxRefs: 3);
-        if (refPaths.Count > 0)
+        if (built.Prompt.Contains("VOICE LOCK", StringComparison.OrdinalIgnoreCase))
+            await AppendLogAsync("  [Voice] VOICE LOCK from character profile");
+        if (built.ReferenceImagePaths.Count > 0 && prevVideoPath is null)
             await AppendLogAsync(
-                $"  [Refs] {refPaths.Count}: {string.Join(", ", refPaths.Select(Path.GetFileName))}");
+                $"  [Refs] {built.ReferenceImagePaths.Count}: " +
+                string.Join(", ", built.ReferenceImagePaths.Select(Path.GetFileName)));
 
         var duration = _opts.DefaultDurationSeconds;
         if (clipEl.TryGetProperty("duration_seconds", out var d) && d.TryGetInt32(out var ds))
             duration = Math.Clamp(ds, 1, 15);
-        if (refPaths.Count > 0)
+        // Extension / ref / start-frame: new portion typically max 10s
+        if (prevVideoPath is not null || built.ReferenceImagePaths.Count > 0)
             duration = Math.Min(duration, 10);
 
         var model = _opts.DefaultModel;
         if (string.IsNullOrWhiteSpace(resolution))
             resolution = await ResolveVideoResolutionAsync(projectId, null, ct);
 
+        var modeLabel = prevVideoPath is not null ? "video-extend" : built.Mode;
         await AppendLogAsync(
             $"  [Grok] Submit S{scene:D2}C{clip} duration={duration}s res={resolution} " +
-            $"refs={refPaths.Count} promptLen={prompt.Length}");
+            $"mode={modeLabel} {built.PromptLogSummary}");
+
+        // Prefer official video continue; character refs only on fresh gens (API: no mix)
         var requestId = await _grok.SubmitGenerationAsync(
-            prompt, duration, resolution, model, ct, referenceImagePaths: refPaths);
+            built.Prompt,
+            duration,
+            resolution,
+            model,
+            ct,
+            referenceImagePaths: prevVideoPath is null && built.ReferenceImagePaths.Count > 0
+                ? built.ReferenceImagePaths
+                : null,
+            startFrameImagePath: null,
+            continueFromVideoPath: prevVideoPath);
         await AppendLogAsync($"  [Grok] request_id={requestId}");
 
         var url = await _grok.PollForVideoUrlAsync(
@@ -1566,14 +1655,35 @@ public sealed class FilmJobService
 
         var outPath = Path.Combine(
             projectDir, "assets", "video", $"scene_{scene:D2}_clip_{clip:D2}.mp4");
-        await _grok.DownloadToFileAsync(url, outPath, ct);
+
+        if (prevVideoPath is not null)
+        {
+            // Extension returns prev+new as one file — keep only the new portion as this clip
+            var extendedTmp = Path.Combine(
+                projectDir, "assets", "video", $"_extend_s{scene:D2}c{clip:D2}.mp4");
+            await _grok.DownloadToFileAsync(url, extendedTmp, ct);
+            await AppendLogAsync(
+                $"  [Grok] extended video downloaded ({new FileInfo(extendedTmp).Length} bytes) — trimming new {duration}s");
+            var trimmed = await TryTrimExtensionTailAsync(extendedTmp, outPath, duration, ct)
+                .ConfigureAwait(false);
+            if (!trimmed)
+            {
+                // Fallback: keep full extended file as this clip (better than nothing)
+                File.Copy(extendedTmp, outPath, overwrite: true);
+                await AppendLogAsync(
+                    "  [Grok] trim failed — saved full extended video as clip (includes previous)");
+            }
+            try { File.Delete(extendedTmp); } catch { /* ignore */ }
+        }
+        else
+        {
+            await _grok.DownloadToFileAsync(url, outPath, ct);
+        }
+
         await AppendLogAsync($"  [Grok] saved {outPath}");
 
         try
         {
-            var cont = clipEl.TryGetProperty("veo_continuation_source", out var ce)
-                ? ce.GetString() ?? "none"
-                : "none";
             var costProjectId = Snapshot.ProjectId ?? projectId ?? _projects.ActiveProjectId;
             await _costs.RecordVideoGenerationAsync(
                 costProjectId,
@@ -1582,8 +1692,8 @@ public sealed class FilmJobService
                 duration,
                 resolution,
                 model,
-                hasRefImage: refPaths.Count > 0,
-                isExtend: string.Equals(cont, "extend_previous", StringComparison.OrdinalIgnoreCase),
+                hasRefImage: built.ReferenceImagePaths.Count > 0 || prevVideoPath is not null,
+                isExtend: prevVideoPath is not null,
                 requestId: requestId,
                 ct: ct);
             await AppendLogAsync($"  [Cost] tracked list-rate for S{scene:D2}C{clip}");
@@ -1592,6 +1702,116 @@ public sealed class FilmJobService
         {
             await AppendLogAsync($"  [Cost] ledger write skipped: {ex.Message}");
         }
+    }
+
+    private async Task WriteAndLogPromptAsync(
+        string projectDir,
+        int scene,
+        int clip,
+        ClipVideoPromptBuilder.PromptBuildResult built,
+        CancellationToken ct)
+    {
+        try
+        {
+            var dir = Path.Combine(projectDir, "assets", "video", "prompts");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, $"S{scene:D2}C{clip:D2}.txt");
+            var header =
+                $"# S{scene:D2}C{clip:D2}  {built.PromptLogSummary}\n" +
+                $"# refs: {string.Join(", ", built.ReferenceImagePaths.Select(Path.GetFileName))}\n" +
+                $"# startFrame: {built.StartFrameImagePath ?? "(none)"}\n" +
+                $"# characters: {string.Join(", ", built.CharacterKeys)}\n\n";
+            await File.WriteAllTextAsync(path, header + built.Prompt, ct).ConfigureAwait(false);
+            await AppendLogAsync($"  [Prompt] saved {Path.GetRelativePath(projectDir, path)} ({built.Prompt.Length} chars)");
+            // Full prompt in job log for admin evaluation (operators do not see job log)
+            await AppendLogAsync("--- PROMPT BEGIN ---");
+            // Chunk if extremely long so SignalR stays healthy
+            const int chunk = 3500;
+            for (var i = 0; i < built.Prompt.Length; i += chunk)
+            {
+                var len = Math.Min(chunk, built.Prompt.Length - i);
+                await AppendLogAsync(built.Prompt.Substring(i, len));
+            }
+            await AppendLogAsync("--- PROMPT END ---");
+        }
+        catch (Exception ex)
+        {
+            await AppendLogAsync($"  [Prompt] log failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Extension API returns prev+new. Keep only the last <paramref name="extensionSeconds"/>
+    /// as this clip file so remux still stitches independent clips.
+    /// </summary>
+    private async Task<bool> TryTrimExtensionTailAsync(
+        string extendedVideoPath,
+        string outClipPath,
+        int extensionSeconds,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (!_remux.IsAvailable()) return false;
+            Directory.CreateDirectory(Path.GetDirectoryName(outClipPath)!);
+            var sec = Math.Max(1, extensionSeconds);
+            // -sseof -N seeks N seconds before EOF; -t N takes that tail
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _remux.FfmpegPath,
+                Arguments =
+                    $"-y -sseof -{sec} -i \"{extendedVideoPath}\" -t {sec} " +
+                    $"-c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k \"{outClipPath}\"",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc is null) return false;
+            await proc.WaitForExitAsync(ct).ConfigureAwait(false);
+            return proc.ExitCode == 0 &&
+                   File.Exists(outClipPath) &&
+                   new FileInfo(outClipPath).Length >= 1024;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string? FindClipVisualInBlueprint(JsonElement root, int scene, int clipNum)
+    {
+        try
+        {
+            if (!root.TryGetProperty("scenes", out var scenes) ||
+                scenes.ValueKind != JsonValueKind.Array)
+                return null;
+            foreach (var s in scenes.EnumerateArray())
+            {
+                if (!s.TryGetProperty("scene_number", out var sn) || !sn.TryGetInt32(out var n) || n != scene)
+                    continue;
+                return FindClipInScene(s, clipNum) is { } c &&
+                       c.TryGetProperty("visual_prompt", out var vp)
+                    ? vp.GetString()
+                    : null;
+            }
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    private static JsonElement? FindClipInScene(JsonElement sceneEl, int clipNum)
+    {
+        if (!sceneEl.TryGetProperty("veo_clips", out var clips) ||
+            clips.ValueKind != JsonValueKind.Array)
+            return null;
+        foreach (var c in clips.EnumerateArray())
+        {
+            if (c.TryGetProperty("clip_number", out var cn) && cn.TryGetInt32(out var n) && n == clipNum)
+                return c;
+        }
+        return null;
     }
 
     private static JsonElement? FindScene(JsonElement root, int sceneNum)

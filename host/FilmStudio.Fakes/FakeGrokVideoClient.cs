@@ -31,7 +31,9 @@ public sealed class FakeGrokVideoClient : IGrokVideoClient
         string resolution,
         string model,
         CancellationToken ct,
-        IReadOnlyList<string>? referenceImagePaths = null)
+        IReadOnlyList<string>? referenceImagePaths = null,
+        string? startFrameImagePath = null,
+        string? continueFromVideoPath = null)
     {
         var n = Interlocked.Increment(ref _submitCount);
         var fakes = _opts.Fakes ?? new FakesOptions();
@@ -45,10 +47,18 @@ public sealed class FakeGrokVideoClient : IGrokVideoClient
 
         var id = "fake-" + Guid.NewGuid().ToString("N")[..12];
         var fixture = ResolveFixturePath(fakes.VideoMode, durationSeconds);
-        _pending[id] = fixture;
+        // Mark extensions so Download can optionally chain (caller trims new portion)
+        if (!string.IsNullOrWhiteSpace(continueFromVideoPath) && File.Exists(continueFromVideoPath))
+            _pending[id] = "extend:" + continueFromVideoPath + "|" + fixture;
+        else
+            _pending[id] = fixture;
         _log.LogInformation(
-            "Fake video submit {Id} duration={Dur}s fixture={Fixture} refs={Refs}",
-            id, durationSeconds, Path.GetFileName(fixture), referenceImagePaths?.Count ?? 0);
+            "Fake video submit {Id} duration={Dur}s fixture={Fixture} refs={Refs} startFrame={Start} continue={Cont} promptLen={Len}",
+            id, durationSeconds, Path.GetFileName(fixture),
+            referenceImagePaths?.Count ?? 0,
+            startFrameImagePath is null ? "-" : Path.GetFileName(startFrameImagePath),
+            continueFromVideoPath is null ? "-" : Path.GetFileName(continueFromVideoPath),
+            prompt?.Length ?? 0);
         return id;
     }
 
@@ -76,6 +86,13 @@ public sealed class FakeGrokVideoClient : IGrokVideoClient
             fixture = f;
         else
             fixture = ResolveFixturePath(_opts.Fakes?.VideoMode, 10);
+
+        // extend:prevPath|fixturePath → just use fixture as the "new portion"
+        if (fixture.StartsWith("extend:", StringComparison.OrdinalIgnoreCase))
+        {
+            var pipe = fixture.IndexOf('|');
+            fixture = pipe > 0 ? fixture[(pipe + 1)..] : fixture["extend:".Length..];
+        }
 
         if (!File.Exists(fixture))
             throw new FileNotFoundException(

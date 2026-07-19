@@ -41,25 +41,83 @@ public sealed class GrokVideoClient : IGrokVideoClient
         }
     }
 
-    /// <param name="referenceImagePaths">Optional local image paths for reference-to-video (max 7; API often caps duration at 10s).</param>
+    /// <param name="referenceImagePaths">Character/style refs → API <c>reference_images</c> + prompt <c>&lt;IMAGE_n&gt;</c> tags.</param>
+    /// <param name="startFrameImagePath">Optional first-frame still (image-to-video). Prefer video continue when possible.</param>
+    /// <param name="continueFromVideoPath">Previous clip MP4 — uses <c>/videos/extensions</c> (official continue).</param>
     public async Task<string> SubmitGenerationAsync(
         string prompt,
         int durationSeconds,
         string resolution,
         string model,
         CancellationToken ct,
-        IReadOnlyList<string>? referenceImagePaths = null)
+        IReadOnlyList<string>? referenceImagePaths = null,
+        string? startFrameImagePath = null,
+        string? continueFromVideoPath = null)
     {
         EnsureAuthHeader();
         var refs = (referenceImagePaths ?? Array.Empty<string>())
             .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
             .Take(7)
             .ToList();
+        var hasContinue = !string.IsNullOrWhiteSpace(continueFromVideoPath) &&
+                          File.Exists(continueFromVideoPath);
+        var hasStart = !string.IsNullOrWhiteSpace(startFrameImagePath) && File.Exists(startFrameImagePath);
 
-        // Image / reference-to-video max duration is typically 10s
-        if (refs.Count > 0)
-            durationSeconds = Math.Min(durationSeconds, 10);
+        // Priority: video-continue > start-frame > reference images > text
+        if (hasContinue)
+        {
+            refs.Clear();
+            hasStart = false;
+        }
+        else if (hasStart && refs.Count > 0)
+        {
+            _log.LogWarning(
+                "Grok video: start frame + reference_images not allowed together — using start frame only ({Start})",
+                Path.GetFileName(startFrameImagePath));
+            refs.Clear();
+        }
 
+        // Image / reference-to-video / extension max duration is typically 10s for the new portion
+        if (hasStart || refs.Count > 0 || hasContinue)
+            durationSeconds = Math.Min(Math.Max(1, durationSeconds), 10);
+
+        // ── Official continue: POST /v1/videos/extensions ─────────────────
+        if (hasContinue)
+        {
+            var videoUri = await FileToDataUriAsync(continueFromVideoPath!, ct);
+            var extPayload = new Dictionary<string, object?>
+            {
+                ["model"] = model,
+                ["prompt"] = prompt,
+                // duration = length of NEW extension only (not total)
+                ["duration"] = durationSeconds,
+                ["video"] = new Dictionary<string, object?> { ["url"] = videoUri },
+            };
+            // resolution/aspect may be ignored on extensions; still send when API allows
+            if (!string.IsNullOrWhiteSpace(resolution))
+                extPayload["resolution"] = resolution;
+
+            _log.LogInformation(
+                "Grok video EXTEND from={Prev} extensionDur={Dur}s promptLen={Len}",
+                Path.GetFileName(continueFromVideoPath), durationSeconds, prompt.Length);
+
+            using var extResp = await _http.PostAsJsonAsync("videos/extensions", extPayload, ct);
+            var extBody = await extResp.Content.ReadAsStringAsync(ct);
+            if (!extResp.IsSuccessStatusCode)
+                throw new InvalidOperationException(
+                    $"Grok video extend HTTP {(int)extResp.StatusCode}: {Trim(extBody, 500)}");
+
+            using var extDoc = JsonDocument.Parse(extBody);
+            if (!extDoc.RootElement.TryGetProperty("request_id", out var extRid) ||
+                extRid.GetString() is not { Length: > 0 } extId)
+            {
+                throw new InvalidOperationException(
+                    $"Grok extend response missing request_id: {Trim(extBody, 300)}");
+            }
+            return extId;
+        }
+
+        // ── Fresh generation: POST /v1/videos/generations ────────────────
         var payload = new Dictionary<string, object?>
         {
             ["model"] = model,
@@ -69,24 +127,31 @@ public sealed class GrokVideoClient : IGrokVideoClient
             ["resolution"] = resolution,
         };
 
-        if (refs.Count == 1)
+        if (hasStart)
         {
             payload["image"] = new Dictionary<string, object?>
             {
-                ["url"] = await FileToDataUriAsync(refs[0], ct),
+                ["url"] = await FileToDataUriAsync(startFrameImagePath!, ct),
             };
+            _log.LogInformation(
+                "Grok video image-to-video startFrame={Frame} promptLen={Len} duration={Dur}s",
+                Path.GetFileName(startFrameImagePath), prompt.Length, durationSeconds);
         }
-        else if (refs.Count > 1)
+        else if (refs.Count > 0)
         {
-            // Multi-ref: send as image_urls array when supported; also set primary image
-            payload["image"] = new Dictionary<string, object?>
-            {
-                ["url"] = await FileToDataUriAsync(refs[0], ct),
-            };
-            var urls = new List<object?>();
+            var refObjs = new List<object?>();
             foreach (var path in refs)
-                urls.Add(await FileToDataUriAsync(path, ct));
-            payload["image_urls"] = urls;
+                refObjs.Add(new Dictionary<string, object?> { ["url"] = await FileToDataUriAsync(path, ct) });
+            payload["reference_images"] = refObjs;
+            _log.LogInformation(
+                "Grok video reference-to-video refs={N} promptLen={Len} duration={Dur}s",
+                refs.Count, prompt.Length, durationSeconds);
+        }
+        else
+        {
+            _log.LogInformation(
+                "Grok video text-to-video promptLen={Len} duration={Dur}s",
+                prompt.Length, durationSeconds);
         }
 
         using var resp = await _http.PostAsJsonAsync("videos/generations", payload, ct);
@@ -106,12 +171,19 @@ public sealed class GrokVideoClient : IGrokVideoClient
     private static async Task<string> FileToDataUriAsync(string path, CancellationToken ct)
     {
         var bytes = await File.ReadAllBytesAsync(path, ct);
+        // Guard huge uploads (short clips are fine; multi-MB is ok for 6–10s mp4)
+        if (bytes.Length > 40 * 1024 * 1024)
+            throw new InvalidOperationException(
+                $"Video/image too large for data URI ({bytes.Length / (1024 * 1024)} MB). Max 40 MB.");
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var mime = ext switch
         {
             ".png" => "image/png",
             ".webp" => "image/webp",
             ".gif" => "image/gif",
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".mov" => "video/quicktime",
             _ => "image/jpeg",
         };
         return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";

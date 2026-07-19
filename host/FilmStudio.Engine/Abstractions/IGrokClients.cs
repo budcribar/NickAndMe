@@ -5,13 +5,29 @@ public interface IGrokVideoClient
 {
     bool IsConfigured { get; }
 
+    /// <param name="referenceImagePaths">
+    /// Character/style refs for reference-to-video (<c>reference_images</c>).
+    /// Prompt should use <c>&lt;IMAGE_1&gt;</c>… tags.
+    /// Mutually exclusive with start-frame / video-continue modes.
+    /// </param>
+    /// <param name="startFrameImagePath">
+    /// Optional still used as the first frame (image-to-video).
+    /// Prefer <paramref name="continueFromVideoPath"/> for true clip-to-clip continue.
+    /// </param>
+    /// <param name="continueFromVideoPath">
+    /// Local path to previous clip video. Uses Imagine <c>/videos/extensions</c>
+    /// (continue from last frame with the new prompt). Result is prev+extension;
+    /// caller should trim the new portion for a per-clip file.
+    /// </param>
     Task<string> SubmitGenerationAsync(
         string prompt,
         int durationSeconds,
         string resolution,
         string model,
         CancellationToken ct,
-        IReadOnlyList<string>? referenceImagePaths = null);
+        IReadOnlyList<string>? referenceImagePaths = null,
+        string? startFrameImagePath = null,
+        string? continueFromVideoPath = null);
 
     Task<string> PollForVideoUrlAsync(
         string requestId,
