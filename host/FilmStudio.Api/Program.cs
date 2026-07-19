@@ -72,6 +72,10 @@ builder.Services.AddSingleton<Stage2PlannerService>();
 builder.Services.AddSingleton<FfmpegRemuxService>();
 builder.Services.AddSingleton<IFfmpegRemux>(sp => sp.GetRequiredService<FfmpegRemuxService>());
 builder.Services.AddSingleton<VoicePreviewService>();
+builder.Services.AddSingleton<ReviewEventStore>();
+builder.Services.AddSingleton<PromptPackService>();
+builder.Services.AddSingleton<ProjectRulesService>();
+builder.Services.AddSingleton<LearningProposalService>();
 builder.Services.AddSingleton<ClipAutoReviewService>();
 builder.Services.AddSingleton<EditLogService>();
 builder.Services.AddHttpContextAccessor();
@@ -270,6 +274,177 @@ app.MapGet("/api/admin/loadsim", (IUserContext user, LoadSimLiveStore store) =>
 });
 
 // ── Admin config + actions (Phase D) ────────────────────────────────────────
+// ---- Admin Learning (P0–P4) ----
+app.MapGet("/api/admin/learning/insights", (
+    IUserContext user,
+    ReviewEventStore learning,
+    string? projectId,
+    int? take) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var insights = learning.BuildInsights(projectId, recentTake: take ?? 40);
+    return Results.Ok(new { ok = true, insights });
+});
+
+app.MapGet("/api/admin/learning/events", (
+    IUserContext user,
+    ReviewEventStore learning,
+    string? projectId,
+    string? type,
+    string? category,
+    int? take) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var events = learning.Query(projectId, type, category, take: take ?? 100);
+    return Results.Ok(new { ok = true, events });
+});
+
+app.MapGet("/api/admin/learning/packs", (IUserContext user, PromptPackService packs) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var m = packs.GetManifest();
+    return Results.Ok(new { ok = true, manifest = m, packs = m.Packs });
+});
+
+app.MapGet("/api/admin/learning/packs/{packId}", (string packId, IUserContext user, PromptPackService packs) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var text = packs.LoadPackText(packId);
+    if (text is null)
+        return Results.NotFound(new { ok = false, error = "pack not found" });
+    return Results.Ok(new { ok = true, packId, text });
+});
+
+app.MapPost("/api/admin/learning/packs/activate", (
+    ActivatePromptPackRequest body,
+    IUserContext user,
+    PromptPackService packs) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var m = packs.Activate(body.PackId);
+        return Results.Ok(new { ok = true, manifest = m });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/learning/packs", (
+    CreatePromptPackBody body,
+    IUserContext user,
+    PromptPackService packs) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var info = packs.CreateVersion(body.Kind ?? "gen", body.Version ?? "next", body.Body ?? "", body.Notes);
+        return Results.Ok(new { ok = true, pack = info });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/learning/propose", async (
+    ProposeLearningRulesRequest body,
+    IUserContext user,
+    LearningProposalService proposals,
+    CancellationToken ct) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    var result = await proposals.ProposeAsync(body, ct);
+    return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapGet("/api/admin/learning/project-rules/{projectId}", (
+    string projectId,
+    IUserContext user,
+    ProjectRulesService rules) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    return Results.Ok(new { ok = true, projectId, rules = rules.Load(projectId) });
+});
+
+app.MapPost("/api/admin/learning/project-rules/{projectId}/suggest", (
+    string projectId,
+    IUserContext user,
+    ProjectRulesService rules,
+    int? minFails) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = rules.SuggestFromFails(projectId, minFails ?? ProjectRulesService.DefaultMinFailsForSuggest);
+        return Results.Ok(new { ok = true, projectId, rules = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/learning/project-rules/{projectId}/approve", (
+    string projectId,
+    ApproveProjectRuleRequest body,
+    IUserContext user,
+    ProjectRulesService rules) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = rules.Approve(projectId, body.SuggestionId, body.Text, user.UserId);
+        return Results.Ok(new { ok = true, projectId, rules = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/learning/project-rules/{projectId}/reject", (
+    string projectId,
+    RejectProjectRuleRequest body,
+    IUserContext user,
+    ProjectRulesService rules) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = rules.Reject(projectId, body.SuggestionId);
+        return Results.Ok(new { ok = true, projectId, rules = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
 app.MapGet("/api/admin/config", (IUserContext user, IRuntimeConfigStore config) =>
 {
     if (!user.IsAdmin)

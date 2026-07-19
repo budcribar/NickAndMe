@@ -142,6 +142,163 @@ public sealed class EngineApiClient
         await SendJsonAsync<object>(req, ct);
     }
 
+    // ---- Admin Learning (P0–P4) ----
+    public async Task<LearningInsightsDto?> GetLearningInsightsAsync(
+        string? projectId = null,
+        int take = 40,
+        CancellationToken ct = default)
+    {
+        var q = $"/api/admin/learning/insights?take={take}";
+        if (!string.IsNullOrWhiteSpace(projectId))
+            q += "&projectId=" + Uri.EscapeDataString(projectId);
+        using var req = new HttpRequestMessage(HttpMethod.Get, q);
+        var env = await SendJsonAsync<LearningInsightsEnvelope>(req, ct);
+        return env?.Insights;
+    }
+
+    public async Task<IReadOnlyList<ReviewLearningEvent>> GetLearningEventsAsync(
+        string? projectId = null,
+        string? type = null,
+        int take = 100,
+        CancellationToken ct = default)
+    {
+        var parts = new List<string> { $"take={take}" };
+        if (!string.IsNullOrWhiteSpace(projectId))
+            parts.Add("projectId=" + Uri.EscapeDataString(projectId));
+        if (!string.IsNullOrWhiteSpace(type))
+            parts.Add("type=" + Uri.EscapeDataString(type));
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/admin/learning/events?" + string.Join("&", parts));
+        var env = await SendJsonAsync<LearningEventsEnvelope>(req, ct);
+        return env?.Events ?? (IReadOnlyList<ReviewLearningEvent>)Array.Empty<ReviewLearningEvent>();
+    }
+
+    public async Task<PromptPackManifest?> GetLearningPacksAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/admin/learning/packs");
+        var env = await SendJsonAsync<LearningPacksEnvelope>(req, ct);
+        return env?.Manifest;
+    }
+
+    public async Task<string?> GetLearningPackTextAsync(string packId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/admin/learning/packs/{Uri.EscapeDataString(packId)}");
+        var env = await SendJsonAsync<LearningPackTextEnvelope>(req, ct);
+        return env?.Text;
+    }
+
+    public async Task ActivateLearningPackAsync(string packId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/learning/packs/activate")
+        {
+            Content = JsonContent.Create(new ActivatePromptPackRequest { PackId = packId }, options: JsonOpts),
+        };
+        await SendJsonAsync<object>(req, ct);
+    }
+
+    public async Task<PromptPackInfo?> CreateLearningPackAsync(
+        string kind, string version, string body, string? notes = null, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/learning/packs")
+        {
+            Content = JsonContent.Create(new CreatePromptPackBody
+            {
+                Kind = kind,
+                Version = version,
+                Body = body,
+                Notes = notes,
+            }, options: JsonOpts),
+        };
+        var env = await SendJsonAsync<LearningPackCreateEnvelope>(req, ct);
+        return env?.Pack;
+    }
+
+    public async Task<ProposeLearningRulesResult?> ProposeLearningRulesAsync(
+        ProposeLearningRulesRequest body,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/learning/propose")
+        {
+            Content = JsonContent.Create(body, options: JsonOpts),
+        };
+        return await SendJsonAsync<ProposeLearningRulesResult>(req, ct);
+    }
+
+    public async Task<ProjectRulesDocument?> GetProjectRulesAsync(string projectId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get,
+            $"/api/admin/learning/project-rules/{Uri.EscapeDataString(projectId)}");
+        var env = await SendJsonAsync<ProjectRulesEnvelope>(req, ct);
+        return env?.Rules;
+    }
+
+    public async Task<ProjectRulesDocument?> SuggestProjectRulesAsync(
+        string projectId, int minFails = 3, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/admin/learning/project-rules/{Uri.EscapeDataString(projectId)}/suggest?minFails={minFails}");
+        var env = await SendJsonAsync<ProjectRulesEnvelope>(req, ct);
+        return env?.Rules;
+    }
+
+    public async Task<ProjectRulesDocument?> ApproveProjectRuleAsync(
+        string projectId, string suggestionId, string? text = null, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/admin/learning/project-rules/{Uri.EscapeDataString(projectId)}/approve")
+        {
+            Content = JsonContent.Create(new ApproveProjectRuleRequest
+            {
+                SuggestionId = suggestionId,
+                Text = text,
+            }, options: JsonOpts),
+        };
+        var env = await SendJsonAsync<ProjectRulesEnvelope>(req, ct);
+        return env?.Rules;
+    }
+
+    public async Task<ProjectRulesDocument?> RejectProjectRuleAsync(
+        string projectId, string suggestionId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/admin/learning/project-rules/{Uri.EscapeDataString(projectId)}/reject")
+        {
+            Content = JsonContent.Create(new RejectProjectRuleRequest { SuggestionId = suggestionId }, options: JsonOpts),
+        };
+        var env = await SendJsonAsync<ProjectRulesEnvelope>(req, ct);
+        return env?.Rules;
+    }
+
+    private sealed class LearningInsightsEnvelope
+    {
+        public bool Ok { get; set; }
+        public LearningInsightsDto? Insights { get; set; }
+    }
+    private sealed class LearningEventsEnvelope
+    {
+        public bool Ok { get; set; }
+        public List<ReviewLearningEvent>? Events { get; set; }
+    }
+    private sealed class LearningPacksEnvelope
+    {
+        public bool Ok { get; set; }
+        public PromptPackManifest? Manifest { get; set; }
+    }
+    private sealed class LearningPackTextEnvelope
+    {
+        public bool Ok { get; set; }
+        public string? Text { get; set; }
+    }
+    private sealed class LearningPackCreateEnvelope
+    {
+        public bool Ok { get; set; }
+        public PromptPackInfo? Pack { get; set; }
+    }
+    private sealed class ProjectRulesEnvelope
+    {
+        public bool Ok { get; set; }
+        public ProjectRulesDocument? Rules { get; set; }
+    }
+
     public async Task AdminReleaseLockAsync(string resource, bool force = true, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/locks/release")

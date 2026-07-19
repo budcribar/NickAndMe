@@ -34,6 +34,9 @@ public sealed class FilmJobService
     private readonly IFfmpegRemux _remux;
     private readonly VoicePreviewService _voicePreview;
     private readonly ClipAutoReviewService _clipAutoReview;
+    private readonly ReviewEventStore _learning;
+    private readonly PromptPackService _promptPacks;
+    private readonly ProjectRulesService _projectRules;
     private readonly CostReportService _costs;
     private readonly IJobStore _jobs;
     private readonly ILockService _locks;
@@ -60,6 +63,9 @@ public sealed class FilmJobService
         IFfmpegRemux remux,
         VoicePreviewService voicePreview,
         ClipAutoReviewService clipAutoReview,
+        ReviewEventStore learning,
+        PromptPackService promptPacks,
+        ProjectRulesService projectRules,
         CostReportService costs,
         IJobStore jobs,
         ILockService locks,
@@ -81,6 +87,9 @@ public sealed class FilmJobService
         _remux = remux;
         _voicePreview = voicePreview;
         _clipAutoReview = clipAutoReview;
+        _learning = learning;
+        _promptPacks = promptPacks;
+        _projectRules = projectRules;
         _costs = costs;
         _jobs = jobs;
         _locks = locks;
@@ -1711,6 +1720,26 @@ public sealed class FilmJobService
                 ? $"Finished with errors ({done} ok, {failed} failed)"
                 : $"Generation finished ({done} clip(s))";
             await FinishAsync(status, msg, failed > 0 ? msg : null);
+
+            // P0 learning: single-clip regen (typical after auto-review apply)
+            if (req.Clip is int regenClip && regenClip > 0)
+            {
+                try
+                {
+                    _learning.Append(new ReviewLearningEvent
+                    {
+                        ProjectId = projectId,
+                        Type = "regen_after_review",
+                        Scene = req.Scene,
+                        Clip = regenClip,
+                        Note = msg,
+                        Outcome = status,
+                        JobId = Snapshot.JobId,
+                        ActionTaken = $"gen clip force only_missing={req.OnlyMissing}",
+                    });
+                }
+                catch { /* non-fatal */ }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -1785,6 +1814,32 @@ public sealed class FilmJobService
 
         if (string.IsNullOrWhiteSpace(built.Prompt))
             throw new InvalidOperationException("clip missing visual_prompt");
+
+        // P2/P4: active gen pack + approved project rules
+        var addenda = new List<string>();
+        try
+        {
+            var pack = _promptPacks.LoadActivePackText(PromptPackService.KindGen);
+            if (!string.IsNullOrWhiteSpace(pack))
+                addenda.Add(pack.Trim());
+            var rules = _projectRules.GetActiveRulesBlock(projectId);
+            if (!string.IsNullOrWhiteSpace(rules))
+                addenda.Add(rules.Trim());
+        }
+        catch { /* non-fatal */ }
+
+        if (addenda.Count > 0)
+        {
+            built = new ClipVideoPromptBuilder.PromptBuildResult
+            {
+                Prompt = built.Prompt.TrimEnd() + "\n\n" + string.Join("\n\n", addenda),
+                ReferenceImagePaths = built.ReferenceImagePaths,
+                StartFrameImagePath = built.StartFrameImagePath,
+                Mode = built.Mode,
+                CharacterKeys = built.CharacterKeys,
+                PromptLogSummary = built.PromptLogSummary + " · learning-addenda",
+            };
+        }
 
         // Persist + log full prompt for evaluation (admin logs surface this)
         await WriteAndLogPromptAsync(projectDir, scene, clip, built, ct).ConfigureAwait(false);

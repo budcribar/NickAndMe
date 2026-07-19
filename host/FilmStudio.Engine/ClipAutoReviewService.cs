@@ -24,6 +24,8 @@ public sealed class ClipAutoReviewService
     private readonly IGrokVisionClient _vision;
     private readonly FfmpegRemuxService _ffmpeg;
     private readonly EditLogService _logs;
+    private readonly PromptPackService _promptPacks;
+    private readonly ProjectRulesService _projectRules;
     private readonly ILogger<ClipAutoReviewService> _log;
 
     public ClipAutoReviewService(
@@ -31,12 +33,16 @@ public sealed class ClipAutoReviewService
         IGrokVisionClient vision,
         FfmpegRemuxService ffmpeg,
         EditLogService logs,
+        PromptPackService promptPacks,
+        ProjectRulesService projectRules,
         ILogger<ClipAutoReviewService> log)
     {
         _projects = projects;
         _vision = vision;
         _ffmpeg = ffmpeg;
         _logs = logs;
+        _promptPacks = promptPacks;
+        _projectRules = projectRules;
         _log = log;
     }
 
@@ -135,6 +141,16 @@ public sealed class ClipAutoReviewService
 
             onProgress?.Invoke(55, 100, "AI reviewing continuity and quality…");
             var prompt = BuildReviewPrompt(scene, clip, plan, profiles, images, prevPath is not null);
+            try
+            {
+                var pack = _promptPacks.LoadActivePackText(PromptPackService.KindAutoReview);
+                if (!string.IsNullOrWhiteSpace(pack))
+                    prompt += "\n\n" + pack.Trim();
+                var rules = _projectRules.GetActiveRulesBlock(projectId);
+                if (!string.IsNullOrWhiteSpace(rules))
+                    prompt += "\n\n" + rules.Trim();
+            }
+            catch { /* non-fatal */ }
             var imagePaths = images.Select(i => i.Path).ToList();
             var raw = await _vision.CompleteWithImagesAsync(
                 prompt,
@@ -164,7 +180,7 @@ public sealed class ClipAutoReviewService
         }
     }
 
-    /// <summary>Write accepted suggestion values into cast seeds / blueprint clip.</summary>
+    /// <summary>Write accepted suggestion values into cast seeds / blueprint clip (with before/after log).</summary>
     public void ApplySuggestions(
         string projectId,
         int scene,
@@ -174,14 +190,28 @@ public sealed class ClipAutoReviewService
         if (items is null || items.Count == 0)
             throw new InvalidOperationException("No suggestions selected to apply.");
 
+        var plan = LoadClipPlan(projectId, scene, clip);
+        var profiles = _projects.LoadCharacterPromptProfiles(projectId);
+        var beforeParts = new List<string>();
+        var afterParts = new List<string>();
+
         foreach (var item in items)
         {
             var layer = (item.Layer ?? "clip").Trim().ToLowerInvariant();
             var field = (item.Field ?? "").Trim().ToLowerInvariant();
             var value = item.Value ?? "";
+            var before = "";
 
             if (layer == "character" && !string.IsNullOrWhiteSpace(item.CharKey))
             {
+                profiles.TryGetValue(item.CharKey, out var p);
+                before = field switch
+                {
+                    "description" => p?.Description ?? "",
+                    "visual_lock" => p?.VisualLock ?? "",
+                    "voice_profile" => p?.VoiceProfile ?? "",
+                    _ => "",
+                };
                 switch (field)
                 {
                     case "voice_profile":
@@ -197,15 +227,19 @@ public sealed class ClipAutoReviewService
                         _log.LogWarning("Unknown character field {Field}", field);
                         break;
                 }
+                beforeParts.Add($"{item.CharKey}.{field}: {Trim(before, 400)}");
+                afterParts.Add($"{item.CharKey}.{field}: {Trim(value, 400)}");
             }
             else if (layer == "clip" && field is "visual_prompt" or "prompt")
             {
+                before = plan.VisualPrompt;
                 _projects.UpdateClipVisualPrompt(projectId, scene, clip, value);
+                beforeParts.Add($"clip.visual_prompt: {Trim(before, 600)}");
+                afterParts.Add($"clip.visual_prompt: {Trim(value, 600)}");
+                plan.VisualPrompt = value;
             }
-            // scene-level notes are informational only for now
         }
 
-        // Mark draft as applied (keep for UI)
         var draft = LoadDraft(projectId, scene, clip);
         if (draft is not null)
         {
@@ -221,7 +255,11 @@ public sealed class ClipAutoReviewService
                 $"Applied {items.Count} suggestion(s) to S{scene:D2}C{clip:D2}",
                 scene: scene,
                 clip: clip,
-                actionTaken: "apply_suggestions").GetAwaiter().GetResult();
+                actionTaken: "apply_suggestions",
+                before: string.Join("\n---\n", beforeParts),
+                after: string.Join("\n---\n", afterParts),
+                category: draft?.Category,
+                suggestionCount: items.Count).GetAwaiter().GetResult();
         }
         catch { /* non-fatal */ }
     }
@@ -238,6 +276,11 @@ public sealed class ClipAutoReviewService
                 scene: scene,
                 clip: clip,
                 actionTaken: $"suggestion={draft.Suggestion};category={draft.Category};confidence={draft.Confidence}",
+                category: draft.Category,
+                suggestion: draft.Suggestion,
+                confidence: draft.Confidence,
+                continuity: draft.Continuity,
+                suggestionCount: draft.Suggestions.Count,
                 ct: ct).ConfigureAwait(false);
         }
         catch (Exception ex)

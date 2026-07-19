@@ -15,11 +15,16 @@ public sealed class EditLogService
     };
 
     private readonly ProjectStore _projects;
+    private readonly ReviewEventStore _learning;
     private readonly ILogger<EditLogService> _log;
 
-    public EditLogService(ProjectStore projects, ILogger<EditLogService> log)
+    public EditLogService(
+        ProjectStore projects,
+        ReviewEventStore learning,
+        ILogger<EditLogService> log)
     {
         _projects = projects;
+        _learning = learning;
         _log = log;
     }
 
@@ -63,6 +68,15 @@ public sealed class EditLogService
         string before = "",
         string after = "",
         string learningLayer = "clip",
+        string? category = null,
+        string? suggestion = null,
+        string? confidence = null,
+        string? continuity = null,
+        int? suggestionCount = null,
+        string? field = null,
+        string? jobId = null,
+        string? outcome = null,
+        string? userId = null,
         CancellationToken ct = default)
     {
         var doc = await LoadAsync(projectId, ct).ConfigureAwait(false);
@@ -83,6 +97,45 @@ public sealed class EditLogService
         };
         doc.Entries.Insert(0, entry);
         await SaveAsync(projectId, doc, ct).ConfigureAwait(false);
+
+        // Host-level learning stream (P0)
+        try
+        {
+            // Parse category from actionTaken when not explicit (e.g. auto_review)
+            var cat = category;
+            var sug = suggestion;
+            var conf = confidence;
+            if (cat is null && actionTaken.Contains("category=", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var part in actionTaken.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (part.StartsWith("category=", StringComparison.OrdinalIgnoreCase))
+                        cat = part["category=".Length..];
+                    else if (part.StartsWith("suggestion=", StringComparison.OrdinalIgnoreCase))
+                        sug ??= part["suggestion=".Length..];
+                    else if (part.StartsWith("confidence=", StringComparison.OrdinalIgnoreCase))
+                        conf ??= part["confidence=".Length..];
+                }
+            }
+
+            _learning.AppendFromEditLog(
+                projectId,
+                entry,
+                userId: userId,
+                category: cat,
+                suggestion: sug,
+                confidence: conf,
+                continuity: continuity,
+                suggestionCount: suggestionCount,
+                field: field,
+                jobId: jobId,
+                outcome: outcome);
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "learning event mirror skip");
+        }
+
         return entry;
     }
 
