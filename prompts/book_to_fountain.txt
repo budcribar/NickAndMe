@@ -72,6 +72,12 @@ BODY:
 - Spoken book lines → CHARACTER (ALL CAPS) + dialogue under them
 - Parentheticals sparingly when delivery matters
 - Dual dialogue: caret ^ on the second speaker only when simultaneous
+- First-person confessional narrators: do not default every interior line to V.O.
+  If an on-camera "frame" address is established early (narrator speaking direct-to-camera),
+  reuse it as a recurring cutback point through the film — deliver some of the narrator's
+  self-reflective / rhetorical lines there on camera instead of as V.O. over the reenactment.
+- If Action already visually shows what a V.O. line states (a reaction, a sound, a physical
+  response), trim the redundant clause from the V.O. rather than restating it in both places.
 
 DIALOGUE FIDELITY (HARD — book wording over paraphrase):
 - Prefer the book’s actual spoken words. Do not modernize, soften, or “movie-ize” dialogue.

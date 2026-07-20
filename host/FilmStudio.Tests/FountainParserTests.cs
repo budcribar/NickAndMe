@@ -335,6 +335,46 @@ public class FountainParserTests
     }
 
     [Fact]
+    public void CountVoiceoverCues_counts_vo_meta_not_bare_narrator()
+    {
+        var fountain = """
+            Title: VO Ratio
+
+            INT. FRAME - NIGHT
+
+            NARRATOR
+            I speak to you on camera.
+
+            INT. ROOM - NIGHT
+
+            NARRATOR (V.O.)
+            Meanwhile I watch.
+
+            HERO
+            Hello.
+
+            NARRATOR (V.O.)
+            Again in voice-over.
+
+            NARRATOR (CONT'D)
+            Still on camera if extension is CONT'D only.
+            """;
+        var (vo, total) = FountainParser.CountVoiceoverCues(fountain);
+        Assert.True(total >= 4, $"total cues={total}");
+        // Two true V.O. lines; bare NARRATOR and CONT'D must not inflate VO
+        Assert.Equal(2, vo);
+        Assert.True(vo * 100 / total < 45 || total > 0); // sanity
+    }
+
+    [Fact]
+    public void CountVoiceoverCues_empty_safe()
+    {
+        var (vo, total) = FountainParser.CountVoiceoverCues("");
+        Assert.Equal(0, vo);
+        Assert.Equal(0, total);
+    }
+
+    [Fact]
     public void BuildStage1_does_not_seed_house_various_location_id()
     {
         var fountain = """

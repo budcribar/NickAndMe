@@ -1392,7 +1392,9 @@ public sealed class FilmJobService
 
             var msg =
                 $"Screenplay ready: {result.SceneCount} scenes · {result.CharacterCount} cast · " +
-                $"{result.LocationCount} locations";
+                $"{result.LocationCount} locations · V.O. {result.VoCueCount}/{result.TotalDialogueCues} ({result.VoPercent}%)";
+            if (result.TotalDialogueCues > 0 && result.VoPercent >= 45)
+                msg += " — narration-heavy (clip gen will lean on V.O.)";
             if (result.HardErrors.Count > 0)
                 msg += $" · {result.HardErrors.Count} issue(s)";
             await FinishAsync(result.Ok || result.SceneCount > 0 ? "done" : "error", msg,

@@ -641,4 +641,34 @@ public static class FountainParser
         if (lead == 0) return content;
         return new string(' ', lead) + content;
     }
+
+    /// <summary>
+    /// Count character cues whose extension is voice-over (Meta contains V.O. / VO).
+    /// On-camera NARRATOR cues (no V.O. extension) are NOT counted as voice-over.
+    /// </summary>
+    public static (int VoCues, int TotalCues) CountVoiceoverCues(string? fountain)
+    {
+        if (string.IsNullOrWhiteSpace(fountain))
+            return (0, 0);
+
+        var cues = Parse(fountain).Elements
+            .Where(e => e.Type == ElementType.Character)
+            .ToList();
+        var vo = cues.Count(e => IsVoiceoverCue(e));
+        return (vo, cues.Count);
+    }
+
+    /// <summary>True when a character element is tagged voice-over (not bare NARRATOR on camera).</summary>
+    public static bool IsVoiceoverCue(Element e)
+    {
+        if (e.Type != ElementType.Character) return false;
+        var meta = e.Meta ?? "";
+        // Meta holds extension e.g. "(V.O.)", "(V.O.) (CONT'D)", "(V.O.)|dual"
+        if (meta.Contains("V.O.", StringComparison.OrdinalIgnoreCase)) return true;
+        if (Regex.IsMatch(meta, @"\(?\s*V\s*\.?\s*O\s*\.?\s*\)?", RegexOptions.IgnoreCase)) return true;
+        // Rare: extension left in Text if parser edge case
+        var text = e.Text ?? "";
+        if (text.Contains("V.O.", StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
 }

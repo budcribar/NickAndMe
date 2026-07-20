@@ -133,6 +133,12 @@ public sealed class Stage1Service
         }
 
         var stage1 = ScreenplayService.ReadStage1Lite(_projects, projectId);
+        var fountainText = File.Exists(draftPath)
+            ? await File.ReadAllTextAsync(draftPath, ct).ConfigureAwait(false)
+            : "";
+        var (voCues, totalCues) = FountainParser.CountVoiceoverCues(fountainText);
+        var voPct = totalCues > 0 ? voCues * 100 / totalCues : 0;
+
         var result = new Stage1Result
         {
             Ok = stage1.Present && stage1.SceneCount > 0,
@@ -142,6 +148,9 @@ public sealed class Stage1Service
             LocationCount = stage1.LocationCount,
             RuntimeSeconds = (int)(stage1.RuntimeSeconds ?? 0),
             TotalMinutes = minutes,
+            VoCueCount = voCues,
+            TotalDialogueCues = totalCues,
+            VoPercent = voPct,
             VerifyErrors = new List<string>(),
             HardErrors = new List<string>(),
         };
@@ -149,9 +158,18 @@ public sealed class Stage1Service
         if (!result.Ok)
             result.HardErrors.Add("Fountain approved but no scenes were found.");
 
+        // Surface-only: high V.O. share is fine for confessional prose but leans clip gen on narration
+        if (totalCues > 0 && voPct >= 45)
+        {
+            onProgress?.Invoke(
+                $"Note: {voCues}/{totalCues} dialogue cues are V.O. ({voPct}%) — " +
+                "clip gen will lean on narration. Prefer on-camera frame cutbacks where possible.");
+        }
+
         onProgress?.Invoke(
             $"Screenplay ready · {result.SceneCount} scenes · " +
-            $"{result.CharacterCount} cast · {Path.GetFileName(draftPath)}");
+            $"{result.CharacterCount} cast · {result.LocationCount} locations · " +
+            $"V.O. {voCues}/{totalCues} ({voPct}%) · {Path.GetFileName(draftPath)}");
         return result;
     }
 }
@@ -165,6 +183,12 @@ public sealed class Stage1Result
     public int LocationCount { get; set; }
     public int RuntimeSeconds { get; set; }
     public int TotalMinutes { get; set; }
+    /// <summary>Character cues tagged V.O. (from FountainParser).</summary>
+    public int VoCueCount { get; set; }
+    /// <summary>All character dialogue cues.</summary>
+    public int TotalDialogueCues { get; set; }
+    /// <summary>0–100 integer percent of cues that are V.O.</summary>
+    public int VoPercent { get; set; }
     public List<string> VerifyErrors { get; set; } = new();
     public List<string> HardErrors { get; set; } = new();
 }
