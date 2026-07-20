@@ -94,6 +94,48 @@ public sealed class ProposeLearningRulesResult
     public string? Error { get; set; }
 }
 
+/// <summary>
+/// Admin checklist: proposed AI rules with reviewed check-off (host <c>_learning/proposal_checklist.json</c>).
+/// </summary>
+public sealed class ProposalChecklistDocument
+{
+    public int SchemaVersion { get; set; } = 1;
+    public string? SourceLabel { get; set; }
+    public string? RawProposal { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public List<ProposalChecklistItem> Items { get; set; } = new();
+}
+
+public sealed class ProposalChecklistItem
+{
+    public string Id { get; set; } = "";
+    public string Text { get; set; } = "";
+    /// <summary>pending | reviewed | deferred</summary>
+    public string Status { get; set; } = "pending";
+    public bool Reviewed { get; set; }
+    /// <summary>Optional: accepted | rejected | partial | n/a</summary>
+    public string? Disposition { get; set; }
+    public string? Note { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+}
+
+public sealed class ProposalChecklistUpsertRequest
+{
+    /// <summary>Replace raw proposal text and re-parse bullets (optional).</summary>
+    public string? RawProposal { get; set; }
+    public string? SourceLabel { get; set; }
+    /// <summary>When set, merge/replace checklist items.</summary>
+    public List<ProposalChecklistItem>? Items { get; set; }
+}
+
+public sealed class ProposalChecklistToggleRequest
+{
+    public string Id { get; set; } = "";
+    public bool Reviewed { get; set; }
+    public string? Disposition { get; set; }
+    public string? Note { get; set; }
+}
+
 /// <summary>Project-scoped house rules from repeated review fails.</summary>
 public sealed class ProjectRulesDocument
 {

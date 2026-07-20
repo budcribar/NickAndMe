@@ -168,19 +168,22 @@ public sealed class CastFromScreenplayService
         var json = JsonSerializer.Serialize(normalized, JsonDefaults.Indented);
         await File.WriteAllTextAsync(outPath, json + "\n", ct).ConfigureAwait(false);
 
-        // Project style rule from book/screenplay medium (picture-book CG vs photoreal, etc.)
-        if (normalized.TryGetValue("render_style_lock", out var rslObj) &&
-            rslObj?.ToString() is { Length: > 0 } rsl)
+        // Project style + performance rules from book/screenplay (medium + audience address)
+        try
         {
-            try
-            {
-                if (_projectRules.EnsureStyleRuleFromRenderLock(projectId, rsl, approvedBy: "cast_extract"))
-                    onProgress?.Invoke("Project style rule updated from book/screenplay medium.");
-            }
-            catch (Exception ex)
-            {
-                _log.LogWarning(ex, "Could not write style project rule for {Project}", projectId);
-            }
+            if (normalized.TryGetValue("render_style_lock", out var rslObj) &&
+                rslObj?.ToString() is { Length: > 0 } rsl &&
+                _projectRules.EnsureStyleRuleFromRenderLock(projectId, rsl, approvedBy: "cast_extract"))
+                onProgress?.Invoke("Project style rule updated from book/screenplay medium.");
+
+            if (normalized.TryGetValue("performance_lock", out var perfObj) &&
+                perfObj?.ToString() is { Length: > 0 } perf &&
+                _projectRules.EnsurePerformanceRuleFromLock(projectId, perf, approvedBy: "cast_extract"))
+                onProgress?.Invoke("Project performance/address rule updated from book/screenplay.");
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Could not write style/performance project rules for {Project}", projectId);
         }
 
         var keys = seedsObj.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
@@ -326,6 +329,10 @@ public sealed class CastFromScreenplayService
 
         if (parsed.TryGetValue("render_style_lock", out var rsl) && rsl is not null)
             outDoc["render_style_lock"] = rsl.ToString();
+        // Film-level audience/performance conventions inferred from book (not hardcoded gaze recipes)
+        if (parsed.TryGetValue("performance_lock", out var pl) && pl is not null &&
+            !string.IsNullOrWhiteSpace(pl.ToString()))
+            outDoc["performance_lock"] = pl.ToString()!.Trim();
 
         var seedsIn = GetSeedsDict(parsed);
         var seedsOut = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -379,6 +386,10 @@ public sealed class CastFromScreenplayService
                 clean["wardrobe_always"] = list2;
             if (seed.TryGetValue("source_image_pages", out var sip) && sip is List<object?> pages)
                 clean["source_image_pages"] = pages;
+
+            var perfNotes = CoerceString(seed, "performance_notes");
+            if (!string.IsNullOrWhiteSpace(perfNotes))
+                clean["performance_notes"] = perfNotes;
 
             seedsOut[k] = clean;
         }

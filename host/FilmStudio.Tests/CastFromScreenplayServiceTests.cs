@@ -22,6 +22,8 @@ public class CastFromScreenplayServiceTests
         Assert.Contains("JSON", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("BOOK-FIRST", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("FORBIDDEN", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("performance_lock", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("AUDIENCE", text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

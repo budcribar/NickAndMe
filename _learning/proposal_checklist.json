@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "sourceLabel": "session_admin_proposals",
+  "rawProposal": "- Require every visual prompt to fully describe the speaking or featured character by stable name and appearance so Narrator is never swapped with another role such as Old Man.\n- Reject truncated visual prompts; each must be complete sentences covering subject, expression, gaze, wardrobe, and era before generation.\n- Enforce audio-visual parity: if the clip is silent or has no shout, the character must not be shown mid-shout, open-mouthed, or with clenched-fist yelling pose.\n- Specify explicit gaze and eye state (e.g. eyes open and facing camera) whenever the shot should address the viewer; flag shut or downcast eyes as fail.\n- Mandate photoreal period-correct human look and fabrics (e.g. nervous 1840s man in wool coat); ban smooth vampiric CGI or stylized skin.\n- Include a short negative constraint in every prompt against wrong identity, wrong era, CGI sheen, and mismatched expression.\n- Auto-review must check character identity consistency, prompt length/completeness, silence-vs-expression match, eye contact, and photoreal period wardrobe before accept.",
+  "updatedAt": "2026-07-19T23:52:58.9996245+00:00",
+  "items": [
+    {
+      "id": "daa60583b1",
+      "text": "Require every visual prompt to fully describe the speaking or featured character by stable name and appearance so Narrator is never swapped with another role such as Old Man.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "accepted",
+      "note": "Cast gate + locked refs + Build cast looks + CHARACTER VARIABLES; ref-first not prose-only.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "3742cd656b",
+      "text": "Reject truncated visual prompts; each must be complete sentences covering subject, expression, gaze, wardrobe, and era before generation.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "accepted",
+      "note": "Import/Stage2 stubs and packing fixed; no pre-clamp; API length retry. Formal pre-gen completeness gate not required if Stage2+gen full.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "fabc42b1b7",
+      "text": "Enforce audio-visual parity: if the clip is silent or has no shout, the character must not be shown mid-shout, open-mouthed, or with clenched-fist yelling pose.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "accepted",
+      "note": "Gen pack: performance energy vs audio; fist OK; no shout face on silent.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "c3a02c433b",
+      "text": "Specify explicit gaze and eye state (e.g. eyes open and facing camera) whenever the shot should address the viewer; flag shut or downcast eyes as fail.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "partial",
+      "note": "Project/confessional only (Tell-Tale); not global always-eye-contact. Auto-review can fail wrong look.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "15d9be1c81",
+      "text": "Mandate photoreal period-correct human look and fabrics (e.g. nervous 1840s man in wool coat); ban smooth vampiric CGI or stylized skin.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "accepted",
+      "note": "Project style from Build cast render_style_lock; global is match medium not ban CGI (Buster).",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "fd3c8c470f",
+      "text": "Include a short negative constraint in every prompt against wrong identity, wrong era, CGI sheen, and mismatched expression.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "accepted",
+      "note": "Global style-match + no face swap; era/CGI via project style; expression via performance rule.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    },
+    {
+      "id": "c58a83dd37",
+      "text": "Auto-review must check character identity consistency, prompt length/completeness, silence-vs-expression match, eye contact, and photoreal period wardrobe before accept.",
+      "status": "reviewed",
+      "reviewed": true,
+      "disposition": "partial",
+      "note": "Identity, style/medium, continuity, lips/performance in pack+prompt. Completeness/eye/wardrobe soft vision checks.",
+      "reviewedAt": "2026-07-19T23:52:58.9996245+00:00"
+    }
+  ]
+}

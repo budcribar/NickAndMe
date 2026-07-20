@@ -203,6 +203,7 @@ public sealed class FakeGrokChatClient : IGrokChatClient
           "schema_version": "cast_seeds.v1",
           "movie_title": "The Tell-Tale Heart",
           "render_style_lock": "STYLE LOCK: photoreal live-action period drama circa 1840s; candlelight; naturalistic skin and fabric",
+          "performance_lock": "PERFORMANCE LOCK: first-person confessional; when the Narrator speaks on camera he often addresses an implied listener/viewer; other characters are observed in the chamber rather than addressing the audience.",
           "character_seed_tokens": {
             "Character_Narrator": {
               "canonical_given_name": "Narrator",
@@ -211,6 +212,7 @@ public sealed class FakeGrokChatClient : IGrokChatClient
               "visual_lock": "Always the same pale thin-faced adult man with dark hair and dark wool coat; distinct from the elderly Old Man; no modern clothing",
               "voice_profile": "Adult male, intimate, articulate, rising panic under calm diction; same on-camera and V.O.",
               "voice_label": "Narrator",
+              "performance_notes": "Confessional speaker; on-camera dialogue often directed toward the implied listener/viewer rather than only at the Old Man.",
               "wardrobe_always": ["dark wool coat", "white linen shirt", "period trousers"],
               "reference_image_placeholder": "character_narrator_ref.png"
             },

@@ -72,4 +72,17 @@ public class ProjectStyleRuleTests : IDisposable
         Assert.Contains(again.Active, r => r.Text!.Contains("watercolor"));
         Assert.DoesNotContain(again.Active, r => r.Text!.Contains("photoreal 1840s"));
     }
+
+    [Fact]
+    public void EnsurePerformanceRule_writes_from_book_inferred_lock()
+    {
+        var changed = _rules.EnsurePerformanceRuleFromLock(
+            "Demo",
+            "first-person confessional often addresses implied listener when speaking",
+            approvedBy: "cast_extract");
+        Assert.True(changed);
+        var block = _rules.GetActiveRulesBlock("Demo");
+        Assert.Contains("performance", block, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("confessional", block, StringComparison.OrdinalIgnoreCase);
+    }
 }

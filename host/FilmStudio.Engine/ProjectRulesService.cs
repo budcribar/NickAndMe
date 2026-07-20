@@ -62,6 +62,8 @@ public sealed class ProjectRulesService
 
     /// <summary>Stable id for auto style rule written from cast extract / render_style_lock.</summary>
     public const string StyleRuleId = "style_from_cast";
+    /// <summary>Stable id for auto performance/address rule from cast extract.</summary>
+    public const string PerformanceRuleId = "performance_from_cast";
 
     /// <summary>Active rules as text block for prompt injection.</summary>
     public string GetActiveRulesBlock(string projectId)
@@ -72,14 +74,23 @@ public sealed class ProjectRulesService
             .Select(r => $"- [{(string.IsNullOrWhiteSpace(r.Category) ? "other" : r.Category!.Trim())}] {r.Text!.Trim()}")
             .ToList();
 
-        // Fallback: cast_seeds render_style_lock if no style rule yet (gen/auto-review still see medium)
+        // Fallback: cast_seeds locks if no matching rules yet (gen/auto-review still see them)
         if (!doc.Active.Any(r =>
                 string.Equals(r.Category, "style", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(r.Id, StyleRuleId, StringComparison.OrdinalIgnoreCase)))
         {
-            var fromCast = TryReadRenderStyleLock(projectId);
+            var fromCast = TryReadCastField(projectId, "render_style_lock");
             if (!string.IsNullOrWhiteSpace(fromCast))
-                lines.Add($"- [style] {fromCast.Trim()}");
+                lines.Add($"- [style] {NormalizeStyleRuleText(fromCast)}");
+        }
+
+        if (!doc.Active.Any(r =>
+                string.Equals(r.Category, "performance", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(r.Id, PerformanceRuleId, StringComparison.OrdinalIgnoreCase)))
+        {
+            var perf = TryReadCastField(projectId, "performance_lock");
+            if (!string.IsNullOrWhiteSpace(perf))
+                lines.Add($"- [performance] {NormalizePerformanceRuleText(perf)}");
         }
 
         if (lines.Count == 0) return "";
@@ -161,16 +172,87 @@ public sealed class ProjectRulesService
         return t;
     }
 
-    private string? TryReadRenderStyleLock(string projectId)
+    /// <summary>
+    /// Upsert performance/address convention from cast extract (book-inferred, not a fixed eye recipe).
+    /// </summary>
+    public bool EnsurePerformanceRuleFromLock(
+        string projectId,
+        string? performanceLock,
+        string approvedBy = "cast_extract")
+    {
+        var text = NormalizePerformanceRuleText(performanceLock);
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var doc = Load(projectId);
+        var systemOwned = doc.Active.FirstOrDefault(r =>
+            string.Equals(r.Id, PerformanceRuleId, StringComparison.OrdinalIgnoreCase));
+        if (systemOwned is not null)
+        {
+            if (string.Equals(systemOwned.Text?.Trim(), text, StringComparison.OrdinalIgnoreCase))
+                return false;
+            systemOwned.Text = text;
+            systemOwned.Category = "performance";
+            systemOwned.ApprovedAt = DateTimeOffset.UtcNow;
+            systemOwned.ApprovedBy = approvedBy;
+            Save(projectId, doc);
+            return true;
+        }
+
+        var userOwned = doc.Active.FirstOrDefault(r =>
+            string.Equals(r.Category, "performance", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(r.Id, PerformanceRuleId, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(r.ApprovedBy, "cast_extract", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(r.ApprovedBy, "system", StringComparison.OrdinalIgnoreCase));
+        if (userOwned is not null)
+            return false;
+
+        doc.Active.RemoveAll(r =>
+            string.Equals(r.Category, "performance", StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(r.ApprovedBy, "cast_extract", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(r.ApprovedBy, "system", StringComparison.OrdinalIgnoreCase)));
+
+        doc.Active.Add(new ProjectRule
+        {
+            Id = PerformanceRuleId,
+            Text = text,
+            Category = "performance",
+            ApprovedAt = DateTimeOffset.UtcNow,
+            ApprovedBy = approvedBy,
+            SourceFailCount = 0,
+        });
+        Save(projectId, doc);
+        return true;
+    }
+
+    public static string NormalizePerformanceRuleText(string? performanceLock)
+    {
+        var t = (performanceLock ?? "").Trim();
+        if (t.Length == 0) return "";
+        if (!t.Contains("PERFORMANCE", StringComparison.OrdinalIgnoreCase) &&
+            !t.Contains("address", StringComparison.OrdinalIgnoreCase) &&
+            !t.Contains("viewer", StringComparison.OrdinalIgnoreCase) &&
+            !t.Contains("camera", StringComparison.OrdinalIgnoreCase) &&
+            !t.Contains("confessional", StringComparison.OrdinalIgnoreCase) &&
+            !t.Contains("observ", StringComparison.OrdinalIgnoreCase))
+        {
+            t = "PERFORMANCE LOCK: " + t;
+        }
+        if (t.Length > 700)
+            t = t[..697].TrimEnd() + "…";
+        return t;
+    }
+
+    private string? TryReadCastField(string projectId, string propertyName)
     {
         try
         {
             var path = ScreenplayService.GetCastSeedsPath(_projects, projectId);
             if (!File.Exists(path)) return null;
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            if (doc.RootElement.TryGetProperty("render_style_lock", out var rsl) &&
-                rsl.ValueKind == JsonValueKind.String)
-                return NormalizeStyleRuleText(rsl.GetString());
+            if (doc.RootElement.TryGetProperty(propertyName, out var el) &&
+                el.ValueKind == JsonValueKind.String)
+                return el.GetString();
         }
         catch
         {

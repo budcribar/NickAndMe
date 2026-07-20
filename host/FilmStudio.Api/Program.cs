@@ -76,6 +76,7 @@ builder.Services.AddSingleton<ReviewEventStore>();
 builder.Services.AddSingleton<PromptPackService>();
 builder.Services.AddSingleton<ProjectRulesService>();
 builder.Services.AddSingleton<LearningProposalService>();
+builder.Services.AddSingleton<ProposalChecklistService>();
 builder.Services.AddSingleton<ClipAutoReviewService>();
 builder.Services.AddSingleton<EditLogService>();
 builder.Services.AddHttpContextAccessor();
@@ -365,13 +366,81 @@ app.MapPost("/api/admin/learning/propose", async (
     ProposeLearningRulesRequest body,
     IUserContext user,
     LearningProposalService proposals,
+    ProposalChecklistService checklist,
     CancellationToken ct) =>
 {
     if (!user.IsAdmin)
         return Results.Json(new { ok = false, error = "admin role required" },
             statusCode: StatusCodes.Status403Forbidden);
     var result = await proposals.ProposeAsync(body, ct);
+    if (result.Ok && !string.IsNullOrWhiteSpace(result.Proposal))
+    {
+        try
+        {
+            var list = checklist.IngestProposal(
+                result.Proposal,
+                sourceLabel: $"propose_fails_n{body.LastNFails}");
+            return Results.Ok(new
+            {
+                result.Ok,
+                result.Proposal,
+                result.FailEventsUsed,
+                result.Categories,
+                result.Error,
+                checklist = list,
+            });
+        }
+        catch { /* still return proposal */ }
+    }
     return result.Ok ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapGet("/api/admin/learning/proposal-checklist", (
+    IUserContext user,
+    ProposalChecklistService checklist) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    return Results.Ok(new { ok = true, checklist = checklist.Load() });
+});
+
+app.MapPost("/api/admin/learning/proposal-checklist", (
+    ProposalChecklistUpsertRequest body,
+    IUserContext user,
+    ProposalChecklistService checklist) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = checklist.Upsert(body ?? new ProposalChecklistUpsertRequest());
+        return Results.Ok(new { ok = true, checklist = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/admin/learning/proposal-checklist/toggle", (
+    ProposalChecklistToggleRequest body,
+    IUserContext user,
+    ProposalChecklistService checklist) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = checklist.Toggle(body ?? new ProposalChecklistToggleRequest());
+        return Results.Ok(new { ok = true, checklist = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
 });
 
 app.MapGet("/api/admin/learning/project-rules/{projectId}", (

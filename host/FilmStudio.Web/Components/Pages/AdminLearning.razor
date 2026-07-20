@@ -172,15 +172,83 @@
         </div>
 
         <div class="card mb-3">
-            <div class="card-header py-2">Propose rules from fails (AI)</div>
+            <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span>Proposed rules checklist</span>
+                @if (_checklist is not null)
+                {
+                    <span class="badge bg-secondary">
+                        @_checklist.Items.Count(i => i.Reviewed) / @_checklist.Items.Count reviewed
+                    </span>
+                }
+            </div>
             <div class="card-body small">
-                <div class="d-flex flex-wrap gap-2 mb-2">
+                <p class="text-muted mb-2">
+                    Check off rules after you review them (session proposals load by default; <strong>Propose</strong> replaces the list and keeps prior checks when text matches).
+                </p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
                     <input type="number" class="form-control form-control-sm" style="max-width:6rem" @bind="_proposeN" min="5" max="200" />
                     <button class="btn btn-sm btn-primary" data-testid="learning-propose" disabled="@_busy" @onclick="ProposeAsync">Propose from last N fails</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-testid="learning-checklist-reload" disabled="@_busy" @onclick="LoadChecklistAsync">Reload checklist</button>
                 </div>
+
+                @if (_checklist is null || _checklist.Items.Count == 0)
+                {
+                    <p class="text-muted mb-0">No checklist yet.</p>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush border rounded mb-2">
+                        @foreach (var item in _checklist.Items)
+                        {
+                            <div class="list-group-item px-2 py-2" data-testid="@($"learning-proposal-{item.Id}")">
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="@($"prop-{item.Id}")"
+                                           data-testid="@($"learning-proposal-check-{item.Id}")"
+                                           checked="@item.Reviewed"
+                                           disabled="@_busy"
+                                           @onchange="e => ToggleProposalAsync(item, (bool)(e.Value ?? false))" />
+                                    <label class="form-check-label" for="@($"prop-{item.Id}")">
+                                        @if (item.Reviewed)
+                                        {
+                                            <span class="badge bg-success me-1">reviewed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark me-1">pending</span>
+                                        }
+                                        @item.Text
+                                    </label>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-1 ms-4 align-items-center">
+                                    <select class="form-select form-select-sm"
+                                            style="max-width:10rem"
+                                            disabled="@_busy"
+                                            value="@(item.Disposition ?? "")"
+                                            @onchange="e => SetDispositionAsync(item, e.Value?.ToString())">
+                                        <option value="">disposition…</option>
+                                        <option value="accepted">accepted / done</option>
+                                        <option value="partial">partial</option>
+                                        <option value="rejected">rejected / skip</option>
+                                        <option value="deferred">deferred</option>
+                                    </select>
+                                    @if (item.ReviewedAt is DateTimeOffset ra)
+                                    {
+                                        <span class="text-muted">@ra.ToLocalTime().ToString("g")</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
                 @if (!string.IsNullOrEmpty(_proposal))
                 {
-                    <pre class="small bg-light p-2 rounded mb-0" style="white-space:pre-wrap;">@_proposal</pre>
+                    <details class="mt-2">
+                        <summary class="text-muted" style="cursor:pointer">Raw propose output</summary>
+                        <pre class="small bg-light p-2 rounded mb-0 mt-1" style="white-space:pre-wrap;">@_proposal</pre>
+                    </details>
                 }
             </div>
         </div>
@@ -256,6 +324,7 @@
     private string _newPackBody = "";
     private int _proposeN = 50;
     private string? _proposal;
+    private ProposalChecklistDocument? _checklist;
     private string _rulesProject = "";
     private ProjectRulesDocument? _rules;
 
@@ -276,8 +345,52 @@
             _insights = await Api.GetLearningInsightsAsync(pid);
             _events = (await Api.GetLearningEventsAsync(pid, take: 80)).ToList();
             _manifest = await Api.GetLearningPacksAsync();
+            _checklist = await Api.GetProposalChecklistAsync();
             if (!string.IsNullOrWhiteSpace(_rulesProject))
                 _rules = await Api.GetProjectRulesAsync(_rulesProject.Trim());
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task LoadChecklistAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _checklist = await Api.GetProposalChecklistAsync();
+            _message = _checklist is null
+                ? "No checklist"
+                : $"Checklist · {_checklist.Items.Count(i => i.Reviewed)}/{_checklist.Items.Count} reviewed";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ToggleProposalAsync(ProposalChecklistItem item, bool reviewed)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _checklist = await Api.ToggleProposalChecklistItemAsync(
+                item.Id, reviewed, item.Disposition, item.Note);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SetDispositionAsync(ProposalChecklistItem item, string? disposition)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            // Mark reviewed when choosing a disposition
+            var reviewed = item.Reviewed || !string.IsNullOrWhiteSpace(disposition);
+            _checklist = await Api.ToggleProposalChecklistItemAsync(
+                item.Id, reviewed, disposition, item.Note);
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }
@@ -326,7 +439,12 @@
             if (r is null || !r.Ok)
                 _error = r?.Error ?? "Propose failed";
             else
+            {
                 _proposal = r.Proposal + $"\n\n({r.FailEventsUsed} fails · cats: {string.Join(", ", r.Categories)})";
+                // Server ingests bullets into checklist; reload to show checkboxes
+                _checklist = await Api.GetProposalChecklistAsync();
+                _message = "Proposal ingested into checklist — check off as you review";
+            }
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }

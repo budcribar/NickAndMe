@@ -223,6 +223,46 @@ public sealed class EngineApiClient
         return await SendJsonAsync<ProposeLearningRulesResult>(req, ct);
     }
 
+    public async Task<ProposalChecklistDocument?> GetProposalChecklistAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/admin/learning/proposal-checklist");
+        var env = await SendJsonAsync<ProposalChecklistEnvelope>(req, ct);
+        return env?.Checklist;
+    }
+
+    public async Task<ProposalChecklistDocument?> ToggleProposalChecklistItemAsync(
+        string id,
+        bool reviewed,
+        string? disposition = null,
+        string? note = null,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/learning/proposal-checklist/toggle")
+        {
+            Content = JsonContent.Create(new ProposalChecklistToggleRequest
+            {
+                Id = id,
+                Reviewed = reviewed,
+                Disposition = disposition,
+                Note = note,
+            }, options: JsonOpts),
+        };
+        var env = await SendJsonAsync<ProposalChecklistEnvelope>(req, ct);
+        return env?.Checklist;
+    }
+
+    public async Task<ProposalChecklistDocument?> SaveProposalChecklistAsync(
+        ProposalChecklistUpsertRequest body,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/learning/proposal-checklist")
+        {
+            Content = JsonContent.Create(body, options: JsonOpts),
+        };
+        var env = await SendJsonAsync<ProposalChecklistEnvelope>(req, ct);
+        return env?.Checklist;
+    }
+
     public async Task<ProjectRulesDocument?> GetProjectRulesAsync(string projectId, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get,
@@ -292,6 +332,12 @@ public sealed class EngineApiClient
     {
         public bool Ok { get; set; }
         public PromptPackInfo? Pack { get; set; }
+    }
+
+    private sealed class ProposalChecklistEnvelope
+    {
+        public bool Ok { get; set; }
+        public ProposalChecklistDocument? Checklist { get; set; }
     }
     private sealed class ProjectRulesEnvelope
     {
