@@ -221,4 +221,144 @@ public class ClipVideoPromptBuilderTests
         Assert.True(built.Prompt.IndexOf("CAST COUNT", StringComparison.OrdinalIgnoreCase) <
                     built.Prompt.IndexOf("THIS CLIP", StringComparison.OrdinalIgnoreCase));
     }
+
+    // --- PR2: identity continuity (fresh / extend / cast-change reseed) ---
+
+    [Fact]
+    public void Build_fresh_attaches_refs_and_no_identity_reinforce()
+    {
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 1,
+              "visual_prompt": "Character_Old_Man sleeps in bed.",
+              "characters_on_screen": ["Character_Old_Man"],
+              "veo_continuation_source": "none",
+              "audio_payload": { "speaker": "", "dialogue": "", "delivery": "none" }
+            }
+            """).RootElement;
+
+        var tmp = Path.Combine(Path.GetTempPath(), "fs-pr2-fresh-" + Guid.NewGuid().ToString("N"));
+        var charDir = Path.Combine(tmp, "assets", "characters");
+        Directory.CreateDirectory(charDir);
+        File.WriteAllBytes(Path.Combine(charDir, "character_old_man_ref.png"), new byte[512]);
+
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_Old_Man"] = new()
+            {
+                Key = "Character_Old_Man",
+                DisplayName = "Old Man",
+                Description = "elderly pale man in nightshirt",
+            },
+        };
+
+        var built = ClipVideoPromptBuilder.Build(clip, tmp, profiles, maxRefs: 3);
+        Assert.Equal("fresh", built.Mode);
+        Assert.True(built.RefsAttachedToApi);
+        Assert.NotEmpty(built.ReferenceImagePaths);
+        Assert.DoesNotContain("IDENTITY: Match locked plate", built.Prompt, StringComparison.Ordinal);
+
+        try { Directory.Delete(tmp, true); } catch { /* ignore */ }
+    }
+
+    [Fact]
+    public void Build_video_extend_same_cast_no_api_refs_has_identity_reinforce()
+    {
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 2,
+              "visual_prompt": "Character_Old_Man stirs under the covers.",
+              "characters_on_screen": ["Character_Old_Man"],
+              "veo_continuation_source": "extend_previous",
+              "audio_payload": { "speaker": "", "dialogue": "", "delivery": "none" }
+            }
+            """).RootElement;
+
+        var tmp = Path.Combine(Path.GetTempPath(), "fs-pr2-extend-" + Guid.NewGuid().ToString("N"));
+        var charDir = Path.Combine(tmp, "assets", "characters");
+        Directory.CreateDirectory(charDir);
+        File.WriteAllBytes(Path.Combine(charDir, "character_old_man_ref.png"), new byte[512]);
+        var prevVideo = Path.Combine(tmp, "scene_01_clip_01.mp4");
+        File.WriteAllBytes(prevVideo, new byte[2048]);
+
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_Old_Man"] = new()
+            {
+                Key = "Character_Old_Man",
+                DisplayName = "Old Man",
+                Description = "elderly pale man in nightshirt",
+            },
+        };
+
+        var built = ClipVideoPromptBuilder.Build(
+            clip,
+            tmp,
+            characters: profiles,
+            previousClipVisualPrompt: "Character_Old_Man sleeps.",
+            previousClipVideoPath: prevVideo,
+            maxRefs: 3);
+
+        Assert.Equal("video-extend", built.Mode);
+        Assert.False(built.RefsAttachedToApi);
+        Assert.Empty(built.ReferenceImagePaths);
+        Assert.Contains("IDENTITY: Match locked plate", built.Prompt, StringComparison.Ordinal);
+        Assert.Contains("Character_Old_Man", built.Prompt);
+        Assert.Contains("EXTENSION", built.Prompt, StringComparison.OrdinalIgnoreCase);
+
+        try { Directory.Delete(tmp, true); } catch { /* ignore */ }
+    }
+
+    [Fact]
+    public void Build_cast_change_reseed_is_fresh_with_refs_when_prev_video_cleared()
+    {
+        // FilmJobService nulls previousClipVideoPath on cast-set change (IdentityReseedOnCastChange).
+        // Builder then attaches locked plates like clip 1.
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 3,
+              "visual_prompt": "Three OFFICERS enter. Character_Officer speaks.",
+              "characters_on_screen": ["Character_Officer", "Character_Officer_Two", "Character_Officer_Three"],
+              "veo_continuation_source": "extend_previous",
+              "audio_payload": { "speaker": "Character_Officer", "dialogue": "A noise?", "delivery": "spoken_on_camera" }
+            }
+            """).RootElement;
+
+        var tmp = Path.Combine(Path.GetTempPath(), "fs-pr2-reseed-" + Guid.NewGuid().ToString("N"));
+        var charDir = Path.Combine(tmp, "assets", "characters");
+        Directory.CreateDirectory(charDir);
+        File.WriteAllBytes(Path.Combine(charDir, "character_officer_ref.png"), new byte[512]);
+        File.WriteAllBytes(Path.Combine(charDir, "character_officer_two_ref.png"), new byte[512]);
+        File.WriteAllBytes(Path.Combine(charDir, "character_officer_three_ref.png"), new byte[512]);
+
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_Officer"] = new() { Key = "Character_Officer", DisplayName = "Officer", Description = "uniformed officer" },
+            ["Character_Officer_Two"] = new() { Key = "Character_Officer_Two", DisplayName = "Officer Two", Description = "second officer" },
+            ["Character_Officer_Three"] = new() { Key = "Character_Officer_Three", DisplayName = "Officer Three", Description = "third officer" },
+            ["Character_Old_Man"] = new() { Key = "Character_Old_Man", DisplayName = "Old Man", Description = "elderly" },
+        };
+
+        // prev video path NOT passed → same as FilmJobService reseed after cast change
+        var built = ClipVideoPromptBuilder.Build(
+            clip,
+            tmp,
+            characters: profiles,
+            previousClipVisualPrompt: "Character_Old_Man sleeps. (prior cast for prose only)",
+            previousClipVideoPath: null,
+            maxRefs: 5);
+
+        Assert.Equal("fresh", built.Mode);
+        Assert.True(built.RefsAttachedToApi);
+        Assert.True(built.ReferenceImagePaths.Count >= 1);
+        Assert.Equal(3, built.CastCount);
+        Assert.DoesNotContain("IDENTITY: Match locked plate", built.Prompt, StringComparison.Ordinal);
+        Assert.Contains("<IMAGE_1>", built.Prompt);
+        Assert.Contains("new cast plate refs attached", built.Prompt, StringComparison.OrdinalIgnoreCase);
+
+        try { Directory.Delete(tmp, true); } catch { /* ignore */ }
+    }
 }

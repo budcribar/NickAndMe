@@ -86,18 +86,16 @@ public static class ClipVideoPromptBuilder
     {
         characters ??= new Dictionary<string, CharacterProfile>(StringComparer.OrdinalIgnoreCase);
 
-        var cont = clipEl.TryGetProperty("veo_continuation_source", out var ce)
-            ? (ce.GetString() ?? "none")
-            : "none";
+        // Mode follows actual media inputs, not blueprint cont alone.
+        // Cast-change reseed (PR2) clears previousClipVideoPath while blueprint may still say
+        // extend_previous — that must be fresh+refs, not continue-without-frame.
         var hasPrevVideo = !string.IsNullOrWhiteSpace(previousClipVideoPath) &&
                            File.Exists(previousClipVideoPath);
-        var continueFromPrev =
-            string.Equals(cont, "extend_previous", StringComparison.OrdinalIgnoreCase) ||
-            !string.IsNullOrWhiteSpace(startFrameImagePath) ||
-            hasPrevVideo;
+        var hasStartFrame = !string.IsNullOrWhiteSpace(startFrameImagePath) &&
+                            File.Exists(startFrameImagePath!);
 
         var mode = hasPrevVideo ? "video-extend"
-            : continueFromPrev ? "continue"
+            : hasStartFrame ? "continue"
             : "fresh";
 
         var allKeys = ResolveClipCharacterKeys(clipEl, characters);
@@ -161,14 +159,23 @@ public static class ClipVideoPromptBuilder
         if (mode is "video-extend" or "continue")
             continuityBlock += IdentityReinforceBlock(onScreenKeys, useReferenceImages);
 
-        if ((mode is "continue" or "video-extend") &&
-            !string.IsNullOrWhiteSpace(previousClipVisualPrompt))
+        if (!string.IsNullOrWhiteSpace(previousClipVisualPrompt) &&
+            mode is "continue" or "video-extend")
         {
             var prevClean = SanitizeActionText(previousClipVisualPrompt!, onScreenKeys);
             continuityBlock =
                 (mode == "video-extend"
                     ? "PREVIOUS CLIP (already provided as video input — continue from its last frame):\n"
                     : "PREVIOUS CLIP (context — match look & continue motion from its end):\n") +
+                prevClean + "\n\n" + continuityBlock;
+        }
+        else if (!string.IsNullOrWhiteSpace(previousClipVisualPrompt) && mode == "fresh")
+        {
+            // Cast-change reseed: no video input, but keep prior clip prose for location/lighting only.
+            var prevClean = SanitizeActionText(previousClipVisualPrompt!, onScreenKeys);
+            continuityBlock =
+                "CONTEXT (prior clip in scene — new cast plate refs attached; match location/lighting if still valid; " +
+                "identity from CHARACTER VARIABLES + locked plates only):\n" +
                 prevClean + "\n\n" + continuityBlock;
         }
 
