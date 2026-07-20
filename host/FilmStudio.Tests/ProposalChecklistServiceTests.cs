@@ -81,6 +81,70 @@ public class ProposalChecklistServiceTests : IDisposable
     }
 
     [Fact]
+    public void Ingest_preserves_reviewed_on_theme_wording_drift()
+    {
+        _svc.IngestProposal(
+            "- Mandate photoreal period-correct human look and fabrics; ban smooth vampiric CGI or stylized skin.",
+            "a");
+        var id = _svc.Load().Items[0].Id;
+        _svc.Toggle(new FilmStudio.Core.Models.ProposalChecklistToggleRequest
+        {
+            Id = id,
+            Reviewed = true,
+            Disposition = "accepted",
+        });
+
+        // Same theme, different wording (what re-propose often does)
+        var doc = _svc.IngestProposal(
+            "- Lock every prompt to photoreal live-action period look and ban illustrated, anime, cartoon, painted, or smooth CGI rendering.",
+            "b");
+
+        var styleItem = doc.Items.First(i => i.Id == id || i.Text.Contains("photoreal", StringComparison.OrdinalIgnoreCase));
+        Assert.True(styleItem.Reviewed);
+        Assert.Equal("accepted", styleItem.Disposition);
+        // Prior reviewed wording kept (not forced to new bullet text)
+        Assert.Contains("vampiric", styleItem.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Ingest_retains_reviewed_items_not_in_new_propose()
+    {
+        _svc.IngestProposal("""
+            - Keep character identity locked across all clips carefully.
+            - Reject truncated visual prompts with incomplete sentences always.
+            """, "a");
+        var id = _svc.Load().Items[0].Id;
+        _svc.Toggle(new FilmStudio.Core.Models.ProposalChecklistToggleRequest
+        {
+            Id = id,
+            Reviewed = true,
+            Disposition = "accepted",
+        });
+
+        // New propose only has a different pending theme
+        var doc = _svc.IngestProposal(
+            "- Auto-review must fail any clip that breaks style lock or cast count rules.",
+            "b");
+
+        Assert.Contains(doc.Items, i => i.Id == id && i.Reviewed);
+        Assert.Contains(doc.Items, i => i.Text.Contains("Auto-review", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void MarkAcceptedFromRuleTexts_sets_disposition()
+    {
+        _svc.IngestProposal(
+            "- State exact CAST COUNT and named identities; forbid extras and background crowd.",
+            "a");
+        var doc = _svc.MarkAcceptedFromRuleTexts(
+            new[] { "Match cast count and named identities; no unlisted people or extras on screen." },
+            disposition: "accepted");
+        Assert.Contains(doc.Items, i =>
+            i.Reviewed && i.Disposition == "accepted" &&
+            i.Text.Contains("CAST COUNT", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Default_seed_has_seven_session_proposals()
     {
         var doc = ProposalChecklistService.SeedDefaultSessionReview();

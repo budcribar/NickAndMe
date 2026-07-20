@@ -443,6 +443,29 @@ app.MapPost("/api/admin/learning/proposal-checklist/toggle", (
     }
 });
 
+/// <summary>Mark checklist items done when matching project-rule text is approved.</summary>
+app.MapPost("/api/admin/learning/proposal-checklist/accept-matching", (
+    ProposalChecklistAcceptMatchingRequest body,
+    IUserContext user,
+    ProposalChecklistService checklist) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    try
+    {
+        var doc = checklist.MarkAcceptedFromRuleTexts(
+            body?.Texts ?? new List<string>(),
+            body?.Disposition ?? "accepted",
+            body?.Note);
+        return Results.Ok(new { ok = true, checklist = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
 app.MapGet("/api/admin/learning/project-rules/{projectId}", (
     string projectId,
     IUserContext user,
@@ -478,15 +501,42 @@ app.MapPost("/api/admin/learning/project-rules/{projectId}/approve", (
     string projectId,
     ApproveProjectRuleRequest body,
     IUserContext user,
-    ProjectRulesService rules) =>
+    ProjectRulesService rules,
+    ProposalChecklistService checklist) =>
 {
     if (!user.IsAdmin)
         return Results.Json(new { ok = false, error = "admin role required" },
             statusCode: StatusCodes.Status403Forbidden);
     try
     {
+        // Capture text before approve (suggestion removed from pending)
+        var before = rules.Load(projectId);
+        var sug = before.Pending.FirstOrDefault(p =>
+            string.Equals(p.Id, body.SuggestionId, StringComparison.OrdinalIgnoreCase));
+        var approvedText = !string.IsNullOrWhiteSpace(body.Text)
+            ? body.Text!.Trim()
+            : (sug?.Text ?? "").Trim();
+
         var doc = rules.Approve(projectId, body.SuggestionId, body.Text, user.UserId);
-        return Results.Ok(new { ok = true, projectId, rules = doc });
+
+        // Keep admin checklist in sync (theme match) so Propose doesn't look "reset"
+        ProposalChecklistDocument? checklistDoc = null;
+        if (!string.IsNullOrWhiteSpace(approvedText))
+        {
+            try
+            {
+                checklistDoc = checklist.MarkAcceptedFromRuleTexts(
+                    new[] { approvedText },
+                    disposition: "accepted",
+                    note: $"Approved project rule on {projectId}");
+            }
+            catch
+            {
+                /* non-fatal */
+            }
+        }
+
+        return Results.Ok(new { ok = true, projectId, rules = doc, checklist = checklistDoc });
     }
     catch (Exception ex)
     {

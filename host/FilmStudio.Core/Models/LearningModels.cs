@@ -136,6 +136,16 @@ public sealed class ProposalChecklistToggleRequest
     public string? Note { get; set; }
 }
 
+/// <summary>
+/// Mark checklist items accepted when project rules are approved (theme/text match).
+/// </summary>
+public sealed class ProposalChecklistAcceptMatchingRequest
+{
+    public List<string> Texts { get; set; } = new();
+    public string Disposition { get; set; } = "accepted";
+    public string? Note { get; set; }
+}
+
 /// <summary>Project-scoped house rules from repeated review fails.</summary>
 public sealed class ProjectRulesDocument
 {

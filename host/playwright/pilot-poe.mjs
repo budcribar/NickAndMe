@@ -971,17 +971,50 @@ async function main() {
       await page.waitForTimeout(3000);
       await screenshot(page, "08-learning");
 
-      // Auto-approve all pending safe rules
+      // Auto-approve all pending safe rules (API also marks matching checklist items accepted)
       const approveBtns = page.locator('[data-testid^="learning-approve-"]');
       const ac = await approveBtns.count();
       log("pending rules to approve", String(ac));
+      const approvedTexts = [];
       for (let i = 0; i < ac; i++) {
-        // always re-query first button (list shrinks)
         const b = page.locator('[data-testid^="learning-approve-"]').first();
         if (!(await b.count())) break;
+        // Capture suggestion text from the row before it disappears
+        const row = b.locator("xpath=ancestor::*[contains(@class,'list-group-item') or contains(@class,'card') or self::tr][1]");
+        const rowText = ((await row.count()) ? await row.innerText() : "").replace(/\s+/g, " ").trim();
+        if (rowText.length > 20) approvedTexts.push(rowText.slice(0, 400));
         await b.click();
         await page.waitForTimeout(600);
       }
+
+      // Explicit checklist sync from active project rules (belt + suspenders with approve hook)
+      const rulesRes = await apiGet(
+        `/api/admin/learning/project-rules/${encodeURIComponent(PROJECT_NAME)}`
+      );
+      const active = rulesRes.json?.rules?.active || rulesRes.json?.rules?.Active || [];
+      const texts = active.map((r) => r.text || r.Text).filter(Boolean);
+      if (texts.length > 0) {
+        const sync = await apiPost("/api/admin/learning/proposal-checklist/accept-matching", {
+          texts,
+          disposition: "accepted",
+          note: `Pilot approved project rules for ${PROJECT_NAME}`,
+        });
+        log(
+          "checklist accept-matching",
+          sync.ok ? "ok" : "fail",
+          `activeRules=${texts.length}`,
+          String(sync.status || "")
+        );
+      } else if (approvedTexts.length > 0) {
+        await apiPost("/api/admin/learning/proposal-checklist/accept-matching", {
+          texts: approvedTexts,
+          disposition: "accepted",
+          note: `Pilot approve click texts for ${PROJECT_NAME}`,
+        });
+      }
+
+      await page.getByTestId("learning-checklist-reload").click().catch(() => {});
+      await page.waitForTimeout(800);
       await screenshot(page, "08-learning-approved");
     });
 

@@ -185,7 +185,8 @@
             <div class="card-body small">
                 <p class="text-muted mb-2">
                     Numbered proposals. Check off as you review; <strong>accepted / done</strong> items hide until you show them.
-                    <strong>Propose</strong> replaces the list and keeps prior checks when text matches.
+                    <strong>Propose</strong> merges new bullets by theme (not only exact text), keeps reviewed items,
+                    and retains prior done rows the new propose did not restate. Approving a project rule also marks matching checklist items done.
                 </p>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <input type="number" class="form-control form-control-sm" style="max-width:6rem" @bind="_proposeN" min="5" max="200" />
