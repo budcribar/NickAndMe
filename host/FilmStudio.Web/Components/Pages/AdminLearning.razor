@@ -177,18 +177,30 @@
                 @if (_checklist is not null)
                 {
                     <span class="badge bg-secondary">
-                        @_checklist.Items.Count(i => i.Reviewed) / @_checklist.Items.Count reviewed
+                        @DoneCount / @_checklist.Items.Count done
+                        · @PendingVisibleCount open
                     </span>
                 }
             </div>
             <div class="card-body small">
                 <p class="text-muted mb-2">
-                    Check off rules after you review them (session proposals load by default; <strong>Propose</strong> replaces the list and keeps prior checks when text matches).
+                    Numbered proposals. Check off as you review; <strong>accepted / done</strong> items hide until you show them.
+                    <strong>Propose</strong> replaces the list and keeps prior checks when text matches.
                 </p>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <input type="number" class="form-control form-control-sm" style="max-width:6rem" @bind="_proposeN" min="5" max="200" />
                     <button class="btn btn-sm btn-primary" data-testid="learning-propose" disabled="@_busy" @onclick="ProposeAsync">Propose from last N fails</button>
                     <button class="btn btn-sm btn-outline-secondary" data-testid="learning-checklist-reload" disabled="@_busy" @onclick="LoadChecklistAsync">Reload checklist</button>
+                    @if (DoneCount > 0)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                data-testid="learning-checklist-toggle-done"
+                                disabled="@_busy"
+                                @onclick="() => _showDoneItems = !_showDoneItems">
+                            @(_showDoneItems ? "Hide done" : $"Show done ({DoneCount})")
+                        </button>
+                    }
                 </div>
 
                 @if (_checklist is null || _checklist.Items.Count == 0)
@@ -198,49 +210,78 @@
                 else
                 {
                     <div class="list-group list-group-flush border rounded mb-2">
+                        @{
+                            var index = 0;
+                        }
                         @foreach (var item in _checklist.Items)
                         {
-                            <div class="list-group-item px-2 py-2" data-testid="@($"learning-proposal-{item.Id}")">
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           id="@($"prop-{item.Id}")"
-                                           data-testid="@($"learning-proposal-check-{item.Id}")"
-                                           checked="@item.Reviewed"
-                                           disabled="@_busy"
-                                           @onchange="e => ToggleProposalAsync(item, (bool)(e.Value ?? false))" />
-                                    <label class="form-check-label" for="@($"prop-{item.Id}")">
-                                        @if (item.Reviewed)
-                                        {
-                                            <span class="badge bg-success me-1">reviewed</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-warning text-dark me-1">pending</span>
-                                        }
-                                        @item.Text
-                                    </label>
-                                </div>
-                                <div class="d-flex flex-wrap gap-2 mt-1 ms-4 align-items-center">
-                                    <select class="form-select form-select-sm"
-                                            style="max-width:10rem"
-                                            disabled="@_busy"
-                                            value="@(item.Disposition ?? "")"
-                                            @onchange="e => SetDispositionAsync(item, e.Value?.ToString())">
-                                        <option value="">disposition…</option>
-                                        <option value="accepted">accepted / done</option>
-                                        <option value="partial">partial</option>
-                                        <option value="rejected">rejected / skip</option>
-                                        <option value="deferred">deferred</option>
-                                    </select>
-                                    @if (item.ReviewedAt is DateTimeOffset ra)
-                                    {
-                                        <span class="text-muted">@ra.ToLocalTime().ToString("g")</span>
-                                    }
+                            index++;
+                            var isDone = IsChecklistDone(item);
+                            if (isDone && !_showDoneItems)
+                                continue;
+
+                            <div class="list-group-item px-2 py-2 @(isDone ? "opacity-75" : "")"
+                                 data-testid="@($"learning-proposal-{item.Id}")">
+                                <div class="d-flex gap-2 align-items-start">
+                                    <span class="badge bg-dark flex-shrink-0 mt-1" style="min-width:1.75rem;">@index</span>
+                                    <div class="flex-grow-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   id="@($"prop-{item.Id}")"
+                                                   data-testid="@($"learning-proposal-check-{item.Id}")"
+                                                   checked="@item.Reviewed"
+                                                   disabled="@_busy"
+                                                   @onchange="e => ToggleProposalAsync(item, (bool)(e.Value ?? false))" />
+                                            <label class="form-check-label" for="@($"prop-{item.Id}")">
+                                                @if (isDone)
+                                                {
+                                                    <span class="badge bg-success me-1">done</span>
+                                                }
+                                                else if (item.Reviewed)
+                                                {
+                                                    <span class="badge bg-info text-dark me-1">reviewed</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1">pending</span>
+                                                }
+                                                @item.Text
+                                            </label>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-1 ms-4 align-items-center">
+                                            <select class="form-select form-select-sm"
+                                                    style="max-width:10rem"
+                                                    disabled="@_busy"
+                                                    value="@(item.Disposition ?? "")"
+                                                    @onchange="e => SetDispositionAsync(item, e.Value?.ToString())">
+                                                <option value="">disposition…</option>
+                                                <option value="accepted">accepted / done</option>
+                                                <option value="partial">partial</option>
+                                                <option value="rejected">rejected / skip</option>
+                                                <option value="deferred">deferred</option>
+                                            </select>
+                                            @if (item.ReviewedAt is DateTimeOffset ra)
+                                            {
+                                                <span class="text-muted">@ra.ToLocalTime().ToString("g")</span>
+                                            }
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         }
                     </div>
+                    @if (DoneCount > 0 && !_showDoneItems)
+                    {
+                        <p class="text-muted mb-0">
+                            @DoneCount done item(s) hidden.
+                            <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => _showDoneItems = true">Show done</button>
+                        </p>
+                    }
+                    @if (PendingVisibleCount == 0 && DoneCount > 0 && !_showDoneItems)
+                    {
+                        <p class="text-success mb-0 mt-1">All open items complete.</p>
+                    }
                 }
 
                 @if (!string.IsNullOrEmpty(_proposal))
@@ -325,8 +366,21 @@
     private int _proposeN = 50;
     private string? _proposal;
     private ProposalChecklistDocument? _checklist;
+    /// <summary>When false, hide items with disposition accepted (done).</summary>
+    private bool _showDoneItems;
     private string _rulesProject = "";
     private ProjectRulesDocument? _rules;
+
+    /// <summary>Accepted/done or rejected/skip — hidden unless Show done.</summary>
+    private static bool IsChecklistDone(ProposalChecklistItem item) =>
+        string.Equals(item.Disposition, "accepted", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(item.Disposition, "rejected", StringComparison.OrdinalIgnoreCase);
+
+    private int DoneCount =>
+        _checklist?.Items.Count(IsChecklistDone) ?? 0;
+
+    private int PendingVisibleCount =>
+        _checklist?.Items.Count(i => !IsChecklistDone(i)) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {

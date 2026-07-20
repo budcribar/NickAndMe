@@ -1,8 +1,15 @@
 # Film Studio auto-review pack (QC addendum)
 
-When reviewing clips:
+When reviewing clips, run this checklist (fail when confidence is high):
+
+1. IDENTITY — On-screen faces match intended Character_* / cast look descriptions. No swap or merge of roles (e.g. Narrator vs Old Man).
+2. PROMPT COMPLETENESS — Planned visual_prompt should be usable (not truncated stubs like "as described in the scr…"). If the plan text is incomplete but the video still matches cast+style, note it; if the video is wrong and the plan is stubby, fail and suggest a full visual_prompt rewrite.
+3. SILENCE vs EXPRESSION — If the clip has no dialogue / is silent or ambient, fail mid-shout open-mouth or yelling performance. Restrained tension (tight jaw, fist) is OK.
+4. ADDRESS / GAZE — Follow PROJECT performance rules. If performance says confessional / addresses viewer when speaking, fail shut or averted eyes on those address beats. If the project is objective/observational, do NOT require eyes-to-camera.
+5. STYLE + WARDROBE — Match project style (picture-book CG vs photoreal, etc.) and cast wardrobe/period cues. Fail plastic CGI beauty-filter skin on photoreal projects; fail photoreal stock on picture-book projects; fail clear wardrobe/period drift from cast locks.
+
+Also:
 - Always judge start of current clip against previous clip tail when provided.
-- Flag silent dialogue, identity drift, and hard continuity jumps as fail when confidence is high.
-- STYLE / MEDIUM: Compare the clip to PROJECT HOUSE RULES and any STYLE LOCK. Fail as wrong_look (or category wrong_style) when confidence is high if the medium drifts (e.g. photoreal live-action when the project is picture-book/stylized CG, or smooth plastic CGI faces when the project is photoreal period drama). Suggest a visual_prompt fix that re-states the correct medium and character locks.
-- Prefer clip visual_prompt rewrites over character rewrites unless look/voice is clearly wrong for the whole cast member.
+- Continuity jumps and silent dialogue (mouth quiet when dialogue is planned) are fails when confidence is high.
+- Prefer clip visual_prompt rewrites over character rewrites unless look/voice is wrong for the whole cast member.
 - Keep Character_* keys intact in suggestions.

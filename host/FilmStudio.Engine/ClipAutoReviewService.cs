@@ -402,10 +402,13 @@ public sealed class ClipAutoReviewService
             }
         }
         sb.AppendLine();
-        sb.AppendLine("Check: continuity from prev tail, character look/identity, RENDER MEDIUM vs project style,");
-        sb.AppendLine("lip/speech vs dialogue, empty/dead frames, wrong action, mismatched performance vs audio.");
-        sb.AppendLine("If PROJECT HOUSE RULES specify picture-book / stylized CG, fail photoreal live-action drift.");
-        sb.AppendLine("If they specify photoreal live-action, fail plastic CGI / beauty-filter / cartoon medium drift.");
+        sb.AppendLine("CHECKLIST (fail when confidence high; put the primary issue in category):");
+        sb.AppendLine("1) IDENTITY — faces match cast Character_*; no role swap/merge.");
+        sb.AppendLine("2) PROMPT COMPLETENESS — flag stub/truncated plan text; rewrite visual_prompt if needed.");
+        sb.AppendLine("3) SILENCE vs EXPRESSION — no mid-shout / open-mouth yell when silent or no dialogue.");
+        sb.AppendLine("4) ADDRESS / GAZE — honor PROJECT performance rules (confessional vs observational); do not invent eyes-to-camera globally.");
+        sb.AppendLine("5) STYLE + WARDROBE — match project medium and cast period/wardrobe locks.");
+        sb.AppendLine("Also: continuity from prev tail, lip/speech vs dialogue, empty/dead frames, wrong action.");
         sb.AppendLine("Respond with JSON ONLY (no markdown):");
         sb.AppendLine("""
             {
@@ -413,7 +416,7 @@ public sealed class ClipAutoReviewService
               "category": "continuity"|"wrong_look"|"wrong_style"|"wrong_voice"|"silent"|"framing"|"other",
               "confidence": "high"|"medium"|"low",
               "continuity": "ok"|"jump"|"unclear"|"n/a",
-              "note": "one short human-readable review note",
+              "note": "one short human-readable review note covering the main checklist hit",
               "suggestions": [
                 {
                   "layer": "clip"|"character",
@@ -427,7 +430,7 @@ public sealed class ClipAutoReviewService
               ]
             }
             """);
-        sb.AppendLine("Rules: only suggest changes that would improve a re-gen. Prefer clip visual_prompt. Character changes only if look/voice is clearly wrong. Keep Character_* keys. Empty suggestions[] if pass/no edit needed. Use wrong_style when medium drifts from project style.");
+        sb.AppendLine("Rules: only suggest changes that would improve a re-gen. Prefer clip visual_prompt. Character changes only if look/voice is clearly wrong. Keep Character_* keys. Empty suggestions[] if pass/no edit needed. Use wrong_style for medium drift; wrong_look for identity/wardrobe; silent for dialogue-without-speech or shout-on-silent.");
         return sb.ToString();
     }
 
