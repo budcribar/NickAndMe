@@ -389,7 +389,7 @@ else
     private bool _busy;
     private string? _error;
     private string? _message;
-    private string _projectId = "Buster";
+    private string _projectId = "";
     private List<string> _projectIds = new();
     private string _draftRes = "480p";
     private string _heroRes = "720p";
@@ -481,31 +481,37 @@ else
         {
             var projs = await Engine.GetProjectsAsync();
             _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
-                          ?? new List<string> { "Buster" };
-            if (projs?.Active?.Id is { Length: > 0 } aid)
+                          ?? new List<string>();
+            if (projs?.Active?.Id is { Length: > 0 } aid &&
+                _projectIds.Exists(id => string.Equals(id, aid, StringComparison.OrdinalIgnoreCase)))
                 _projectId = aid;
             else if (_projectIds.Count > 0)
                 _projectId = _projectIds[0];
+            else
+                _projectId = "";
 
             // Seed draft res from config when possible
-            try
+            if (!string.IsNullOrEmpty(_projectId))
             {
-                var cfg = await Engine.GetConfigAsync(_projectId);
-                if (cfg?.Config is not null &&
-                    cfg.Config.TryGetValue("resolution", out var res) &&
-                    res.ValueKind == System.Text.Json.JsonValueKind.String &&
-                    res.GetString() is { Length: > 0 } r)
-                    _draftRes = r;
-                if (cfg?.Config is not null &&
-                    cfg.Config.TryGetValue("cost_estimates", out var ce) &&
-                    ce.ValueKind == System.Text.Json.JsonValueKind.Object &&
-                    ce.TryGetProperty("assume_avg_retries", out var ar) &&
-                    ar.TryGetDouble(out var retries))
-                    _retries = retries;
-            }
-            catch { /* ignore */ }
+                try
+                {
+                    var cfg = await Engine.GetConfigAsync(_projectId);
+                    if (cfg?.Config is not null &&
+                        cfg.Config.TryGetValue("resolution", out var res) &&
+                        res.ValueKind == System.Text.Json.JsonValueKind.String &&
+                        res.GetString() is { Length: > 0 } r)
+                        _draftRes = r;
+                    if (cfg?.Config is not null &&
+                        cfg.Config.TryGetValue("cost_estimates", out var ce) &&
+                        ce.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        ce.TryGetProperty("assume_avg_retries", out var ar) &&
+                        ar.TryGetDouble(out var retries))
+                        _retries = retries;
+                }
+                catch { /* ignore */ }
 
-            await LoadAsync();
+                await LoadAsync();
+            }
         }
         catch (Exception ex)
         {

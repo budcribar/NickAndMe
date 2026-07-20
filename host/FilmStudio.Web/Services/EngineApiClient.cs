@@ -1028,11 +1028,20 @@ public sealed class EngineApiClient
         return await resp.Content.ReadFromJsonAsync<CostBackfillDto>(JsonOpts, ct);
     }
 
-    public async Task<ConfigDto?> GetConfigAsync(string projectId, CancellationToken ct = default) =>
-        await _http.GetFromJsonAsync<ConfigDto>(
+    public async Task<ConfigDto?> GetConfigAsync(string projectId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(projectId))
+            throw new InvalidOperationException("project required");
+        using var resp = await _http.GetAsync(
             $"/api/projects/{Uri.EscapeDataString(projectId)}/config",
-            JsonOpts,
             ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? $"{(int)resp.StatusCode} {resp.ReasonPhrase}");
+        }
+        return await resp.Content.ReadFromJsonAsync<ConfigDto>(JsonOpts, ct);
+    }
 
     /// <summary>Master model catalog (id → endpoint + required keys).</summary>
     public async Task<IReadOnlyList<SupportedModelDto>> GetSupportedModelsAsync(

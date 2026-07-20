@@ -23,7 +23,12 @@
 <div class="row mb-3">
     <div class="col-md-4">
         <label class="form-label">Project</label>
-        <select class="form-select" @bind="_projectId" @bind:after="LoadAsync" disabled="@_busy">
+        <select class="form-select" @bind="_projectId" @bind:after="LoadAsync"
+                disabled="@(_busy || _projectIds.Count == 0)">
+            @if (_projectIds.Count == 0)
+            {
+                <option value="">No projects</option>
+            }
             @foreach (var p in _projectIds)
             {
                 <option value="@p">@p</option>
@@ -31,14 +36,18 @@
         </select>
     </div>
     <div class="col-md-4 d-flex align-items-end gap-2">
-        <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="LoadAsync">Reload</button>
-        <button class="btn btn-primary" disabled="@_busy || _cfg is null" @onclick="SaveAsync">Save</button>
+        <button class="btn btn-outline-secondary" disabled="@(_busy || string.IsNullOrEmpty(_projectId))" @onclick="LoadAsync">Reload</button>
+        <button class="btn btn-primary" disabled="@(_busy || _cfg is null || string.IsNullOrEmpty(_projectId))" @onclick="SaveAsync">Save</button>
     </div>
 </div>
 
-@if (_cfg is null)
+@if (_projectIds.Count == 0)
 {
-    <p class="text-muted">Load a project to edit config…</p>
+    <p class="text-muted">No projects yet. Create one on <a href="/">Home</a>.</p>
+}
+else if (_cfg is null)
+{
+    <p class="text-muted">Choose a project to edit settings.</p>
 }
 else
 {
@@ -195,7 +204,7 @@ else
     private bool _busy;
     private string? _error;
     private string? _message;
-    private string _projectId = "Buster";
+    private string _projectId = "";
     private List<string> _projectIds = new();
     private Dictionary<string, JsonElement>? _cfg;
 
@@ -231,13 +240,18 @@ else
         {
             var projs = await Engine.GetProjectsAsync();
             _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
-                          ?? new List<string> { "Buster" };
-            if (projs?.Active?.Id is { Length: > 0 } aid)
+                          ?? new List<string>();
+            if (projs?.Active?.Id is { Length: > 0 } aid &&
+                _projectIds.Exists(id => string.Equals(id, aid, StringComparison.OrdinalIgnoreCase)))
                 _projectId = aid;
             else if (_projectIds.Count > 0)
                 _projectId = _projectIds[0];
+            else
+                _projectId = "";
+
             await LoadCatalogAsync();
-            await LoadAsync();
+            if (!string.IsNullOrEmpty(_projectId))
+                await LoadAsync();
         }
         catch (Exception ex)
         {
@@ -292,6 +306,12 @@ else
         _message = null;
         try
         {
+            if (string.IsNullOrWhiteSpace(_projectId))
+            {
+                _cfg = null;
+                return;
+            }
+
             var dto = await Engine.GetConfigAsync(_projectId);
             _cfg = dto?.Config;
             if (_cfg is null) return;
@@ -337,6 +357,12 @@ else
         _message = null;
         try
         {
+            if (string.IsNullOrWhiteSpace(_projectId))
+            {
+                _error = "Choose a project first.";
+                return;
+            }
+
             // Provider fields derived from model catalog (cost reports).
             var videoProvider = SupportedModelCatalog.ProviderIdFor(_modelName, ModelCapability.Video);
             var imageProvider = SupportedModelCatalog.ProviderIdFor(_imageModel, ModelCapability.Image);
