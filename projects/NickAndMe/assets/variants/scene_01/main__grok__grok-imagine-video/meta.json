@@ -1,8 +1,0 @@
-{
-  "provider": "grok",
-  "model_name": "grok-imagine-video",
-  "label": "Main snapshot (grok/grok-imagine-video)",
-  "source": "main_snapshot",
-  "composite_path": "assets/variants/scene_01/main__grok__grok-imagine-video/composite.mp4",
-  "clip_count": 5
-}

@@ -1,6 +1,0 @@
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_01_complete.mp4'
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_02_complete.mp4'
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_03_complete.mp4'
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_04_complete.mp4'
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_05_complete.mp4'
-file '/mnt/c/Users/budcr/source/repos/NickAndMe/projects/Buster/assets/scenes/scene_06_complete.mp4'

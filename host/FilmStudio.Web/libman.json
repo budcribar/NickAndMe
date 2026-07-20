@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "bootstrap@5.3.3",
+      "destination": "wwwroot/lib/bootstrap/dist/",
+      "files": [
+        "css/bootstrap.min.css",
+        "css/bootstrap.min.css.map"
+      ]
+    },
+    {
+      "library": "codemirror@5.65.18",
+      "destination": "wwwroot/lib/codemirror/",
+      "files": [
+        "codemirror.min.css",
+        "codemirror.min.js"
+      ]
+    }
+  ]
+}

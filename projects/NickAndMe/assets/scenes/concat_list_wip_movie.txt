@@ -1,2 +1,0 @@
-file 'C:/Users/budcr/source/repos/NickAndMe/assets/scenes/scene_01_complete.mp4'
-file 'C:/Users/budcr/source/repos/NickAndMe/assets/scenes/scene_02_complete.mp4'
