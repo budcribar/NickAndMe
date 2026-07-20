@@ -743,6 +743,54 @@ public sealed class EngineApiClient
         }
     }
 
+    /// <summary>
+    /// Rebuild project-local ARTIFACTS.md + artifact_index.json + telemetry snapshots for manual Claude review.
+    /// </summary>
+    public async Task<ArtifactIndexResult> RebuildArtifactIndexAsync(
+        string projectId,
+        CancellationToken ct = default)
+    {
+        SyncIdentityHeaders();
+        using var resp = await _http.PostAsync(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/artifacts/index",
+            content: null,
+            ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? resp.ReasonPhrase ?? "Artifact index failed");
+        }
+
+        var dto = await resp.Content.ReadFromJsonAsync<ArtifactIndexResponse>(JsonOpts, ct)
+                  ?? new ArtifactIndexResponse();
+        return new ArtifactIndexResult
+        {
+            ReadyForManualFinalReview = dto.ReadyForManualFinalReview,
+            MissingRequired = dto.MissingRequired ?? new List<string>(),
+            Stats = dto.Index?.Stats,
+        };
+    }
+
+    private sealed class ArtifactIndexResponse
+    {
+        public bool Ok { get; set; }
+        public bool ReadyForManualFinalReview { get; set; }
+        public List<string>? MissingRequired { get; set; }
+        public ArtifactIndexDto? Index { get; set; }
+    }
+
+    private sealed class ArtifactIndexDto
+    {
+        public Dictionary<string, object?>? Stats { get; set; }
+    }
+
+    public sealed class ArtifactIndexResult
+    {
+        public bool ReadyForManualFinalReview { get; set; }
+        public List<string> MissingRequired { get; set; } = new();
+        public Dictionary<string, object?>? Stats { get; set; }
+    }
+
     private sealed class ClipAutoReviewDraftEnvelope
     {
         public bool Ok { get; set; }

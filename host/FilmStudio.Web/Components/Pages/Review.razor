@@ -40,6 +40,22 @@ else
     <div class="alert alert-info">@_message</div>
 }
 
+@if (_artifactMapLoaded)
+{
+    <div class="alert @(_artifactReady ? "alert-success" : "alert-warning") py-2 small mb-3" data-testid="review-artifacts-status">
+        <strong>Manual final review map:</strong>
+        @if (_artifactReady)
+        {
+            <span>core artifacts present — open project folder + <code>ARTIFACTS.md</code> in Claude.</span>
+        }
+        else
+        {
+            <span>missing: @string.Join(", ", _artifactMissing)</span>
+        }
+        <span class="text-muted ms-1">(writes <code>ARTIFACTS.md</code>, <code>artifact_index.json</code>, <code>telemetry/</code>)</span>
+    </div>
+}
+
 <div class="row mb-3 g-2 align-items-end">
     <div class="col-md-4">
         <label class="form-label">Project</label>
@@ -52,6 +68,12 @@ else
     </div>
     <div class="col-md-8 d-flex flex-wrap gap-2">
         <button class="btn btn-outline-secondary" data-testid="review-reload" disabled="@_busy" @onclick="LoadAsync">Reload</button>
+        <button class="btn btn-outline-secondary" data-testid="review-artifacts-map"
+                disabled="@_busy"
+                title="Write ARTIFACTS.md + artifact_index.json + telemetry snapshots for manual Claude review of this project folder"
+                @onclick="RefreshArtifactMapAsync">
+            Refresh artifact map
+        </button>
         <button class="btn btn-outline-dark" data-testid="review-auto-all"
                 disabled="@(_busy || JobRunning)"
                 title="AI auto-review every on-disk clip that lacks a draft; updates assets/review/index.json + durable frames"
@@ -1043,6 +1065,29 @@ else
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
             _message = "Batch auto-review started (missing drafts only)…";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private bool _artifactMapLoaded;
+    private bool _artifactReady;
+    private List<string> _artifactMissing = new();
+
+    private async Task RefreshArtifactMapAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var r = await Engine.RebuildArtifactIndexAsync(_projectId);
+            _artifactMapLoaded = true;
+            _artifactReady = r.ReadyForManualFinalReview;
+            _artifactMissing = r.MissingRequired ?? new List<string>();
+            _message = r.ReadyForManualFinalReview
+                ? "Artifact map updated — open projects/" + _projectId + "/ARTIFACTS.md for Claude."
+                : "Artifact map updated — still missing: " + string.Join(", ", _artifactMissing);
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _busy = false; }

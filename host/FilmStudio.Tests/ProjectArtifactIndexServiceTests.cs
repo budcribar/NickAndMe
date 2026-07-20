@@ -56,7 +56,12 @@ public class ProjectArtifactIndexServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(proj, "telemetry", "cost_ledger.json")));
         Assert.True(File.Exists(Path.Combine(proj, "telemetry", "models.json")));
         Assert.True(File.Exists(Path.Combine(proj, "telemetry", "INDEX.md")));
+        Assert.True(File.Exists(Path.Combine(proj, "assets", "review", "FINAL_REVIEW_TEMPLATE.json")));
         Assert.Contains(doc.Entries, e => e.Path == "assets/movie_wip.mp4" && e.Exists);
         Assert.True(doc.Stats.ContainsKey("clipMp4Count"));
+        Assert.True(doc.ReadyForManualFinalReview, string.Join(", ", doc.MissingRequired));
+        var md = await File.ReadAllTextAsync(svc.ArtifactsMdPath("Demo"));
+        Assert.Contains("How to review manually", md);
+        Assert.Contains("telemetry/api_calls.jsonl", md);
     }
 }

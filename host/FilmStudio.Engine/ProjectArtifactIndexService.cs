@@ -117,12 +117,16 @@ public sealed class ProjectArtifactIndexService
         Add("assets/review/index.json", "Per-clip review index (rebuild via batch review)", requiredForManualReview: true);
         Add("assets/review/frames", "Durable auto-review sample frames");
         Add("assets/review/final_review.json", "Manual/AI final rubric scores (when filled)");
+        Add("assets/review/FINAL_REVIEW_TEMPLATE.json", "Rubric template for manual final review");
 
-        // Telemetry snapshots (written by this service; live api_calls later)
+        // Telemetry (live streams + snapshots)
         Add("telemetry/cost_ledger.json", "Cost events snapshot (from pipeline_state)", requiredForManualReview: true);
         Add("telemetry/models.json", "Resolved models/options snapshot");
-        Add("telemetry/api_calls.jsonl", "Live API call log (when instrumented)");
-        Add("telemetry/ffmpeg.jsonl", "Condensed ffmpeg ops (when instrumented)");
+        Add("telemetry/api_calls.jsonl", "Live API call log (full prompts)", requiredForManualReview: false);
+        Add("telemetry/ffmpeg.jsonl", "Condensed ffmpeg ops", requiredForManualReview: false);
+        // Written by this rebuild — not "required" for readiness (would always be missing mid-scan)
+        Add("ARTIFACTS.md", "Human map of this project for Claude/manual review");
+        Add("artifact_index.json", "Machine-readable artifact presence map");
 
         // Scene sources (assembly gate)
         var videoDir = Path.Combine(dir, "assets", "video");
@@ -156,6 +160,8 @@ public sealed class ProjectArtifactIndexService
 
         // Enrich with clip/prompt/review counts
         doc.Stats = CollectStats(dir);
+
+        await EnsureFinalReviewTemplateAsync(dir, ct).ConfigureAwait(false);
 
         var indexPath = IndexJsonPath(projectId);
         await File.WriteAllTextAsync(
@@ -334,16 +340,99 @@ public sealed class ProjectArtifactIndexService
         }
 
         sb.AppendLine();
-        sb.AppendLine("## How to review manually");
+        sb.AppendLine("## How to review manually (Claude / external AI)");
         sb.AppendLine();
-        sb.AppendLine("1. Open this project folder in your AI tool (Claude Code, etc.).");
-        sb.AppendLine("2. Read `ARTIFACTS.md` + `artifact_index.json` first.");
-        sb.AppendLine("3. Compare `source/book_full.txt` / fountain vs `assets/movie_wip.mp4` (and review frames).");
-        sb.AppendLine("4. Use `assets/video/prompts/*.meta.json` for CAST COUNT / identity; scene `*.sources.json` for exclusions.");
-        sb.AppendLine("5. Optionally write scores to `assets/review/final_review.json` (schema in plan PR4.5).");
-        sb.AppendLine("6. Zip/export is deferred — keep everything in this directory for now.");
+        sb.AppendLine("1. Open **this project folder** in Claude Code (or similar) — not a zip.");
+        sb.AppendLine("2. Start with `ARTIFACTS.md` + `artifact_index.json` (this map).");
+        sb.AppendLine("3. Story triad: `source/book_full.txt` + `source/screenplay.fountain` + `assets/movie_wip.mp4`.");
+        sb.AppendLine("4. Identity: `assets/characters/*_ref.png`, `assets/video/prompts/*.meta.json` (`prompt`, `castCount`, `refsAttachedToApi`).");
+        sb.AppendLine("5. QC: `assets/review/*.auto_review.json`, `assets/review/index.json`, `assets/review/frames/`.");
+        sb.AppendLine("6. Assembly: `assets/video/scene_*.mp4.sources.json` (`included` / `excluded`).");
+        sb.AppendLine("7. Telemetry: `telemetry/api_calls.jsonl` (full prompts), `telemetry/ffmpeg.jsonl`, `telemetry/cost_ledger.json`.");
+        sb.AppendLine("8. Scores: copy `assets/review/FINAL_REVIEW_TEMPLATE.json` → `final_review.json` and fill **human** (and optionally **ai** notes).");
+        sb.AppendLine("9. Zip export is deferred — all durable data stays in this directory.");
+        sb.AppendLine();
+        sb.AppendLine("Refresh this map: `POST /api/projects/{id}/artifacts/index` or Review UI **Refresh artifact map**.");
         sb.AppendLine();
         return sb.ToString();
+    }
+
+    private static async Task EnsureFinalReviewTemplateAsync(string projectDir, CancellationToken ct)
+    {
+        var reviewDir = Path.Combine(projectDir, "assets", "review");
+        Directory.CreateDirectory(reviewDir);
+        var path = Path.Combine(reviewDir, "FINAL_REVIEW_TEMPLATE.json");
+        if (File.Exists(path)) return;
+
+        var template = new
+        {
+            schemaVersion = "1",
+            note = "Copy to final_review.json and fill scores (1–5). AI automation deferred; use for manual Claude + human pass.",
+            projectId = "",
+            createdAtUtc = "",
+            wipPath = "assets/movie_wip.mp4",
+            categories = new[]
+            {
+                "fidelity_plot",
+                "fidelity_character",
+                "adaptation_craft",
+                "visual_identity",
+                "continuity",
+                "audio_dialogue",
+                "completeness",
+                "technical",
+                "watchability",
+            },
+            scale = "1 = broken, 3 = acceptable, 5 = excellent",
+            ai = new
+            {
+                model = "",
+                scoredAtUtc = "",
+                categories = new Dictionary<string, object>
+                {
+                    ["fidelity_plot"] = new { score = 0, note = "" },
+                    ["fidelity_character"] = new { score = 0, note = "" },
+                    ["adaptation_craft"] = new { score = 0, note = "" },
+                    ["visual_identity"] = new { score = 0, note = "" },
+                    ["continuity"] = new { score = 0, note = "" },
+                    ["audio_dialogue"] = new { score = 0, note = "" },
+                    ["completeness"] = new { score = 0, note = "" },
+                    ["technical"] = new { score = 0, note = "" },
+                    ["watchability"] = new { score = 0, note = "" },
+                },
+                overall = 0,
+                summary = "",
+                risks = Array.Empty<string>(),
+                missingBeats = Array.Empty<string>(),
+                strengths = Array.Empty<string>(),
+                suggestedFixes = Array.Empty<string>(),
+            },
+            human = new
+            {
+                scoredAtUtc = "",
+                raterId = "",
+                categories = new Dictionary<string, object>
+                {
+                    ["fidelity_plot"] = new { score = 0, note = "" },
+                    ["fidelity_character"] = new { score = 0, note = "" },
+                    ["adaptation_craft"] = new { score = 0, note = "" },
+                    ["visual_identity"] = new { score = 0, note = "" },
+                    ["continuity"] = new { score = 0, note = "" },
+                    ["audio_dialogue"] = new { score = 0, note = "" },
+                    ["completeness"] = new { score = 0, note = "" },
+                    ["technical"] = new { score = 0, note = "" },
+                    ["watchability"] = new { score = 0, note = "" },
+                },
+                overall = 0,
+                wouldShip = false,
+                notes = "",
+            },
+        };
+
+        await File.WriteAllTextAsync(
+            path,
+            JsonSerializer.Serialize(template, JsonOpts) + "\n",
+            ct).ConfigureAwait(false);
     }
 }
 

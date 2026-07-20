@@ -36,6 +36,7 @@ public sealed class FilmJobService
     private readonly ClipAutoReviewService _clipAutoReview;
     private readonly ReviewIndexService _reviewIndex;
     private readonly ProjectTelemetryService _telemetry;
+    private readonly ProjectArtifactIndexService _artifactIndex;
     private readonly ReviewEventStore _learning;
     private readonly EditLogService _editLogs;
     private readonly PromptPackService _promptPacks;
@@ -68,6 +69,7 @@ public sealed class FilmJobService
         ClipAutoReviewService clipAutoReview,
         ReviewIndexService reviewIndex,
         ProjectTelemetryService telemetry,
+        ProjectArtifactIndexService artifactIndex,
         ReviewEventStore learning,
         EditLogService editLogs,
         PromptPackService promptPacks,
@@ -95,6 +97,7 @@ public sealed class FilmJobService
         _clipAutoReview = clipAutoReview;
         _reviewIndex = reviewIndex;
         _telemetry = telemetry;
+        _artifactIndex = artifactIndex;
         _learning = learning;
         _editLogs = editLogs;
         _promptPacks = promptPacks;
@@ -2734,6 +2737,7 @@ public sealed class FilmJobService
     private async Task FinishAsync(string status, string message, string? error = null)
     {
         string? projectId = null;
+        string? kind = null;
         await UpdateAsync(s =>
         {
             s.Status = status;
@@ -2743,6 +2747,7 @@ public sealed class FilmJobService
             if (s.Total > 0 && status == "done")
                 s.Index = s.Total;
             projectId = s.ProjectId;
+            kind = s.Kind;
         });
         await AppendLogAsync(message);
 
@@ -2752,6 +2757,43 @@ public sealed class FilmJobService
             if (string.IsNullOrWhiteSpace(projectId))
                 projectId = CurrentRun.Value?.Snapshot.ProjectId;
             _projects.InvalidateSceneListCache(projectId);
+        }
+
+        // PR4.5b: keep ARTIFACTS.md / artifact_index.json current after pipeline work
+        if (status == "done" &&
+            !string.IsNullOrWhiteSpace(projectId) &&
+            ShouldRefreshArtifactIndex(kind))
+        {
+            await TryRefreshArtifactIndexAsync(projectId!).ConfigureAwait(false);
+        }
+    }
+
+    private static bool ShouldRefreshArtifactIndex(string? kind)
+    {
+        if (string.IsNullOrWhiteSpace(kind)) return false;
+        return kind is
+            "remux" or
+            "gen-scene" or
+            "gen-batch" or
+            "clip-auto-review" or
+            "clip-auto-review-batch" or
+            "stage2" or
+            "character-variants";
+    }
+
+    private async Task TryRefreshArtifactIndexAsync(string projectId)
+    {
+        try
+        {
+            var doc = await _artifactIndex.RebuildAsync(projectId).ConfigureAwait(false);
+            await AppendLogAsync(
+                $"  [Artifacts] map updated — readyForManualFinalReview={doc.ReadyForManualFinalReview} " +
+                $"(ARTIFACTS.md, artifact_index.json, telemetry snapshots)");
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "Artifact index rebuild skipped for {ProjectId}", projectId);
+            await AppendLogAsync($"  [Artifacts] map refresh skipped: {ex.Message}");
         }
     }
 
