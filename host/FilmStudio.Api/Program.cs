@@ -78,8 +78,10 @@ builder.Services.AddSingleton<ProjectRulesService>();
 builder.Services.AddSingleton<LearningProposalService>();
 builder.Services.AddSingleton<ProposalChecklistService>();
 builder.Services.AddSingleton<EditLogService>();
+builder.Services.AddSingleton<ProjectTelemetryService>();
 builder.Services.AddSingleton<ReviewIndexService>();
 builder.Services.AddSingleton<ClipAutoReviewService>();
+builder.Services.AddSingleton<ProjectArtifactIndexService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IUserContext, HttpUserContext>();
 builder.Services.AddSingleton<IUserApiKeyProvider, ConfigUserApiKeyProvider>();
@@ -2013,6 +2015,65 @@ app.MapGet("/api/projects/{id}/review/index", (
             ? reviewIndex.Rebuild(id)
             : reviewIndex.Load(id) ?? reviewIndex.Rebuild(id);
         return Results.Ok(new { ok = true, index = doc });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+/// <summary>
+/// Rebuild project-local ARTIFACTS.md + artifact_index.json (+ telemetry cost/models snapshots).
+/// Use before manual whole-project review (Claude on the project folder). Zip export deferred.
+/// </summary>
+app.MapPost("/api/projects/{id}/artifacts/index", async (
+    string id, ProjectArtifactIndexService artifacts, CancellationToken ct) =>
+{
+    try
+    {
+        var doc = await artifacts.RebuildAsync(id, ct);
+        return Results.Ok(new
+        {
+            ok = true,
+            readyForManualFinalReview = doc.ReadyForManualFinalReview,
+            missingRequired = doc.MissingRequired,
+            index = doc,
+            paths = new
+            {
+                artifactsMd = "ARTIFACTS.md",
+                artifactIndexJson = "artifact_index.json",
+                telemetry = "telemetry/",
+            },
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapGet("/api/projects/{id}/artifacts/index", async (
+    string id, ProjectArtifactIndexService artifacts, bool? rebuild, CancellationToken ct) =>
+{
+    try
+    {
+        if (rebuild == true)
+        {
+            var doc = await artifacts.RebuildAsync(id, ct);
+            return Results.Ok(new { ok = true, index = doc });
+        }
+
+        var path = artifacts.IndexJsonPath(id);
+        if (!File.Exists(path))
+        {
+            var doc = await artifacts.RebuildAsync(id, ct);
+            return Results.Ok(new { ok = true, index = doc, rebuilt = true });
+        }
+
+        var json = await File.ReadAllTextAsync(path, ct);
+        var existing = System.Text.Json.JsonSerializer.Deserialize<ArtifactIndexDocument>(json,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        return Results.Ok(new { ok = true, index = existing });
     }
     catch (Exception ex)
     {

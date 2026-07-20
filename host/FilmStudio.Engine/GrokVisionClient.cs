@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -26,14 +27,17 @@ public sealed class GrokVisionClient : IGrokVisionClient
         "- Output plain text only — no markdown, no JSON, no preamble.\n";
 
     private readonly HttpClient _http;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ILogger<GrokVisionClient> _log;
 
     public GrokVisionClient(
         HttpClient http,
         IOptions<FilmStudioOptions> opts,
+        ProjectTelemetryService telemetry,
         ILogger<GrokVisionClient> log)
     {
         _http = http;
+        _telemetry = telemetry;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -357,17 +361,68 @@ public sealed class GrokVisionClient : IGrokVisionClient
             },
         };
 
-        using var resp = await _http.PostAsJsonAsync("responses", payload, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        if (!resp.IsSuccessStatusCode)
-            throw new InvalidOperationException(
-                $"Grok vision multi-image HTTP {(int)resp.StatusCode}: {Trim(body, 500)}");
+        var sw = Stopwatch.StartNew();
+        var imageNames = paths.Select(Path.GetFileName).Where(n => n is not null).Cast<string>().ToList();
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync("responses", payload, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "vision",
+                    Endpoint = "responses",
+                    Model = model,
+                    HttpStatus = (int)resp.StatusCode,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Prompt = prompt,
+                    PromptChars = prompt.Length,
+                    ReferenceImagePaths = imageNames,
+                    ImageCount = paths.Count,
+                    Error = Trim(body, 500),
+                    Ok = false,
+                });
+                throw new InvalidOperationException(
+                    $"Grok vision multi-image HTTP {(int)resp.StatusCode}: {Trim(body, 500)}");
+            }
 
-        using var doc = JsonDocument.Parse(body);
-        var text = ExtractResponseText(doc.RootElement);
-        text = Regex.Replace(text.Trim(), @"^```(?:\w+)?\s*", "", RegexOptions.IgnoreCase);
-        text = Regex.Replace(text, @"\s*```$", "").Trim();
-        return text;
+            using var doc = JsonDocument.Parse(body);
+            var text = ExtractResponseText(doc.RootElement);
+            text = Regex.Replace(text.Trim(), @"^```(?:\w+)?\s*", "", RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\s*```$", "").Trim();
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "vision",
+                Endpoint = "responses",
+                Model = model,
+                HttpStatus = (int)resp.StatusCode,
+                DurationMs = sw.ElapsedMilliseconds,
+                Prompt = prompt,
+                PromptChars = prompt.Length,
+                ReferenceImagePaths = imageNames,
+                ImageCount = paths.Count,
+                ResponsePreview = text.Length > 2000 ? text[..2000] : text,
+                ResponseChars = text.Length,
+                Ok = true,
+            });
+            return text;
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException && ex is not ArgumentException)
+        {
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "vision",
+                Endpoint = "responses",
+                Model = model,
+                DurationMs = sw.ElapsedMilliseconds,
+                Prompt = prompt,
+                ReferenceImagePaths = imageNames,
+                Error = ex.Message,
+                Ok = false,
+            });
+            throw;
+        }
     }
 
     private static async Task<string> FileToDataUriAsync(string path, CancellationToken ct)

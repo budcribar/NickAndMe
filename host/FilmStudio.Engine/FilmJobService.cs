@@ -35,6 +35,7 @@ public sealed class FilmJobService
     private readonly VoicePreviewService _voicePreview;
     private readonly ClipAutoReviewService _clipAutoReview;
     private readonly ReviewIndexService _reviewIndex;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ReviewEventStore _learning;
     private readonly EditLogService _editLogs;
     private readonly PromptPackService _promptPacks;
@@ -66,6 +67,7 @@ public sealed class FilmJobService
         VoicePreviewService voicePreview,
         ClipAutoReviewService clipAutoReview,
         ReviewIndexService reviewIndex,
+        ProjectTelemetryService telemetry,
         ReviewEventStore learning,
         EditLogService editLogs,
         PromptPackService promptPacks,
@@ -92,6 +94,7 @@ public sealed class FilmJobService
         _voicePreview = voicePreview;
         _clipAutoReview = clipAutoReview;
         _reviewIndex = reviewIndex;
+        _telemetry = telemetry;
         _learning = learning;
         _editLogs = editLogs;
         _promptPacks = promptPacks;
@@ -388,27 +391,20 @@ public sealed class FilmJobService
 
                     await UpdateQueuedMessageAsync(run, "Waiting for worker slot…");
 
+                    async Task RunWorkAsync(CancellationToken ct)
+                    {
+                        using var linked = CancellationTokenSource.CreateLinkedTokenSource(run.Cts.Token, ct);
+                        // Bind api_calls / ffmpeg.jsonl to this job's project for the async flow
+                        using var tel = !string.IsNullOrWhiteSpace(meta.ProjectId)
+                            ? _telemetry.UseProject(meta.ProjectId!)
+                            : null;
+                        await work(linked.Token);
+                    }
+
                     if (useLocalPool)
-                    {
-                        await _localPool.RunAsync(
-                            async ct =>
-                            {
-                                using var linked = CancellationTokenSource.CreateLinkedTokenSource(run.Cts.Token, ct);
-                                await work(linked.Token);
-                            },
-                            run.Cts.Token);
-                    }
+                        await _localPool.RunAsync(RunWorkAsync, run.Cts.Token);
                     else
-                    {
-                        await _apiPool.RunAsync(
-                            userId,
-                            async ct =>
-                            {
-                                using var linked = CancellationTokenSource.CreateLinkedTokenSource(run.Cts.Token, ct);
-                                await work(linked.Token);
-                            },
-                            run.Cts.Token);
-                    }
+                        await _apiPool.RunAsync(userId, RunWorkAsync, run.Cts.Token);
 
                     var status = CurrentRun.Value?.Snapshot.Status;
                     success = string.Equals(status, "done", StringComparison.OrdinalIgnoreCase);
@@ -2218,6 +2214,8 @@ public sealed class FilmJobService
                 ["styleHead"] = built.StyleHead,
                 ["castCountLine"] = built.CastCountLine,
                 ["actionText"] = built.ActionText,
+                // Full prompt body on disk for manual / external AI review (PR5 project-local data)
+                ["prompt"] = built.Prompt,
                 ["promptLen"] = built.Prompt.Length,
                 ["promptLogSummary"] = built.PromptLogSummary,
                 ["startFrame"] = built.StartFrameImagePath,

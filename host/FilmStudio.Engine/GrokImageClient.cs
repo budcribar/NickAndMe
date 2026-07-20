@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -19,15 +20,18 @@ public sealed class GrokImageClient : IGrokImageClient
 
     private readonly HttpClient _http;
     private readonly FilmStudioOptions _opts;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ILogger<GrokImageClient> _log;
 
     public GrokImageClient(
         HttpClient http,
         IOptions<FilmStudioOptions> opts,
+        ProjectTelemetryService telemetry,
         ILogger<GrokImageClient> log)
     {
         _http = http;
         _opts = opts.Value;
+        _telemetry = telemetry;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -63,17 +67,78 @@ public sealed class GrokImageClient : IGrokImageClient
             ["response_format"] = "b64_json",
         };
 
-        using var resp = await _http.PostAsJsonAsync("images/generations", payload, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        if (!resp.IsSuccessStatusCode)
-            throw new InvalidOperationException(
-                $"Grok image generations HTTP {(int)resp.StatusCode}: {Trim(body, 400)}");
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync("images/generations", payload, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "image",
+                    Endpoint = "images/generations",
+                    Model = modelName,
+                    HttpStatus = (int)resp.StatusCode,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Prompt = prompt,
+                    PromptChars = prompt?.Length ?? 0,
+                    ImageCount = n,
+                    Error = Trim(body, 400),
+                    Ok = false,
+                });
+                throw new InvalidOperationException(
+                    $"Grok image generations HTTP {(int)resp.StatusCode}: {Trim(body, 400)}");
+            }
 
-        var images = ParseImageResponse(body, n, "generations");
-        if (images.Count < n)
-            throw new InvalidOperationException(
-                $"Grok image API returned {images.Count}/{n} usable images");
-        return images;
+            var images = ParseImageResponse(body, n, "generations");
+            if (images.Count < n)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "image",
+                    Endpoint = "images/generations",
+                    Model = modelName,
+                    HttpStatus = (int)resp.StatusCode,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Prompt = prompt,
+                    PromptChars = prompt?.Length ?? 0,
+                    ImageCount = images.Count,
+                    Error = $"returned {images.Count}/{n} images",
+                    Ok = false,
+                });
+                throw new InvalidOperationException(
+                    $"Grok image API returned {images.Count}/{n} usable images");
+            }
+
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "image",
+                Endpoint = "images/generations",
+                Model = modelName,
+                HttpStatus = (int)resp.StatusCode,
+                DurationMs = sw.ElapsedMilliseconds,
+                Prompt = prompt,
+                PromptChars = prompt?.Length ?? 0,
+                ImageCount = images.Count,
+                Ok = true,
+            });
+            return images;
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "image",
+                Endpoint = "images/generations",
+                Model = modelName,
+                DurationMs = sw.ElapsedMilliseconds,
+                Prompt = prompt,
+                Error = ex.Message,
+                Ok = false,
+            });
+            throw;
+        }
     }
 
     /// <summary>
@@ -114,6 +179,7 @@ public sealed class GrokImageClient : IGrokImageClient
             imageUris.Add(await FileToDataUriAsync(path, ct, maxEdge: 1024, jpegQuality: 85)
                 .ConfigureAwait(false));
 
+        var refNames = refs.Select(Path.GetFileName).Where(x => x is not null).Cast<string>().ToList();
         var images = new List<byte[]>();
         for (var i = 0; i < n; i++)
         {
@@ -135,15 +201,65 @@ public sealed class GrokImageClient : IGrokImageClient
                 "If refs show no clothing, do not invent costumes. " +
                 "No labels, no redesign, no model sheet.";
 
-            var body = await PostImageEditAsync(
-                modelName, variantPrompt, aspectRatio, imageUris, onProgress, ct)
-                .ConfigureAwait(false);
-            if (body is null)
-                throw new InvalidOperationException(
-                    $"Image edit failed (variant {i + 1}): empty response");
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var body = await PostImageEditAsync(
+                    modelName, variantPrompt, aspectRatio, imageUris, onProgress, ct)
+                    .ConfigureAwait(false);
+                if (body is null)
+                {
+                    _telemetry.LogApiCall(new ApiCallTelemetry
+                    {
+                        Kind = "image_edit",
+                        Endpoint = "images/edits",
+                        Model = modelName,
+                        DurationMs = sw.ElapsedMilliseconds,
+                        Prompt = variantPrompt,
+                        PromptChars = variantPrompt.Length,
+                        ReferenceImagePaths = refNames,
+                        RefsAttached = true,
+                        Attempt = i + 1,
+                        Error = "empty response",
+                        Ok = false,
+                    });
+                    throw new InvalidOperationException(
+                        $"Image edit failed (variant {i + 1}): empty response");
+                }
 
-            var batch = ParseImageResponse(body, 1, $"edits variant {i + 1}");
-            images.AddRange(batch);
+                var batch = ParseImageResponse(body, 1, $"edits variant {i + 1}");
+                images.AddRange(batch);
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "image_edit",
+                    Endpoint = "images/edits",
+                    Model = modelName,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Prompt = variantPrompt,
+                    PromptChars = variantPrompt.Length,
+                    ReferenceImagePaths = refNames,
+                    RefsAttached = true,
+                    ImageCount = batch.Count,
+                    Attempt = i + 1,
+                    Ok = true,
+                });
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "image_edit",
+                    Endpoint = "images/edits",
+                    Model = modelName,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Prompt = variantPrompt,
+                    ReferenceImagePaths = refNames,
+                    Attempt = i + 1,
+                    Error = ex.Message,
+                    Ok = false,
+                });
+                throw;
+            }
         }
 
         if (images.Count < 1)

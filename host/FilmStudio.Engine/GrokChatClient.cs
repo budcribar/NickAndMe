@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -16,14 +17,17 @@ public sealed class GrokChatClient : IGrokChatClient
     public const string ApiBase = "https://api.x.ai/v1";
 
     private readonly HttpClient _http;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ILogger<GrokChatClient> _log;
 
     public GrokChatClient(
         HttpClient http,
         IOptions<FilmStudioOptions> opts,
+        ProjectTelemetryService telemetry,
         ILogger<GrokChatClient> log)
     {
         _http = http;
+        _telemetry = telemetry;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -57,14 +61,63 @@ public sealed class GrokChatClient : IGrokChatClient
             },
         };
 
-        using var resp = await _http.PostAsJsonAsync("chat/completions", payload, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        if (!resp.IsSuccessStatusCode)
-            throw new InvalidOperationException(
-                $"Grok chat HTTP {(int)resp.StatusCode}: {Trim(body, 800)}");
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var resp = await _http.PostAsJsonAsync("chat/completions", payload, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "chat",
+                    Endpoint = "chat/completions",
+                    Model = model,
+                    HttpStatus = (int)resp.StatusCode,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    SystemPrompt = systemPrompt,
+                    UserPrompt = userPrompt,
+                    PromptChars = (systemPrompt?.Length ?? 0) + (userPrompt?.Length ?? 0),
+                    Error = Trim(body, 800),
+                    Ok = false,
+                });
+                throw new InvalidOperationException(
+                    $"Grok chat HTTP {(int)resp.StatusCode}: {Trim(body, 800)}");
+            }
 
-        using var doc = JsonDocument.Parse(body);
-        return ExtractMessageText(doc.RootElement);
+            using var doc = JsonDocument.Parse(body);
+            var text = ExtractMessageText(doc.RootElement);
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "chat",
+                Endpoint = "chat/completions",
+                Model = model,
+                HttpStatus = (int)resp.StatusCode,
+                DurationMs = sw.ElapsedMilliseconds,
+                SystemPrompt = systemPrompt,
+                UserPrompt = userPrompt,
+                PromptChars = (systemPrompt?.Length ?? 0) + (userPrompt?.Length ?? 0),
+                ResponsePreview = text.Length > 2000 ? text[..2000] : text,
+                ResponseChars = text.Length,
+                Ok = true,
+            });
+            return text;
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            _telemetry.LogApiCall(new ApiCallTelemetry
+            {
+                Kind = "chat",
+                Endpoint = "chat/completions",
+                Model = model,
+                DurationMs = sw.ElapsedMilliseconds,
+                SystemPrompt = systemPrompt,
+                UserPrompt = userPrompt,
+                Error = ex.Message,
+                Ok = false,
+            });
+            throw;
+        }
     }
 
     public static Dictionary<string, object?> ParseJsonObject(string text)

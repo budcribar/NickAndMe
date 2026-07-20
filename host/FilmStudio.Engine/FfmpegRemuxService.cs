@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+// Stopwatch used for ffmpeg telemetry wall time
 using FilmStudio.Core.Options;
 using FilmStudio.Engine.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -36,19 +37,27 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
 
     private readonly ProjectStore _projects;
     private readonly EditLogService _editLogs;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly FilmStudioOptions _opts;
     private readonly ILogger<FfmpegRemuxService> _log;
     private string? _resolvedPath;
     private readonly object _resolveLock = new();
 
+    // Last remux partition counts for telemetry (set in RemuxSceneAsync)
+    private int? _lastIncludedCount;
+    private int? _lastExcludedCount;
+    private int? _lastRemuxScene;
+
     public FfmpegRemuxService(
         ProjectStore projects,
         EditLogService editLogs,
+        ProjectTelemetryService telemetry,
         IOptions<FilmStudioOptions> opts,
         ILogger<FfmpegRemuxService> log)
     {
         _projects = projects;
         _editLogs = editLogs;
+        _telemetry = telemetry;
         _opts = opts.Value;
         _log = log;
     }
@@ -106,44 +115,57 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
                 $"(expected scene_{sceneNum:D2}_clip_XX.mp4 only — not .native sidecars)");
 
         // Assembly gate: drop human-fail / unresolved auto-fail clips from the composite.
+        var included = new List<AssemblyClipEntry>();
+        var excluded = new List<AssemblyClipEntry>();
         var clips = allClips;
-        if (!ignoreAssemblyGate)
+        var gateOn = !ignoreAssemblyGate;
+        _lastRemuxScene = sceneNum;
+        _lastIncludedCount = null;
+        _lastExcludedCount = null;
+        using var _telScope = _telemetry.UseProject(projectId);
+        if (gateOn)
         {
-            var eligible = new List<string>();
-            var blocked = new List<string>();
-            foreach (var path in allClips)
-            {
-                if (!TryParseSceneClip(path, out var sn, out var cn) || sn != sceneNum)
-                {
-                    eligible.Add(path);
-                    continue;
-                }
-                if (_editLogs.IsClipEligibleForAssembly(projectId, sn, cn, out var reason))
-                    eligible.Add(path);
-                else
-                {
-                    blocked.Add($"S{sn:D2}C{cn:D2} ({reason})");
-                    onProgress?.Invoke(
-                        $"Assembly gate: exclude S{sn:D2}C{cn:D2} — {reason}");
-                }
-            }
+            var partition = PartitionSceneClipsForAssembly(projectId, sceneNum, allClips);
+            included = partition.Included;
+            excluded = partition.Excluded;
+            _lastIncludedCount = included.Count;
+            _lastExcludedCount = excluded.Count;
+            clips = included
+                .Select(e => e.FullPath)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Cast<string>()
+                .ToList();
 
-            if (eligible.Count == 0)
+            if (clips.Count == 0)
             {
+                var blocked = excluded.Select(e => $"{e.Key} ({e.Reason})");
                 throw new InvalidOperationException(
                     $"Assembly gate: no eligible clips for S{sceneNum:D2}. " +
                     $"Blocked: {string.Join("; ", blocked)}. " +
                     "Pass with override reason, regen, or remux with ignoreAssemblyGate + reason.");
             }
 
-            if (blocked.Count > 0)
+            foreach (var ex in excluded)
             {
                 onProgress?.Invoke(
-                    $"Assembly gate: remux S{sceneNum:D2} with {eligible.Count}/{allClips.Count} " +
-                    $"clip(s); excluded {blocked.Count}: {string.Join(", ", blocked)}");
+                    $"Assembly gate: exclude {ex.Key} — {ex.Reason}");
             }
 
-            clips = eligible;
+            if (excluded.Count > 0)
+            {
+                onProgress?.Invoke(
+                    $"Assembly gate: remux S{sceneNum:D2} with {clips.Count}/{allClips.Count} " +
+                    $"clip(s); excluded {excluded.Count}: " +
+                    string.Join(", ", excluded.Select(e => e.Key)));
+            }
+        }
+        else
+        {
+            // Gate ignored: everything in the cut, still record names for the manifest.
+            foreach (var path in allClips)
+            {
+                included.Add(MakeClipEntry(path, sceneNum, "eligible (assembly gate ignored)"));
+            }
         }
 
         onProgress?.Invoke($"Remux S{sceneNum:D2}: {clips.Count} clip(s) via {Path.GetFileName(FfmpegPath)}…");
@@ -162,7 +184,13 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
         if (exit != 0 || !File.Exists(outPath) || new FileInfo(outPath).Length < 1024)
             throw new InvalidOperationException($"FFmpeg remux failed for scene {sceneNum}: {TrimLog(log)}");
 
-        await WriteSceneSourcesManifestAsync(outPath, clips, totalSec).ConfigureAwait(false);
+        await WriteSceneSourcesManifestAsync(
+            outPath,
+            sceneNum,
+            included,
+            excluded,
+            assemblyGate: gateOn,
+            totalDurationSeconds: totalSec).ConfigureAwait(false);
         if (totalSec is > 0)
             await MediaDurationProbe.WriteDurationSidecarAsync(outPath, totalSec.Value, ct)
                 .ConfigureAwait(false);
@@ -173,34 +201,61 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
     public static string SceneSourcesManifestPath(string compositePath) =>
         compositePath + ".sources.json";
 
-    private static async Task WriteSceneSourcesManifestAsync(
+    /// <summary>Structured row for scene/WIP assembly manifests (PR4).</summary>
+    public sealed class AssemblyClipEntry
+    {
+        public string Name { get; init; } = "";
+        public int Scene { get; init; }
+        public int Clip { get; init; }
+        public string Reason { get; init; } = "";
+        public string Key => $"S{Scene:D2}C{Clip:D2}";
+        /// <summary>Absolute path when known (not serialized).</summary>
+        public string? FullPath { get; init; }
+        public long? Bytes { get; init; }
+        public string? MtimeUtc { get; init; }
+    }
+
+    /// <summary>
+    /// Build scene composite sources document: <c>clips</c> = included only;
+    /// <c>included</c>/<c>excluded</c> explain the cut (PR4).
+    /// </summary>
+    public static Dictionary<string, object?> BuildSceneSourcesDocument(
+        int sceneNum,
+        IReadOnlyList<AssemblyClipEntry> included,
+        IReadOnlyList<AssemblyClipEntry> excluded,
+        bool assemblyGate,
+        double? totalDurationSeconds = null)
+    {
+        var clipEntries = included.Select(ToClipFileEntry).ToList();
+        return new Dictionary<string, object?>
+        {
+            ["builtAtUtc"] = DateTime.UtcNow.ToString("o"),
+            ["scene"] = sceneNum,
+            ["count"] = clipEntries.Count,
+            ["clips"] = clipEntries,
+            ["included"] = included.Select(ToIncludeExcludeEntry).ToList(),
+            ["excluded"] = excluded.Select(ToIncludeExcludeEntry).ToList(),
+            ["strict"] = true,
+            ["assemblyGate"] = assemblyGate,
+            ["totalDurationSeconds"] = totalDurationSeconds is > 0
+                ? Math.Round(totalDurationSeconds.Value, 3)
+                : null,
+        };
+    }
+
+    private async Task WriteSceneSourcesManifestAsync(
         string compositePath,
-        IReadOnlyList<string> clipFiles,
+        int sceneNum,
+        IReadOnlyList<AssemblyClipEntry> included,
+        IReadOnlyList<AssemblyClipEntry> excluded,
+        bool assemblyGate,
         double? totalDurationSeconds = null,
         CancellationToken ct = default)
     {
         try
         {
-            var entries = clipFiles.Select(f =>
-            {
-                var fi = new FileInfo(f);
-                return new Dictionary<string, object?>
-                {
-                    ["name"] = fi.Name,
-                    ["bytes"] = fi.Length,
-                    ["mtimeUtc"] = fi.LastWriteTimeUtc.ToString("o"),
-                };
-            }).ToList();
-            var doc = new Dictionary<string, object?>
-            {
-                ["builtAtUtc"] = DateTime.UtcNow.ToString("o"),
-                ["count"] = entries.Count,
-                ["clips"] = entries,
-                ["strict"] = true, // exact scene_SS_clip_CC.mp4 only
-                ["totalDurationSeconds"] = totalDurationSeconds is > 0
-                    ? Math.Round(totalDurationSeconds.Value, 3)
-                    : null,
-            };
+            var doc = BuildSceneSourcesDocument(
+                sceneNum, included, excluded, assemblyGate, totalDurationSeconds);
             await File.WriteAllTextAsync(
                 SceneSourcesManifestPath(compositePath),
                 JsonSerializer.Serialize(doc, JsonDefaults.Indented) + "\n",
@@ -212,17 +267,95 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
         }
     }
 
+    private static Dictionary<string, object?> ToClipFileEntry(AssemblyClipEntry e)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["name"] = e.Name,
+            ["scene"] = e.Scene,
+            ["clip"] = e.Clip,
+        };
+        if (e.Bytes is long b) d["bytes"] = b;
+        if (e.MtimeUtc is not null) d["mtimeUtc"] = e.MtimeUtc;
+        return d;
+    }
+
+    private static Dictionary<string, object?> ToIncludeExcludeEntry(AssemblyClipEntry e) =>
+        new()
+        {
+            ["name"] = e.Name,
+            ["scene"] = e.Scene,
+            ["clip"] = e.Clip,
+            ["reason"] = e.Reason,
+        };
+
+    private AssemblyClipEntry MakeClipEntry(string path, int sceneNum, string reason)
+    {
+        TryParseSceneClip(path, out var sn, out var cn);
+        if (sn <= 0) sn = sceneNum;
+        var fi = new FileInfo(path);
+        return new AssemblyClipEntry
+        {
+            Name = fi.Name,
+            Scene = sn,
+            Clip = cn,
+            Reason = reason,
+            FullPath = path,
+            Bytes = fi.Exists ? fi.Length : null,
+            MtimeUtc = fi.Exists ? fi.LastWriteTimeUtc.ToString("o") : null,
+        };
+    }
+
+    /// <summary>Split on-disk scene clips into assembly-eligible vs blocked (with reasons).</summary>
+    public (List<AssemblyClipEntry> Included, List<AssemblyClipEntry> Excluded)
+        PartitionSceneClipsForAssembly(
+            string projectId,
+            int sceneNum,
+            IReadOnlyList<string>? allClips = null)
+    {
+        var projectDir = _projects.GetProjectDir(projectId);
+        var videoDir = Path.Combine(projectDir, "assets", "video");
+        allClips ??= ListSceneClipFiles(projectId, videoDir, sceneNum);
+
+        var included = new List<AssemblyClipEntry>();
+        var excluded = new List<AssemblyClipEntry>();
+        foreach (var path in allClips)
+        {
+            if (!TryParseSceneClip(path, out var sn, out var cn) || sn != sceneNum)
+            {
+                included.Add(MakeClipEntry(path, sceneNum, "eligible"));
+                continue;
+            }
+
+            if (_editLogs.IsClipEligibleForAssembly(projectId, sn, cn, out var reason))
+                included.Add(MakeClipEntry(path, sn, "eligible"));
+            else
+                excluded.Add(MakeClipEntry(path, sn, reason));
+        }
+
+        return (included, excluded);
+    }
+
     /// <summary>
-    /// True if composite is missing, clips are newer, has no sources manifest (legacy/polluted remux),
-    /// or manifest clip set does not match current exact clips (blueprint-filtered).
+    /// True if composite is missing, eligible clips are newer, has no sources manifest,
+    /// or manifest included set does not match current assembly-eligible clips (PR4 gate-aware).
     /// </summary>
     public bool IsSceneCompositeStale(string projectId, int sceneNum)
     {
         var projectDir = _projects.GetProjectDir(projectId);
         var videoDir = Path.Combine(projectDir, "assets", "video");
-        var expected = ListSceneClipFiles(projectId, videoDir, sceneNum);
-        if (expected.Count == 0)
+        var allOnDisk = ListSceneClipFiles(projectId, videoDir, sceneNum);
+        if (allOnDisk.Count == 0)
             return false; // nothing to remux
+
+        // Stale vs the cut that remux would produce (eligible only), not every file on disk.
+        var (included, _) = PartitionSceneClipsForAssembly(projectId, sceneNum, allOnDisk);
+        var expected = included
+            .Where(e => e.FullPath is not null)
+            .Select(e => e.FullPath!)
+            .ToList();
+        if (expected.Count == 0)
+            return true; // all blocked — composite cannot be current
 
         var composite = _projects.ResolveCompositePath(projectId, sceneNum);
         if (composite is null || !File.Exists(composite))
@@ -267,7 +400,7 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             if (!expectedNames.SequenceEqual(recSorted, StringComparer.OrdinalIgnoreCase))
                 return true;
 
-            // Per-file size/mtime drift
+            // Per-file size/mtime drift for included clips only
             foreach (var path in expected)
             {
                 var name = Path.GetFileName(path);
@@ -301,6 +434,10 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
         CancellationToken ct = default)
     {
         EnsureAvailable(onProgress);
+        using var _telScope = _telemetry.UseProject(projectId);
+        _lastRemuxScene = null;
+        _lastIncludedCount = null;
+        _lastExcludedCount = null;
 
         var projectDir = await _projects.GetProjectDirAsync(projectId, ct).ConfigureAwait(false);
         var cfg = await LoadConfigAsync(projectDir, ct).ConfigureAwait(false);
@@ -475,11 +612,18 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             var entries = sourceFiles.Select(f =>
             {
                 var fi = new FileInfo(f);
+                var name = fi.Name;
+                int? scene = null;
+                if (name is not null && RegexSceneOnly(name) &&
+                    int.TryParse(name.AsSpan(6, 2), out var sn))
+                    scene = sn;
                 return new Dictionary<string, object?>
                 {
-                    ["name"] = fi.Name,
+                    ["name"] = name,
+                    ["scene"] = scene,
                     ["bytes"] = fi.Length,
                     ["mtimeUtc"] = fi.LastWriteTimeUtc.ToString("o"),
+                    ["kind"] = scene is not null ? "scene_composite" : "source",
                 };
             }).ToList();
 
@@ -498,13 +642,20 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             if (bpPath is not null && File.Exists(bpPath))
                 bpMtime = new FileInfo(bpPath).LastWriteTimeUtc.ToString("o");
 
+            // Note: WIP stitches scene composites; clip-level assembly gate already applied at remux.
             var doc = new Dictionary<string, object?>
             {
                 ["builtAtUtc"] = DateTime.UtcNow.ToString("o"),
                 ["count"] = entries.Count,
                 ["sources"] = entries,
+                ["included"] = entries, // WIP inputs are post-gate scene composites
+                ["excluded"] = Array.Empty<object>(),
                 ["sceneNumbers"] = sceneNumbers,
                 ["blueprintMtimeUtc"] = bpMtime,
+                ["assemblyGate"] = true,
+                ["note"] =
+                    "WIP concatenates scene composites. Clip include/exclude decisions live on " +
+                    "each scene_XX.mp4.sources.json (assembly gate applied at remux).",
             };
             var path = WipSourcesManifestPath(wipPath);
             await File.WriteAllTextAsync(
@@ -848,6 +999,7 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             CreateNoWindow = true,
         };
 
+        var sw = Stopwatch.StartNew();
         using var proc = Process.Start(psi)
             ?? throw new InvalidOperationException($"Failed to start {exe}");
 
@@ -943,6 +1095,45 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             _log.LogWarning("ffmpeg exit {Code}: {Log}", proc.ExitCode, TrimLog(fullLog));
         else
             onProgress?.Invoke($"[{label}] complete");
+
+        try
+        {
+            // Prefer output path after -y ... last token that looks like a media file
+            string? output = null;
+            var parts = arguments.Split('"')
+                .SelectMany((s, i) => i % 2 == 1 ? new[] { s } : s.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .ToList();
+            for (var i = parts.Count - 1; i >= 0; i--)
+            {
+                var p = parts[i];
+                if (p.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+                    p.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    p.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    output = p;
+                    break;
+                }
+            }
+
+            var rec = ProjectTelemetryService.CondenseFfmpegOp(
+                op: label,
+                args: fullArgs.Length > 4000 ? fullArgs[..4000] + "…" : fullArgs,
+                inputs: null,
+                output: output,
+                exitCode: proc.ExitCode,
+                timedOut: false,
+                wallMs: sw.ElapsedMilliseconds,
+                rawLog: fullLog,
+                ffmpegExe: exe,
+                scene: _lastRemuxScene,
+                includedCount: _lastIncludedCount,
+                excludedCount: _lastExcludedCount);
+            _telemetry.LogFfmpeg(rec);
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "ffmpeg telemetry skip");
+        }
 
         return (proc.ExitCode, fullLog);
     }

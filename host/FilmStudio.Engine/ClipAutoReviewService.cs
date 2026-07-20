@@ -27,6 +27,7 @@ public sealed class ClipAutoReviewService
     private readonly PromptPackService _promptPacks;
     private readonly ProjectRulesService _projectRules;
     private readonly ReviewIndexService _reviewIndex;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ILogger<ClipAutoReviewService> _log;
 
     public ClipAutoReviewService(
@@ -37,6 +38,7 @@ public sealed class ClipAutoReviewService
         PromptPackService promptPacks,
         ProjectRulesService projectRules,
         ReviewIndexService reviewIndex,
+        ProjectTelemetryService telemetry,
         ILogger<ClipAutoReviewService> log)
     {
         _projects = projects;
@@ -46,6 +48,7 @@ public sealed class ClipAutoReviewService
         _promptPacks = promptPacks;
         _projectRules = projectRules;
         _reviewIndex = reviewIndex;
+        _telemetry = telemetry;
         _log = log;
     }
 
@@ -92,6 +95,7 @@ public sealed class ClipAutoReviewService
         if (!_ffmpeg.IsAvailable())
             throw new InvalidOperationException("ffmpeg required to sample frames for clip review.");
 
+        using var _telScope = _telemetry.UseProject(projectId);
         var projectDir = _projects.GetProjectDir(projectId);
         var videoDir = Path.Combine(projectDir, "assets", "video");
         var clipPath = Path.Combine(videoDir, $"scene_{scene:D2}_clip_{clip:D2}.mp4");
@@ -602,12 +606,32 @@ public sealed class ClipAutoReviewService
     {
         // Quiet log + drain pipes: WaitForExit without reading stderr deadlocks on verbose encodes
         var fullArgs = $"-hide_banner -nostats -loglevel error {args}";
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var r = await FfmpegProcess.RunAsync(
                 _ffmpeg.FfmpegPath,
                 fullArgs,
                 ct,
                 timeoutMs: 60_000)
             .ConfigureAwait(false);
+        try
+        {
+            var rec = ProjectTelemetryService.CondenseFfmpegOp(
+                op: "frame_sample",
+                args: fullArgs.Length > 2000 ? fullArgs[..2000] + "…" : fullArgs,
+                inputs: null,
+                output: null,
+                exitCode: r.ExitCode,
+                timedOut: r.TimedOut,
+                wallMs: sw.ElapsedMilliseconds,
+                rawLog: r.CombinedLog,
+                ffmpegExe: _ffmpeg.FfmpegPath);
+            _telemetry.LogFfmpeg(rec);
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "frame_sample telemetry skip");
+        }
+
         if (r.TimedOut)
         {
             _log.LogWarning("ffmpeg frame extract timed out: {Args}", args.Length > 120 ? args[..120] : args);

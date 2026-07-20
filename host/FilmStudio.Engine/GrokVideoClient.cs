@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -20,15 +21,18 @@ public sealed class GrokVideoClient : IGrokVideoClient
 
     private readonly HttpClient _http;
     private readonly FilmStudioOptions _opts;
+    private readonly ProjectTelemetryService _telemetry;
     private readonly ILogger<GrokVideoClient> _log;
 
     public GrokVideoClient(
         HttpClient http,
         IOptions<FilmStudioOptions> opts,
+        ProjectTelemetryService telemetry,
         ILogger<GrokVideoClient> log)
     {
         _http = http;
         _opts = opts.Value;
+        _telemetry = telemetry;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -100,6 +104,12 @@ public sealed class GrokVideoClient : IGrokVideoClient
 
         var original = prompt ?? "";
         Exception? lastLengthError = null;
+        var mode = hasContinue ? "video-extend"
+            : hasStart ? "image-to-video"
+            : refs.Count > 0 ? "reference-to-video"
+            : "text-to-video";
+        var kind = hasContinue ? "video_extend" : "video";
+        var refNames = refs.Select(Path.GetFileName).Where(n => n is not null).Cast<string>().ToList();
 
         for (var attempt = 0; attempt <= MaxPromptLengthRetries; attempt++)
         {
@@ -114,24 +124,89 @@ public sealed class GrokVideoClient : IGrokVideoClient
                     attempt, MaxPromptLengthRetries, original.Length, current.Length);
             }
 
+            var sw = Stopwatch.StartNew();
             try
             {
+                string requestId;
+                string endpoint;
                 if (hasContinue)
                 {
-                    return await SubmitExtendOnceAsync(
+                    endpoint = "videos/extensions";
+                    requestId = await SubmitExtendOnceAsync(
                         current, durationSeconds, resolution, model, videoUri!, continueFromVideoPath!, ct);
                 }
+                else
+                {
+                    endpoint = "videos/generations";
+                    requestId = await SubmitFreshOnceAsync(
+                        current, durationSeconds, resolution, model,
+                        startUri, refObjs, startFrameImagePath, refs.Count, ct);
+                }
 
-                return await SubmitFreshOnceAsync(
-                    current, durationSeconds, resolution, model,
-                    startUri, refObjs, startFrameImagePath, refs.Count, ct);
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = kind,
+                    Endpoint = endpoint,
+                    Model = model,
+                    HttpStatus = 200,
+                    RequestId = requestId,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Mode = mode,
+                    Prompt = current,
+                    PromptChars = current.Length,
+                    ReferenceImagePaths = refNames.Count > 0 ? refNames : null,
+                    RefsAttached = refs.Count > 0 && !hasContinue,
+                    Resolution = resolution,
+                    DurationSec = durationSeconds,
+                    Attempt = attempt,
+                    Ok = true,
+                });
+                return requestId;
             }
             catch (Exception ex) when (
                 attempt < MaxPromptLengthRetries &&
                 ClipVideoPromptBuilder.IsPromptTooLongError(ex.Message))
             {
                 lastLengthError = ex;
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = kind,
+                    Endpoint = hasContinue ? "videos/extensions" : "videos/generations",
+                    Model = model,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Mode = mode,
+                    Prompt = current,
+                    PromptChars = current.Length,
+                    ReferenceImagePaths = refNames.Count > 0 ? refNames : null,
+                    RefsAttached = refs.Count > 0 && !hasContinue,
+                    Resolution = resolution,
+                    DurationSec = durationSeconds,
+                    Attempt = attempt,
+                    Error = ex.Message,
+                    Ok = false,
+                });
                 _log.LogWarning(ex, "Grok video: prompt too long (attempt {Attempt})", attempt);
+            }
+            catch (Exception ex)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = kind,
+                    Endpoint = hasContinue ? "videos/extensions" : "videos/generations",
+                    Model = model,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Mode = mode,
+                    Prompt = current,
+                    PromptChars = current.Length,
+                    ReferenceImagePaths = refNames.Count > 0 ? refNames : null,
+                    RefsAttached = refs.Count > 0 && !hasContinue,
+                    Resolution = resolution,
+                    DurationSec = durationSeconds,
+                    Attempt = attempt,
+                    Error = ex.Message,
+                    Ok = false,
+                });
+                throw;
             }
         }
 
@@ -264,14 +339,30 @@ public sealed class GrokVideoClient : IGrokVideoClient
         EnsureAuthHeader();
         var deadline = DateTime.UtcNow.AddSeconds(Math.Max(60, _opts.GrokTimeoutSeconds));
         var poll = Math.Max(2, _opts.GrokPollSeconds);
+        var sw = Stopwatch.StartNew();
+        var polls = 0;
 
         while (DateTime.UtcNow < deadline)
         {
             ct.ThrowIfCancellationRequested();
+            polls++;
             using var resp = await _http.GetAsync($"videos/{requestId}", ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
             if (!resp.IsSuccessStatusCode)
+            {
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "video_poll",
+                    Endpoint = $"videos/{requestId}",
+                    RequestId = requestId,
+                    HttpStatus = (int)resp.StatusCode,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Attempt = polls,
+                    Error = Trim(body, 400),
+                    Ok = false,
+                });
                 throw new InvalidOperationException($"Grok poll HTTP {(int)resp.StatusCode}: {Trim(body, 400)}");
+            }
 
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
@@ -283,6 +374,17 @@ public sealed class GrokVideoClient : IGrokVideoClient
                     video.TryGetProperty("url", out var urlEl) &&
                     urlEl.GetString() is { Length: > 0 } url)
                 {
+                    _telemetry.LogApiCall(new ApiCallTelemetry
+                    {
+                        Kind = "video_poll",
+                        Endpoint = $"videos/{requestId}",
+                        RequestId = requestId,
+                        HttpStatus = 200,
+                        DurationMs = sw.ElapsedMilliseconds,
+                        Attempt = polls,
+                        Mode = "done",
+                        Ok = true,
+                    });
                     return url;
                 }
                 throw new InvalidOperationException("Grok done with no video.url");
@@ -292,6 +394,18 @@ public sealed class GrokVideoClient : IGrokVideoClient
                 string.Equals(status, "expired", StringComparison.OrdinalIgnoreCase))
             {
                 var detail = root.TryGetProperty("error", out var err) ? err.ToString() : body;
+                _telemetry.LogApiCall(new ApiCallTelemetry
+                {
+                    Kind = "video_poll",
+                    Endpoint = $"videos/{requestId}",
+                    RequestId = requestId,
+                    HttpStatus = 200,
+                    DurationMs = sw.ElapsedMilliseconds,
+                    Attempt = polls,
+                    Mode = status,
+                    Error = Trim(detail, 500),
+                    Ok = false,
+                });
                 throw new InvalidOperationException($"Grok job {status}: {Trim(detail, 400)}");
             }
 
