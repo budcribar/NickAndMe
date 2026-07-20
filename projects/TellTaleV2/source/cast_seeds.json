@@ -1,0 +1,93 @@
+{
+  "schema_version": "cast_seeds.v1",
+  "generation": {
+    "method": "CastFromScreenplayService",
+    "ts": "2026-07-19T18:24:49"
+  },
+  "movie_title": "The Tell-Tale Heart",
+  "render_style_lock": "STYLE LOCK: live-action 1840s gothic chamber drama; candlelit and lantern-lit interiors; desaturated earth tones, pale skin, dark wood, heavy period fabrics; photoreal period costume film, consistent faces and wardrobe across all scenes.",
+  "performance_lock": "PERFORMANCE LOCK: first-person confessional adaptation; the Narrator often faces and addresses the implied listener/camera when on screen, calm then fracturing into panic; other characters are observed within the scene and look at each other or the Narrator, not the viewer; objective staging for the Old Man asleep and the Officers\u0027 inquiry.",
+  "character_seed_tokens": {
+    "Character_Narrator": {
+      "description": "Adult man in his mid-30s to early 40s, slender wiry build, very pale skin, sharp angular face, dark sunken eyes, thin lips, short dark brown hair slightly disheveled; 1840s gentleman\u0027s indoor dress\u2014dark waistcoat, white shirt with open collar, dark trousers.",
+      "canonical_given_name": "Narrator",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "tense pale confessor",
+      "voice_profile": "Adult male, medium-high pitch, precise diction, initially smooth and controlled; pace quickens and energy sharpens into strained whispers and sudden outbursts; same voice on-camera and in V.O.",
+      "reference_image_placeholder": "character_narrator_ref.png",
+      "visual_lock": "Same pale sharp-featured face, dark sunken eyes, short dark brown hair, and slender build in every scene. Always in dark period waistcoat over white shirt; face remains distinct from the older Old Man and the sturdier Officers\u2014younger, thinner, more hollow-eyed.",
+      "wardrobe_always": [
+        "dark 1840s waistcoat",
+        "white shirt with open collar",
+        "dark trousers"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Direct address to camera when on screen; leans in; V.O. over stealth and crime beats; final confession breaks polite composure toward the Officers."
+    },
+    "Character_OldMan": {
+      "description": "Elderly man, thin frail build, deeply lined pale face, sparse white or silver hair, one distinctive pale blue eye that catches light (the other may be dulled or ordinary); 1840s domestic elder.",
+      "canonical_given_name": "Old Man",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "silent elder",
+      "voice_profile": "No spoken dialogue; remains silent on screen (sleeping or still).",
+      "reference_image_placeholder": "character_old_man_ref.png",
+      "visual_lock": "Same frail elderly face, sparse white hair, and signature pale blue eye glint in every appearance. Never confusable with the younger pale Narrator\u2014older, softer jaw, white hair, single vivid pale blue eye as the fixed identifying trait.",
+      "wardrobe_always": [
+        "plain white period nightshirt or sleeping gown"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Observed object of the Narrator\u0027s gaze; asleep or still, no address to camera."
+    },
+    "Character_Officer_1": {
+      "description": "Middle-aged man, early 40s, solid medium build, clean-shaven or light stubble, square face, brown eyes, short neat brown hair; 1840s municipal officer dress\u2014dark wool frock coat, waistcoat, white shirt, dark trousers.",
+      "canonical_given_name": "Officer",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "polite investigating officer",
+      "voice_profile": "Adult male, medium pitch, steady measured pace, calm official courtesy without menace; same voice if he speaks again.",
+      "reference_image_placeholder": "character_officer_1_ref.png",
+      "visual_lock": "Same square-faced middle-aged officer with short neat brown hair and solid build; dark wool frock coat and waistcoat. Face distinct from Narrator\u0027s hollow pale look and from the other two officers\u0027 hair and features.",
+      "wardrobe_always": [
+        "dark 1840s wool frock coat",
+        "waistcoat",
+        "white shirt",
+        "dark trousers"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Addresses the Narrator in-scene; sits over the floorboards with the other officers; does not face the viewer as confessor."
+    },
+    "Character_Officer_2": {
+      "description": "Adult man, late 30s, stocky build, broader shoulders, rounder face, darker brown eyes, short black hair, clean-shaven; matching 1840s dark municipal officer coat, waistcoat, white shirt, dark trousers.",
+      "canonical_given_name": "Officer 2",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "silent officer",
+      "voice_profile": "No dialogue; silent on-screen presence.",
+      "reference_image_placeholder": "character_officer_2_ref.png",
+      "visual_lock": "Same stocky build, rounder face, short black hair; identical dark officer coat style as the other officers but face and hair clearly different from Officer 1 (brown hair, square face) and Officer 3.",
+      "wardrobe_always": [
+        "dark 1840s wool frock coat",
+        "waistcoat",
+        "white shirt",
+        "dark trousers"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Sits with fellow officers; looks at Narrator and room, not camera."
+    },
+    "Character_Officer_3": {
+      "description": "Older adult man, late 40s to early 50s, lean tall build, long narrow face, gray-streaked sandy hair, light eyes, thin mustache; 1840s dark municipal officer coat, waistcoat, white shirt, dark trousers.",
+      "canonical_given_name": "Officer 3",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "silent officer",
+      "voice_profile": "No dialogue; silent on-screen presence.",
+      "reference_image_placeholder": "character_officer_3_ref.png",
+      "visual_lock": "Same lean tall frame, long narrow face, gray-streaked sandy hair and thin mustache; dark officer coat consistent with the trio but features distinct from Officer 1 and Officer 2.",
+      "wardrobe_always": [
+        "dark 1840s wool frock coat",
+        "waistcoat",
+        "white shirt",
+        "dark trousers"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Sits with fellow officers over the boards; in-scene observation only."
+    }
+  }
+}

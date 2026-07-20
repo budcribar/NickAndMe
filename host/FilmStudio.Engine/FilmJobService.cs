@@ -1048,8 +1048,8 @@ public sealed class FilmJobService
         }
     }
 
-    /// <summary>Lock/unlock character reference images.</summary>
-    public Task<string> RunCharacterDesignActionAsync(
+    /// <summary>Lock/unlock character reference images (locks run vision style gate).</summary>
+    public async Task<string> RunCharacterDesignActionAsync(
         string projectId,
         string action,
         string charKey,
@@ -1060,27 +1060,27 @@ public sealed class FilmJobService
         if (IsRunning)
             throw new InvalidOperationException("A generation job is already running.");
 
-        return Task.Run(() =>
+        ct.ThrowIfCancellationRequested();
+        return action switch
         {
-            ct.ThrowIfCancellationRequested();
-            return action switch
-            {
-                "lock-variant" =>
-                    _characters.LockVariant(projectId, charKey, Math.Clamp(variantIndex, 1, 3)),
-                "lock-image" when !string.IsNullOrWhiteSpace(imagePath) =>
-                    _characters.LockFromPath(
-                        projectId,
-                        charKey,
-                        ResolveLockImagePath(projectId, imagePath!)),
-                "lock-bookref" =>
-                    _characters.LockBookRef(projectId, charKey, Math.Max(0, variantIndex)),
-                "unlock" =>
-                    _characters.Unlock(projectId, charKey)
-                        ? $"Unlocked {charKey} — previous lock kept as variant 1 (best so far)"
-                        : $"No locked ref for {charKey}",
-                _ => throw new InvalidOperationException($"Unknown character action: {action}"),
-            };
-        }, ct);
+            "lock-variant" =>
+                await _characters.LockVariantAsync(
+                    projectId, charKey, Math.Clamp(variantIndex, 1, 3), ct).ConfigureAwait(false),
+            "lock-image" when !string.IsNullOrWhiteSpace(imagePath) =>
+                await _characters.LockFromPathAsync(
+                    projectId,
+                    charKey,
+                    ResolveLockImagePath(projectId, imagePath!),
+                    ct).ConfigureAwait(false),
+            "lock-bookref" =>
+                await _characters.LockBookRefAsync(
+                    projectId, charKey, Math.Max(0, variantIndex), ct).ConfigureAwait(false),
+            "unlock" =>
+                _characters.Unlock(projectId, charKey)
+                    ? $"Unlocked {charKey} — previous lock kept as variant 1 (best so far)"
+                    : $"No locked ref for {charKey}",
+            _ => throw new InvalidOperationException($"Unknown character action: {action}"),
+        };
     }
 
     private string ResolveLockImagePath(string projectId, string imagePath)

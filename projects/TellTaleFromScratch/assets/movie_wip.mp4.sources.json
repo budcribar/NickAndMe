@@ -1,0 +1,33 @@
+{
+  "builtAtUtc": "2026-07-20T00:54:08.1163593Z",
+  "count": 4,
+  "sources": [
+    {
+      "name": "scene_01.mp4",
+      "bytes": 2200424,
+      "mtimeUtc": "2026-07-20T00:53:59.3613676Z"
+    },
+    {
+      "name": "scene_02.mp4",
+      "bytes": 2711117,
+      "mtimeUtc": "2026-07-20T00:54:01.1638801Z"
+    },
+    {
+      "name": "scene_03.mp4",
+      "bytes": 880577,
+      "mtimeUtc": "2026-07-20T00:54:02.0709427Z"
+    },
+    {
+      "name": "scene_04.mp4",
+      "bytes": 3179473,
+      "mtimeUtc": "2026-07-20T00:54:03.8457539Z"
+    }
+  ],
+  "sceneNumbers": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "blueprintMtimeUtc": "2026-07-20T00:38:18.7917774Z"
+}

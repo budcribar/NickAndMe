@@ -15,6 +15,7 @@ public sealed class CharacterDesignService
 {
     private readonly ProjectStore _projects;
     private readonly IGrokImageClient _images;
+    private readonly IGrokVisionClient _vision;
     private readonly CostReportService _costs;
     private readonly CastVisualLiteralizeService _literalize;
     private readonly FilmStudioOptions _opts;
@@ -23,6 +24,7 @@ public sealed class CharacterDesignService
     public CharacterDesignService(
         ProjectStore projects,
         IGrokImageClient images,
+        IGrokVisionClient vision,
         CostReportService costs,
         CastVisualLiteralizeService literalize,
         IOptions<FilmStudioOptions> opts,
@@ -30,6 +32,7 @@ public sealed class CharacterDesignService
     {
         _projects = projects;
         _images = images;
+        _vision = vision;
         _costs = costs;
         _literalize = literalize;
         _opts = opts.Value;
@@ -152,12 +155,14 @@ public sealed class CharacterDesignService
         }
 
         var hasImageHints = editRefs.Count > 0;
+        var projectStyle = ReadProjectRenderStyleLock(projectDir);
         var prompt = BuildDesignPrompt(
             charKey,
             seeds,
             hasImageHints,
             descriptionOverride: descForGen,
-            visualLockOverride: visForGen);
+            visualLockOverride: visForGen,
+            projectRenderStyleLock: projectStyle);
 
         onProgress?.Invoke(
             $"design prompt ready ({prompt.Length} chars) · image_provider={ImageApiLimits.ResolveProvider(imageProvider, imageModel)} max_refs={maxRefs}");
@@ -415,7 +420,11 @@ public sealed class CharacterDesignService
         };
     }
 
-    public string LockVariant(string projectId, string charKey, int variantIndex)
+    public Task<string> LockVariantAsync(
+        string projectId,
+        string charKey,
+        int variantIndex,
+        CancellationToken ct = default)
     {
         if (variantIndex is < 1 or > 3)
             throw new ArgumentOutOfRangeException(nameof(variantIndex), "variant index must be 1..3");
@@ -424,17 +433,32 @@ public sealed class CharacterDesignService
         var variantPath = Path.Combine(projectDir, "assets", "characters", fileName);
         if (!File.Exists(variantPath))
             throw new InvalidOperationException($"Variant not found: {fileName}");
-        return LockFromPath(projectId, charKey, variantPath);
+        return LockFromPathAsync(projectId, charKey, variantPath, ct);
     }
 
-    public string LockBookRef(string projectId, string charKey, int bookIndex)
+    /// <summary>Sync wrapper for tests only — prefer <see cref="LockVariantAsync"/>.</summary>
+    public string LockVariant(string projectId, string charKey, int variantIndex) =>
+        LockVariantAsync(projectId, charKey, variantIndex).GetAwaiter().GetResult();
+
+    public Task<string> LockBookRefAsync(
+        string projectId,
+        string charKey,
+        int bookIndex,
+        CancellationToken ct = default)
     {
         var path = _projects.ResolveCharacterBookRefPath(projectId, charKey, bookIndex)
             ?? throw new InvalidOperationException($"Book ref {bookIndex} not found for {charKey}");
-        return LockFromPath(projectId, charKey, path);
+        return LockFromPathAsync(projectId, charKey, path, ct);
     }
 
-    public string LockFromPath(string projectId, string charKey, string sourcePath)
+    public string LockBookRef(string projectId, string charKey, int bookIndex) =>
+        LockBookRefAsync(projectId, charKey, bookIndex).GetAwaiter().GetResult();
+
+    public async Task<string> LockFromPathAsync(
+        string projectId,
+        string charKey,
+        string sourcePath,
+        CancellationToken ct = default)
     {
         var seeds = _projects.GetCharacterSeed(projectId, charKey)
             ?? throw new InvalidOperationException($"Unknown character seed: {charKey}");
@@ -443,6 +467,8 @@ public sealed class CharacterDesignService
 
         if (!File.Exists(sourcePath))
             throw new InvalidOperationException($"Image not found: {sourcePath}");
+
+        await EnsurePortraitStyleAllowedAsync(projectId, charKey, sourcePath, ct).ConfigureAwait(false);
 
         var projectDir = _projects.GetProjectDir(projectId);
         var refName = ProjectStore.CharacterRefFileName(charKey);
@@ -455,6 +481,10 @@ public sealed class CharacterDesignService
         FinalizeLock(projectId, charKey, dest, $"Locked reference from {Path.GetFileName(sourcePath)}");
         return dest;
     }
+
+    /// <summary>Sync wrapper for tests only — prefer <see cref="LockFromPathAsync"/>.</summary>
+    public string LockFromPath(string projectId, string charKey, string sourcePath) =>
+        LockFromPathAsync(projectId, charKey, sourcePath).GetAwaiter().GetResult();
 
     /// <summary>
     /// Operator upload: save image bytes as the locked character ref (preferred look for video).
@@ -476,27 +506,186 @@ public sealed class CharacterDesignService
             throw new InvalidOperationException("Empty upload stream");
 
         var projectDir = _projects.GetProjectDir(projectId);
-        var refName = ProjectStore.CharacterRefFileName(charKey);
-        var dest = Path.Combine(projectDir, "assets", "characters", refName);
-        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+        var charDir = Path.Combine(projectDir, "assets", "characters");
+        Directory.CreateDirectory(charDir);
+        var staging = Path.Combine(charDir, $"{charKey.ToLowerInvariant()}_upload_staging_{Guid.NewGuid():N}.bin");
 
-        await using (var fs = File.Create(dest))
+        try
         {
-            await content.CopyToAsync(fs, ct).ConfigureAwait(false);
-        }
+            await using (var fs = File.Create(staging))
+            {
+                await content.CopyToAsync(fs, ct).ConfigureAwait(false);
+            }
 
-        if (new FileInfo(dest).Length < 64)
+            if (new FileInfo(staging).Length < 64)
+                throw new InvalidOperationException("Uploaded image is empty or too small.");
+
+            await EnsurePortraitStyleAllowedAsync(projectId, charKey, staging, ct).ConfigureAwait(false);
+
+            var refName = ProjectStore.CharacterRefFileName(charKey);
+            var dest = Path.Combine(charDir, refName);
+            File.Copy(staging, dest, overwrite: true);
+
+            var label = string.IsNullOrWhiteSpace(originalFileName)
+                ? "operator upload"
+                : Path.GetFileName(originalFileName);
+            FinalizeLock(projectId, charKey, dest, $"Locked reference from upload ({label})");
+            return dest;
+        }
+        finally
         {
-            try { File.Delete(dest); } catch { /* ignore */ }
-            throw new InvalidOperationException("Uploaded image is empty or too small.");
+            try { if (File.Exists(staging)) File.Delete(staging); } catch { /* ignore */ }
         }
-
-        var label = string.IsNullOrWhiteSpace(originalFileName)
-            ? "operator upload"
-            : Path.GetFileName(originalFileName);
-        FinalizeLock(projectId, charKey, dest, $"Locked reference from upload ({label})");
-        return dest;
     }
+
+    /// <summary>
+    /// Vision gate: refuse to lock a sketch/illustration when the project is photoreal
+    /// (or a photo stock plate when the project is picture-book). Fail closed on mismatch.
+    /// </summary>
+    internal async Task EnsurePortraitStyleAllowedAsync(
+        string projectId,
+        string charKey,
+        string imagePath,
+        CancellationToken ct = default)
+    {
+        if (!_opts.RequirePortraitStyleGate)
+        {
+            _log.LogWarning("Portrait style gate disabled (RequirePortraitStyleGate=false)");
+            return;
+        }
+
+        var projectDir = _projects.GetProjectDir(projectId);
+        var styleLock = ReadProjectRenderStyleLock(projectDir);
+        // No project medium → nothing to enforce (ambiguous mixed projects)
+        if (string.IsNullOrWhiteSpace(styleLock))
+            return;
+
+        // Need a clear medium preference; pure free-form style text still runs the gate.
+        var wantIllustrated = PrefersIllustratedPortraitStyle(
+            styleLock, hasImageHints: false, isAnimal: false);
+        // PrefersIllustrated with empty photoreal cues returns false only when photoreal cues
+        // match; when style is neither, it returns false (not hasImageHints). Re-check:
+        var hasPhotoCues = RegexContains(styleLock,
+            @"\b(photoreal|photo-?real|live[- ]?action|cinematic|film photography|" +
+            @"period drama|gothic drama|naturalistic skin)\b");
+        var hasIllustCues = RegexContains(styleLock,
+            @"\b(picture[- ]?book|illustration|illustrated|cartoon|painted cartoon|" +
+            @"children'?s book|storybook|stylized 3d|cg animated)\b");
+        if (!hasPhotoCues && !hasIllustCues)
+            return; // style present but medium ambiguous — do not block lock
+
+        if (!_vision.IsConfigured)
+            throw new InvalidOperationException(
+                $"Cannot lock {charKey}: portrait style gate requires vision (XAI_API_KEY) " +
+                "to verify the image matches project medium. " +
+                "Set FilmStudio__RequirePortraitStyleGate=false only as emergency bypass.");
+
+        var expected = hasPhotoCues && !wantIllustrated ? "photoreal" : "illustration";
+        var prompt =
+            "PORTRAIT STYLE GATE — judge ONLY the attached character portrait image.\n" +
+            $"Project style lock: {styleLock.Trim()}\n" +
+            $"Expected medium for this project: {expected}\n\n" +
+            "Classify the image medium:\n" +
+            "- photoreal = live-action photography / cinematic photo of a real person or animal " +
+            "(natural skin/fur, photographic lighting)\n" +
+            "- illustration = painted, drawn, cartoon, picture-book, anime, comic, or 3D-toon\n" +
+            "- sketch = pencil/charcoal/ink line art, unfinished drawing, grayscale sketch look\n" +
+            "- other = diagram, collage, text, unusable\n\n" +
+            "pass=true ONLY if the image medium matches Expected.\n" +
+            "For expected=photoreal: FAIL sketch, illustration, cartoon, pencil drawing.\n" +
+            "For expected=illustration: FAIL pure photoreal stock photography.\n\n" +
+            "JSON ONLY (no markdown):\n" +
+            "{\"pass\":true|false,\"medium\":\"photoreal|illustration|sketch|other\",\"reason\":\"short\"}\n";
+
+        string raw;
+        try
+        {
+            raw = await _vision.CompleteWithImagesAsync(
+                prompt,
+                new[] { imagePath },
+                model: "grok-4.5",
+                detail: "low",
+                ct: ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Cannot lock {charKey}: portrait style gate vision failed ({ex.Message}). " +
+                "Refusing to lock without a medium check.",
+                ex);
+        }
+
+        var gate = ParsePortraitStyleGateResponse(raw);
+        if (gate is null)
+            throw new InvalidOperationException(
+                $"Cannot lock {charKey}: portrait style gate returned unparseable response. " +
+                $"Raw: {TrimForError(raw, 240)}");
+
+        var result = gate.Value;
+        if (!result.Pass)
+        {
+            throw new InvalidOperationException(
+                $"Cannot lock {charKey}: portrait medium '{result.Medium}' does not match " +
+                $"project expected '{expected}'. {result.Reason} " +
+                "Re-generate with the project style lock (photoreal vs picture-book), then lock again.");
+        }
+
+        // Extra hard reject: never lock sketch on photoreal projects even if model said pass.
+        if (expected == "photoreal" &&
+            result.Medium is "sketch" or "illustration")
+        {
+            throw new InvalidOperationException(
+                $"Cannot lock {charKey}: image is '{result.Medium}' but project is photoreal/live-action. " +
+                $"{result.Reason}");
+        }
+
+        _log.LogInformation(
+            "Portrait style gate OK for {CharKey}: medium={Medium} expected={Expected}",
+            charKey, result.Medium, expected);
+    }
+
+    public static PortraitStyleGateResult? ParsePortraitStyleGateResponse(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var text = raw.Trim();
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text, @"^```(?:json)?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s*```$", "").Trim();
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+            var pass = false;
+            if (root.TryGetProperty("pass", out var p))
+            {
+                pass = p.ValueKind switch
+                {
+                    JsonValueKind.True => true,
+                    JsonValueKind.False => false,
+                    JsonValueKind.String => bool.TryParse(p.GetString(), out var b) && b,
+                    _ => false,
+                };
+            }
+            var medium = root.TryGetProperty("medium", out var m)
+                ? (m.GetString() ?? "other").Trim().ToLowerInvariant()
+                : "other";
+            if (medium is "photo" or "photographic" or "live-action" or "live_action")
+                medium = "photoreal";
+            if (medium is "drawn" or "drawing" or "cartoon" or "picture-book" or "picture_book")
+                medium = "illustration";
+            var reason = root.TryGetProperty("reason", out var r) ? (r.GetString() ?? "").Trim() : "";
+            return new PortraitStyleGateResult(pass, medium, reason);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string TrimForError(string s, int max) =>
+        s.Length <= max ? s : s[..max] + "…";
+
+    public readonly record struct PortraitStyleGateResult(bool Pass, string Medium, string Reason);
 
     private void FinalizeLock(string projectId, string charKey, string destPath, string changeNote)
     {
@@ -632,12 +821,67 @@ public sealed class CharacterDesignService
         return null;
     }
 
+    /// <summary>
+    /// Project medium from cast extract (<c>render_style_lock</c>). Null when missing.
+    /// </summary>
+    internal static string? ReadProjectRenderStyleLock(string projectDir)
+    {
+        try
+        {
+            var castPath = Path.Combine(projectDir, "source", ScreenplayService.CastSeedsFileName);
+            if (!File.Exists(castPath)) return null;
+            using var doc = JsonDocument.Parse(File.ReadAllText(castPath));
+            if (doc.RootElement.TryGetProperty("render_style_lock", out var rsl) &&
+                rsl.ValueKind == JsonValueKind.String &&
+                rsl.GetString() is { Length: > 0 } s)
+                return s.Trim();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Illustrated / picture-book when project or book art needs that medium;
+    /// photoreal / live-action when cast style says so (e.g. Tell-Tale Heart).
+    /// </summary>
+    public static bool PrefersIllustratedPortraitStyle(
+        string? projectRenderStyleLock,
+        bool hasImageHints,
+        bool isAnimal)
+    {
+        var style = projectRenderStyleLock ?? "";
+        if (style.Length > 0)
+        {
+            // Explicit live-action / photoreal project wins over legacy picture-book default.
+            if (RegexContains(style,
+                    @"\b(photoreal|photo-?real|live[- ]?action|cinematic|film photography|" +
+                    @"period drama|gothic drama|naturalistic skin)\b"))
+                return false;
+            if (RegexContains(style,
+                    @"\b(picture[- ]?book|illustration|illustrated|cartoon|painted cartoon|" +
+                    @"children'?s book|storybook|stylized 3d|cg animated)\b"))
+                return true;
+        }
+
+        // No project style: book plates or animal heroes default to matching illustration medium.
+        return hasImageHints || isAnimal;
+    }
+
+    private static bool RegexContains(string text, string pattern) =>
+        System.Text.RegularExpressions.Regex.IsMatch(
+            text, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
     private static string BuildDesignPrompt(
         string charKey,
         JsonElement seedInfo,
         bool hasImageHints,
         string? descriptionOverride = null,
-        string? visualLockOverride = null)
+        string? visualLockOverride = null,
+        string? projectRenderStyleLock = null)
     {
         var description = !string.IsNullOrWhiteSpace(descriptionOverride)
             ? descriptionOverride!
@@ -666,6 +910,8 @@ public sealed class CharacterDesignService
         var isHumanAdult = CharacterVisualTextScrubber.IsHumanAdultCharacter(
             charKey, ageBand, description, visualLock);
 
+        var illustrated = PrefersIllustratedPortraitStyle(projectRenderStyleLock, hasImageHints, isAnimal);
+
         var speciesClause = "";
         if (ageBand.StartsWith("child", StringComparison.OrdinalIgnoreCase) ||
             charKey.EndsWith("_Young", StringComparison.OrdinalIgnoreCase))
@@ -681,22 +927,27 @@ public sealed class CharacterDesignService
         }
         else if (isAnimalDog)
         {
-            speciesClause =
-                "SPECIES: DOG character (animal), not a human. " +
-                "Keep the illustrated breed/look from the book art — not a photoreal stock dog. " +
-                "Natural fur/coat only unless a reference image clearly shows clothing. ";
+            speciesClause = illustrated
+                ? "SPECIES: DOG character (animal), not a human. " +
+                  "Keep the illustrated breed/look from the book art — not a photoreal stock dog. " +
+                  "Natural fur/coat only unless a reference image clearly shows clothing. "
+                : "SPECIES: DOG (animal), not a human. Photoreal coat and anatomy matching the project medium. " +
+                  "Natural fur only unless clothing is part of the locked look. ";
         }
         else if (isAnimalOther)
         {
-            speciesClause =
-                "SPECIES: animal character, not a person. Match the book-art creature; " +
-                "not photoreal wildlife photography. No costume unless clearly in refs. ";
+            speciesClause = illustrated
+                ? "SPECIES: animal character, not a person. Match the book-art creature; " +
+                  "not photoreal wildlife photography. No costume unless clearly in refs. "
+                : "SPECIES: animal character, not a person. Photoreal anatomy matching the project medium. ";
         }
         else if (isHumanAdult)
         {
-            speciesClause =
-                "SPECIES: HUMAN adult — a person, not an animal. " +
-                "Same illustrated picture-book medium as the film; not photoreal stock photography. ";
+            speciesClause = illustrated
+                ? "SPECIES: HUMAN adult — a person, not an animal. " +
+                  "Same illustrated picture-book medium as the film; not photoreal stock photography. "
+                : "SPECIES: HUMAN adult — a real person, not an animal, not a drawing. " +
+                  "Photoreal skin texture and period wardrobe matching the project medium. ";
         }
 
         var familyClause = "";
@@ -723,13 +974,34 @@ public sealed class CharacterDesignService
             "OUTPUT: one clean continuity portrait, head and upper body, facing camera, " +
             "plain soft background. No collage, no split views, no text overlays. ";
 
-        // Style is the main failure mode when book art is cartoon but models default to photo dogs.
-        const string styleLock =
-            "STYLE LOCK (hard): children's picture-book illustration matching the book references — " +
-            "soft painted cartoon / illustrated medium, simplified shapes, gentle shading. " +
-            "NOT photorealistic, NOT live-action photography, NOT stock-photo animal, " +
-            "NOT hyper-detailed fur photography, NOT 3D CGI render. " +
-            "If book plates are attached, copy their line, color, and medium exactly. ";
+        // Honor project render_style_lock (live-action period, picture-book, etc.).
+        // Legacy default was always picture-book — wrong for photoreal projects like Tell-Tale Heart.
+        string styleLock;
+        if (!string.IsNullOrWhiteSpace(projectRenderStyleLock))
+        {
+            var cleaned = projectRenderStyleLock.Trim().TrimEnd('.');
+            if (!cleaned.StartsWith("STYLE", StringComparison.OrdinalIgnoreCase))
+                cleaned = "STYLE LOCK: " + cleaned;
+            styleLock = illustrated
+                ? $"{cleaned}. Match that illustrated medium exactly — not photoreal stock, not a different art style. "
+                : $"{cleaned}. Photoreal / live-action continuity portrait — natural skin pores and fabric, " +
+                  "NOT a sketch, NOT pencil drawing, NOT illustration, NOT cartoon, NOT anime, NOT 3D CGI beauty face. ";
+        }
+        else if (illustrated)
+        {
+            styleLock =
+                "STYLE LOCK (hard): children's picture-book illustration matching the book references — " +
+                "soft painted cartoon / illustrated medium, simplified shapes, gentle shading. " +
+                "NOT photorealistic, NOT live-action photography, NOT stock-photo animal, " +
+                "NOT hyper-detailed fur photography, NOT 3D CGI render. " +
+                "If book plates are attached, copy their line, color, and medium exactly. ";
+        }
+        else
+        {
+            styleLock =
+                "STYLE LOCK (hard): photoreal live-action continuity portrait — naturalistic face and wardrobe. " +
+                "NOT a sketch, NOT pencil/charcoal drawing, NOT illustration, NOT cartoon, NOT anime. ";
+        }
 
         var lookBits = new List<string>();
         if (!string.IsNullOrWhiteSpace(descSafe))
@@ -743,8 +1015,12 @@ public sealed class CharacterDesignService
         if (hasImageHints)
         {
             var matchBody = isAnimal
-                ? "Match species, coat pattern, ears, and face shape from the illustrated book references. "
-                : "Match face, hair, and default clothing from the preferred illustrated reference. ";
+                ? (illustrated
+                    ? "Match species, coat pattern, ears, and face shape from the illustrated book references. "
+                    : "Match species, coat, and face from the attached reference images. ")
+                : (illustrated
+                    ? "Match face, hair, and default clothing from the preferred illustrated reference. "
+                    : "Match face, hair, and default clothing from the preferred reference photo/portrait. ");
 
             return
                 $"CHARACTER CONTINUITY PORTRAIT of {display}. " +
@@ -774,7 +1050,9 @@ public sealed class CharacterDesignService
             familyClause +
             ignoreRules +
             (isAnimal
-                ? "Illustrated animal appearance; clothing only if text clearly states it as the usual look (not 'later'). "
+                ? (illustrated
+                    ? "Illustrated animal appearance; clothing only if text clearly states it as the usual look (not 'later'). "
+                    : "Photoreal animal appearance; clothing only if text states it as the usual look. ")
                 : "Default clothes only; skip later-story outfit changes. ") +
             $"LOOK: {lookNotes} " +
             outputRules;

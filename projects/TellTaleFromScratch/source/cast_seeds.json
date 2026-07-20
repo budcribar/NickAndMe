@@ -1,0 +1,90 @@
+{
+  "schema_version": "cast_seeds.v1",
+  "generation": {
+    "method": "CastFromScreenplayService",
+    "ts": "2026-07-19T18:36:51"
+  },
+  "movie_title": "The Tell-Tale Heart",
+  "render_style_lock": "STYLE LOCK: Live-action period gothic drama, mid-19th-century American interiors; naturalistic candlelight and lantern chiaroscuro; muted earth and shadow palette; photoreal human faces and period wardrobe consistent across all scenes.",
+  "performance_lock": "PERFORMANCE LOCK: First-person confessional adaptation; the Narrator frequently addresses an implied listener/camera with controlled direct-to-viewer delivery that frays into agitation. Other characters are observed within the scene\u2014they look at each other and at room action, not the audience\u2014except when reacting to the Narrator in shared space.",
+  "character_seed_tokens": {
+    "Character_Narrator": {
+      "description": "Adult man in his thirties to forties, lean build, very pale skin, sharp cheekbones, dark close-cropped or neatly kept brown hair, dark intense eyes; clean-shaven or light stubble. Mid-19th-century domestic dress: dark waistcoat over a white or off-white shirt with open collar, dark trousers.",
+      "canonical_given_name": "Narrator",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "tense pale confessor",
+      "voice_profile": "Adult male, medium-high pitch that tightens under stress; initially measured, calm, and persuasive, then quicker, louder, and fractured; same voice in on-camera address and V.O.",
+      "reference_image_placeholder": "character_narrator_ref.png",
+      "visual_lock": "Same pale gaunt face, dark hair, and piercing eyes in every scene; never elderly. Distinct from the Old Man by age, dark hair, and lack of any pale-blue filmed eye.",
+      "wardrobe_always": [
+        "dark period waistcoat",
+        "light shirt",
+        "dark trousers"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Primary direct-address confessor: often faces and speaks to the implied viewer/camera; leans in; private asides and V.O. keep the same intimate listener relationship."
+    },
+    "Character_Old_Man": {
+      "description": "Elderly man, thin frail build, deeply lined face, sparse white or silver hair, pallid skin. One distinctive pale blue eye with a cloudy film, the other eye ordinary; sunken lids.",
+      "canonical_given_name": "Old Man",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "frail elderly victim",
+      "voice_profile": "Elderly male, thin reedy pitch, sparse dialogue if any; startled cry or groan energy, weak and brief; same aged timbre whenever he vocalizes.",
+      "reference_image_placeholder": "character_old_man_ref.png",
+      "visual_lock": "Constants: advanced age, frail thin frame, and the single pale blue filmed eye that must read clearly in close-up. Never young, never the Narrator\u0027s face. The distinctive eye remains dull blue with a visible veil/film.",
+      "wardrobe_always": [
+        "plain period nightshirt"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Observed object of the Narrator\u2019s gaze; looks into darkness or toward sounds in the room, not to camera."
+    },
+    "Character_Officer": {
+      "description": "Adult man in his thirties to forties, solid upright build, clear composed face, neatly trimmed brown hair, clean-shaven or tidy mustache. Mid-19th-century municipal/police dress: dark frock coat or uniform coat, waistcoat, high-collar shirt, dark trousers; modest badge or official trim if period-accurate.",
+      "canonical_given_name": "Officer",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "polite lead officer",
+      "voice_profile": "Adult male, medium pitch, even paced, civil and official energy without menace; same calm investigative tone throughout.",
+      "reference_image_placeholder": "character_officer_ref.png",
+      "visual_lock": "Lead speaking officer: steady open face, brown hair, dark formal coat\u2014distinct from the Narrator\u0027s paler gaunt look and from the other two officers\u0027 different hair and facial hair.",
+      "wardrobe_always": [
+        "dark period frock or uniform coat",
+        "waistcoat",
+        "high-collar shirt"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "Addresses the Narrator and fellow officers in-scene; pleasant professional eye-line, not confessional to camera."
+    },
+    "Character_Officer_Two": {
+      "description": "Adult man roughly thirties to forties, medium stocky build, broader jaw, darker nearly black hair, short side whiskers; calm watchful eyes. Matching mid-19th-century police/municipal dark coat, waistcoat, high-collar shirt, and dark trousers\u2014same force as the other officers, different face.",
+      "canonical_given_name": "Officer Two",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "quiet second officer",
+      "voice_profile": "Adult male, lower-medium pitch, sparse soft conversational energy when chatting; unhurried and mild.",
+      "reference_image_placeholder": "character_officer_two_ref.png",
+      "visual_lock": "Darker hair and side whiskers plus broader jaw distinguish him from the lead Officer and from Officer Three; never shares the Narrator\u0027s pale gaunt features.",
+      "wardrobe_always": [
+        "dark period coat",
+        "waistcoat",
+        "high-collar shirt"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "In-scene only; chats and smiles with partners, eyes on Narrator and room, not the viewer."
+    },
+    "Character_Officer_Three": {
+      "description": "Adult man roughly late twenties to late thirties, leaner taller build, lighter sandy or auburn hair, clean-shaven angular face, mild half-smile. Mid-19th-century police/municipal dark coat, waistcoat, high-collar shirt, and dark trousers.",
+      "canonical_given_name": "Officer Three",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "mild third officer",
+      "voice_profile": "Adult male, medium pitch, light pleasant chat energy; easy unhurried pace when he speaks at all.",
+      "reference_image_placeholder": "character_officer_three_ref.png",
+      "visual_lock": "Sandy/auburn hair, clean-shaven angular face, leaner taller frame; not pale-gaunt and not elderly.",
+      "wardrobe_always": [
+        "dark period coat",
+        "waistcoat",
+        "high-collar shirt"
+      ],
+      "source_image_pages": [],
+      "performance_notes": "In-scene observer-participant; pleasant smiles and partner-directed looks only."
+    }
+  }
+}

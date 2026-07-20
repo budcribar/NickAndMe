@@ -1,0 +1,27 @@
+{
+  "Ok": true,
+  "ProjectId": "TellTaleFromScratch",
+  "Scene": 4,
+  "Clip": 2,
+  "Suggestion": "fail",
+  "Category": "wrong_style",
+  "Confidence": "high",
+  "Note": "Illustrated/2D anime look violates photoreal live-action style lock; also CAST COUNT exactly 1 Character_Officer is broken\u2014Narrator-like gaunt figure plus multiple extra officers remain on screen.",
+  "Continuity": "ok",
+  "IncludedPreviousTail": true,
+  "GeneratedAt": "2026-07-20T00:50:49.9358902+00:00",
+  "Suggestions": [
+    {
+      "Layer": "clip",
+      "Field": "visual_prompt",
+      "CharKey": null,
+      "Label": "Single officer photoreal continuity",
+      "CurrentValue": "INT. CHAMBER - NIGHT. CAST COUNT: exactly 1 on-screen identity(ies) \u2014 Character_Officer. No extra people. Character_Officer OFFICER speaks. OFF-CAMERA VOICEOVER Character_Officer says \u0022A cry was heard in the night. We were obliged to investigate.\u0022. Character_Officer still wears dark period frock or uniform coat, waistcoat. Character_Officer: Lead speaking officer: steady open face, brown hair, dark formal coat\u2014distinct from the Narrator\u0027s paler gaunt look and from the other two officers\u0027 different hair and facial hair. CONTINUE from previous last frame \u2014 same place and character positions; do not reset to the door or restart the walk; pick up exactly where the last clip ended / 480p, 24fps",
+      "SuggestedValue": "INT. CHAMBER - NIGHT. CAST COUNT: exactly 1 on-screen identity \u2014 Character_Officer only. No extra people, no Narrator, no other officers in frame. STYLE LOCK: live-action period gothic drama, mid-19th-century American interior; naturalistic candlelight/lantern chiaroscuro; muted earth and shadow palette; photoreal human face and period wardrobe (not illustration, not anime). Character_Officer: lead speaking officer\u2014steady open face, brown hair, dark formal frock/uniform coat and waistcoat; distinct from the Narrator\u2019s paler gaunt look. CONTINUE from previous last frame at the same place and Character_Officer seat/stance only; do not reset to the door or restart a walk; hold on him alone as he speaks on-camera with observational (not confessional-to-lens) delivery: \u0022A cry was heard in the night. We were obliged to investigate.\u0022 480p, 24fps.",
+      "IncludeByDefault": true,
+      "Rationale": "Re-gen must enforce photoreal medium, strip invented extras/Narrator to match CAST COUNT 1, and keep positional continuity on the speaking officer only."
+    }
+  ],
+  "RawSummary": "{\n  \u0022suggestion\u0022: \u0022fail\u0022,\n  \u0022category\u0022: \u0022wrong_style\u0022,\n  \u0022confidence\u0022: \u0022high\u0022,\n  \u0022continuity\u0022: \u0022ok\u0022,\n  \u0022note\u0022: \u0022Illustrated/2D anime look violates photoreal live-action style lock; also CAST COUNT exactly 1 Character_Officer is broken\u2014Narrator-like gaunt figure plus multiple extra officers remain on screen.\u0022,\n  \u0022suggestions\u0022: [\n    {\n      \u0022layer\u0022: \u0022clip\u0022,\n      \u0022field\u0022: \u0022visual_prompt\u0022,\n      \u0022char_key\u0022: null,\n      \u0022label\u0022: \u0022Single officer photoreal continuity\u0022,\n      \u0022suggested_value\u0022: \u0022INT. CHAMBER - NIGHT. CAST COUNT: exactly 1 on-screen identity \u2014 Character_Officer only. No extra people, no Narrator, no other officers in frame. STYLE LOCK: live-action period gothic drama, mid-19th-century American interior; naturalistic candlelight/lantern chiaroscuro; muted earth and shadow palette; photoreal human face and period wardrobe (not illustration, not anime). Character_Officer: lead speaking officer\u2014steady open face, brown hair, dark formal frock/uniform coat and waistcoat; distinct from the Narrator\u2019s paler gaunt look. CONTINUE from previous last frame at the same place and Character_Officer seat/stance only; do not reset to the door or restart a walk; hold on him alone as he speaks on-camera with observational (not confessional-to-lens) delivery: \\\u0022A cry was heard in the night. We were obliged to investigate.\\\u0022 480p, 24fps.\u0022,\n      \u0022include_by_default\u0022: true,\n      \u0022rationale\u0022: \u0022Re-gen must enforce photoreal medium, strip invented extras/Narrator to match CAST COUNT 1, and keep positional continuity on the speaking officer only.\u0022\n    }\n  ]\n}",
+  "Error": null
+}

@@ -423,6 +423,8 @@ public static class ClipVideoPromptBuilder
         var m = message;
         // Common xAI / OpenAI-style and HTTP body phrases
         if (m.Contains("prompt too long", StringComparison.OrdinalIgnoreCase)) return true;
+        if (m.Contains("prompt length exceeds", StringComparison.OrdinalIgnoreCase)) return true;
+        if (m.Contains("exceeds the maximum allowed length", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("context length", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("maximum context", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("max context", StringComparison.OrdinalIgnoreCase)) return true;
@@ -431,8 +433,12 @@ public static class ClipVideoPromptBuilder
         if (m.Contains("context_length_exceeded", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("maximum length", StringComparison.OrdinalIgnoreCase) &&
             m.Contains("prompt", StringComparison.OrdinalIgnoreCase)) return true;
+        if (m.Contains("maximum allowed length", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("payload too large", StringComparison.OrdinalIgnoreCase)) return true;
         if (m.Contains("request entity too large", StringComparison.OrdinalIgnoreCase)) return true;
+        // xAI video often returns 4096 char hard cap in the error body
+        if (m.Contains("4096", StringComparison.Ordinal) &&
+            m.Contains("length", StringComparison.OrdinalIgnoreCase)) return true;
         if (Regex.IsMatch(m, @"\b413\b") &&
             (m.Contains("large", StringComparison.OrdinalIgnoreCase) ||
              m.Contains("size", StringComparison.OrdinalIgnoreCase)))
@@ -454,12 +460,19 @@ public static class ClipVideoPromptBuilder
         // Step 1+: drop gen pack / project house rules (appended at gen time)
         p = StripLearningAddenda(p);
 
-        if (attempt == 1)
-            return p.Length < prompt.Length ? p : HeadCap(p, (int)(prompt.Length * 0.85));
+        // xAI video often hard-caps ~4096 characters — hit that early on retry
+        const int videoHardCap = 4000;
 
-        // Later attempts: hard caps (chars), keep head where identity/action live
-        var caps = new[] { 0, 0, 600_000, 300_000, 150_000, 80_000, 40_000 };
-        var cap = attempt < caps.Length ? caps[attempt] : 24_000;
+        if (attempt == 1)
+        {
+            if (p.Length < prompt.Length && p.Length <= videoHardCap)
+                return p;
+            return HeadCap(p, Math.Min(videoHardCap, (int)(prompt.Length * 0.75)));
+        }
+
+        // Later attempts: tighter caps (chars), keep head where identity/action live
+        var caps = new[] { 0, 0, videoHardCap, 3200, 2400, 1800, 1200 };
+        var cap = attempt < caps.Length ? caps[attempt] : 1000;
         if (p.Length <= cap)
             return p;
         return HeadCap(p, cap);

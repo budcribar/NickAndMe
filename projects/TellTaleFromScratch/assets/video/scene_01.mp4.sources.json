@@ -1,0 +1,28 @@
+{
+  "builtAtUtc": "2026-07-20T00:53:59.4213939Z",
+  "count": 4,
+  "clips": [
+    {
+      "name": "scene_01_clip_01.mp4",
+      "bytes": 476846,
+      "mtimeUtc": "2026-07-20T00:38:50.8138183Z"
+    },
+    {
+      "name": "scene_01_clip_02.mp4",
+      "bytes": 993216,
+      "mtimeUtc": "2026-07-20T00:39:36.6258721Z"
+    },
+    {
+      "name": "scene_01_clip_03.mp4",
+      "bytes": 383267,
+      "mtimeUtc": "2026-07-20T00:40:07.3778085Z"
+    },
+    {
+      "name": "scene_01_clip_04.mp4",
+      "bytes": 884557,
+      "mtimeUtc": "2026-07-20T00:40:42.4697722Z"
+    }
+  ],
+  "strict": true,
+  "totalDurationSeconds": 23.87
+}

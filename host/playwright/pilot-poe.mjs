@@ -50,14 +50,84 @@ function ensureDir(d) {
   fs.mkdirSync(d, { recursive: true });
 }
 
+const API_HEADERS = {
+  "Content-Type": "application/json",
+  "X-FilmStudio-User": "pilot",
+  "X-FilmStudio-Role": "admin",
+};
+
 async function apiGet(p) {
-  const r = await fetch(`${API_URL}${p}`);
+  const r = await fetch(`${API_URL}${p}`, { headers: API_HEADERS });
   const t = await r.text();
   try {
     return { ok: r.ok, status: r.status, json: JSON.parse(t), text: t };
   } catch {
     return { ok: r.ok, status: r.status, json: null, text: t };
   }
+}
+
+async function apiPost(p, body) {
+  const r = await fetch(`${API_URL}${p}`, {
+    method: "POST",
+    headers: API_HEADERS,
+    body: body === undefined ? undefined : JSON.stringify(body ?? {}),
+  });
+  const t = await r.text();
+  try {
+    return { ok: r.ok, status: r.status, json: JSON.parse(t), text: t };
+  } catch {
+    return { ok: r.ok, status: r.status, json: null, text: t };
+  }
+}
+
+/** Wait until no queued/running jobs for project (API). */
+async function waitApiJobsIdle(projectId, timeoutMs = 600_000) {
+  const start = Date.now();
+  let lastMsg = "";
+  let lastMsgAt = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const j = await apiGet(`/api/jobs?projectId=${encodeURIComponent(projectId)}`);
+    const jobs = j.json?.jobs || [];
+    const active = jobs.find((x) => /queued|running/i.test(x.status || ""));
+    if (!active) {
+      await new Promise((r) => setTimeout(r, 800));
+      const j2 = await apiGet(`/api/jobs?projectId=${encodeURIComponent(projectId)}`);
+      const active2 = (j2.json?.jobs || []).find((x) => /queued|running/i.test(x.status || ""));
+      if (!active2) return;
+      continue;
+    }
+    const msg = `${active.kind}|${active.index}|${active.message || ""}`;
+    if (msg !== lastMsg) {
+      lastMsg = msg;
+      lastMsgAt = Date.now();
+      log("api-job", active.status, active.kind, (active.message || "").slice(0, 140));
+    }
+    const msgLower = (active.message || "").toLowerCase();
+    const isRemoteWait =
+      msgLower.includes("pending") ||
+      msgLower.includes("poll") ||
+      msgLower.includes("image") ||
+      msgLower.includes("generat") ||
+      msgLower.includes("%");
+    const hangMs = isRemoteWait
+      ? Number(process.env.REMOTE_HANG_MS || 25 * 60_000)
+      : Number(process.env.LOCAL_HANG_MS || 5 * 60_000);
+    if (Date.now() - lastMsgAt > hangMs) {
+      log("WARN api job hung — cancel", active.jobId, (active.message || "").slice(0, 100));
+      if (active.jobId)
+        await fetch(`${API_URL}/api/jobs/${active.jobId}/cancel`, {
+          method: "POST",
+          headers: API_HEADERS,
+        }).catch(() => {});
+      await fetch(`${API_URL}/api/jobs/cancel`, { method: "POST", headers: API_HEADERS }).catch(
+        () => {}
+      );
+      await new Promise((r) => setTimeout(r, 1500));
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  throw new Error("API jobs did not become idle in time");
 }
 
 async function waitForApi(timeoutMs = 120_000) {
@@ -234,6 +304,87 @@ function findProjectVideos(projectId) {
     .map((f) => path.join(videoDir, f));
 }
 
+/** Project character asset dir under workspace. */
+function characterAssetDir(projectId) {
+  return path.join(WORKSPACE, "projects", projectId, "assets", "characters");
+}
+
+/**
+ * Copy portrait variants into pilot artifacts so a human (or agent) can inspect
+ * style before any video spend. Returns paths that exist (1..3).
+ */
+function snapshotCharacterVariants(projectId, charKey) {
+  const srcDir = characterAssetDir(projectId);
+  const destDir = path.join(ARTIFACTS, "cast", charKey);
+  ensureDir(destDir);
+  const stem = String(charKey).toLowerCase();
+  const found = [];
+  for (let i = 1; i <= 3; i++) {
+    const name = `${stem}_variant_0${i}.png`;
+    const src = path.join(srcDir, name);
+    if (!fs.existsSync(src)) continue;
+    const dest = path.join(destDir, name);
+    fs.copyFileSync(src, dest);
+    found.push({ index: i, path: dest, bytes: fs.statSync(src).size });
+  }
+  // also copy locked ref if present
+  const refName = `${stem}_ref.png`;
+  const refSrc = path.join(srcDir, refName);
+  if (fs.existsSync(refSrc)) {
+    fs.copyFileSync(refSrc, path.join(destDir, refName));
+  }
+  return found;
+}
+
+/**
+ * Try lock each variant (1..3). Server portrait style gate rejects sketch vs photoreal.
+ * First successful lock wins. If all fail for style/other reasons → hard stop (no movie).
+ */
+async function pickBestVariantAndLock(charKey) {
+  const variants = snapshotCharacterVariants(PROJECT_NAME, charKey);
+  log(
+    "cast QA variants for",
+    charKey,
+    variants.length
+      ? variants.map((v) => `v${v.index}=${v.bytes}B`).join(", ")
+      : "(none on disk)"
+  );
+  if (variants.length === 0) {
+    throw new Error(
+      `STOP movie — ${charKey}: no portrait variants on disk after generate. Fix cast gen before shots/video.`
+    );
+  }
+
+  const failures = [];
+  for (const v of variants) {
+    log("cast QA try lock", charKey, `variant ${v.index}`);
+    const lock = await apiPost(
+      `/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters/${encodeURIComponent(charKey)}/lock-variant`,
+      { index: v.index }
+    );
+    if (lock.ok) {
+      log("cast QA LOCKED", charKey, `variant ${v.index}`, "(style gate passed)");
+      // re-snapshot ref for review folder
+      snapshotCharacterVariants(PROJECT_NAME, charKey);
+      return v.index;
+    }
+    const detail = (lock.text || "").slice(0, 400);
+    log("cast QA reject", charKey, `variant ${v.index}`, String(lock.status), detail);
+    failures.push(`v${v.index}: ${detail}`);
+    // Style mismatch → try next variant; do not proceed to video
+    if (/style|sketch|illustration|photoreal|medium/i.test(detail)) {
+      log("cast QA style mismatch — will try next variant, will NOT start video gen");
+      continue;
+    }
+  }
+
+  throw new Error(
+    `STOP movie — ${charKey}: no portrait variant passed style/lock QA. ` +
+      `Inspect artifacts/cast/${charKey}/ and re-gen with project render_style_lock. ` +
+      `Failures: ${failures.join(" | ").slice(0, 800)}`
+  );
+}
+
 async function step(name, fn) {
   log("=== STEP", name, "===");
   const t0 = Date.now();
@@ -242,6 +393,12 @@ async function step(name, fn) {
     log("=== OK", name, `${Date.now() - t0}ms ===`);
   } catch (e) {
     log("=== FAIL", name, String(e));
+    // Cast/style failures must never be mistaken for a partial movie success
+    if (String(e).includes("STOP movie")) {
+      log(
+        "ABORT: movie generation halted at cast QA — fix character style/locks before shots or video spend."
+      );
+    }
     throw e;
   }
 }
@@ -260,6 +417,8 @@ async function main() {
         HEADED,
         REAL_SCENE1,
         FAIL_RATE,
+        FULL_MOVIE: process.env.FULL_MOVIE || "0",
+        IMPORT_MODE: process.env.IMPORT_MODE || "fountain",
         startedAt: new Date().toISOString(),
       },
       null,
@@ -388,23 +547,168 @@ async function main() {
       await screenshot(page, "03-screenplay-signed");
     });
 
-    await step("04_characters_extract", async () => {
-      await page.goto(`${WEB_URL}/characters?admin=1`, { waitUntil: "networkidle" });
-      await page.waitForTimeout(1500);
-      const extract = page.getByTestId("characters-extract-cast");
-      if (await extract.isVisible().catch(() => false)) {
-        await extract.click();
-        await waitJobIdle(page, 600_000);
+    await step("04_characters_extract_and_lock", async () => {
+      // Ensure book text is present for book-aware looks (fountain import alone may not copy it)
+      const sourceDir = path.join(WORKSPACE, "projects", PROJECT_NAME, "source");
+      ensureDir(sourceDir);
+      const bookDest = path.join(sourceDir, "book_full.txt");
+      if (!fs.existsSync(bookDest) && fs.existsSync(BOOK_FIXTURE)) {
+        fs.copyFileSync(BOOK_FIXTURE, bookDest);
+        log("copied book_full.txt for cast looks");
       }
+
+      // Extract is a long sync API call (not a background job). Drive it via API so we
+      // never race the UI and list a partial cast before fountain_to_cast finishes.
+      log("API extract-cast (force)…");
+      const extractRes = await apiPost(
+        `/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters/extract-cast`,
+        { force: true, model: "grok-4.5" }
+      );
+      if (!extractRes.ok) {
+        log("WARN extract-cast API", String(extractRes.status), (extractRes.text || "").slice(0, 300));
+        // Fall back to UI Build cast / Rebuild cast
+        await page.goto(`${WEB_URL}/characters?admin=1`, { waitUntil: "networkidle" });
+        await page.waitForTimeout(1000);
+        const extractBtn = page.getByTestId("characters-extract-cast");
+        if (await extractBtn.count()) {
+          await extractBtn.first().click({ force: true });
+          // Poll until cast seeds grow or timeout (UI path is also sync-ish)
+          for (let i = 0; i < 180; i++) {
+            await page.waitForTimeout(2000);
+            const mid = await apiGet(`/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters`);
+            const n = (mid.json?.characters || mid.json?.Characters || []).length;
+            if (n >= 3) {
+              log("UI extract appears done, cast count", String(n));
+              break;
+            }
+          }
+        }
+      } else {
+        log(
+          "extract-cast ok",
+          `count=${extractRes.json?.characterCount}`,
+          (extractRes.json?.characters || []).join?.(", ") || ""
+        );
+      }
+
+      await page.goto(`${WEB_URL}/characters?admin=1`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(1000);
+
       // Skip plate matching when no illustrated book pages (text-only Poe)
       const find = page.getByTestId("characters-find-plates");
       if (await find.isVisible().catch(() => false)) {
         log("skip find-plates (no book art for Poe text/fountain import)");
       }
-      await dumpJob(page, "characters");
-      await screenshot(page, "04-characters");
 
-      // Go to shots if cast complete enough
+      // --- Generate + lock portraits for every on-screen character (API) ---
+      // Loop until cast gate is ready (handles late seeds / missing officers).
+      for (let pass = 1; pass <= 4; pass++) {
+        const charsRes = await apiGet(`/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters`);
+        const rows = charsRes.json?.characters || charsRes.json?.Characters || [];
+        log("cast list pass", String(pass), String(rows.length), rows.map((c) => c.key || c.Key).join(", "));
+        if (rows.length === 0) throw new Error("No characters after cast extract");
+
+        for (const c of rows) {
+          const key = c.key || c.Key;
+          const voiceOnly = !!(c.voiceOnly ?? c.VoiceOnly);
+          const locked = !!(c.locked ?? c.Locked);
+          const voice = (c.voiceProfile || c.VoiceProfile || "").trim();
+          log(
+            "character",
+            key,
+            voiceOnly ? "voice-only" : "on-screen",
+            locked ? "locked" : "unlocked",
+            `voiceLen=${voice.length}`
+          );
+
+          if (voiceOnly) {
+            if (!voice) {
+              await apiPost(
+                `/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters/${encodeURIComponent(key)}/voice`,
+                {
+                  voiceProfile: "Consistent character voice for this production.",
+                  voiceLabel: key.replace(/^Character_/, ""),
+                }
+              );
+              log("set default voice for", key);
+            }
+            continue;
+          }
+
+          // Even if already locked, re-snapshot for QA. Force re-gen when RELOCK_ALL=1
+          // or when lock looks like a style miss from a prior bad run.
+          const forceRelock =
+            process.env.RELOCK_ALL === "1" || process.env.RELOCK_ALL === "true";
+          if (locked && !forceRelock) {
+            log("already locked", key, "— snapshot for QA (set RELOCK_ALL=1 to re-verify style)");
+            snapshotCharacterVariants(PROJECT_NAME, key);
+            continue;
+          }
+
+          if (locked && forceRelock) {
+            log("RELOCK_ALL: unlock", key);
+            await apiPost(
+              `/api/projects/${encodeURIComponent(PROJECT_NAME)}/characters/${encodeURIComponent(key)}/unlock`,
+              {}
+            );
+          }
+
+          log("generate portraits for", key);
+          const gen = await apiPost("/api/jobs/character-variants", {
+            projectId: PROJECT_NAME,
+            charKey: key,
+            count: 3,
+            seedMode: "none",
+            includePreferred: false,
+            includeLockedRef: false,
+            maxRefs: 0,
+            persistDescription: true,
+          });
+          if (!gen.ok) {
+            log("WARN character-variants failed", key, String(gen.status), (gen.text || "").slice(0, 200));
+            const gen2 = await apiPost("/api/jobs/character-variants", {
+              projectId: PROJECT_NAME,
+              charKey: key,
+              count: 3,
+              seedMode: "auto",
+              persistDescription: true,
+            });
+            if (!gen2.ok) throw new Error(`character-variants ${key}: ${gen2.status} ${gen2.text}`);
+          }
+          await waitApiJobsIdle(PROJECT_NAME, Number(process.env.CHAR_GEN_TIMEOUT_MS || 20 * 60_000));
+
+          // Inspect variants + lock first that passes server style gate.
+          // On total failure: STOP movie — never build shots or spend on video.
+          await pickBestVariantAndLock(key);
+          await page.waitForTimeout(300);
+        }
+
+        const adapt = await apiGet(`/api/projects/${encodeURIComponent(PROJECT_NAME)}/adaptation`);
+        const cast = adapt.json?.adaptation?.cast || adapt.json?.Adaptation?.Cast || {};
+        log("cast readiness", JSON.stringify(cast).slice(0, 280));
+        const ready =
+          cast.readyForShots === true ||
+          cast.ReadyForShots === true ||
+          (Number(cast.ready ?? cast.Ready ?? 0) > 0 &&
+            Number(cast.ready ?? cast.Ready ?? 0) === Number(cast.total ?? cast.Total ?? -1));
+        if (ready) {
+          log("cast gate OPEN", `ready=${cast.ready ?? cast.Ready}/${cast.total ?? cast.Total}`);
+          break;
+        }
+        const missing = cast.missing || cast.Missing || [];
+        if (pass === 4) {
+          throw new Error(
+            `Cast not ready after ${pass} passes: ${JSON.stringify(missing || cast).slice(0, 400)}`
+          );
+        }
+        log("cast gate still closed; retry missing", JSON.stringify(missing).slice(0, 200));
+      }
+
+      await dumpJob(page, "characters");
+      await page.goto(`${WEB_URL}/characters?admin=1`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(1000);
+      await screenshot(page, "04-characters-locked");
+
       const toShots = page.getByTestId("characters-to-shots");
       if (await toShots.isVisible().catch(() => false)) {
         await toShots.click();
@@ -472,6 +776,13 @@ async function main() {
           path.basename(v).match(new RegExp(`scene_0*${sn}_clip_`, "i"))
         );
         log(`scene ${sn}: ${existing.length} clip(s) already on disk`);
+        // Cast gate may leave the button disabled — fail fast with a clear message.
+        if (await gen.isDisabled().catch(() => false)) {
+          const title = (await gen.getAttribute("title")) || "";
+          throw new Error(
+            `scenes-gen-${sn} disabled (cast not ready for video). ${title}`.trim()
+          );
+        }
         await gen.click();
         log(`waiting for scene ${sn} gen…`);
         await waitJobIdle(page, Number(process.env.GEN_TIMEOUT_MS || 45 * 60_000));

@@ -30,6 +30,13 @@ public sealed class FilmStudioOptions
     public bool UseFakes { get; set; }
 
     /// <summary>
+    /// When true (default), vision-check character portraits before lock so a photoreal
+    /// project cannot lock a sketch/illustration (and vice versa). Set false only for
+    /// emergency bypass: <c>FilmStudio__RequirePortraitStyleGate=false</c>.
+    /// </summary>
+    public bool RequirePortraitStyleGate { get; set; } = true;
+
+    /// <summary>
     /// When true (default), enable scene-list + project/blueprint/dir read caches.
     /// Set false for A/B soaks: <c>FilmStudio__EnableReadCaches=false</c>.
     /// </summary>

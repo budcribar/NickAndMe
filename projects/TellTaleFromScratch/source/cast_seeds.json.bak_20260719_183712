@@ -1,0 +1,107 @@
+{
+  "schema_version": "cast_seeds.v1",
+  "generation": {
+    "method": "CastFromScreenplayService",
+    "ts": "2026-07-19T18:36:43"
+  },
+  "movie_title": "The Tell-Tale Heart",
+  "render_style_lock": "STYLE LOCK: Mid-19th-century gothic live-action period drama; candlelit and lantern-lit interiors; naturalistic film grain; muted earth and shadow palette with pale skin tones and dark wood; consistent costume and makeup realism across all cast\u2014no illustration, anime, or modern dress.",
+  "performance_lock": "PERFORMANCE LOCK: First-person confessional adaptation; the Narrator frequently addresses an implied listener/camera when speaking, leaning into direct address with forced calm that frays into agitation. Other characters are observed objects within his account\u2014they look at scene partners, the room, or each other, not the viewer. Staging is intimate chamber drama, not storybook tableau.",
+  "character_seed_tokens": {
+    "Character_Narrator": {
+      "description": "Adult man in his early-to-mid 30s, lean and slightly gaunt build, very pale skin, sharp cheekbones, thin lips, dark hollowed eyes with a too-steady stare, short dark brown hair neatly side-parted but slightly damp at the temples; clean-shaven. Mid-1840s gentleman\u0027s indoor dress: white linen shirt, dark waistcoat, charcoal frock coat, dark trousers.",
+      "canonical_given_name": "Narrator",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "tense pale confessor",
+      "voice_profile": "Male, early 30s, medium-high pitch that tightens under stress; initially measured, calm, and precise, then quicker, louder, and fractured; same voice in on-camera address and V.O.",
+      "reference_image_placeholder": "character_narrator_ref.png",
+      "visual_lock": "Same pale gaunt face, dark side-parted hair, and hollow-eyed intensity in every scene; never elderly, never heavy-set, never bearded. Distinct from the Old Man by youth, dark hair, and both eyes clear and matching\u2014no filmed or pale-blue eye.",
+      "wardrobe_always": [
+        "charcoal frock coat",
+        "dark waistcoat",
+        "white linen shirt",
+        "dark period trousers"
+      ],
+      "source_image_pages": [
+        1
+      ],
+      "performance_notes": "Primary direct-address confessor: often faces camera/implied listener when speaking; smiles that die; whispers and shrieks still aimed at the listener as much as at the officers."
+    },
+    "Character_Old_Man": {
+      "description": "Elderly man, roughly 70s\u201380s, thin frail build, sunken cheeks, sparse white hair, wrinkled pale skin. One distinctive eye: pale blue iris with a cloudy milky film over it; the other eye normal. Plain white period nightshirt or sleeping gown; aged hands and hollow temples.",
+      "canonical_given_name": "Old Man",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "frail elderly victim",
+      "voice_profile": "Male, elderly, thin reedy pitch; sparse dialogue if any (startled cry); weak breathy energy; same frail timbre if heard.",
+      "reference_image_placeholder": "character_old_man_ref.png",
+      "visual_lock": "Always elderly, frail, white-haired; the single pale-blue cloudy filmed eye is the non-negotiable constant and must never appear on the Narrator or officers. Face otherwise soft and aged, not gaunt-young.",
+      "wardrobe_always": [
+        "plain white period nightshirt"
+      ],
+      "source_image_pages": [
+        1,
+        6
+      ],
+      "performance_notes": "Observed character only; looks toward door, darkness, or inward in terror\u2014never addresses the camera as confessor."
+    },
+    "Character_Officer": {
+      "description": "Man in his 40s, solid medium build, clean-shaven or short neat side-whiskers, ruddy-fair skin, brown eyes, short brown hair; calm authoritative face. 1840s municipal police / constable dress: dark high-collared coat, simple cravat, waistcoat, dark trousers.",
+      "canonical_given_name": "Officer",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "polite lead constable",
+      "voice_profile": "Male, 40s, medium-low pitch, even pace, courteous official energy; unhurried and civil; same steady voice throughout.",
+      "reference_image_placeholder": "character_officer_ref.png",
+      "visual_lock": "Middle-aged solid build, brown hair, authoritative calm face. Clearly older and sturdier than the Narrator, far younger than the Old Man; no pale-blue filmed eye.",
+      "wardrobe_always": [
+        "dark 1840s constable coat",
+        "waistcoat",
+        "dark trousers",
+        "simple cravat"
+      ],
+      "source_image_pages": [
+        10
+      ],
+      "performance_notes": "Addresses the Narrator and fellow officers only; pleasant official manner, no camera confessional."
+    },
+    "Character_Officer_Two": {
+      "description": "Man in his mid-30s, leaner than the lead officer, fair skin, light brown or sandy hair, short sideburns, gray-blue clear eyes, angular jaw. Matching 1840s police/constable dark coat, waistcoat, cravat, and trousers.",
+      "canonical_given_name": "Officer Two",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "quiet second constable",
+      "voice_profile": "Male, mid-30s, medium pitch, reserved low energy; mostly silent or soft background chat; same voice if he speaks.",
+      "reference_image_placeholder": "character_officer_two_ref.png",
+      "visual_lock": "Lean sandy-haired constable, clear gray-blue eyes (not filmed, not cloudy), distinct from lead Officer\u2019s broader brown-haired face and from Officer Three\u2019s darker heavier features. Same period uniform family as the other two officers.",
+      "wardrobe_always": [
+        "dark 1840s constable coat",
+        "waistcoat",
+        "dark trousers",
+        "simple cravat"
+      ],
+      "source_image_pages": [
+        10,
+        11
+      ],
+      "performance_notes": "Chats with fellow officers; eyes on Narrator and room, never direct-to-camera confession."
+    },
+    "Character_Officer_Three": {
+      "description": "Man in his late 40s, stockier heavier build, darker brown hair thinning at the crown, fuller face, dark eyes, short beard or thick mustache allowed only if kept period-neat. Same 1840s dark constable coat, waistcoat, cravat, trousers.",
+      "canonical_given_name": "Officer Three",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "amiable third constable",
+      "voice_profile": "Male, late 40s, lower pitch, easy conversational pace; pleasant background chatter energy; consistent if he speaks.",
+      "reference_image_placeholder": "character_officer_three_ref.png",
+      "visual_lock": "Stockier, darker-haired, fuller-faced third officer\u2014visually distinct from lean sandy Officer Two and medium brown-haired lead Officer. No elderly frailty, no pale filmed eye, no Narrator\u2019s gaunt pallor.",
+      "wardrobe_always": [
+        "dark 1840s constable coat",
+        "waistcoat",
+        "dark trousers",
+        "simple cravat"
+      ],
+      "source_image_pages": [
+        10,
+        11
+      ],
+      "performance_notes": "Smiles and chats pleasantly with the other officers; does not address the viewer."
+    }
+  }
+}

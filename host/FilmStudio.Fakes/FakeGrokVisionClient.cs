@@ -46,6 +46,17 @@ public sealed class FakeGrokVisionClient : IGrokVisionClient
         CancellationToken ct = default)
     {
         _log.LogInformation("Fake vision multi-image n={N}", imagePaths?.Count ?? 0);
+        // Portrait style gate (CharacterDesignService) — always pass for fakes so UI tests can lock.
+        if (!string.IsNullOrEmpty(prompt) &&
+            prompt.Contains("PORTRAIT STYLE GATE", StringComparison.OrdinalIgnoreCase))
+        {
+            var medium = prompt.Contains("Expected medium for this project: illustration", StringComparison.OrdinalIgnoreCase)
+                ? "illustration"
+                : "photoreal";
+            return Task.FromResult(
+                $"{{\"pass\":true,\"medium\":\"{medium}\",\"reason\":\"Fake style gate pass.\"}}");
+        }
+
         // Minimal valid auto-review JSON for UI/job testing without spend
         return Task.FromResult("""
             {
