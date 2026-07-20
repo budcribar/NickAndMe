@@ -275,7 +275,10 @@ public sealed class ApiCallTelemetry
     public int? Scene { get; set; }
     public int? Clip { get; set; }
     public string? CharKey { get; set; }
-    /// <summary>fresh | video-extend | reseed | …</summary>
+    /// <summary>
+    /// Call purpose tag. Chat: <c>book_to_fountain</c>, <c>cast_from_screenplay</c>, …
+    /// (see <c>ChatCallModes</c>). Video: <c>fresh</c> | <c>video-extend</c> | <c>reseed</c> | …
+    /// </summary>
     public string? Mode { get; set; }
     public string? Prompt { get; set; }
     public string? SystemPrompt { get; set; }

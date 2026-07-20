@@ -65,12 +65,31 @@ public interface IGrokChatClient
 {
     bool IsConfigured { get; }
 
+    /// <param name="mode">
+    /// Telemetry tag for <c>api_calls.jsonl</c> (<c>ApiCallTelemetry.Mode</c>), e.g.
+    /// <c>book_to_fountain</c>, <c>cast_from_screenplay</c>, <c>cast_visual_literalize</c>.
+    /// </param>
     Task<string> CompleteAsync(
         string systemPrompt,
         string userPrompt,
         string model = "grok-4.5",
         double temperature = 0.2,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        string? mode = null);
+}
+
+/// <summary>Canonical <see cref="IGrokChatClient.CompleteAsync"/> mode tags for telemetry.</summary>
+public static class ChatCallModes
+{
+    public const string BookToFountain = "book_to_fountain";
+    public const string BookToFountainRetry = "book_to_fountain_retry";
+    public const string BookToFountainCoverage = "book_to_fountain_coverage";
+    public const string BookToFountainChunk = "book_to_fountain_chunk";
+    public const string BookToFountainChunkRetry = "book_to_fountain_chunk_retry";
+    public const string BookToFountainMerge = "book_to_fountain_merge";
+    public const string CastFromScreenplay = "cast_from_screenplay";
+    public const string CastVisualLiteralize = "cast_visual_literalize";
+    public const string LearningPropose = "learning_propose";
 }
 
 /// <summary>xAI (or fake) vision (transcribe / classify).</summary>

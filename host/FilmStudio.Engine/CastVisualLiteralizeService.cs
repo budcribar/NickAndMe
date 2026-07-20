@@ -58,7 +58,9 @@ public sealed class CastVisualLiteralizeService
                 "Return JSON only with character_seed_tokens.\n\n" +
                 JsonSerializer.Serialize(payload, JsonDefaults.Indented);
 
-            var raw = await _chat.CompleteAsync(system, user, model, temperature: 0.15, ct)
+            var raw = await _chat.CompleteAsync(
+                    system, user, model, temperature: 0.15, ct,
+                    mode: ChatCallModes.CastVisualLiteralize)
                 .ConfigureAwait(false);
             var parsed = GrokChatClient.ParseJsonObject(StripFences(raw));
             return MergeLiteralized(seeds, parsed);

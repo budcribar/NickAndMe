@@ -94,7 +94,9 @@ public sealed class LearningProposalService
 
         try
         {
-            var proposal = await _chat.CompleteAsync(system, sb.ToString(), model: "grok-4.5", temperature: 0.3, ct)
+            var proposal = await _chat.CompleteAsync(
+                    system, sb.ToString(), model: "grok-4.5", temperature: 0.3, ct,
+                    mode: ChatCallModes.LearningPropose)
                 .ConfigureAwait(false);
             return new ProposeLearningRulesResult
             {

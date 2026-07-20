@@ -592,14 +592,20 @@ public static class BookToFountainConverter
         if (!string.IsNullOrEmpty(extraUserSuffix))
             user += extraUserSuffix;
 
-        var text = await chat.CompleteAsync(system, user, model, temperature: 0.2, ct)
+        var firstMode = string.IsNullOrEmpty(extraUserSuffix)
+            ? ChatCallModes.BookToFountain
+            : ChatCallModes.BookToFountainCoverage;
+        var text = await chat.CompleteAsync(
+                system, user, model, temperature: 0.2, ct, mode: firstMode)
             .ConfigureAwait(false);
         text = StripBookPageTags(StripFences(text));
 
         if (!LooksLikeGoodFountain(text))
         {
             var retryUser = user + RetrySuffix(hasPageMarkers: false);
-            text = await chat.CompleteAsync(system, retryUser, model, temperature: 0.15, ct)
+            text = await chat.CompleteAsync(
+                    system, retryUser, model, temperature: 0.15, ct,
+                    mode: ChatCallModes.BookToFountainRetry)
                 .ConfigureAwait(false);
             text = StripBookPageTags(StripFences(text));
         }
@@ -640,13 +646,17 @@ public static class BookToFountainConverter
                 title, author, pageCount, totalMinutes, chunks[i],
                 chunkIndex: i, chunkTotal: chunks.Count, continuity: continuity);
 
-            var part = await chat.CompleteAsync(system, user, model, temperature: 0.2, ct)
+            var part = await chat.CompleteAsync(
+                    system, user, model, temperature: 0.2, ct,
+                    mode: ChatCallModes.BookToFountainChunk)
                 .ConfigureAwait(false);
             part = StripBookPageTags(StripFences(part));
 
             if (!LooksLikeGoodFountain(part) && part.Length < 80)
             {
-                part = await chat.CompleteAsync(system, user + RetrySuffix(false), model, 0.15, ct)
+                part = await chat.CompleteAsync(
+                        system, user + RetrySuffix(false), model, 0.15, ct,
+                        mode: ChatCallModes.BookToFountainChunkRetry)
                     .ConfigureAwait(false);
                 part = StripBookPageTags(StripFences(part));
             }
@@ -743,7 +753,9 @@ public static class BookToFountainConverter
             Prefer story completeness and cast/location consistency over preserving every line.
             """;
 
-        var text = await chat.CompleteAsync(mergeSystem, sb.ToString(), model, temperature: 0.15, ct)
+        var text = await chat.CompleteAsync(
+                mergeSystem, sb.ToString(), model, temperature: 0.15, ct,
+                mode: ChatCallModes.BookToFountainMerge)
             .ConfigureAwait(false);
         return StripFences(text);
     }

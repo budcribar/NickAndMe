@@ -47,9 +47,11 @@ public sealed class GrokChatClient : IGrokChatClient
         string userPrompt,
         string model = "grok-4.5",
         double temperature = 0.2,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? mode = null)
     {
         EnsureAuth();
+        var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var payload = new Dictionary<string, object?>
         {
             ["model"] = model,
@@ -71,6 +73,7 @@ public sealed class GrokChatClient : IGrokChatClient
                 _telemetry.LogApiCall(new ApiCallTelemetry
                 {
                     Kind = "chat",
+                    Mode = modeTag,
                     Endpoint = "chat/completions",
                     Model = model,
                     HttpStatus = (int)resp.StatusCode,
@@ -90,6 +93,7 @@ public sealed class GrokChatClient : IGrokChatClient
             _telemetry.LogApiCall(new ApiCallTelemetry
             {
                 Kind = "chat",
+                Mode = modeTag,
                 Endpoint = "chat/completions",
                 Model = model,
                 HttpStatus = (int)resp.StatusCode,
@@ -108,6 +112,7 @@ public sealed class GrokChatClient : IGrokChatClient
             _telemetry.LogApiCall(new ApiCallTelemetry
             {
                 Kind = "chat",
+                Mode = modeTag,
                 Endpoint = "chat/completions",
                 Model = model,
                 DurationMs = sw.ElapsedMilliseconds,

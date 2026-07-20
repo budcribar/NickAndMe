@@ -319,7 +319,8 @@ public class BookToFountainPathTests
             string userPrompt,
             string model = "grok-4.5",
             double temperature = 0.2,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            string? mode = null)
         {
             Calls++;
             UserPrompts.Add(userPrompt ?? "");

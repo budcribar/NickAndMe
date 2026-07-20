@@ -20,11 +20,12 @@ public sealed class FakeGrokChatClient : IGrokChatClient
         string userPrompt,
         string model = "grok-4.5",
         double temperature = 0.2,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? mode = null)
     {
         _log.LogInformation(
-            "Fake chat complete model={Model} sysLen={Sys} userLen={User}",
-            model, systemPrompt?.Length ?? 0, userPrompt?.Length ?? 0);
+            "Fake chat complete model={Model} mode={Mode} sysLen={Sys} userLen={User}",
+            model, mode ?? "(none)", systemPrompt?.Length ?? 0, userPrompt?.Length ?? 0);
 
         var sys = systemPrompt ?? "";
         var user = userPrompt ?? "";

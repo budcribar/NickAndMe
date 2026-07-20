@@ -121,7 +121,9 @@ public sealed class CastFromScreenplayService
         var user = BuildUserPrompt(fountain, book);
 
         onProgress?.Invoke("Calling Grok for closed cast (book-aware looks)…");
-        var raw = await _chat.CompleteAsync(system, user, model, temperature: 0.2, ct)
+        var raw = await _chat.CompleteAsync(
+                system, user, model, temperature: 0.2, ct,
+                mode: ChatCallModes.CastFromScreenplay)
             .ConfigureAwait(false);
         raw = StripFences(raw);
 
