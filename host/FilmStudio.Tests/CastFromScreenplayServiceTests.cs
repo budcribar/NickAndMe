@@ -104,14 +104,15 @@ public class CastFromScreenplayServiceTests
     public void SelectBookTextForCastPrompt_includes_late_name_look_when_over_budget()
     {
         // Novel-length padding so we must sample; unique look only appears late.
-        var early = string.Join("\n\n", Enumerable.Range(0, 80).Select(i =>
-            $"Chapter filler {i}. " + new string('x', 900)));
+        var early = string.Join("\n\n", Enumerable.Range(0, 120).Select(i =>
+            $"Chapter filler {i}. " + new string('x', 1_200)));
         var lateLook =
             "\n\nZara stepped into the firelight. She had silver hair and a green velvet coat with brass buttons.\n\n";
-        var after = string.Join("\n\n", Enumerable.Range(0, 20).Select(i =>
-            $"Epilogue pad {i}. " + new string('y', 400)));
+        var after = string.Join("\n\n", Enumerable.Range(0, 40).Select(i =>
+            $"Epilogue pad {i}. " + new string('y', 600)));
         var book = early + lateLook + after;
-        Assert.True(book.Length > 100_000);
+        Assert.True(book.Length > CastFromScreenplayService.BookPromptChars,
+            $"book len={book.Length}");
 
         var fountain = """
             Title: Late Reveal
@@ -130,8 +131,9 @@ public class CastFromScreenplayServiceTests
         Assert.Contains("silver hair", selected, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("green velvet", selected, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("LOOK EXCERPTS", selected, StringComparison.OrdinalIgnoreCase);
-        // Must not be head-only: late look would be missing if we only took the first 40k
-        Assert.DoesNotContain(selected, early.AsSpan(0, Math.Min(early.Length, 5000)).ToString() == selected);
+        // Must not be head-only truncation of the first 40k (late look would be absent)
+        var headOnly = book[..40_000];
+        Assert.DoesNotContain("silver hair", headOnly, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
