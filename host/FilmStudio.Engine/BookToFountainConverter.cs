@@ -6,19 +6,70 @@ namespace FilmStudio.Engine;
 
 /// <summary>
 /// Book text → editable Fountain via chat (<c>prompts/book_to_fountain.txt</c>).
-/// Short books: single shot. Long novels: multi-chunk adapt → stitch → merge pass
-/// for full-arc coverage without head-only truncation.
+/// Prefers a single full-book pass when input fits the model budget; multi-chunk
+/// adapt → stitch → merge is a fallback for over-budget books or weak quality.
 /// </summary>
 public static class BookToFountainConverter
 {
-    /// <summary>Above this, multi-chunk path runs instead of single-shot trim.</summary>
+    /// <summary>
+    /// Historical single-shot length threshold (also used as a "large book" floor in tests).
+    /// Path selection now uses <see cref="ResolvePromptBudget"/> instead of this alone.
+    /// </summary>
     public const int SingleShotMaxChars = 28_000;
 
-    /// <summary>Soft max characters of book text per adapt chunk.</summary>
+    /// <summary>Default soft max book chars per adapt chunk when caller omits budget.</summary>
     public const int ChunkSoftMaxChars = 16_000;
 
-    /// <summary>Hard cap on Grok adapt calls (cost / latency).</summary>
+    /// <summary>Hard cap on adapt calls (cost / latency).</summary>
     public const int MaxAdaptChunks = 8;
+
+    /// <summary>Default max BOOK_TEXT chars for one chat call (large-context chat models).</summary>
+    public const int DefaultSingleShotBookMaxChars = 120_000;
+
+    /// <summary>Default soft max book chars per multi-chunk adapt call.</summary>
+    public const int DefaultChunkSoftMaxChars = 40_000;
+
+    /// <summary>Books shorter than this never use multi-chunk fallback (chunking won't help).</summary>
+    public const int MinBookCharsForChunkFallback = 24_000;
+
+    /// <summary>Product safety ceiling for a single book payload.</summary>
+    public const int AbsoluteSingleShotCeiling = 400_000;
+
+    /// <summary>Reserved chars for system prompt + scaffolding + continuity.</summary>
+    public const int ReservedOverheadChars = 12_000;
+
+    public enum AdaptPath
+    {
+        Single,
+        Multi,
+    }
+
+    /// <summary>Per-model (or default) input budgets for book → Fountain.</summary>
+    public sealed class PromptBudget
+    {
+        public required string ModelId { get; init; }
+
+        /// <summary>Max chars of BOOK_TEXT in one chat call.</summary>
+        public int SingleShotBookMaxChars { get; init; }
+
+        /// <summary>Soft max book chars per adapt chunk.</summary>
+        public int ChunkSoftMaxChars { get; init; }
+
+        public int MaxChunks { get; init; }
+
+        public int ReservedOverheadChars { get; init; }
+    }
+
+    /// <summary>Result of structural + coverage checks after a model draft.</summary>
+    public sealed class QualityResult
+    {
+        public bool Ok { get; init; }
+        public string Reason { get; init; } = "";
+        public int SceneCount { get; init; }
+        public int FountainChars { get; init; }
+        public IReadOnlyList<string> Failures { get; init; } = Array.Empty<string>();
+        public bool HasHardFailure { get; init; }
+    }
 
     /// <summary>
     /// Fallback body if <c>prompts/book_to_fountain.txt</c> is missing (tests / broken workspace).
@@ -33,7 +84,8 @@ public static class BookToFountainConverter
         """;
 
     /// <summary>
-    /// Generate Fountain from prepared book text. Long books use multi-chunk adapt→merge.
+    /// Generate Fountain from prepared book text.
+    /// Single-shot first when the book fits the model budget; multi-chunk on budget miss or quality fail.
     /// </summary>
     public static async Task<string> ConvertAsync(
         string workspaceRoot,
@@ -44,7 +96,8 @@ public static class BookToFountainConverter
         IGrokChatClient? chat = null,
         string model = "grok-4.5",
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        PromptBudget? budgetOverride = null)
     {
         if (string.IsNullOrWhiteSpace(bookText))
             throw new InvalidOperationException("Book text is empty");
@@ -57,24 +110,53 @@ public static class BookToFountainConverter
         var system = await BuildSystemPromptAsync(workspaceRoot, totalRuntimeMinutes, ct)
             .ConfigureAwait(false);
         var pageCount = CountPageMarkers(bookText);
+        var budget = budgetOverride ?? ResolvePromptBudget(model);
+        totalRuntimeMinutes = Math.Clamp(totalRuntimeMinutes, 1, 180);
 
         string text;
         try
         {
-            if (bookText.Length <= SingleShotMaxChars)
+            if (FitsSingleShot(bookText, budget))
             {
                 onProgress?.Invoke("Adapting book → Fountain (single pass)…");
-                text = await ConvertSingleShotAsync(
+                var single = await TrySingleShotWithGateAsync(
                     system, title, author, pageCount, totalRuntimeMinutes, bookText,
-                    chat, model, ct).ConfigureAwait(false);
+                    chat, model, budget, onProgress, ct).ConfigureAwait(false);
+
+                if (single is not null)
+                {
+                    text = single;
+                }
+                else if (ShouldChunkFallback(bookText, budget))
+                {
+                    onProgress?.Invoke("Falling back to multi-chunk adapt…");
+                    text = await ConvertMultiChunkAsync(
+                        system, title, author, pageCount, totalRuntimeMinutes, bookText,
+                        chat, model, onProgress, ct,
+                        softMaxChars: budget.ChunkSoftMaxChars,
+                        maxChunks: budget.MaxChunks).ConfigureAwait(false);
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "Could not build a usable screenplay from the book. Try again or import a .fountain file.");
+                }
             }
             else
             {
-                onProgress?.Invoke("Long book — multi-chunk adapt → merge…");
+                onProgress?.Invoke("Book exceeds model budget — multi-chunk adapt…");
                 text = await ConvertMultiChunkAsync(
                     system, title, author, pageCount, totalRuntimeMinutes, bookText,
-                    chat, model, onProgress, ct).ConfigureAwait(false);
+                    chat, model, onProgress, ct,
+                    softMaxChars: budget.ChunkSoftMaxChars,
+                    maxChunks: budget.MaxChunks).ConfigureAwait(false);
             }
+
+            // Multi path: soft coverage failures still accept a structurally good draft
+            var multiGate = EvaluateQuality(text, bookText, totalRuntimeMinutes, AdaptPath.Multi);
+            if (!multiGate.Ok && multiGate.HasHardFailure)
+                throw new InvalidOperationException(
+                    "Could not build a usable screenplay from the book. Try again or import a .fountain file.");
         }
         catch (InvalidOperationException) when (LooksLikeGoodFountain(ConvertHeuristic(title, bookText, author)))
         {
@@ -91,6 +173,130 @@ public static class BookToFountainConverter
                 "Could not build a usable screenplay from the book. Try again or import a .fountain file.");
 
         return ScreenplayService.NormalizeText(text);
+    }
+
+    /// <summary>
+    /// Resolve single-shot / chunk budgets for a chat model id.
+    /// Catalog has no context-window fields yet — known Grok ids get large defaults.
+    /// </summary>
+    public static PromptBudget ResolvePromptBudget(string? modelId)
+    {
+        var id = string.IsNullOrWhiteSpace(modelId) ? "grok-4.5" : modelId.Trim();
+        // ~3.2 chars/token heuristic; leave headroom for system + user scaffolding.
+        // Phase 2: read MaxInputTokens from SupportedModelCatalog when present.
+        var inputTokens = id.ToLowerInvariant() switch
+        {
+            "grok-4.5" or "grok-4" => 128_000,
+            _ => 128_000,
+        };
+
+        var reserved = ReservedOverheadChars;
+        var tokenDerivedBookMax = Math.Clamp(
+            (int)(inputTokens * 3.2) - reserved,
+            8_000,
+            AbsoluteSingleShotCeiling);
+        // Product default caps large windows; smaller models keep the tighter token-derived max.
+        var bookMax = Math.Min(DefaultSingleShotBookMaxChars, tokenDerivedBookMax);
+
+        var chunkSoft = Math.Clamp(
+            Math.Min(DefaultChunkSoftMaxChars, Math.Max(4_000, bookMax / 2)),
+            4_000,
+            Math.Min(bookMax, 120_000));
+
+        return new PromptBudget
+        {
+            ModelId = id,
+            SingleShotBookMaxChars = bookMax,
+            ChunkSoftMaxChars = chunkSoft,
+            MaxChunks = MaxAdaptChunks,
+            ReservedOverheadChars = reserved,
+        };
+    }
+
+    /// <summary>True when the full book fits one adapt call under <paramref name="budget"/>.</summary>
+    public static bool FitsSingleShot(string bookText, PromptBudget budget)
+    {
+        ArgumentNullException.ThrowIfNull(budget);
+        bookText ??= "";
+        return bookText.Length <= budget.SingleShotBookMaxChars;
+    }
+
+    /// <summary>
+    /// Whether multi-chunk is worth attempting (book large enough and ≥2 chunks possible).
+    /// </summary>
+    public static bool ShouldChunkFallback(string bookText, PromptBudget budget)
+    {
+        ArgumentNullException.ThrowIfNull(budget);
+        bookText = NormalizeBookText(bookText ?? "");
+        if (bookText.Length < MinBookCharsForChunkFallback)
+            return false;
+
+        var soft = Math.Min(budget.ChunkSoftMaxChars, Math.Max(MinBookCharsForChunkFallback, bookText.Length / 2));
+        var chunks = ChunkBookForAdaptation(bookText, budget.MaxChunks, soft);
+        return chunks.Count >= 2;
+    }
+
+    /// <summary>
+    /// Structural + coverage gate. Soft failures fail single-shot (trigger chunk fallback);
+    /// multi-chunk only hard-fails on structure / excerpt markers.
+    /// </summary>
+    public static QualityResult EvaluateQuality(
+        string? fountain,
+        string bookText,
+        int totalRuntimeMinutes,
+        AdaptPath path)
+    {
+        fountain = StripBookPageTags(fountain ?? "");
+        bookText = NormalizeBookText(bookText ?? "");
+        totalRuntimeMinutes = Math.Clamp(totalRuntimeMinutes, 1, 180);
+
+        var fails = new List<string>();
+        var scenes = CountSceneHeadings(fountain);
+
+        if (!LooksLikeGoodFountain(fountain))
+            fails.Add("structure");
+
+        if (Regex.IsMatch(
+                fountain,
+                @"\[\[.*(truncat|omitted for length|cut off|excerpted).*\]\]",
+                RegexOptions.IgnoreCase))
+            fails.Add("excerpt_marker");
+
+        // Soft: long books should resolve
+        if (bookText.Length > 40_000 &&
+            path == AdaptPath.Single &&
+            fountain.Length >= 80 &&
+            !Regex.IsMatch(fountain, @"(?im)(FADE OUT|THE END)\b"))
+            fails.Add("missing_ending");
+
+        var minScenes = Math.Clamp(totalRuntimeMinutes / 2, 3, 40);
+        if (bookText.Length > 50_000)
+            minScenes = Math.Max(minScenes, 8);
+        // Short picture books: do not demand many scenes
+        if (bookText.Length < 8_000)
+            minScenes = Math.Min(minScenes, 2);
+        if (scenes < minScenes && bookText.Length >= MinBookCharsForChunkFallback)
+            fails.Add($"scene_count:{scenes}<{minScenes}");
+
+        if (path == AdaptPath.Single &&
+            bookText.Length > 60_000 &&
+            fountain.Length < Math.Min(8_000, Math.Max(500, bookText.Length / 40)))
+            fails.Add("suspiciously_short");
+
+        var hard = fails.Contains("structure") || fails.Contains("excerpt_marker");
+        var ok = path == AdaptPath.Multi
+            ? !hard && LooksLikeGoodFountain(fountain)
+            : fails.Count == 0;
+
+        return new QualityResult
+        {
+            Ok = ok,
+            Reason = fails.Count == 0 ? "ok" : string.Join(",", fails),
+            SceneCount = scenes,
+            FountainChars = fountain.Length,
+            Failures = fails,
+            HasHardFailure = hard,
+        };
     }
 
     /// <summary>
@@ -146,7 +352,7 @@ public static class BookToFountainConverter
     {
         bookText = NormalizeBookText(bookText);
         maxChunks = Math.Clamp(maxChunks, 1, 16);
-        softMaxChars = Math.Clamp(softMaxChars, 4_000, 40_000);
+        softMaxChars = Math.Clamp(softMaxChars, 4_000, 120_000);
 
         if (bookText.Length <= softMaxChars)
             return new[] { bookText };
@@ -320,6 +526,51 @@ public static class BookToFountainConverter
 
     // ── single / multi paths ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Single-shot with structure retry + quality gate + optional coverage retry.
+    /// Returns null when the draft is not acceptable and multi-chunk fallback should be considered.
+    /// </summary>
+    private static async Task<string?> TrySingleShotWithGateAsync(
+        string system,
+        string title,
+        string? author,
+        int pageCount,
+        int totalMinutes,
+        string bookText,
+        IGrokChatClient chat,
+        string model,
+        PromptBudget budget,
+        Action<string>? onProgress,
+        CancellationToken ct)
+    {
+        try
+        {
+            var draft = await ConvertSingleShotAsync(
+                system, title, author, pageCount, totalMinutes, bookText,
+                chat, model, ct,
+                bookMaxChars: budget.SingleShotBookMaxChars).ConfigureAwait(false);
+
+            var gate = EvaluateQuality(draft, bookText, totalMinutes, AdaptPath.Single);
+            if (gate.Ok)
+                return draft;
+
+            onProgress?.Invoke($"Single pass weak ({gate.Reason}) — retry…");
+            draft = await ConvertSingleShotAsync(
+                system, title, author, pageCount, totalMinutes, bookText,
+                chat, model, ct,
+                bookMaxChars: budget.SingleShotBookMaxChars,
+                extraUserSuffix: CoverageRetrySuffix()).ConfigureAwait(false);
+
+            gate = EvaluateQuality(draft, bookText, totalMinutes, AdaptPath.Single);
+            return gate.Ok ? draft : null;
+        }
+        catch (InvalidOperationException)
+        {
+            // Structure failed after retries, or transport/API wrapped as InvalidOperationException
+            return null;
+        }
+    }
+
     private static async Task<string> ConvertSingleShotAsync(
         string system,
         string title,
@@ -329,12 +580,17 @@ public static class BookToFountainConverter
         string bookText,
         IGrokChatClient chat,
         string model,
-        CancellationToken ct)
+        CancellationToken ct,
+        int bookMaxChars = DefaultSingleShotBookMaxChars,
+        string? extraUserSuffix = null)
     {
-        var bookForPrompt = bookText.Length <= SingleShotMaxChars
+        // Happy path: full book. Trim only if somehow over the call budget (prefer multi-chunk instead).
+        var bookForPrompt = bookText.Length <= bookMaxChars
             ? bookText
-            : TrimBookForPrompt(bookText);
+            : TrimBookForPrompt(bookText, bookMaxChars);
         var user = BuildUserPrompt(title, author, pageCount, totalMinutes, bookForPrompt, chunkIndex: 0, chunkTotal: 1);
+        if (!string.IsNullOrEmpty(extraUserSuffix))
+            user += extraUserSuffix;
 
         var text = await chat.CompleteAsync(system, user, model, temperature: 0.2, ct)
             .ConfigureAwait(false);
@@ -365,9 +621,11 @@ public static class BookToFountainConverter
         IGrokChatClient chat,
         string model,
         Action<string>? onProgress,
-        CancellationToken ct)
+        CancellationToken ct,
+        int softMaxChars = ChunkSoftMaxChars,
+        int maxChunks = MaxAdaptChunks)
     {
-        var chunks = ChunkBookForAdaptation(bookText);
+        var chunks = ChunkBookForAdaptation(bookText, maxChunks, softMaxChars);
         onProgress?.Invoke($"Book split into {chunks.Count} chunk(s) for adaptation…");
 
         var parts = new List<string>();
@@ -592,6 +850,17 @@ public static class BookToFountainConverter
         - Use NARRATOR and CHARACTER dialogue where the book has narration or speech.
         """;
 
+    private static string CoverageRetrySuffix() => """
+
+
+        IMPORTANT: Previous draft was too short or incomplete for the full book.
+        Re-output a complete Fountain screenplay covering the full arc present in BOOK_TEXT.
+        - Include enough INT./EXT. scenes for the target runtime.
+        - Carry the story through resolution; end with FADE OUT / THE END.
+        - Do not stop after the opening chapters only.
+        - Do not emit = page N or [[page N]] tags.
+        """;
+
     // ── chunking helpers ─────────────────────────────────────────────────
 
     private static List<string> SplitIntoUnits(string bookText)
@@ -720,13 +989,13 @@ public static class BookToFountainConverter
     }
 
     /// <summary>
-    /// Fit long novels into a single-shot window (start/middle/end) when multi-chunk is disabled
-    /// or as fallback inside a too-large single unit.
+    /// Fit oversize books into a single-shot window (start/middle/end).
+    /// Prefer multi-chunk when the book exceeds the model budget; this is a last-resort trim.
     /// </summary>
-    private static string TrimBookForPrompt(string bookText)
+    private static string TrimBookForPrompt(string bookText, int maxChars = DefaultSingleShotBookMaxChars)
     {
         bookText = NormalizeBookText(bookText);
-        const int max = SingleShotMaxChars;
+        var max = Math.Clamp(maxChars, 4_000, AbsoluteSingleShotCeiling);
         if (bookText.Length <= max) return bookText;
 
         var pages = Regex.Split(bookText, @"(?=---\s*PAGE\s+\d+\s*---)", RegexOptions.IgnoreCase)
