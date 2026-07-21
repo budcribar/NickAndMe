@@ -146,38 +146,57 @@ public static class FountainStage1Importer
 
             var charKey = EnsureCharacter(charSeeds, pendingChar);
             EnsureOnScreen(curScene, charKey);
-            beatIndex++;
             var visual = string.IsNullOrWhiteSpace(pendingParen)
                 ? $"{pendingChar} speaks."
                 : $"{pendingChar} ({pendingParen}).";
             var delivery = IsOffScreen(pendingChar) ? "voiceover_internal" : "spoken_on_camera";
             // Parenthetical may carry light sfx ("whispering", rare); usually empty for dialogue
             var (_, parenSfx) = InferAmbientAndSfx(pendingParen ?? "");
-            beats.Add(new Dictionary<string, object?>
+
+            // Long monologues → multiple beats so each clip fits the video model max
+            var parts = ClipDurationEstimator.SplitDialogueToFitModelMax(text, delivery);
+            if (parts.Count == 0)
+                parts = new[] { text };
+
+            for (var p = 0; p < parts.Count; p++)
             {
-                ["beat_id"] = $"b{beatIndex}",
-                ["intent"] = Trunc($"Dialogue: {pendingChar}", 120),
-                ["visual_event"] = visual,
-                ["shot_scale_hint"] = "medium close",
-                ["action_class"] = "dialogue",
-                ["continuity"] = beatIndex == 1 ? "new_setup" : "continuous_from_previous_beat",
-                ["time_weight"] = Math.Clamp(text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length / 8.0, 0.5, 4.0),
-                ["delivery"] = delivery,
-                ["speaker"] = charKey,
-                ["dialogue"] = text,
-                ["ambient"] = "",
-                ["sfx"] = parenSfx,
-                ["audio"] = new Dictionary<string, object?>
+                var part = parts[p];
+                beatIndex++;
+                var isFirst = beatIndex == 1;
+                beats.Add(new Dictionary<string, object?>
                 {
+                    ["beat_id"] = $"b{beatIndex}",
+                    ["intent"] = Trunc(
+                        parts.Count > 1
+                            ? $"Dialogue: {pendingChar} ({p + 1}/{parts.Count})"
+                            : $"Dialogue: {pendingChar}",
+                        120),
+                    ["visual_event"] = visual,
+                    ["shot_scale_hint"] = "medium close",
+                    ["action_class"] = "dialogue",
+                    ["continuity"] = isFirst
+                        ? "new_setup"
+                        : "continuous_from_previous_beat",
+                    ["time_weight"] = Math.Clamp(
+                        ClipDurationEstimator.CountWords(part) / 8.0, 0.5, 4.0),
                     ["delivery"] = delivery,
                     ["speaker"] = charKey,
-                    ["dialogue"] = text,
+                    ["dialogue"] = part,
                     ["ambient"] = "",
                     ["sfx"] = parenSfx,
-                },
-                ["primary_subject"] = charKey,
-                ["characters_on_screen"] = CurrentOnScreen(curScene),
-            });
+                    ["audio"] = new Dictionary<string, object?>
+                    {
+                        ["delivery"] = delivery,
+                        ["speaker"] = charKey,
+                        ["dialogue"] = part,
+                        ["ambient"] = "",
+                        ["sfx"] = parenSfx,
+                    },
+                    ["primary_subject"] = charKey,
+                    ["characters_on_screen"] = CurrentOnScreen(curScene),
+                });
+            }
+
             pendingParen = null;
         }
 

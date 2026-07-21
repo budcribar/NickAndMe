@@ -297,6 +297,8 @@ public sealed class Stage2PlannerService
         var beats = GetList(scene, "story_beats").OfType<Dictionary<string, object?>>()
             .Where(b => !IsNoopTransitionBeat(b))
             .ToList();
+        // Idempotent: monologues already split at fountain import stay; legacy long cues expand here
+        beats = ClipDurationEstimator.ExpandLongDialogueBeats(beats);
         var lids = GetList(scene, "location_ids").Select(x => x?.ToString() ?? "").Where(x => x.Length > 0).ToList();
         var primary = CoerceString(scene.TryGetValue("primary_location_id", out var pl) ? pl : null)
                       ?? (lids.Count > 0 ? lids[0] : null);

@@ -77,6 +77,105 @@ public class ClipDurationEstimatorTests
         Assert.True(d < 10, "should not keep inflated plan for short dialogue");
         Assert.InRange(d, ClipDurationEstimator.MinSeconds, ClipDurationEstimator.MaxSeconds);
     }
+
+    [Fact]
+    public void Short_dialogue_is_not_split()
+    {
+        var line = "Well enough. Well enough.";
+        var parts = ClipDurationEstimator.SplitDialogueToFitModelMax(line);
+        Assert.Single(parts);
+        Assert.Equal(line, parts[0]);
+    }
+
+    [Fact]
+    public void Long_monologue_splits_into_multiple_model_safe_chunks()
+    {
+        // Poe-scale first confession speech (~80+ words) must not stay one 10s clip
+        var line =
+            "True!—nervous—very, very dreadfully nervous I had been and am; but why will you say that I am mad? " +
+            "The disease had sharpened my senses—not destroyed—not dulled them. Above all was the sense of hearing acute. " +
+            "I heard all things in the heaven and in the earth. I heard many things in hell. How, then, am I mad? " +
+            "Hearken! and observe how healthily—how calmly I can tell you the whole story.";
+
+        Assert.True(ClipDurationEstimator.DialogueExceedsModelMax(line));
+        var parts = ClipDurationEstimator.SplitDialogueToFitModelMax(line);
+        Assert.True(parts.Count >= 2, $"expected split, got {parts.Count} part(s)");
+        Assert.Equal(
+            ClipDurationEstimator.CountWords(line),
+            parts.Sum(ClipDurationEstimator.CountWords));
+
+        foreach (var p in parts)
+        {
+            var uncapped = ClipDurationEstimator.EstimateUncapped(p, "", "dialogue", "spoken_on_camera");
+            var budget = ClipDurationEstimator.MaxSeconds - ClipDurationEstimator.DialogueModelPaddingSeconds;
+            Assert.True(uncapped <= budget + 0.5,
+                $"chunk still too long ({uncapped:F1}s > budget {budget:F1}s): {p[..Math.Min(60, p.Length)]}…");
+            var planned = ClipDurationEstimator.Estimate(p, "speaks", "dialogue");
+            Assert.InRange(planned, ClipDurationEstimator.MinSeconds, ClipDurationEstimator.MaxSeconds);
+        }
+    }
+
+    [Fact]
+    public void ExpandLongDialogueBeats_splits_and_renumbers()
+    {
+        var monologue =
+            "It is impossible to say how first the idea entered my brain; but once conceived, it haunted me day and night. " +
+            "Object there was none. Passion there was none. I loved the old man. He had never wronged me. " +
+            "He had never given me insult. For his gold I had no desire. I think it was his eye! yes, it was this!";
+
+        var beats = new List<Dictionary<string, object?>>
+        {
+            new()
+            {
+                ["beat_id"] = "b1",
+                ["action_class"] = "action",
+                ["dialogue"] = "",
+                ["delivery"] = "none",
+                ["visual_event"] = "Chair faces us.",
+            },
+            new()
+            {
+                ["beat_id"] = "b2",
+                ["action_class"] = "dialogue",
+                ["dialogue"] = monologue,
+                ["delivery"] = "spoken_on_camera",
+                ["speaker"] = "Character_Narrator",
+                ["visual_event"] = "NARRATOR speaks.",
+                ["audio"] = new Dictionary<string, object?>
+                {
+                    ["delivery"] = "spoken_on_camera",
+                    ["speaker"] = "Character_Narrator",
+                    ["dialogue"] = monologue,
+                },
+            },
+        };
+
+        var expanded = ClipDurationEstimator.ExpandLongDialogueBeats(beats);
+        Assert.True(expanded.Count > 2, $"expected monologue expansion, count={expanded.Count}");
+        Assert.Equal("b1", expanded[0]["beat_id"]?.ToString());
+        Assert.Equal("", expanded[0]["dialogue"]?.ToString() ?? "");
+
+        var speech = expanded.Skip(1).ToList();
+        Assert.All(speech, b =>
+        {
+            Assert.Equal("Character_Narrator", b["speaker"]?.ToString());
+            Assert.False(string.IsNullOrWhiteSpace(b["dialogue"]?.ToString()));
+            Assert.False(ClipDurationEstimator.DialogueExceedsModelMax(b["dialogue"]?.ToString()));
+        });
+        // Sequential ids after expand
+        for (var i = 0; i < expanded.Count; i++)
+            Assert.Equal($"b{i + 1}", expanded[i]["beat_id"]?.ToString());
+    }
+
+    [Fact]
+    public void Run_on_sentence_without_punctuation_still_packs_by_words()
+    {
+        var words = string.Join(" ", Enumerable.Repeat("madness", 60));
+        var parts = ClipDurationEstimator.SplitDialogueToFitModelMax(words);
+        Assert.True(parts.Count >= 2);
+        foreach (var p in parts)
+            Assert.False(ClipDurationEstimator.DialogueExceedsModelMax(p));
+    }
 }
 
 public class ClipSilenceTrimmerTests
