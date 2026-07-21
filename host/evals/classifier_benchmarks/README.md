@@ -24,6 +24,7 @@ Durable **AI vs baseline** evals for Film Studio classifiers. Re-run over time a
 | `onscreen_cast` | mean set F1 | **Curated** Jungle Book cast blind (20). Product: **`v2_grounded`** |
 | `silent_beat_action` | accuracy | **Curated** multi-book GT (147 beats, 7 titles) under `gold/_all_books/`. Product: **`v2_product`** |
 | `extend_cut` | accuracy | **Curated** Jungle Book blind (24). Prompts: `v1_product`, **`v2_grounded`** (draft) |
+| `plate_rank` | mean recall@3 capped | **Curated** Buster2 (Buster odds; bunny p13). Baseline = **chance 0.5** (no filename heuristic). Prompt: `v2_picture_book` |
 | `species_kind` | accuracy | Curated cast species labels |
 
 ## Run

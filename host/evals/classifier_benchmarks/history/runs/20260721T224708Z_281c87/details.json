@@ -1,0 +1,75 @@
+{
+  "runId": "20260721T224708Z_281c87",
+  "utc": "2026-07-21 22:47:08Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "Buster2",
+    "tasks": [
+      "plate_rank"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [
+      "v1_product"
+    ],
+    "temperatures": [
+      0
+    ],
+    "note": "Bunnies gold corrected to page 3 only",
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "plate_rank",
+      "projectId": "Buster2",
+      "model": "grok-4.5",
+      "promptId": "v1_product",
+      "promptLabel": "Product PlateRankClassifier prompt (shipped v1)",
+      "promptHash": "17ac61be1f37",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 2,
+      "metric": "mean_recall_at_3_capped",
+      "baselineScore": 0.8333333333333333,
+      "aiScore": 0.8333333333333333,
+      "winner": "tie",
+      "latencyMs": 12975,
+      "aiParseHits": 2,
+      "note": "Matches FilmStudio.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames \u002B description.",
+      "samples": [
+        {
+          "id": "Character_Buster",
+          "visual": "Small black-and-white companion dog; short smooth coat with clear black-and-white patches; floppy ears; bright dark eyes; compact build; expressive face. Always\u2026",
+          "goldAmbient": "",
+          "goldSfx": "",
+          "goldLabel": "page_001_render.png, page_003_render.png, page_005_render.png, page_007_render.png, page_009_render.png, page_011_render.png, page_013_render.png, page_015_render.png",
+          "baselineAmbient": "",
+          "baselineSfx": "",
+          "baselineLabel": "page_001_render.png, page_002_render.png, page_003_render.png",
+          "aiAmbient": "",
+          "aiSfx": "",
+          "aiLabel": "page_001_render.png, page_002_render.png, page_003_render.png",
+          "baselineScore": 0.6666666666666666,
+          "aiScore": 0.6666666666666666
+        },
+        {
+          "id": "Character_Bunnies",
+          "visual": "Small live rabbits; soft fur in natural browns and grays with white accents; upright alert ears; compact bodies. Always ordinary small rabbits with soft natural\u2026",
+          "goldAmbient": "",
+          "goldSfx": "",
+          "goldLabel": "page_003_render.png",
+          "baselineAmbient": "",
+          "baselineSfx": "",
+          "baselineLabel": "page_001_render.png, page_002_render.png, page_003_render.png",
+          "aiAmbient": "",
+          "aiSfx": "",
+          "aiLabel": "page_001_render.png, page_002_render.png, page_003_render.png",
+          "baselineScore": 1,
+          "aiScore": 1
+        }
+      ]
+    }
+  ]
+}

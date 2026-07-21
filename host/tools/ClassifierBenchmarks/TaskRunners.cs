@@ -624,6 +624,169 @@ public static class TaskRunners
         };
     }
 
+    public static async Task<TaskResult> RunPlateRankAsync(
+        BenchPaths paths,
+        string projectId,
+        string model,
+        double temperature,
+        PromptBundle prompt,
+        ChatRunner chat,
+        CancellationToken ct = default)
+    {
+        var goldPath = paths.GoldFile(projectId, "plate_rank");
+        if (!File.Exists(goldPath))
+            throw new FileNotFoundException($"Missing gold: {goldPath}");
+
+        using var goldDoc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+        var root = goldDoc.RootElement;
+        var curated = root.TryGetProperty("curated", out var cEl) && cEl.GetBoolean();
+
+        var candidates = new List<string>();
+        if (root.TryGetProperty("candidates", out var candEl) && candEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in candEl.EnumerateArray())
+                if (c.GetString() is { Length: > 0 } s)
+                    candidates.Add(s);
+        }
+        if (candidates.Count == 0)
+        {
+            // Fall back to project book_images page_*.png
+            var imgDir = Directory.GetDirectories(Path.Combine(paths.RepoRoot, "projects"), "book_images", SearchOption.AllDirectories)
+                .FirstOrDefault(d => d.Contains(projectId, StringComparison.OrdinalIgnoreCase));
+            if (imgDir is not null)
+                candidates = Directory.GetFiles(imgDir, "page_*.png").Select(Path.GetFileName).Where(n => n is not null).Cast<string>()
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        if (candidates.Count == 0)
+            throw new InvalidOperationException($"No plate candidates for {projectId}");
+
+        var samples = new List<(string Key, string Desc, List<string> Gold)>();
+        foreach (var el in root.GetProperty("labels").EnumerateArray())
+        {
+            var key = el.TryGetProperty("character_key", out var kEl) ? kEl.GetString() ?? "" : "";
+            if (key.Length == 0) continue;
+            var desc = el.TryGetProperty("description", out var dEl) ? dEl.GetString() ?? "" : "";
+            var lockTxt = el.TryGetProperty("visual_lock", out var vEl) ? vEl.GetString() ?? "" : "";
+            if (!string.IsNullOrWhiteSpace(lockTxt))
+                desc = (desc + " " + lockTxt).Trim();
+            var gold = new List<string>();
+            if (el.TryGetProperty("gold_files", out var gf) && gf.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var g in gf.EnumerateArray())
+                    if (g.GetString() is { Length: > 0 } gs)
+                        gold.Add(gs);
+            }
+            if (gold.Count == 0) continue;
+            samples.Add((key, desc, gold));
+        }
+
+        // Filename heuristics were no better than chance on Buster gold — report fixed chance baseline.
+        const double chanceBaseline = 0.5;
+
+        double aiSum = 0;
+        var sampleScores = new List<SampleScore>();
+        var hits = 0;
+        var sw = Stopwatch.StartNew();
+
+        // One chat call per character (small cast)
+        foreach (var s in samples)
+        {
+            var candidateRows = candidates.Take(24).Select(n => new
+            {
+                name = n,
+                page = TryPageNumber(n),
+                likely_art = IsLikelyArtPage(n),
+            }).ToList();
+            var payload = new
+            {
+                character_key = s.Key,
+                description = Trunc(s.Desc, 280),
+                candidates = candidateRows,
+                instruction = "Return top 3 basenames that best SHOW this character as a visible figure. Use page structure; do not put supporting cast on the cover/early pages without reason.",
+            };
+            var raw = await chat.CompleteAsync(
+                model, temperature, prompt.Text,
+                JsonSerializer.Serialize(payload),
+                ct);
+            var aiTop = PlateRankClassifier.ParseRank(raw, candidates);
+            if (aiTop.Count > 0) hits++;
+            // No heuristic fallback ranking — empty parse stays empty (scores 0 vs gold)
+
+            var aRec = RecallAtKCapped(aiTop, s.Gold, 3);
+            aiSum += aRec;
+            sampleScores.Add(new SampleScore
+            {
+                Id = s.Key,
+                Visual = Trunc(s.Desc, 160),
+                GoldLabel = string.Join(", ", s.Gold),
+                BaselineLabel = "chance (0.5)",
+                AiLabel = string.Join(", ", aiTop.Take(3)),
+                BaselineScore = chanceBaseline,
+                AiScore = aRec,
+            });
+        }
+        sw.Stop();
+
+        var n = samples.Count;
+        var baseMean = n == 0 ? 0 : chanceBaseline;
+        var aiMean = n == 0 ? 0 : aiSum / n;
+        return new TaskResult
+        {
+            Task = "plate_rank",
+            ProjectId = projectId,
+            Model = model,
+            PromptId = prompt.Id,
+            PromptLabel = prompt.Label,
+            PromptHash = prompt.Hash,
+            Temperature = temperature,
+            CuratedGold = curated,
+            SampleCount = n,
+            Metric = "mean_recall_at_3_capped",
+            BaselineScore = baseMean,
+            AiScore = aiMean,
+            Winner = Winner(baseMean, aiMean),
+            LatencyMs = sw.ElapsedMilliseconds,
+            AiParseHits = hits,
+            Note = (prompt.Notes ?? "") + " baseline=chance/0.5 (filename heuristic removed)",
+            Samples = sampleScores,
+        };
+    }
+
+    /// <summary>
+    /// Hits among top-K over min(K, |gold|). With many gold pages, perfect top-3 scores 1.0 not 3/|gold|.
+    /// </summary>
+    public static double RecallAtKCapped(IReadOnlyList<string> pred, IReadOnlyList<string> gold, int k = 3)
+    {
+        if (gold.Count == 0) return pred.Count == 0 ? 1.0 : 0.0;
+        var p = pred.Take(k).ToList();
+        var hits = gold.Count(g => p.Any(x => x.Equals(g, StringComparison.OrdinalIgnoreCase)));
+        var denom = Math.Min(k, gold.Count);
+        return denom == 0 ? 0 : (double)hits / denom;
+    }
+
+    static int? TryPageNumber(string name)
+    {
+        var m = Regex.Match(name ?? "", @"page_(\d+)", RegexOptions.IgnoreCase);
+        if (m.Success && int.TryParse(m.Groups[1].Value, out var p)) return p;
+        m = Regex.Match(name ?? "", @"_p(\d+)", RegexOptions.IgnoreCase);
+        if (m.Success && int.TryParse(m.Groups[1].Value, out p)) return p;
+        return null;
+    }
+
+    static bool IsLikelyArtPage(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        if (name.Contains("text_heavy", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("text_page", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("text-only", StringComparison.OrdinalIgnoreCase))
+            return false;
+        // Even page numbers in this pilot book are text spreads
+        var page = TryPageNumber(name);
+        if (page is int p && p % 2 == 0 && name.Contains("render", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
+    }
+
     public static string DefaultPromptId(string task) => task switch
     {
         "ambient_sfx" => "v2_grounded",
@@ -631,6 +794,7 @@ public static class TaskRunners
         "extend_cut" => "v2_grounded",
         "silent_beat_action" => "v2_product",
         "species_kind" => "v1_product",
+        "plate_rank" => "v2_picture_book",
         _ => "v1_product",
     };
 

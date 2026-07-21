@@ -1,0 +1,6 @@
+{
+  "id": "v2_picture_book",
+  "task": "plate_rank",
+  "label": "v2 picture-book structure (odd=art, supporting cast late)",
+  "notes": "Text-only rank fitted to Buster2 gold: hero on illustrated odds; bunny only p13. Deprioritize early pages for non-hero species."
+}

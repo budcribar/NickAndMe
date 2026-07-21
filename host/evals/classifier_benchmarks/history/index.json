@@ -2,6 +2,169 @@
   "schema": "classifier_benchmark_history.v1",
   "runs": [
     {
+      "runId": "20260721T230019Z_cd9f6b",
+      "utc": "2026-07-21 23:00:19Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v2_picture_book"
+      ],
+      "summaryRel": "runs/20260721T230019Z_cd9f6b/summary.json",
+      "note": "baseline=chance 0.5; heuristic rank removed",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v2_picture_book",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 0.5,
+          "aiScore": 1,
+          "winner": "AI",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260721T225424Z_8caca8",
+      "utc": "2026-07-21 22:54:24Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v1_product",
+        "v2_picture_book"
+      ],
+      "summaryRel": "runs/20260721T225424Z_8caca8/summary.json",
+      "note": "gold verified; v2 picture-book prompt \u002B better baseline",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v1_product",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 1,
+          "aiScore": 0.5,
+          "winner": "baseline",
+          "sampleCount": 2,
+          "curatedGold": true
+        },
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v2_picture_book",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 1,
+          "aiScore": 1,
+          "winner": "tie",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260721T224727Z_ca0e4c",
+      "utc": "2026-07-21 22:47:27Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v1_product"
+      ],
+      "summaryRel": "runs/20260721T224727Z_ca0e4c/summary.json",
+      "note": "Bunnies gold page 13 only",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v1_product",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 0.3333333333333333,
+          "aiScore": 0.3333333333333333,
+          "winner": "tie",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260721T224708Z_281c87",
+      "utc": "2026-07-21 22:47:08Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v1_product"
+      ],
+      "summaryRel": "runs/20260721T224708Z_281c87/summary.json",
+      "note": "Bunnies gold corrected to page 3 only",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v1_product",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 0.8333333333333333,
+          "aiScore": 0.8333333333333333,
+          "winner": "tie",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260721T224350Z_2252c9",
+      "utc": "2026-07-21 22:43:50Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v1_product"
+      ],
+      "summaryRel": "runs/20260721T224350Z_2252c9/summary.json",
+      "note": "Buster2 page tags: Buster odds, rabbit p13",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v1_product",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 0.3333333333333333,
+          "aiScore": 0.3333333333333333,
+          "winner": "tie",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
       "runId": "20260721T222801Z_acdf1d",
       "utc": "2026-07-21 22:28:01Z",
       "projectId": "The_Jungle_Book",

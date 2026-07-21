@@ -10,8 +10,9 @@ namespace FilmStudio.Engine;
 /// Sort book page plates onto character seeds as design_reference_images.
 /// Cast comes from Fountain (in-memory); plates persist to source/cast_seeds.json
 /// and are mirrored into the blueprint when present.
-/// Preferred path: Grok vision classifies each illustrated page → which cast appears.
-/// pipeline_state.character_plates.sorted_by_character records completion.
+/// Order of attack: cast <c>source_image_pages</c> → OCR name hits in <c>book_full.txt</c>
+/// (neighbor art pages) → optional Grok vision on remaining art (early-stop at 3/character) →
+/// heuristic fill for empties. pipeline_state.character_plates.sorted_by_character records completion.
 /// </summary>
 public sealed class CharacterBookPlateService
 {
@@ -117,23 +118,54 @@ public sealed class CharacterBookPlateService
         if (fromPages > 0)
             onProgress?.Invoke($"Seeded {fromPages} plate hit(s) from cast source_image_pages…");
 
-        var method = fromPages > 0 ? "source_image_pages" : "heuristic";
+        // OCR text (book_full.txt already produced at import) → name hit → neighbor art pages
+        var ocrPages = await BookOcrPlateShortlist.TryLoadAsync(projectDir, ct).ConfigureAwait(false);
+        var fromOcr = 0;
+        if (ocrPages.Count > 0)
+        {
+            fromOcr = SeedScoresFromOcrNeighbors(scores, inventory, seeds, ocrPages, onlyCharKey, maxPerCharacter: 3);
+            if (fromOcr > 0)
+                onProgress?.Invoke(
+                    $"OCR text→art neighbors: {fromOcr} plate hit(s) from {BookOcrPlateShortlist.BookFullFileName}…");
+        }
+        else
+        {
+            onProgress?.Invoke("No book_full.txt OCR — skipping text→art neighbor shortlist");
+        }
+
+        var methodParts = new List<string>();
+        if (fromPages > 0) methodParts.Add("source_image_pages");
+        if (fromOcr > 0) methodParts.Add("ocr_neighbor");
+        var method = methodParts.Count > 0 ? string.Join("+", methodParts) : "heuristic";
         var wantGrok = useGrok && _vision.IsConfigured && string.IsNullOrWhiteSpace(onlyCharKey);
         if (useGrok && !_vision.IsConfigured)
-            onProgress?.Invoke("XAI_API_KEY missing — using page seeds / heuristic plate sort");
+            onProgress?.Invoke("XAI_API_KEY missing — using page seeds / OCR / heuristic plate sort");
 
-        if (wantGrok)
+        // If OCR (+ source pages) already filled every cast member to 3, skip vision API entirely
+        var ocrComplete = cast.All(c =>
+            scores.TryGetValue(c.Key, out var list) && list.Count >= 3);
+
+        if (wantGrok && !ocrComplete)
         {
-            method = fromPages > 0 ? "source_pages+grok_vision" : "grok_vision";
-            var toScan = RankIllustrationFirst(inventory).Take(Math.Clamp(maxImages, 4, 64)).ToList();
+            method = string.IsNullOrEmpty(method) || method == "heuristic"
+                ? "grok_vision"
+                : method + "+grok_vision";
+            var toScan = BuildVisionScanList(inventory, scores, seeds, ocrPages, Math.Clamp(maxImages, 4, 64));
             onProgress?.Invoke(
-                $"Grok vision: classifying {toScan.Count} book image(s) for {cast.Count} character(s)…");
+                $"Grok vision: classifying up to {toScan.Count} book image(s) for {cast.Count} character(s) (OCR shortlist first)…");
             result.ImagesClassified = 0;
             result.ImagesSkippedText = 0;
 
             for (var i = 0; i < toScan.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
+                if (CastScoresComplete(scores, cast, maxPerCharacter: 3))
+                {
+                    onProgress?.Invoke(
+                        $"All cast have {3} plate candidate(s) — stopping vision early ({result.ImagesClassified} image(s) scanned)");
+                    break;
+                }
+
                 var row = toScan[i];
                 onProgress?.Invoke(
                     $"Grok vision {i + 1}/{toScan.Count}: {Path.GetFileName(row.AbsPath)} (p{row.Page})…");
@@ -153,6 +185,7 @@ public sealed class CharacterBookPlateService
                     var bestMatch = PickBestMatch(cls);
                     if (bestMatch is null) continue;
                     if (!scores.TryGetValue(bestMatch.Key, out var list)) continue;
+                    if (list.Count >= 3) continue; // already full
                     list.Add((row, bestMatch.Confidence));
                 }
                 catch (OperationCanceledException) { throw; }
@@ -175,11 +208,18 @@ public sealed class CharacterBookPlateService
                     .ConfigureAwait(false);
             }
         }
-        else
+        else if (wantGrok && ocrComplete)
         {
-            method = fromPages > 0 ? "source_image_pages+heuristic" : "heuristic";
-            onProgress?.Invoke("Heuristic plate sort (cast pages + illustration ranking)…");
-            await ApplyHeuristicScoresAsync(scores, inventory, seeds, onlyCharKey, onlyEmpty: fromPages > 0, ct: ct)
+            onProgress?.Invoke("OCR shortlist already filled cast (3 each) — skipping vision API");
+            method += method.Contains("ocr", StringComparison.Ordinal) ? "" : "+ocr_neighbor";
+        }
+        else if (!ocrComplete)
+        {
+            method = fromPages > 0 || fromOcr > 0 ? method + "+heuristic" : "heuristic";
+            onProgress?.Invoke("Heuristic plate sort (OCR neighbors + cast pages + illustration ranking)…");
+            await ApplyHeuristicScoresAsync(
+                    scores, inventory, seeds, onlyCharKey,
+                    onlyEmpty: fromPages > 0 || fromOcr > 0, ct: ct)
                 .ConfigureAwait(false);
         }
 
@@ -333,6 +373,96 @@ public sealed class CharacterBookPlateService
         onProgress?.Invoke(
             $"Done ({method}): updated={result.CharactersUpdated} skipped={result.CharactersSkipped}");
         return result;
+    }
+
+    /// <summary>
+    /// High-confidence scores from OCR name hits → neighboring art pages (book_full.txt).
+    /// </summary>
+    private static int SeedScoresFromOcrNeighbors(
+        Dictionary<string, List<(BookImageRow Row, double Score)>> scores,
+        List<BookImageRow> inventory,
+        JsonObject seeds,
+        List<BookOcrPlateShortlist.PageText> ocrPages,
+        string? onlyCharKey,
+        int maxPerCharacter)
+    {
+        var hits = 0;
+        var byPage = inventory
+            .Where(r => r.Page > 0 && !IsLikelyTextLayout(r))
+            .GroupBy(r => r.Page)
+            .ToDictionary(g => g.Key, g => RankIllustrationFirst(g).ToList());
+
+        foreach (var (key, seedNode) in seeds)
+        {
+            if (onlyCharKey is { Length: > 0 } &&
+                !string.Equals(key, onlyCharKey, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (seedNode is not JsonObject seed) continue;
+            if (IsVoiceOnly(key, seed)) continue;
+            if (!scores.TryGetValue(key, out var list)) continue;
+
+            var aliases = BookOcrPlateShortlist.AliasesForSeed(key, seed);
+            var pages = BookOcrPlateShortlist.ShortlistArtPages(ocrPages, aliases, maxPerCharacter);
+            foreach (var pg in pages)
+            {
+                if (!byPage.TryGetValue(pg, out var rows) || rows.Count == 0) continue;
+                var row = rows[0];
+                // Avoid duplicate page rows
+                if (list.Any(x => x.Row.Page == pg ||
+                                  x.Row.AbsPath.Equals(row.AbsPath, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                list.Add((row, 0.93)); // high confidence: OCR name → art neighbor
+                hits++;
+            }
+        }
+        return hits;
+    }
+
+    /// <summary>Prefer OCR-shortlisted art pages, then remaining illustrated inventory.</summary>
+    private static List<BookImageRow> BuildVisionScanList(
+        List<BookImageRow> inventory,
+        Dictionary<string, List<(BookImageRow Row, double Score)>> scores,
+        JsonObject seeds,
+        List<BookOcrPlateShortlist.PageText> ocrPages,
+        int maxImages)
+    {
+        var priorityPages = new HashSet<int>();
+        if (ocrPages.Count > 0)
+        {
+            foreach (var (key, seedNode) in seeds)
+            {
+                if (seedNode is not JsonObject seed) continue;
+                if (IsVoiceOnly(key, seed)) continue;
+                // Still need more plates for this cast?
+                var have = scores.TryGetValue(key, out var list) ? list.Count : 0;
+                if (have >= 3) continue;
+                var aliases = BookOcrPlateShortlist.AliasesForSeed(key, seed);
+                foreach (var pg in BookOcrPlateShortlist.ShortlistArtPages(ocrPages, aliases, maxPlates: 6))
+                    priorityPages.Add(pg);
+            }
+        }
+
+        var art = inventory.Where(r => !IsLikelyTextLayout(r)).ToList();
+        var head = RankIllustrationFirst(art.Where(r => r.Page > 0 && priorityPages.Contains(r.Page)));
+        var tail = RankIllustrationFirst(art.Where(r => r.Page <= 0 || !priorityPages.Contains(r.Page)));
+        return head.Concat(tail)
+            .GroupBy(r => r.AbsPath, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .Take(maxImages)
+            .ToList();
+    }
+
+    private static bool CastScoresComplete(
+        Dictionary<string, List<(BookImageRow Row, double Score)>> scores,
+        List<CharacterClassifyHint> cast,
+        int maxPerCharacter)
+    {
+        foreach (var c in cast)
+        {
+            if (!scores.TryGetValue(c.Key, out var list) || list.Count < maxPerCharacter)
+                return false;
+        }
+        return cast.Count > 0;
     }
 
     /// <summary>

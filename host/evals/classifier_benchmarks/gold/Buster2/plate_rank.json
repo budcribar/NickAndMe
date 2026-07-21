@@ -1,0 +1,66 @@
+{
+  "schema": "classifier_gold.v1",
+  "task": "plate_rank",
+  "projectId": "Buster2",
+  "curated": true,
+  "curated_at": "2026-07-21",
+  "notes": "Pilot: Buster on odds 1..15; one bunny on page 13 only (Character_Bunnies). Text rank of basenames + description.",
+  "metric": "mean_recall_at_3_capped",
+  "candidates": [
+    "page_001_render.png",
+    "page_002_render.png",
+    "page_003_render.png",
+    "page_004_render.png",
+    "page_005_render.png",
+    "page_006_render.png",
+    "page_007_render.png",
+    "page_008_render.png",
+    "page_009_render.png",
+    "page_010_render.png",
+    "page_011_render.png",
+    "page_012_render.png",
+    "page_013_render.png",
+    "page_014_render.png",
+    "page_015_render.png"
+  ],
+  "labels": [
+    {
+      "character_key": "Character_Buster",
+      "description": "Small black-and-white companion dog; short smooth coat with clear black-and-white patches; floppy ears; bright dark eyes; compact build; expressive face.",
+      "visual_lock": "Always a small black-and-white short-coated dog with floppy ears and bright dark eyes. No breed drift, no solid-color coat, no loss of black-and-white pattern.",
+      "gold_pages": [
+        1,
+        3,
+        5,
+        7,
+        9,
+        11,
+        13,
+        15
+      ],
+      "gold_files": [
+        "page_001_render.png",
+        "page_003_render.png",
+        "page_005_render.png",
+        "page_007_render.png",
+        "page_009_render.png",
+        "page_011_render.png",
+        "page_013_render.png",
+        "page_015_render.png"
+      ],
+      "note": "Buster on odd pages 1..15"
+    },
+    {
+      "character_key": "Character_Bunnies",
+      "description": "Small live rabbits; soft fur in natural browns and grays with white accents; upright alert ears; compact bodies.",
+      "visual_lock": "Always ordinary small rabbits with soft natural fur and upright ears; no cartoon mash-up species, no costume.",
+      "gold_pages": [
+        13
+      ],
+      "gold_files": [
+        "page_013_render.png"
+      ],
+      "note": "One bunny on page 13 only (not p1/p2/p3)."
+    }
+  ]
+}

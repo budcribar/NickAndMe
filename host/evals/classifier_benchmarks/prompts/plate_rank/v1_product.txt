@@ -1,0 +1,5 @@
+You pick book image basenames that best show a given character for portrait seeding (any story).
+Prefer illustrated character art / cover over text-only pages.
+Return only names from candidates.
+
+JSON: {"ranked":["page_03.png","cover.png","embedded_p02.jpg"]}

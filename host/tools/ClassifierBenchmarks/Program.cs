@@ -188,8 +188,10 @@ static async Task<int> CmdRunAsync(BenchPaths paths, string[] args)
                                 paths, cfg.ProjectId, model, temperature, prompt, chat),
                             "extend_cut" => await TaskRunners.RunExtendCutAsync(
                                 paths, cfg.ProjectId, model, temperature, prompt, chat),
+                            "plate_rank" => await TaskRunners.RunPlateRankAsync(
+                                paths, cfg.ProjectId, model, temperature, prompt, chat),
                             _ => throw new InvalidOperationException(
-                                $"Unknown task '{task}'. Supported: ambient_sfx, species_kind, onscreen_cast, silent_beat_action, extend_cut"),
+                                $"Unknown task '{task}'. Supported: ambient_sfx, species_kind, onscreen_cast, silent_beat_action, extend_cut, plate_rank"),
                         };
 
                         run.Results.Add(result);

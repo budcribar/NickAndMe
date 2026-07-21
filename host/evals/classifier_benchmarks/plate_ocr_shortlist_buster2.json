@@ -1,0 +1,22 @@
+{
+  "algorithm": "BookOcrPlateShortlist (product)",
+  "results": {
+    "Character_Buster": [
+      1,
+      3,
+      5
+    ],
+    "Character_Bunnies": [
+      13
+    ]
+  },
+  "busterHits": [
+    1,
+    3,
+    5
+  ],
+  "bunnyHits": [
+    13
+  ],
+  "pass": true
+}

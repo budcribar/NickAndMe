@@ -1,0 +1,79 @@
+{
+  "schema_version": "cast_seeds.v1",
+  "character_seed_tokens": {
+    "Character_Buster": {
+      "description": "Small black-and-white companion dog; short smooth coat with clear black-and-white patches; floppy ears; bright dark eyes; compact build; expressive face.",
+      "canonical_given_name": "Buster",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "Buster (nonverbal dog)",
+      "voice_profile": "noise only no speech",
+      "reference_image_placeholder": "character_buster_ref.png",
+      "visual_lock": "Always a small black-and-white short-coated dog with floppy ears and bright dark eyes. No breed drift, no solid-color coat, no loss of black-and-white pattern.",
+      "wardrobe_always": [
+        "snug black-and-white pajama top and bottoms after hallway dressing beat \u2014 not base portrait"
+      ],
+      "source_image_pages": [
+        1,
+        3,
+        9
+      ],
+      "design_reference_images": [
+        "assets/characters/character_buster_bookref_1.png",
+        "assets/characters/character_buster_bookref_2.png",
+        "assets/characters/character_buster_bookref_3.png"
+      ],
+      "book_reference_images": [
+        "assets/characters/character_buster_bookref_1.png",
+        "assets/characters/character_buster_bookref_2.png",
+        "assets/characters/character_buster_bookref_3.png"
+      ]
+    },
+    "Character_Momma": {
+      "description": "Adult woman; friendly open facial expression; soft hair; default at-home clothes (soft top or sweater, comfortable pants or similar lounge wear) in muted warm colors.",
+      "canonical_given_name": "Momma",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "Momma",
+      "voice_profile": "Adult female; warm mid pitch; gentle clear pace; kind but firm energy; same calm parental voice every scene.",
+      "reference_image_placeholder": "character_momma_ref.png",
+      "visual_lock": "Same adult mother figure throughout: friendly open facial expression, soft hair, cozy at-home wardrobe in soft warm tones.",
+      "wardrobe_always": [
+        "cozy home lounge clothes in soft warm colors"
+      ],
+      "source_image_pages": []
+    },
+    "Character_Daddy": {
+      "description": "Adult man; relaxed face; soft sleepwear or cozy home clothes.",
+      "canonical_given_name": "Daddy",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "Daddy (mostly silent)",
+      "voice_profile": "Adult male; low soft presence; little or no dialogue; if any sound, quiet sleepy breath; calm still energy. Barritone",
+      "reference_image_placeholder": "character_daddy_ref.png",
+      "visual_lock": "Same adult father figure throughout: relaxed face, soft sleepwear or cozy home clothes. No wardrobe or age drift.",
+      "wardrobe_always": [
+        "soft sleepwear or cozy bed clothes \u2014 under-covers beat not base portrait"
+      ],
+      "source_image_pages": []
+    },
+    "Character_Bunnies": {
+      "description": "Small live rabbits; soft fur in natural browns and grays with white accents; upright alert ears; compact bodies.",
+      "canonical_given_name": "Bunnies",
+      "display_name_policy": "ok_anytime",
+      "voice_label": "Bunnies (nonverbal)",
+      "voice_profile": "Non-speaking animals: light thumps and rustle only if needed; quick skittish energy; consistent small-rabbit presence in dream only.",
+      "reference_image_placeholder": "character_bunnies_ref.png",
+      "visual_lock": "Always ordinary small rabbits with soft natural fur and upright ears; no cartoon mash-up species, no costume.",
+      "wardrobe_always": [],
+      "source_image_pages": []
+    },
+    "Character_Narrator": {
+      "description": "Pure voice-over narrator; no on-screen body.",
+      "canonical_given_name": "Narrator",
+      "display_name_policy": "never_on_screen",
+      "voice_label": "Narrator",
+      "voice_profile": "calm and soothing",
+      "reference_image_placeholder": "character_narrator_ref.png",
+      "wardrobe_always": [],
+      "source_image_pages": []
+    }
+  }
+}
