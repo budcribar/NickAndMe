@@ -441,10 +441,12 @@ public sealed class Stage2PlannerService
                 "(same render family as animal hero) -- not photoreal, not live-action";
         }
 
-        // Only inject Character_* token when neither the key nor a bare display name is present
-        // (avoids "Character_Narrator Candlelight. A pale NARRATOR faces us…").
+        // Attach subject as readable display name — never "Character_X He steadies…"
         if (!string.IsNullOrEmpty(primary) && !VisualMentionsSubject(ve, primary))
-            ve = $"{primary} {ve}".Trim();
+        {
+            var display = DisplayNameForKey(primary, charSeeds);
+            ve = AttachPrimaryToVisual(ve, primary, display);
+        }
 
         var others = cast.Where(t => t != primary && !ve.Contains(t, StringComparison.Ordinal)).Take(3).ToList();
         var othersBit = others.Count > 0 ? $"also on screen: {string.Join(", ", others)}" : "";
@@ -505,6 +507,74 @@ public sealed class Stage2PlannerService
             Regex.IsMatch(visual, $@"\b{Regex.Escape(compact)}\b", RegexOptions.IgnoreCase))
             return true;
         return false;
+    }
+
+    /// <summary>
+    /// Join primary subject into action prose as a display name.
+    /// Pronoun leads (He/She/They…) become named subjects — never <c>Character_* He …</c>.
+    /// </summary>
+    public static string AttachPrimaryToVisual(
+        string? visualEvent,
+        string primaryKey,
+        string? displayName = null)
+    {
+        var ve = (visualEvent ?? "").Trim();
+        if (ve.Length == 0)
+            return ve;
+        if (string.IsNullOrWhiteSpace(primaryKey))
+            return ve;
+        if (VisualMentionsSubject(ve, primaryKey))
+            return ve;
+
+        var name = (displayName ?? "").Trim();
+        if (name.Length == 0)
+        {
+            var bare = primaryKey.StartsWith("Character_", StringComparison.OrdinalIgnoreCase)
+                ? primaryKey["Character_".Length..]
+                : primaryKey;
+            name = bare.Replace('_', ' ').Trim();
+        }
+        if (name.Length == 0)
+            return ve;
+
+        // He steadies… / She turns… / They wait…
+        var m = Regex.Match(
+            ve,
+            @"^(He|She|They|Him|Her|Them)\b(\s+)(?<rest>.+)$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        if (m.Success)
+            return $"{name} {m.Groups["rest"].Value.Trim()}".Trim();
+
+        // His hands… / Her eyes…
+        m = Regex.Match(
+            ve,
+            @"^(His|Her|Their)\b(\s+)(?<rest>.+)$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        if (m.Success)
+            return $"{name}'s {m.Groups["rest"].Value.Trim()}".Trim();
+
+        // Prefer human-readable name in action (CAST COUNT / variables still use Character_*)
+        return $"{name} {ve}".Trim();
+    }
+
+    private static string DisplayNameForKey(
+        string primaryKey,
+        Dictionary<string, object?> charSeeds)
+    {
+        if (charSeeds.TryGetValue(primaryKey, out var seed) &&
+            seed is Dictionary<string, object?> d)
+        {
+            var cn = CoerceString(d.TryGetValue("canonical_given_name", out var c) ? c : null);
+            if (!string.IsNullOrWhiteSpace(cn))
+                return cn!;
+            var vl = CoerceString(d.TryGetValue("voice_label", out var v) ? v : null);
+            if (!string.IsNullOrWhiteSpace(vl))
+                return vl!.Replace('_', ' ');
+        }
+        var bare = primaryKey.StartsWith("Character_", StringComparison.OrdinalIgnoreCase)
+            ? primaryKey["Character_".Length..]
+            : primaryKey;
+        return bare.Replace('_', ' ').Trim();
     }
 
     private static string JoinVisualPromptParts(IEnumerable<(int Order, string Text)> parts)

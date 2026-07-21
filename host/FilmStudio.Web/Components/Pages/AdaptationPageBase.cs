@@ -451,8 +451,9 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
             "import_book" or "fix_book_text" => "/adaptation/import",
             "sign_screenplay" or "draft_screenplay" or "run_stage1" => "/adaptation/screenplay",
             "pin_characters" => "/characters",
-            "run_stage2" or "replan_stage2" => "/adaptation/shots",
-            "generate_clips" or "done" => "/scenes",
+            // Shot plan is still an Adaptation step (rebuild lives here). Scenes has its own nav item —
+            // do not bounce /adaptation → /scenes or operators cannot find Rebuild shot plan.
+            "run_stage2" or "replan_stage2" or "generate_clips" or "done" => "/adaptation/shots",
             _ => "/adaptation/import",
         };
     }

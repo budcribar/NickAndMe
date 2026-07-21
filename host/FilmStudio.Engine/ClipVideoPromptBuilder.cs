@@ -306,6 +306,7 @@ public static class ClipVideoPromptBuilder
             "",
             RegexOptions.IgnoreCase);
         v = Regex.Replace(v, @"\bNo extra people\.\s*", "", RegexOptions.IgnoreCase);
+        v = StripFountainLeakage(v);
         v = SimplifyVisual(v);
         if (onScreenKeys is { Count: > 0 })
         {
@@ -315,6 +316,49 @@ public static class ClipVideoPromptBuilder
                     v = $"{v} {key} is on screen.".Trim();
             }
         }
+        return v.Trim();
+    }
+
+    /// <summary>
+    /// Remove leftover fountain markup and awkward Character_* + pronoun glue from action prose.
+    /// </summary>
+    public static string StripFountainLeakage(string visual)
+    {
+        if (string.IsNullOrWhiteSpace(visual)) return "";
+        var v = visual;
+
+        // (CONT'D) / (CONTINUED) / (V.O.) / (O.S.) / (O.C.) — screenplay extensions
+        v = Regex.Replace(v, @"\s*\(\s*CONT'?D\s*\)", "", RegexOptions.IgnoreCase);
+        v = Regex.Replace(v, @"\s*\(\s*CONTINUED\s*\)", "", RegexOptions.IgnoreCase);
+        v = Regex.Replace(v, @"\s*\(\s*V\s*\.?\s*O\s*\.?\s*\)", "", RegexOptions.IgnoreCase);
+        v = Regex.Replace(v, @"\s*\(\s*O\s*\.?\s*S\s*\.?\s*\)", "", RegexOptions.IgnoreCase);
+        v = Regex.Replace(v, @"\s*\(\s*O\s*\.?\s*C\s*\.?\s*\)", "", RegexOptions.IgnoreCase);
+
+        // "Character_Narrator He steadies…" → "Character_Narrator steadies…"
+        v = Regex.Replace(
+            v,
+            @"\b(Character_[A-Za-z0-9_]+)\s+(He|She|They)\s+",
+            "$1 ",
+            RegexOptions.IgnoreCase);
+        // "Character_Narrator His hands…" → "Character_Narrator hands…" is wrong;
+        // drop possessive pronoun after key: "Character_X His " → "Character_X "
+        v = Regex.Replace(
+            v,
+            @"\b(Character_[A-Za-z0-9_]+)\s+(His|Her|Their)\s+",
+            "$1 ",
+            RegexOptions.IgnoreCase);
+
+        // Duplicate token: "Character_X Character_X"
+        v = Regex.Replace(
+            v,
+            @"\b(Character_[A-Za-z0-9_]+)(\s+\1)+\b",
+            "$1",
+            RegexOptions.IgnoreCase);
+
+        // "NARRATOR (CONT'D)" already stripped parens — collapse double spaces / empty " ."
+        v = Regex.Replace(v, @"\s{2,}", " ");
+        v = Regex.Replace(v, @"\s+\.", ".");
+        v = Regex.Replace(v, @"\.\s*\.", ".");
         return v.Trim();
     }
 
@@ -691,6 +735,7 @@ public static class ClipVideoPromptBuilder
 
     private static string SimplifyVisual(string visual)
     {
+        visual = StripFountainLeakage(visual);
         visual = Regex.Replace(visual, @"\s+", " ").Trim();
         return visual;
     }

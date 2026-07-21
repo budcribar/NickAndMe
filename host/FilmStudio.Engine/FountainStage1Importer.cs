@@ -146,9 +146,9 @@ public static class FountainStage1Importer
 
             var charKey = EnsureCharacter(charSeeds, pendingChar);
             EnsureOnScreen(curScene, charKey);
-            var visual = string.IsNullOrWhiteSpace(pendingParen)
-                ? $"{pendingChar} speaks."
-                : $"{pendingChar} ({pendingParen}).";
+            // Prose uses clean display name — never "NARRATOR (CONT'D) speaks."
+            var displayName = CleanCharacterName(pendingChar);
+            var visual = BuildDialogueVisualEvent(displayName, pendingParen, pendingChar);
             var delivery = IsOffScreen(pendingChar) ? "voiceover_internal" : "spoken_on_camera";
             // Parenthetical may carry light sfx ("whispering", rare); usually empty for dialogue
             var (_, parenSfx) = InferAmbientAndSfx(pendingParen ?? "");
@@ -168,8 +168,8 @@ public static class FountainStage1Importer
                     ["beat_id"] = $"b{beatIndex}",
                     ["intent"] = Trunc(
                         parts.Count > 1
-                            ? $"Dialogue: {pendingChar} ({p + 1}/{parts.Count})"
-                            : $"Dialogue: {pendingChar}",
+                            ? $"Dialogue: {displayName} ({p + 1}/{parts.Count})"
+                            : $"Dialogue: {displayName}",
                         120),
                     ["visual_event"] = visual,
                     ["shot_scale_hint"] = "medium close",
@@ -633,6 +633,36 @@ public static class FountainStage1Importer
                 : char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant()));
         }
         return name;
+    }
+
+    /// <summary>
+    /// Filmable dialogue visual — clean display name, no fountain CONT'D / V.O. markup.
+    /// </summary>
+    public static string BuildDialogueVisualEvent(
+        string displayName,
+        string? performanceParen,
+        string? rawCue = null)
+    {
+        var name = string.IsNullOrWhiteSpace(displayName)
+            ? CleanCharacterName(rawCue ?? "Speaker")
+            : displayName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            name = "Speaker";
+
+        // Continuation cues → "continues" reads better than "speaks" after a prior beat
+        var continued = rawCue is not null &&
+            Regex.IsMatch(rawCue, @"\bCONT", RegexOptions.IgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(performanceParen))
+        {
+            var p = performanceParen.Trim().Trim('(', ')').Trim();
+            if (p.Length > 0 &&
+                !Regex.IsMatch(p, @"^(CONT|CONTINUED|V\.?\s*O\.?|O\.?\s*S\.?|O\.?\s*C\.?)$",
+                    RegexOptions.IgnoreCase))
+                return $"{name} ({p}).";
+        }
+
+        return continued ? $"{name} continues." : $"{name} speaks.";
     }
 
     private static bool IsOffScreen(string name) =>

@@ -8,7 +8,7 @@
     "resolution": "720p",
     "frame_rate": 24,
     "directorial_treatment": "Cinematic lighting, clear coverage, natural performances.",
-    "total_runtime_target_seconds": 600,
+    "total_runtime_target_seconds": 708,
     "character_seed_tokens": {
       "Character_Narrator": {
         "description": "Lean man of middle years (about 35-45), pale sallow skin, dark disordered hair, sharp cheekbones, wide-set eyes unnaturally bright with an intense gleam; thin lips. Mid-19th-century men's dress: dark waistcoat unbuttoned at the throat over a white shirt, dark trousers, period boots; no modern detail.",
@@ -134,10 +134,10 @@
       "scene_filename": "sc01_confession_room",
       "transition_type": "fade_in",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 40,
+      "total_estimated_duration_seconds": 84,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 40
+        "duration_seconds": 84
       },
       "veo_clips": [
         {
@@ -163,15 +163,15 @@
         },
         {
           "clip_number": 2,
-          "timestamp": "00:10-00:20",
+          "timestamp": "00:10-00:15",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"True!-nervous-very, very dreadfully nervous I had been and am; but why will you say that I am mad? The disease had sharpened my senses-not destroyed-not dulled them. Above all was the sense of hearing acute. I heard all things in the heaven and in the earth. I heard many things in hell. How, then, am I mad? Hearken! and observe how healthily-how calmly I can tell you the whole story.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"True!-nervous-very, very dreadfully nervous I had been and am;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "True!-nervous-very, very dreadfully nervous I had been and am; but why will you say that I am mad? The disease had sharpened my senses-not destroyed-not dulled them. Above all was the sense of hearing acute. I heard all things in the heaven and in the earth. I heard many things in hell. How, then, am I mad? Hearken! and observe how healthily-how calmly I can tell you the whole story.",
+            "dialogue": "True!-nervous-very, very dreadfully nervous I had been and am;",
             "sfx": "",
             "ambient": ""
           },
@@ -180,11 +180,137 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 5
         },
         {
           "clip_number": 3,
-          "timestamp": "00:20-00:30",
+          "timestamp": "00:15-00:20",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"but why will you say that I am mad?\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "but why will you say that I am mad?",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:20-00:25",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"The disease had sharpened my senses-not destroyed-not dulled them.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "The disease had sharpened my senses-not destroyed-not dulled them.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 5,
+          "timestamp": "00:25-00:29",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Above all was the sense of hearing acute.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Above all was the sense of hearing acute.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 6,
+          "timestamp": "00:29-00:37",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I heard all things in the heaven and in the earth. I heard many things in hell.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I heard all things in the heaven and in the earth. I heard many things in hell.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 7,
+          "timestamp": "00:37-00:40",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"How, then, am I mad? Hearken!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "How, then, am I mad? Hearken!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b7",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 8,
+          "timestamp": "00:40-00:46",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"and observe how healthily-how calmly I can tell you the whole story.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "and observe how healthily-how calmly I can tell you the whole story.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b8",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 6
+        },
+        {
+          "clip_number": 9,
+          "timestamp": "00:46-00:55",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Confession_Room",
           "visual_prompt": "INT. CONFESSION ROOM - NIGHT. Character_Narrator He steadies his hands on his knees. A thin smile. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -196,33 +322,96 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b3",
+          "stage1_beat_id": "b9",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 9
         },
         {
-          "clip_number": 4,
-          "timestamp": "00:30-00:40",
+          "clip_number": 10,
+          "timestamp": "00:55-01:01",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"It is impossible to say how first the idea entered my brain; but once conceived, it haunted me day and night. Object there was none. Passion there was none. I loved the old man. He had never wronged me. He had never given me insult. For his gold I had no desire. I think it was his eye! yes, it was this!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"It is impossible to say how first the idea entered my brain;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "It is impossible to say how first the idea entered my brain; but once conceived, it haunted me day and night. Object there was none. Passion there was none. I loved the old man. He had never wronged me. He had never given me insult. For his gold I had no desire. I think it was his eye! yes, it was this!",
+            "dialogue": "It is impossible to say how first the idea entered my brain;",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b4",
+          "stage1_beat_id": "b10",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 6
+        },
+        {
+          "clip_number": 11,
+          "timestamp": "01:01-01:09",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"but once conceived, it haunted me day and night. Object there was none. Passion there was none.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "but once conceived, it haunted me day and night. Object there was none. Passion there was none.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b11",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 12,
+          "timestamp": "01:09-01:16",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"I loved the old man. He had never wronged me. He had never given me insult.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I loved the old man. He had never wronged me. He had never given me insult.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b12",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 13,
+          "timestamp": "01:16-01:24",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"For his gold I had no desire. I think it was his eye! yes, it was this!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "For his gold I had no desire. I think it was his eye! yes, it was this!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b13",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
         }
       ],
       "stage1_scene_number": 1,
@@ -230,7 +419,16 @@
         "b1",
         "b2",
         "b3",
-        "b4"
+        "b4",
+        "b5",
+        "b6",
+        "b7",
+        "b8",
+        "b9",
+        "b10",
+        "b11",
+        "b12",
+        "b13"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -247,10 +445,10 @@
       "scene_filename": "sc02_old_man_s_bedroom",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 40,
+      "total_estimated_duration_seconds": 44,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 40
+        "duration_seconds": 44
       },
       "veo_clips": [
         {
@@ -276,15 +474,15 @@
         },
         {
           "clip_number": 2,
-          "timestamp": "00:10-00:20",
+          "timestamp": "00:10-00:17",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"He had the eye of a vulture-a pale blue eye, with a film over it. Whenever it fell upon me, my blood ran cold.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"He had the eye of a vulture-a pale blue eye, with a film over it.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "He had the eye of a vulture-a pale blue eye, with a film over it. Whenever it fell upon me, my blood ran cold.",
+            "dialogue": "He had the eye of a vulture-a pale blue eye, with a film over it.",
             "sfx": "",
             "ambient": ""
           },
@@ -293,11 +491,32 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 7
         },
         {
           "clip_number": 3,
-          "timestamp": "00:20-00:30",
+          "timestamp": "00:17-00:22",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"Whenever it fell upon me, my blood ran cold.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Whenever it fell upon me, my blood ran cold.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:22-00:31",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR - younger in bearing only by composure, same face and waistcoat - freezes in the doorway under that gaze. His blood drains from his face. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -309,33 +528,54 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b3",
+          "stage1_beat_id": "b4",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 9
         },
         {
-          "clip_number": 4,
-          "timestamp": "00:30-00:40",
+          "clip_number": 5,
+          "timestamp": "00:31-00:39",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And so by degrees-very gradually-I made up my mind to take the life of the old man, and thus rid myself of the eye forever.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And so by degrees - very gradually - I made up my mind to take the life of the old\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "And so by degrees-very gradually-I made up my mind to take the life of the old man, and thus rid myself of the eye forever.",
+            "dialogue": "And so by degrees - very gradually - I made up my mind to take the life of the old",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b4",
+          "stage1_beat_id": "b5",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 6,
+          "timestamp": "00:39-00:44",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"man, and thus rid myself of the eye forever.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "man, and thus rid myself of the eye forever.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
         }
       ],
       "stage1_scene_number": 2,
@@ -343,7 +583,9 @@
         "b1",
         "b2",
         "b3",
-        "b4"
+        "b4",
+        "b5",
+        "b6"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -360,23 +602,23 @@
       "scene_filename": "sc03_confession_room",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 10,
+      "total_estimated_duration_seconds": 27,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 10
+        "duration_seconds": 27
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:08",
           "veo_continuation_source": "none",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Now this is the point. You fancy me mad. Madmen know nothing. But you should have seen me. You should have seen how wisely I proceeded-with what caution-with what foresight-with what dissimulation I went to work! I was never kinder to the old man than during the whole week before I killed him.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Now this is the point. You fancy me mad. Madmen know nothing. But you should have seen me.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Now this is the point. You fancy me mad. Madmen know nothing. But you should have seen me. You should have seen how wisely I proceeded-with what caution-with what foresight-with what dissimulation I went to work! I was never kinder to the old man than during the whole week before I killed him.",
+            "dialogue": "Now this is the point. You fancy me mad. Madmen know nothing. But you should have seen me.",
             "sfx": "",
             "ambient": ""
           },
@@ -385,12 +627,78 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:08-00:16",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"You should have seen how wisely I proceeded - with what caution - with what foresight - with what dissimulation I\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "You should have seen how wisely I proceeded - with what caution - with what foresight - with what dissimulation I",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:16-00:19",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"went to work!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "went to work!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:19-00:27",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I was never kinder to the old man than during the whole week before I killed him.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I was never kinder to the old man than during the whole week before I killed him.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
         }
       ],
       "stage1_scene_number": 3,
       "stage1_beat_map": [
-        "b1"
+        "b1",
+        "b2",
+        "b3",
+        "b4"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -416,7 +724,7 @@
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:09",
+          "timestamp": "00:00-00:08",
           "veo_continuation_source": "none",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. Morning light through a crack in the shutters. NARRATOR enters boldly with a tray, hearty, smiling. OLD MAN in bed, the filmed eye half-lidded. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -434,11 +742,11 @@
             "Character_Narrator",
             "Character_Old_Man"
           ],
-          "duration_seconds": 9
+          "duration_seconds": 8
         },
         {
           "clip_number": 2,
-          "timestamp": "00:09-00:14",
+          "timestamp": "00:08-00:13",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"And how have you passed the night, my good old man?\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -459,7 +767,7 @@
         },
         {
           "clip_number": 3,
-          "timestamp": "00:14-00:17",
+          "timestamp": "00:13-00:16",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. OLD MAN speaks. Character_Old_Man ON CAMERA lip-syncs \"Well enough. Well enough.\". Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -480,7 +788,7 @@
         },
         {
           "clip_number": 4,
-          "timestamp": "00:17-00:25",
+          "timestamp": "00:16-00:22",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. NARRATOR sets the tray with care. Pats the coverlet. The kindness is perfect - and false. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -497,19 +805,19 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 8
+          "duration_seconds": 6
         },
         {
           "clip_number": 5,
-          "timestamp": "00:25-00:35",
+          "timestamp": "00:22-00:30",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"So you see he would have been a very profound old man, indeed, to suspect that every night, just at twelve, I looked in upon him while he slept.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"So you see he would have been a very profound old man, indeed, to suspect that every night,\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "So you see he would have been a very profound old man, indeed, to suspect that every night, just at twelve, I looked in upon him while he slept.",
+            "dialogue": "So you see he would have been a very profound old man, indeed, to suspect that every night,",
             "sfx": "",
             "ambient": ""
           },
@@ -518,7 +826,28 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 6,
+          "timestamp": "00:30-00:35",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"just at twelve, I looked in upon him while he slept.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "just at twelve, I looked in upon him while he slept.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
         }
       ],
       "stage1_scene_number": 4,
@@ -527,7 +856,8 @@
         "b2",
         "b3",
         "b4",
-        "b5"
+        "b5",
+        "b6"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -589,15 +919,15 @@
       "scene_filename": "sc06_old_man_s_bedroom",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 50,
+      "total_estimated_duration_seconds": 60,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 50
+        "duration_seconds": 60
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:07",
           "veo_continuation_source": "none",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. Pitch black. Shutters close-fastened. NARRATOR eases through the opening, then the dark lantern, closed so no light spills. He moves with agonizing slowness. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -614,19 +944,19 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 7
         },
         {
           "clip_number": 2,
-          "timestamp": "00:10-00:20",
+          "timestamp": "00:07-00:15",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"It took me an hour to place my whole head within the opening so far that I could see him as he lay upon his bed. Ha!-would a madman have been so wise as this?\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"It took me an hour to place my whole head within the opening so far that I could\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "It took me an hour to place my whole head within the opening so far that I could see him as he lay upon his bed. Ha!-would a madman have been so wise as this?",
+            "dialogue": "It took me an hour to place my whole head within the opening so far that I could",
             "sfx": "",
             "ambient": ""
           },
@@ -635,11 +965,53 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
         },
         {
           "clip_number": 3,
-          "timestamp": "00:20-00:30",
+          "timestamp": "00:15-00:19",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"see him as he lay upon his bed.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "see him as he lay upon his bed.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:19-00:24",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"Ha!-would a madman have been so wise as this?\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Ha!-would a madman have been so wise as this?",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 5,
+          "timestamp": "00:24-00:31",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. Character_Narrator A single thin ray as he undoes the lantern a hair - hinges threaten to creak. The ray seeks the pillow. The OLD MAN's eye is closed in sleep. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -651,37 +1023,100 @@
             "sfx": "creak",
             "ambient": ""
           },
-          "stage1_beat_id": "b3",
+          "stage1_beat_id": "b5",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Old_Man"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 7
         },
         {
-          "clip_number": 4,
-          "timestamp": "00:30-00:40",
+          "clip_number": 6,
+          "timestamp": "00:31-00:39",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And this I did for seven long nights-every night just at midnight-but I found the eye always closed; and so it was impossible to do the work; for it was not the old man who vexed me, but his Evil Eye.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And this I did for seven long nights - every night just at midnight - but I found the eye\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "And this I did for seven long nights-every night just at midnight-but I found the eye always closed; and so it was impossible to do the work; for it was not the old man who vexed me, but his Evil Eye.",
+            "dialogue": "And this I did for seven long nights - every night just at midnight - but I found the eye",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b4",
+          "stage1_beat_id": "b6",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
         },
         {
-          "clip_number": 5,
-          "timestamp": "00:40-00:50",
+          "clip_number": 7,
+          "timestamp": "00:39-00:42",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"always closed;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "always closed;",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b7",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 8,
+          "timestamp": "00:42-00:47",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"and so it was impossible to do the work;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "and so it was impossible to do the work;",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b8",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 9,
+          "timestamp": "00:47-00:54",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"for it was not the old man who vexed me, but his Evil Eye.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "for it was not the old man who vexed me, but his Evil Eye.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b9",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 10,
+          "timestamp": "00:54-01:00",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. Character_Narrator He withdraws. The door eases shut. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -693,12 +1128,12 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b5",
+          "stage1_beat_id": "b10",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 6
         }
       ],
       "stage1_scene_number": 6,
@@ -707,7 +1142,12 @@
         "b2",
         "b3",
         "b4",
-        "b5"
+        "b5",
+        "b6",
+        "b7",
+        "b8",
+        "b9",
+        "b10"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -724,23 +1164,23 @@
       "scene_filename": "sc07_confession_room",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 10,
+      "total_estimated_duration_seconds": 23,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 10
+        "duration_seconds": 23
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:07",
           "veo_continuation_source": "none",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Upon the eighth night I was more than usually cautious in opening the door. A watch's minute hand moves more quickly than did mine. Never before that night had I felt the extent of my own powers-of my sagacity. I could scarcely contain my feelings of triumph.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Upon the eighth night I was more than usually cautious in opening the door.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Upon the eighth night I was more than usually cautious in opening the door. A watch's minute hand moves more quickly than did mine. Never before that night had I felt the extent of my own powers-of my sagacity. I could scarcely contain my feelings of triumph.",
+            "dialogue": "Upon the eighth night I was more than usually cautious in opening the door.",
             "sfx": "",
             "ambient": ""
           },
@@ -749,12 +1189,78 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:07-00:12",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"A watch's minute hand moves more quickly than did mine.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "A watch's minute hand moves more quickly than did mine.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:12-00:19",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Never before that night had I felt the extent of my own powers-of my sagacity.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Never before that night had I felt the extent of my own powers-of my sagacity.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:19-00:23",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I could scarcely contain my feelings of triumph.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I could scarcely contain my feelings of triumph.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 4
         }
       ],
       "stage1_scene_number": 7,
       "stage1_beat_map": [
-        "b1"
+        "b1",
+        "b2",
+        "b3",
+        "b4"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -908,23 +1414,23 @@
       "scene_filename": "sc10_confession_room",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 10,
+      "total_estimated_duration_seconds": 27,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 10
+        "duration_seconds": 27
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:04",
           "veo_continuation_source": "none",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I kept quite still and said nothing. For a whole hour I did not move a muscle, and in the meantime I did not hear him lie down. He was still sitting up in the bed listening;-just as I have done, night after night, hearkening to the death watches in the wall.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I kept quite still and said nothing.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "I kept quite still and said nothing. For a whole hour I did not move a muscle, and in the meantime I did not hear him lie down. He was still sitting up in the bed listening;-just as I have done, night after night, hearkening to the death watches in the wall.",
+            "dialogue": "I kept quite still and said nothing.",
             "sfx": "",
             "ambient": ""
           },
@@ -933,12 +1439,100 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:04-00:12",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"For a whole hour I did not move a muscle, and in the meantime I did not hear\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "For a whole hour I did not move a muscle, and in the meantime I did not hear",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 3,
+          "timestamp": "00:12-00:15",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"him lie down.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "him lie down.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:15-00:23",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"He was still sitting up in the bed listening ;- just as I have done, night after night, hearkening\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "He was still sitting up in the bed listening ;- just as I have done, night after night, hearkening",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b4",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 5,
+          "timestamp": "00:23-00:27",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"to the death watches in the wall.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "to the death watches in the wall.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 4
         }
       ],
       "stage1_scene_number": 10,
       "stage1_beat_map": [
-        "b1"
+        "b1",
+        "b2",
+        "b3",
+        "b4",
+        "b5"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -956,15 +1550,15 @@
       "scene_filename": "sc11_old_man_s_bedroom",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 114,
+      "total_estimated_duration_seconds": 140,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 114
+        "duration_seconds": 140
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:05",
           "veo_continuation_source": "none",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. Character_Narrator OLD MAN upright in the dark, listening. Time stretches. A slight groan - low, stifled - mortal terror, not pain. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -981,19 +1575,19 @@
           "characters_on_screen": [
             "Character_Old_Man"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 5
         },
         {
           "clip_number": 2,
-          "timestamp": "00:10-00:20",
+          "timestamp": "00:05-00:08",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I knew the sound well. Many a night, just at midnight, when all the world slept, it has welled up from my own bosom. I knew what the old man felt, and pitied him, although I chuckled at heart.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I knew the sound well.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "I knew the sound well. Many a night, just at midnight, when all the world slept, it has welled up from my own bosom. I knew what the old man felt, and pitied him, although I chuckled at heart.",
+            "dialogue": "I knew the sound well.",
             "sfx": "",
             "ambient": ""
           },
@@ -1002,40 +1596,40 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 3
         },
         {
           "clip_number": 3,
-          "timestamp": "00:20-00:30",
+          "timestamp": "00:08-00:16",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. OLD MAN (whispering to himself). Character_Old_Man ON CAMERA lip-syncs \"It is nothing but the wind in the chimney-it is only a mouse crossing the floor. It is merely a cricket which has made a single chirp.\". Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
-          "negative_prompt": "no extra unmentioned hats or jackets",
-          "audio_payload": {
-            "delivery": "spoken_on_camera",
-            "speaker": "Character_Old_Man",
-            "dialogue": "It is nothing but the wind in the chimney-it is only a mouse crossing the floor... It is merely a cricket which has made a single chirp.",
-            "sfx": "",
-            "ambient": ""
-          },
-          "stage1_beat_id": "b3",
-          "primary_subject": "Character_Old_Man",
-          "characters_on_screen": [
-            "Character_Old_Man"
-          ],
-          "duration_seconds": 10
-        },
-        {
-          "clip_number": 4,
-          "timestamp": "00:30-00:39",
-          "veo_continuation_source": "none",
-          "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"All in vain; because Death, in approaching him had stalked with his black shadow before him, and enveloped the victim.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"Many a night, just at midnight, when all the world slept, it has welled up from my own\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "All in vain; because Death, in approaching him had stalked with his black shadow before him, and enveloped the victim.",
+            "dialogue": "Many a night, just at midnight, when all the world slept, it has welled up from my own",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:16-00:19",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"bosom.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "bosom.",
             "sfx": "",
             "ambient": ""
           },
@@ -1044,11 +1638,116 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 9
+          "duration_seconds": 3
         },
         {
           "clip_number": 5,
-          "timestamp": "00:39-00:49",
+          "timestamp": "00:19-00:26",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I knew what the old man felt, and pitied him, although I chuckled at heart.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I knew what the old man felt, and pitied him, although I chuckled at heart.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 6,
+          "timestamp": "00:26-00:34",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. OLD MAN (whispering to himself). Character_Old_Man ON CAMERA lip-syncs \"It is nothing but the wind in the chimney-it is only a mouse crossing the floor.\". Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Old_Man",
+            "dialogue": "It is nothing but the wind in the chimney-it is only a mouse crossing the floor...",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Old_Man",
+          "characters_on_screen": [
+            "Character_Old_Man"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 7,
+          "timestamp": "00:34-00:39",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. OLD MAN (whispering to himself). Character_Old_Man ON CAMERA lip-syncs \"It is merely a cricket which has made a single chirp.\". Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Old_Man",
+            "dialogue": "It is merely a cricket which has made a single chirp.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b7",
+          "primary_subject": "Character_Old_Man",
+          "characters_on_screen": [
+            "Character_Old_Man"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 8,
+          "timestamp": "00:39-00:42",
+          "veo_continuation_source": "none",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"All in vain;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "All in vain;",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b8",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 9,
+          "timestamp": "00:42-00:50",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"because Death, in approaching him had stalked with his black shadow before him, and enveloped the victim.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "because Death, in approaching him had stalked with his black shadow before him, and enveloped the victim.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b9",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 10,
+          "timestamp": "00:50-00:57",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. NARRATOR, head still within the room, waits. Patient. Then - stealthily - opens a very little crevice in the lantern. A single dim ray, like the thread of a spider, shoots out and falls full upon the vulture eye. It is open - wide, wide open. NARRATOR's face in the spill of light: fury rising. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -1060,37 +1759,100 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b5",
+          "stage1_beat_id": "b10",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 7
         },
         {
-          "clip_number": 6,
-          "timestamp": "00:49-00:59",
+          "clip_number": 11,
+          "timestamp": "00:57-01:05",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I saw it with perfect distinctness-all a dull blue, with a hideous veil over it that chilled the very marrow in my bones; but I could see nothing else of the old man's face or person: for I had directed the ray as if by instinct, precisely upon the damned spot.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I saw it with perfect distinctness - all a dull blue, with a hideous veil over it that chilled\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "I saw it with perfect distinctness-all a dull blue, with a hideous veil over it that chilled the very marrow in my bones; but I could see nothing else of the old man's face or person: for I had directed the ray as if by instinct, precisely upon the damned spot.",
+            "dialogue": "I saw it with perfect distinctness - all a dull blue, with a hideous veil over it that chilled",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b6",
+          "stage1_beat_id": "b11",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
         },
         {
-          "clip_number": 7,
-          "timestamp": "00:59-01:09",
+          "clip_number": 12,
+          "timestamp": "01:05-01:08",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"the very marrow in my bones;\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "the very marrow in my bones;",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b12",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 13,
+          "timestamp": "01:08-01:16",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"but I could see nothing else of the old man's face or person: for I had directed the\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "but I could see nothing else of the old man's face or person: for I had directed the",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b13",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 14,
+          "timestamp": "01:16-01:21",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"ray as if by instinct, precisely upon the damned spot.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "ray as if by instinct, precisely upon the damned spot.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b14",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 15,
+          "timestamp": "01:21-01:27",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. A low, dull, quick sound - such as a watch makes when enveloped in cotton. The beating of the OLD MAN's heart. It quickens. Louder. Louder. NARRATOR holds the lantern motionless. Scarcely breathes. The hellish tattoo grows. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -1102,38 +1864,101 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b7",
+          "stage1_beat_id": "b15",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator",
             "Character_Old_Man"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 6
         },
         {
-          "clip_number": 8,
-          "timestamp": "01:09-01:19",
+          "clip_number": 16,
+          "timestamp": "01:27-01:31",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"The old man's terror must have been extreme! It grew louder, I say, louder every moment!-do you mark me well? And now at the dead hour of the night, amid the dreadful silence of that old house, so strange a noise as this excited me to uncontrollable terror.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"The old man's terror must have been extreme!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "The old man's terror must have been extreme! It grew louder, I say, louder every moment!-do you mark me well? And now at the dead hour of the night, amid the dreadful silence of that old house, so strange a noise as this excited me to uncontrollable terror.",
+            "dialogue": "The old man's terror must have been extreme!",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b8",
+          "stage1_beat_id": "b16",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 4
         },
         {
-          "clip_number": 9,
-          "timestamp": "01:19-01:29",
+          "clip_number": 17,
+          "timestamp": "01:31-01:37",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"It grew louder, I say, louder every moment!-do you mark me well?\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "It grew louder, I say, louder every moment!-do you mark me well?",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b17",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 6
+        },
+        {
+          "clip_number": 18,
+          "timestamp": "01:37-01:45",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And now at the dead hour of the night, amid the dreadful silence of that old house, so\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "And now at the dead hour of the night, amid the dreadful silence of that old house, so",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b18",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 19,
+          "timestamp": "01:45-01:50",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"strange a noise as this excited me to uncontrollable terror.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "strange a noise as this excited me to uncontrollable terror.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b19",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 5
+        },
+        {
+          "clip_number": 20,
+          "timestamp": "01:50-01:54",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. Character_Narrator He refrains still - some minutes longer - standing frozen while the beat fills the dark. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -1145,38 +1970,80 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b9",
+          "stage1_beat_id": "b20",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator",
             "Character_Old_Man"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 4
         },
         {
-          "clip_number": 10,
-          "timestamp": "01:29-01:39",
+          "clip_number": 21,
+          "timestamp": "01:54-01:57",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I thought the heart must burst. And now a new anxiety seized me-the sound would be heard by a neighbour! The old man's hour had come!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"I thought the heart must burst.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "I thought the heart must burst. And now a new anxiety seized me-the sound would be heard by a neighbour! The old man's hour had come!",
+            "dialogue": "I thought the heart must burst.",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b10",
+          "stage1_beat_id": "b21",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 3
         },
         {
-          "clip_number": 11,
-          "timestamp": "01:39-01:49",
+          "clip_number": 22,
+          "timestamp": "01:57-02:04",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"And now a new anxiety seized me-the sound would be heard by a neighbour!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "And now a new anxiety seized me-the sound would be heard by a neighbour!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b22",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 23,
+          "timestamp": "02:04-02:07",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"The old man's hour had come!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "The old man's hour had come!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b23",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 3
+        },
+        {
+          "clip_number": 24,
+          "timestamp": "02:07-02:15",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Old_Man. With a loud yell NARRATOR throws open the lantern and leaps into the room. OLD MAN shrieks once - once only. NARRATOR drags him to the floor and pulls the heavy bed over him. Then stands, smiling gaily. Beneath the overturned bed: a muffled heartbeat. On and on. NARRATOR listens, head tilted. He does not vex. He waits. For many minutes the muffled sound continues. NARRATOR does not move. A long while. The beat slows. thins. and at length ceases. He removes the bed. Examines the corpse. Places his hand upon the heart and holds it there - many minutes. No pulsation. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Old_Man still wears period dressing gown, nightclothes, bed coverlet when in bed — not base portrait",
@@ -1188,17 +2055,17 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b11",
+          "stage1_beat_id": "b24",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator",
             "Character_Old_Man"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
         },
         {
-          "clip_number": 12,
-          "timestamp": "01:49-01:54",
+          "clip_number": 25,
+          "timestamp": "02:15-02:20",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Stone. Stone dead. His eye would trouble me no more.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -1210,7 +2077,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b12",
+          "stage1_beat_id": "b25",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
@@ -1231,7 +2098,20 @@
         "b9",
         "b10",
         "b11",
-        "b12"
+        "b12",
+        "b13",
+        "b14",
+        "b15",
+        "b16",
+        "b17",
+        "b18",
+        "b19",
+        "b20",
+        "b21",
+        "b22",
+        "b23",
+        "b24",
+        "b25"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -1248,23 +2128,23 @@
       "scene_filename": "sc12_confession_room",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 10,
+      "total_estimated_duration_seconds": 12,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 10
+        "duration_seconds": 12
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:08",
           "veo_continuation_source": "none",
           "location_id": "Loc_Confession_Room",
-          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"If still you think me mad, you will think so no longer when I describe the wise precautions I took for the concealment of the body.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"If still you think me mad, you will think so no longer when I describe the wise precautions\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "If still you think me mad, you will think so no longer when I describe the wise precautions I took for the concealment of the body.",
+            "dialogue": "If still you think me mad, you will think so no longer when I describe the wise precautions",
             "sfx": "",
             "ambient": ""
           },
@@ -1273,12 +2153,34 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 2,
+          "timestamp": "00:08-00:12",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Confession_Room",
+          "visual_prompt": "INT. CONFESSION ROOM - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"I took for the concealment of the body.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I took for the concealment of the body.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b2",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 4
         }
       ],
       "stage1_scene_number": 12,
       "stage1_beat_map": [
-        "b1"
+        "b1",
+        "b2"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -1387,15 +2289,15 @@
       "scene_filename": "sc14_street_door",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 37,
+      "total_estimated_duration_seconds": 39,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 37
+        "duration_seconds": 39
       },
       "veo_clips": [
         {
           "clip_number": 1,
-          "timestamp": "00:00-00:10",
+          "timestamp": "00:00-00:09",
           "veo_continuation_source": "none",
           "location_id": "Loc_Street_Door",
           "visual_prompt": "INT. STREET DOOR - NIGHT. also on screen: Character_Narrator. Still dark as midnight. A knocking at the street door. NARRATOR descends with a light heart and opens. Three men in police coats and hats: OFFICER REYNOLDS (senior, calm), OFFICER HAYES (broad, watchful), OFFICER CLEMM (younger, notebook). Perfect suavity. Character_Officer_Reynolds still wears police hat, mid-19th-century police coat; Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -1415,19 +2317,19 @@
             "Character_Officer_Hayes",
             "Character_Officer_Clemm"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 9
         },
         {
           "clip_number": 2,
-          "timestamp": "00:10-00:20",
+          "timestamp": "00:09-00:17",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Street_Door",
-          "visual_prompt": "INT. STREET DOOR - NIGHT. OFFICER REYNOLDS speaks. Character_Officer_Reynolds ON CAMERA lip-syncs \"A shriek was heard by a neighbour during the night. Suspicion of foul play has been aroused. We have been deputed to search the premises.\". Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
+          "visual_prompt": "INT. STREET DOOR - NIGHT. OFFICER REYNOLDS speaks. Character_Officer_Reynolds ON CAMERA lip-syncs \"A shriek was heard by a neighbour during the night. Suspicion of foul play has been aroused.\". Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Officer_Reynolds",
-            "dialogue": "A shriek was heard by a neighbour during the night. Suspicion of foul play has been aroused. We have been deputed to search the premises.",
+            "dialogue": "A shriek was heard by a neighbour during the night. Suspicion of foul play has been aroused.",
             "sfx": "",
             "ambient": ""
           },
@@ -1436,11 +2338,32 @@
           "characters_on_screen": [
             "Character_Officer_Reynolds"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 8
         },
         {
           "clip_number": 3,
-          "timestamp": "00:20-00:28",
+          "timestamp": "00:17-00:21",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Street_Door",
+          "visual_prompt": "INT. STREET DOOR - NIGHT. OFFICER REYNOLDS speaks. Character_Officer_Reynolds ON CAMERA lip-syncs \"We have been deputed to search the premises.\". Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Officer_Reynolds",
+            "dialogue": "We have been deputed to search the premises.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b3",
+          "primary_subject": "Character_Officer_Reynolds",
+          "characters_on_screen": [
+            "Character_Officer_Reynolds"
+          ],
+          "duration_seconds": 4
+        },
+        {
+          "clip_number": 4,
+          "timestamp": "00:21-00:28",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Street_Door",
           "visual_prompt": "INT. STREET DOOR - NIGHT. also on screen: Character_Narrator. Character_Officer_Reynolds NARRATOR smiles - for what has he now to fear?. Character_Officer_Reynolds still wears police hat, mid-19th-century police coat; Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -1452,33 +2375,54 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b3",
+          "stage1_beat_id": "b4",
           "primary_subject": null,
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 5,
+          "timestamp": "00:28-00:36",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Street_Door",
+          "visual_prompt": "INT. STREET DOOR - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Gentlemen-welcome. The shriek was my own, in a dream. The old man is absent in the country.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "Gentlemen-welcome. The shriek was my own, in a dream. The old man is absent in the country.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b5",
+          "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
           "duration_seconds": 8
         },
         {
-          "clip_number": 4,
-          "timestamp": "00:28-00:37",
+          "clip_number": 6,
+          "timestamp": "00:36-00:39",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Street_Door",
-          "visual_prompt": "INT. STREET DOOR - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Gentlemen-welcome. The shriek was my own, in a dream. The old man is absent in the country. Search-search well.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. STREET DOOR - NIGHT. NARRATOR speaks. Character_Narrator ON CAMERA lip-syncs \"Search-search well.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Gentlemen-welcome. The shriek was my own, in a dream. The old man is absent in the country. Search-search well.",
+            "dialogue": "Search-search well.",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b4",
+          "stage1_beat_id": "b6",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 9
+          "duration_seconds": 3
         }
       ],
       "stage1_scene_number": 14,
@@ -1486,7 +2430,9 @@
         "b1",
         "b2",
         "b3",
-        "b4"
+        "b4",
+        "b5",
+        "b6"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -1549,10 +2495,10 @@
       "scene_filename": "sc16_old_man_s_bedroom",
       "transition_type": "cut",
       "lighting_continuity_token": "consistent scene lighting",
-      "total_estimated_duration_seconds": 119,
+      "total_estimated_duration_seconds": 123,
       "music_bed": {
         "style_description": "cinematic underscore",
-        "duration_seconds": 119
+        "duration_seconds": 123
       },
       "veo_clips": [
         {
@@ -1645,15 +2591,15 @@
         },
         {
           "clip_number": 5,
-          "timestamp": "00:28-00:38",
+          "timestamp": "00:28-00:33",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"Ere long, I felt myself getting pale and wished them gone. My head ached, and I fancied a ringing in my ears: but still they sat and still chatted.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"Ere long, I felt myself getting pale and wished them gone.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Ere long, I felt myself getting pale and wished them gone. My head ached, and I fancied a ringing in my ears: but still they sat and still chatted.",
+            "dialogue": "Ere long, I felt myself getting pale and wished them gone.",
             "sfx": "",
             "ambient": ""
           },
@@ -1662,11 +2608,32 @@
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 5
         },
         {
           "clip_number": 6,
-          "timestamp": "00:38-00:48",
+          "timestamp": "00:33-00:41",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (V.O.). Character_Narrator ON CAMERA lip-syncs \"My head ached, and I fancied a ringing in my ears: but still they sat and still chatted.\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "My head ached, and I fancied a ringing in my ears: but still they sat and still chatted.",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b6",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 7,
+          "timestamp": "00:41-00:51",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Officer_Reynolds. The ringing becomes more distinct. He talks more freely to shake it off. It gains definiteness - until he knows the noise is not within his ears. A low, dull, quick sound - as a watch makes when enveloped in cotton. From under the floor. From under his chair. NARRATOR gasps for breath. The OFFICERS hear it not. They smile. They chat on. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
@@ -1678,7 +2645,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b6",
+          "stage1_beat_id": "b7",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Officer_Clemm",
@@ -1689,8 +2656,8 @@
           "duration_seconds": 10
         },
         {
-          "clip_number": 7,
-          "timestamp": "00:48-00:54",
+          "clip_number": 8,
+          "timestamp": "00:51-00:57",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (more quickly, vehemently). Character_Narrator ON CAMERA lip-syncs \"-and as I say, the whole matter is nothing, nothing at all-\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -1702,7 +2669,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b7",
+          "stage1_beat_id": "b8",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
@@ -1710,8 +2677,8 @@
           "duration_seconds": 6
         },
         {
-          "clip_number": 8,
-          "timestamp": "00:54-01:04",
+          "clip_number": 9,
+          "timestamp": "00:57-01:06",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Officer_Reynolds. Character_Narrator He rises. Argues about trifles in a high key, violent gesticulations. The noise steadily increases. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
@@ -1723,17 +2690,17 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b8",
+          "stage1_beat_id": "b9",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator",
             "Character_Officer_Reynolds"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 9
         },
         {
-          "clip_number": 9,
-          "timestamp": "01:04-01:10",
+          "clip_number": 10,
+          "timestamp": "01:06-01:12",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"Why-why do you linger over such trifles? Surely you are satisfied-\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
@@ -1745,7 +2712,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b9",
+          "stage1_beat_id": "b10",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
@@ -1753,8 +2720,8 @@
           "duration_seconds": 6
         },
         {
-          "clip_number": 10,
-          "timestamp": "01:10-01:20",
+          "clip_number": 11,
+          "timestamp": "01:12-01:22",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Officer_Reynolds. Character_Narrator He paces the floor with heavy strides. Foams. Raves. Swears. Swings his chair and grates it upon the boards - but the noise arises over all. Louder - louder - louder. OFFICER HAYES and OFFICER CLEMM exchange a pleasant glance. OFFICER REYNOLDS smiles, unhurried. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
@@ -1766,7 +2733,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b10",
+          "stage1_beat_id": "b11",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Officer_Reynolds",
@@ -1776,29 +2743,50 @@
           "duration_seconds": 10
         },
         {
-          "clip_number": 11,
-          "timestamp": "01:20-01:30",
+          "clip_number": 12,
+          "timestamp": "01:22-01:26",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (internal agony breaking through). Character_Narrator ON CAMERA lip-syncs \"Was it possible they heard not?-no, no! They heard!-they suspected!-they knew!-they were making a mockery of my horror!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (internal agony breaking through). Character_Narrator ON CAMERA lip-syncs \"Was it possible they heard not?-no, no!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Was it possible they heard not?-no, no! They heard!-they suspected!-they knew!-they were making a mockery of my horror!",
+            "dialogue": "Was it possible they heard not?-no, no!",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b11",
+          "stage1_beat_id": "b12",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 4
         },
         {
-          "clip_number": 12,
-          "timestamp": "01:30-01:39",
+          "clip_number": 13,
+          "timestamp": "01:26-01:33",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (internal agony breaking through). Character_Narrator ON CAMERA lip-syncs \"They heard!-they suspected!-they knew!-they were making a mockery of my horror!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "They heard!-they suspected!-they knew!-they were making a mockery of my horror!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b13",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 7
+        },
+        {
+          "clip_number": 14,
+          "timestamp": "01:33-01:42",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Officer_Reynolds. Character_Narrator He cannot bear the hypocritical smiles. The beat pounds - again - louder - louder - louder - louder!. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
@@ -1810,7 +2798,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b12",
+          "stage1_beat_id": "b14",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Narrator",
@@ -1819,29 +2807,50 @@
           "duration_seconds": 9
         },
         {
-          "clip_number": 13,
-          "timestamp": "01:39-01:49",
+          "clip_number": 15,
+          "timestamp": "01:42-01:45",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
-          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (shrieking). Character_Narrator ON CAMERA lip-syncs \"Villains! dissemble no more! I admit the deed!-tear up the planks!-here, here!-It is the beating of his hideous heart!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (shrieking). Character_Narrator ON CAMERA lip-syncs \"Villains! dissemble no more!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
           "negative_prompt": "no extra unmentioned hats or jackets",
           "audio_payload": {
             "delivery": "spoken_on_camera",
             "speaker": "Character_Narrator",
-            "dialogue": "Villains! dissemble no more! I admit the deed!-tear up the planks!-here, here!-It is the beating of his hideous heart!",
+            "dialogue": "Villains! dissemble no more!",
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b13",
+          "stage1_beat_id": "b15",
           "primary_subject": "Character_Narrator",
           "characters_on_screen": [
             "Character_Narrator"
           ],
-          "duration_seconds": 10
+          "duration_seconds": 3
         },
         {
-          "clip_number": 14,
-          "timestamp": "01:49-01:59",
+          "clip_number": 16,
+          "timestamp": "01:45-01:53",
+          "veo_continuation_source": "extend_previous",
+          "location_id": "Loc_Old_Man_S_Bedroom",
+          "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. NARRATOR (shrieking). Character_Narrator ON CAMERA lip-syncs \"I admit the deed!-tear up the planks!-here, here!-It is the beating of his hideous heart!\". Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers",
+          "negative_prompt": "no extra unmentioned hats or jackets",
+          "audio_payload": {
+            "delivery": "spoken_on_camera",
+            "speaker": "Character_Narrator",
+            "dialogue": "I admit the deed!-tear up the planks!-here, here!-It is the beating of his hideous heart!",
+            "sfx": "",
+            "ambient": ""
+          },
+          "stage1_beat_id": "b16",
+          "primary_subject": "Character_Narrator",
+          "characters_on_screen": [
+            "Character_Narrator"
+          ],
+          "duration_seconds": 8
+        },
+        {
+          "clip_number": 17,
+          "timestamp": "01:53-02:03",
           "veo_continuation_source": "extend_previous",
           "location_id": "Loc_Old_Man_S_Bedroom",
           "visual_prompt": "INT. OLD MAN'S BEDROOM - DAY. also on screen: Character_Officer_Reynolds. He stabs a finger at the floorboards beneath his feet. The OFFICERS rise. The pleasant masks fall. OFFICER REYNOLDS looks down at the planks. OFFICER HAYES already moves toward them. NARRATOR stands over the spot, spent, eyes wide - the sound still hammering in the silence that follows his cry. Character_Narrator still wears dark mid-19th-century waistcoat unbuttoned at the throat, white period shirt, dark trousers; Character_Officer_Reynolds still wears police hat, mid-19th-century police coat",
@@ -1853,7 +2862,7 @@
             "sfx": "",
             "ambient": ""
           },
-          "stage1_beat_id": "b14",
+          "stage1_beat_id": "b17",
           "primary_subject": null,
           "characters_on_screen": [
             "Character_Officer_Clemm",
@@ -1879,7 +2888,10 @@
         "b11",
         "b12",
         "b13",
-        "b14"
+        "b14",
+        "b15",
+        "b16",
+        "b17"
       ],
       "video_provider_profile": "grok",
       "spoiler_constraints": [],
@@ -1939,10 +2951,10 @@
     "planner": "Stage2PlannerService (C# Fountain)",
     "prompt_truncates": false,
     "prompt_length_policy": "full_then_api_retry_shorten",
-    "screenplay_fingerprint": "91a6bfc5183c34fb",
-    "stage1_fingerprint": "91a6bfc5183c34fb",
-    "planned_at": "2026-07-20T19:00:10",
-    "total_duration_seconds": 544,
-    "total_clips": 62
+    "screenplay_fingerprint": "4a0ca5a4b09d67f3",
+    "stage1_fingerprint": "4a0ca5a4b09d67f3",
+    "planned_at": "2026-07-21T07:15:51",
+    "total_duration_seconds": 683,
+    "total_clips": 108
   }
 }

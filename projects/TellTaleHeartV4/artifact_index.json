@@ -1,6 +1,6 @@
 {
   "projectId": "TellTaleHeartV4",
-  "builtAtUtc": "2026-07-21T01:06:08.0663263+00:00",
+  "builtAtUtc": "2026-07-21T13:15:51.2264677+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
@@ -92,7 +92,7 @@
       "path": "blueprint.clips.grok.json",
       "role": "Stage 2 shot plan / clips",
       "exists": true,
-      "bytes": 94336,
+      "bytes": 137989,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -124,8 +124,8 @@
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 6477614,
-      "fileCount": 18,
+      "bytes": 6830651,
+      "fileCount": 30,
       "requiredForManualReview": true
     },
     {
@@ -212,7 +212,7 @@
       "path": "ARTIFACTS.md",
       "role": "Human map of this project for Claude/manual review",
       "exists": true,
-      "bytes": 3661,
+      "bytes": 3826,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -220,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 6535,
+      "bytes": 6831,
       "fileCount": null,
       "requiredForManualReview": false
     },

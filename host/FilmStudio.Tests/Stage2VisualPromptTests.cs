@@ -100,6 +100,47 @@ public class Stage2VisualPromptTests : IDisposable
         Assert.Equal(mentions, Stage2PlannerService.VisualMentionsSubject(visual, key));
     }
 
+    [Theory]
+    [InlineData("He steadies his hands on his knees. A thin smile.", "Character_Narrator", "Narrator",
+        "Narrator steadies his hands on his knees. A thin smile.")]
+    [InlineData("She turns toward the door.", "Character_Mom", "Mom", "Mom turns toward the door.")]
+    [InlineData("His eyes widen.", "Character_Hero", "Hero", "Hero's eyes widen.")]
+    [InlineData("Candlelight fills the room.", "Character_Narrator", "Narrator",
+        "Narrator Candlelight fills the room.")]
+    [InlineData("Narrator leans forward.", "Character_Narrator", "Narrator", "Narrator leans forward.")]
+    public void AttachPrimaryToVisual_uses_display_name_not_token_plus_pronoun(
+        string visual, string key, string display, string expected)
+    {
+        var result = Stage2PlannerService.AttachPrimaryToVisual(visual, key, display);
+        Assert.Equal(expected, result);
+        Assert.DoesNotContain("Character_Narrator He", result, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Character_Mom She", result, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("NARRATOR (CONT'D)", null, "Narrator continues.")]
+    [InlineData("NARRATOR", null, "Narrator speaks.")]
+    [InlineData("NARRATOR", "whispering", "Narrator (whispering).")]
+    [InlineData("OFFICER REYNOLDS (V.O.)", null, "Officer Reynolds speaks.")]
+    public void BuildDialogueVisualEvent_strips_fountain_extensions(
+        string rawCue, string? paren, string expected)
+    {
+        // Simulate importer: clean name then build visual
+        var name = Regex.Replace(rawCue, @"\s*\([^)]*\)\s*", " ").Trim();
+        if (name.Length > 0 && name.All(c => !char.IsLetter(c) || char.IsUpper(c)))
+        {
+            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            name = string.Join(' ', parts.Select(p =>
+                p.Length <= 1 ? p.ToUpperInvariant()
+                : char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant()));
+        }
+        var visual = FountainStage1Importer.BuildDialogueVisualEvent(name, paren, rawCue);
+        Assert.Equal(expected, visual);
+        Assert.DoesNotContain("CONT'D", visual, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("(CONT", visual, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("V.O", visual, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void BuildStoryNegativePrompt_dedupes_and_omits_global()
     {

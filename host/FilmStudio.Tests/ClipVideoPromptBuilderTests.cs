@@ -247,6 +247,24 @@ public class ClipVideoPromptBuilderTests
         Assert.Contains("Character_Narrator", clean);
     }
 
+    [Theory]
+    [InlineData(
+        "NARRATOR (CONT'D). Character_Narrator ON CAMERA lip-syncs \"Hello.\"",
+        "NARRATOR. Character_Narrator ON CAMERA lip-syncs \"Hello.\"")]
+    [InlineData(
+        "Character_Narrator He steadies his hands on his knees.",
+        "Character_Narrator steadies his hands on his knees.")]
+    [InlineData(
+        "Character_Hero Character_Hero walks in.",
+        "Character_Hero walks in.")]
+    public void StripFountainLeakage_removes_contd_and_token_pronoun_glue(string raw, string expected)
+    {
+        var clean = ClipVideoPromptBuilder.StripFountainLeakage(raw);
+        Assert.Equal(expected, clean);
+        Assert.DoesNotContain("CONT", clean, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Character_Narrator He", clean, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void InferKeysFromProse_promotes_old_man_and_officers()
     {
