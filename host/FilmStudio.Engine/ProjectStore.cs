@@ -812,6 +812,24 @@ public sealed class ProjectStore
         return seeds.TryGetValue(charKey, out var info) ? info : null;
     }
 
+    /// <summary>All character seed tokens for the project (cast_seeds preferred).</summary>
+    public IReadOnlyDictionary<string, JsonElement> GetAllCharacterSeeds(string projectId) =>
+        LoadCharacterSeeds(projectId);
+
+    /// <summary>
+    /// Near-duplicate look text vs other cast members (description / visual_lock).
+    /// </summary>
+    public IReadOnlyList<FilmStudio.Core.CharacterLookDistinctness.SimilarLookHit> FindNearDuplicateLooks(
+        string projectId,
+        string charKey,
+        string? description,
+        string? visualLock) =>
+        FilmStudio.Core.CharacterLookDistinctness.FindNearDuplicates(
+            LoadCharacterSeeds(projectId),
+            charKey,
+            description,
+            visualLock);
+
     /// <summary>
     /// Max multi-ref image seeds for Characters UI, based on image_provider / image_model_name.
     /// </summary>

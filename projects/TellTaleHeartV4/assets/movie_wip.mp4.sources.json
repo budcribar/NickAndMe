@@ -1,0 +1,45 @@
+{
+  "builtAtUtc": "2026-07-21T01:06:08.0521931Z",
+  "count": 1,
+  "sources": [
+    {
+      "name": "scene_01.mp4",
+      "scene": 1,
+      "bytes": 2905060,
+      "mtimeUtc": "2026-07-21T01:06:07.6784614Z",
+      "kind": "scene_composite"
+    }
+  ],
+  "included": [
+    {
+      "name": "scene_01.mp4",
+      "scene": 1,
+      "bytes": 2905060,
+      "mtimeUtc": "2026-07-21T01:06:07.6784614Z",
+      "kind": "scene_composite"
+    }
+  ],
+  "excluded": [],
+  "sceneNumbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "blueprintMtimeUtc": "2026-07-21T01:00:10.7770471Z",
+  "assemblyGate": true,
+  "note": "WIP concatenates scene composites. Clip include/exclude decisions live on each scene_XX.mp4.sources.json (assembly gate applied at remux)."
+}

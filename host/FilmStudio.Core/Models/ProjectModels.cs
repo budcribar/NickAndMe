@@ -476,6 +476,12 @@ public sealed class UpdateCharacterLookResult
     public string? VisualLock { get; set; }
     public string? Message { get; set; }
     public string? Error { get; set; }
+    /// <summary>
+    /// Non-blocking: this look is nearly the same as another cast member's description/visual lock.
+    /// </summary>
+    public string? Warning { get; set; }
+    /// <summary>Other cast keys whose look text is near-identical (if any).</summary>
+    public List<string>? SimilarCastKeys { get; set; }
 }
 
 /// <summary>Delete preferred, variant, or book-ref picture for a character.</summary>

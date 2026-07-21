@@ -1,0 +1,11 @@
+{
+  "builtAtUtc": "2026-07-21T01:06:08.0572641\u002B00:00",
+  "projectId": "TellTaleHeartV4",
+  "defaultVideoModel": "grok-imagine-video",
+  "defaultImageModel": "grok-imagine-image-quality",
+  "imageProvider": "grok",
+  "defaultResolution": "480p",
+  "defaultDurationSeconds": 6,
+  "identityReseedOnCastChange": true,
+  "requirePortraitStyleGate": true
+}

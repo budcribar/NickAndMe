@@ -1179,6 +1179,29 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/look", async (
 
         if (lookUnchanged)
         {
+            var unchangedHits = store.FindNearDuplicateLooks(
+                id, charKey, storedDesc ?? desc, storedVis ?? vis);
+            string? unchangedWarn = null;
+            List<string>? unchangedSimilar = null;
+            if (unchangedHits.Count > 0)
+            {
+                unchangedSimilar = unchangedHits
+                    .Select(h => h.OtherCharKey)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                string DisplayUnchanged(string k)
+                {
+                    var s = store.GetCharacterSeed(id, k);
+                    if (s is not null &&
+                        s.Value.TryGetProperty("canonical_given_name", out var n) &&
+                        n.ValueKind == JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(n.GetString()))
+                        return n.GetString()!;
+                    return k;
+                }
+                unchangedWarn = FilmStudio.Core.CharacterLookDistinctness.FormatWarning(unchangedHits, DisplayUnchanged);
+            }
+
             return Results.Ok(new
             {
                 ok = true,
@@ -1188,6 +1211,8 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/look", async (
                 description = storedDesc ?? desc,
                 visualLock = storedVis ?? vis,
                 message = "Look unchanged",
+                warning = unchangedWarn,
+                similarCastKeys = unchangedSimilar,
             });
         }
 
@@ -1225,17 +1250,45 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/look", async (
                 savedVis = vEl.GetString();
         }
 
+        // Cross-cast: warn if this look is nearly identical to another character
+        // (does not block save — operator can still fix or proceed).
+        var finalDesc = savedDesc ?? desc;
+        var finalVis = savedVis ?? vis;
+        var nearHits = store.FindNearDuplicateLooks(id, charKey, finalDesc, finalVis);
+        string? lookWarning = null;
+        List<string>? similarKeys = null;
+        if (nearHits.Count > 0)
+        {
+            similarKeys = nearHits
+                .Select(h => h.OtherCharKey)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            string Display(string k)
+            {
+                var s = store.GetCharacterSeed(id, k);
+                if (s is not null &&
+                    s.Value.TryGetProperty("canonical_given_name", out var n) &&
+                    n.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrWhiteSpace(n.GetString()))
+                    return n.GetString()!;
+                return k;
+            }
+            lookWarning = FilmStudio.Core.CharacterLookDistinctness.FormatWarning(nearHits, Display);
+        }
+
         return Results.Ok(new
         {
             ok = true,
             projectId = id,
             charKey,
             scrubbedWithAi = scrubbed,
-            description = savedDesc ?? desc,
-            visualLock = savedVis ?? vis,
+            description = finalDesc,
+            visualLock = finalVis,
             message = scrubbed
                 ? "Look saved (AI scrubbed: base + literal)"
                 : "Look (description / visual lock) updated",
+            warning = lookWarning,
+            similarCastKeys = similarKeys,
         });
     }
     catch (Exception ex)

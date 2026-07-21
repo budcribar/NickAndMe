@@ -41,13 +41,13 @@
       "performance_notes": "Looks at Narrator or into the dark of his room, not at the confessional camera; terror is inward\u2014listening, groaning, sitting bolt upright."
     },
     "Character_Officer_Reynolds": {
-      "description": "Broad-built adult male police officer with a solid, heavier wider frame, solid shoulders, and alert eyes; mid-19th-century police coat and hat in period uniform.",
+      "description": "Human male, senior middle age (about 45-55), calm composed face with a steady gaze, slightly greying hair at the temples, upright controlled bearing; mid-19th-century police coat and hat, dark uniform cloth, practical boots.",
       "canonical_given_name": "Officer Reynolds",
       "display_name_policy": "ok_anytime",
       "voice_label": "senior calm male officer",
       "voice_profile": "Male, mature; even mid pitch, measured unhurried pace, polite official energy\u2014calm suavity that does not rise with the Narrator\u2019s panic.",
       "reference_image_placeholder": "character_officer_reynolds_ref.png",
-      "visual_lock": "Constants: broad stocky adult male officer in mid-19th-century police coat and hat; period police uniform; heavier wider build is the distinguisher. Not lean; not elderly.",
+      "visual_lock": "Constants: senior-aged male officer, calm composed expression, steady gaze, greying temples, upright controlled posture; mid-19th-century police coat and hat. Average build, not broad or heavyset; not elderly.",
       "wardrobe_always": [
         "mid-19th-century police coat",
         "police hat"
