@@ -72,13 +72,13 @@
         "species_kind": "human"
       },
       "Character_OfficerReynolds": {
-        "description": "Adult man, solid competent build, clean period grooming; dark 19th-century civil officer\u2019s coat, badge, civil hat; composed face distinct from the Narrator\u2019s pale disordered look.",
+        "description": "Adult man in his 50s, solid build, clean-shaven, short salt-and-pepper hair graying at the temples, weathered face with faint smile lines, steady calm gaze.",
         "canonical_given_name": "Officer Reynolds",
         "display_name_policy": "ok_anytime",
         "voice_label": "calm adult male officer",
         "voice_profile": "Adult male; medium pitch; even, civil, official pace; polite authority without aggression.",
-        "reference_image_placeholder": "character_officer_reynolds_ref.png",
-        "visual_lock": "Same dark period coat, badge, and civil hat; steady composed face; lead officer look among the three; never pale disordered like the Narrator, never elderly frail like the Old Man.",
+        "reference_image_placeholder": "character_officerreynolds_ref.png",
+        "visual_lock": "Constant salt-and-pepper hair graying at the temples and clean-shaven face \u2014 no mustache, no beard; oldest-looking and grayest-haired of the three officers.",
         "wardrobe_always": [
           "dark period officer coat",
           "badge",
@@ -89,13 +89,13 @@
         "species_kind": "human"
       },
       "Character_OfficerHale": {
-        "description": "Adult man, medium build, period facial hair or clean-shaven but distinct from Reynolds and Briggs; dark period officer coat, badge, civil hat.",
+        "description": "Adult man in his 40s-50s, medium build, medium-brown hair, a full handlebar/horseshoe mustache (no beard), lined weathered face, calm steady expression.",
         "canonical_given_name": "Officer Hale",
         "display_name_policy": "ok_anytime",
         "voice_label": "quiet adult male officer",
         "voice_profile": "Adult male; medium-low pitch; spare speech, calm energy; same civil register as the other officers.",
-        "reference_image_placeholder": "character_officer_hale_ref.png",
-        "visual_lock": "Dark period coat and badge consistent with the other officers; face clearly different from Reynolds and Briggs (separate bone structure/hair); calm composed expression.",
+        "reference_image_placeholder": "character_officerhale_ref.png",
+        "visual_lock": "Constant full handlebar/horseshoe mustache with no beard and medium-brown hair; never clean-shaven.",
         "wardrobe_always": [
           "dark period officer coat",
           "badge",
@@ -106,13 +106,13 @@
         "species_kind": "human"
       },
       "Character_OfficerBriggs": {
-        "description": "Adult man, sturdy build, distinct face from Reynolds and Hale (different hairline/features); dark period officer coat, badge, civil hat.",
+        "description": "Adult man in his 30s, sturdy build, clean-shaven, light brown hair neatly combed, smoother and less lined face than Reynolds and Hale, alert attentive expression.",
         "canonical_given_name": "Officer Briggs",
         "display_name_policy": "ok_anytime",
         "voice_label": "reserved adult male officer",
         "voice_profile": "Adult male; medium pitch; minimal lines if any; steady, unhurried civil energy.",
-        "reference_image_placeholder": "character_officer_briggs_ref.png",
-        "visual_lock": "Matching dark period officer wardrobe; uniquely recognizable face among the three officers; composed civil expression.",
+        "reference_image_placeholder": "character_officerbriggs_ref.png",
+        "visual_lock": "Constant light brown hair, clean-shaven face, and visibly younger/smoother complexion than Reynolds and Hale \u2014 no gray hair, no mustache.",
         "wardrobe_always": [
           "dark period officer coat",
           "badge",

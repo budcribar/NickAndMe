@@ -211,18 +211,35 @@ public sealed class GrokImageClient : IImageClient
             var orderHint = identityCount switch
             {
                 > 1 => BuildMultiImageOrderHint(identityCount),
-                1 => "Match the attached reference identity AND illustration style (highest priority over text). ",
+                1 => costumeIndex >= 0
+                    // Explicit index (not "the attached reference") once a second, costume-only
+                    // image is also in play — an unindexed identity reference next to an
+                    // explicitly-indexed <IMAGE_1> costume ref is exactly the kind of ambiguity
+                    // that lets the model split the difference on wardrobe between the two.
+                    ? "<IMAGE_0> is the character identity AND art style reference (highest priority over text). "
+                    : "Match the attached reference identity AND illustration style (highest priority over text). ",
                 _ => "",
             };
             if (costumeIndex >= 0)
             {
+                var identityLabel = identityCount switch
+                {
+                    0 => "",
+                    1 => "<IMAGE_0>",
+                    _ => $"<IMAGE_0>..<IMAGE_{identityCount - 1}>",
+                };
                 orderHint +=
                     $"<IMAGE_{costumeIndex}> is a COSTUME REFERENCE ONLY (shared wardrobe design) — " +
                     "copy its coat, hat/cap, badge, and garment details exactly. " +
                     "COMPLETELY IGNORE any face, body, or person shown in that image — " +
                     "this character's own face and identity must come from " +
                     (identityCount > 0 ? "the other reference image(s) and " : "") +
-                    "the text description below, never from the costume reference. ";
+                    "the text description below, never from the costume reference. " +
+                    (identityCount > 0
+                        ? $"Conversely, IGNORE any hat/coat/badge visible in {identityLabel} — " +
+                          $"wardrobe comes ONLY from <IMAGE_{costumeIndex}>, even if {identityLabel} shows " +
+                          "different or older wardrobe. "
+                        : "");
             }
             var variantTail = illustratedMedium
                 ? (n > 1

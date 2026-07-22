@@ -1,4 +1,4 @@
-# S01C02  mode=fresh chars=1 onScreen=1 refs=1 startFrame=no promptLen=1982 · learning-addenda · pre-budget 4545→1982
+# S01C02  mode=fresh chars=1 onScreen=1 refs=1 startFrame=no promptLen=2129 · learning-addenda · pre-budget 4692→2129
 # projectId: TellTaleHeartV7
 # mode: fresh
 # castCount: 1
@@ -15,7 +15,7 @@ CHARACTER VARIABLES (use these identities consistently; do not redesign faces or
 
 CAST COUNT: exactly 1 distinct on-screen character identity(ies) only — Character_The_Narrator. Do not invent extra people, duplicate faces, or crowd extras not listed.
 
-AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "True! Nervous — very, very dreadfully nervous I had been and am;". Start speaking immediately with "True!" — do not skip, delay, or swallow the opening word. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley.
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "True! Nervous — very, very dreadfully nervous I had been and am;". Start speaking immediately with "True!" — do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley.
 
 CONTEXT (prior clip in scene — new cast plate refs attached; match location/lighting if still valid; identity from CHARACTER VARIABLES + locked plates only):
 INT. BARE ROOM - NIGHT. A single chair. A rough table. Candlelight. THE NARRATOR sits facing us-pale, composed, hands folded too carefully. He leans in Character_The_Narrator is on screen.

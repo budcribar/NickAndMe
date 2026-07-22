@@ -108,7 +108,12 @@ public sealed class GeminiImageClient : IImageClient
         var costumeClause = hasCostumeRef
             ? " The LAST reference image is a COSTUME REFERENCE ONLY (shared wardrobe design) — " +
               "copy its coat, hat, and badge exactly; completely ignore any face or person in it; " +
-              "this character's own face/identity comes from the other reference(s)/text, never from it."
+              "this character's own face/identity comes from the other reference(s)/text, never from it." +
+              (refs.Count > 0
+                  ? " Conversely, ignore any hat/coat/badge visible in the OTHER reference(s) — " +
+                    "wardrobe comes ONLY from this last costume image, even if the others show " +
+                    "different or older wardrobe."
+                  : "")
             : "";
         var mediumClause = illustratedMedium
             ? " Keep the illustrated/picture-book medium from the refs — not photoreal photography."

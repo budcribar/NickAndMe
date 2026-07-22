@@ -40,6 +40,15 @@ GOALS
    wardrobe_lock at that key. Each member's own description/visual_lock should then cover
    ONLY what makes that person distinguishable — build, face, hair, age — never the shared
    garment. Characters who don't share a uniform with anyone need no wardrobe_lock at all.
+   **CONCRETE, NOT COMPARATIVE (HARD):** wardrobe_lock characters render from text alone —
+   no reference photo of one member is ever shown when generating another, so language like
+   "distinct from Reynolds and Briggs" or "a unique face" gives the image model nothing to
+   go on and every member converges on the same generic face. Every member needs its OWN
+   concrete, self-sufficient anchors — specific age band, hair color/style, facial hair
+   present or absent (and what kind), and face shape/texture — enough that a model reading
+   ONLY that one character's text (never the others') would draw a different person each
+   time. Prefer one hard, easy-to-verify anchor per member (e.g. "the only one with a
+   mustache", "visibly younger and smoother-faced than the other two") over vague adjectives.
 
 PRIORITY IF CONFLICTS:
 1. Valid JSON matching the schema below

@@ -110,6 +110,44 @@ public sealed class CharacterDesignService
         var allBookRefs = ResolveBookRefPaths(projectDir, seeds, maxRefs: 12);
         var editRefs = ResolveEditRefs(
             projectId, charKey, charDir, preferredPath, allBookRefs, opts, maxRefs, maxBook, onProgress);
+
+        // Wardrobe-locked characters: face/build from text + wardrobe from the shared costume
+        // plate only — never also feed in this character's own previous portrait or candidate
+        // variants. Telling the model to "match face but ignore wardrobe" from that photo is a
+        // soft instruction competing against real pixels of an outfit that (pre-lock) may not
+        // even match the shared design; simplest and most reliable is to not send that
+        // competing signal at all. Book reference art (original illustrations, not
+        // previously-generated candidates) is unaffected.
+        //
+        // No seed-mode exception here: the Characters UI's regenerate button defaults to
+        // SeedMode=explicit whenever anything is pre-selected (Characters.razor
+        // StartRegenerateAsync) — which is always true for an already-locked character (the
+        // lock + last variant are pre-checked). So "explicit" is the NORMAL path for a routine
+        // regenerate here, not a rare deliberate power-user override; respecting it would mean
+        // this fix never actually applies to real usage.
+        if (costumeRefPath is not null)
+        {
+            // Allowlist match (locked-ref name or "_variant_N") — NOT a "starts with charKey_"
+            // prefix match. Book plates are legitimate reference art (original book scan pages,
+            // e.g. "page_003_render.png", or the legacy "{charkey}_bookref_N" convention used
+            // by DeleteImage) and must never be stripped here — only this character's own
+            // previously-generated candidate portraits are in scope.
+            var ownRefNames = new HashSet<string>(
+                ProjectStore.CharacterRefFileCandidates(charKey), StringComparer.OrdinalIgnoreCase);
+            var variantPattern = new System.Text.RegularExpressions.Regex(
+                $@"^{System.Text.RegularExpressions.Regex.Escape(charKey.ToLowerInvariant())}_variant_\d+\.",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var removed = editRefs.RemoveAll(p =>
+            {
+                var name = Path.GetFileName(p);
+                return ownRefNames.Contains(name) || variantPattern.IsMatch(name);
+            });
+            if (removed > 0)
+                onProgress?.Invoke(
+                    $"Wardrobe lock active — dropping {removed} of this character's own previous " +
+                    "picture(s) from refs; using text description + shared costume plate only.");
+        }
+
         // Preferred / locked ref first so multi-image edit treats it as primary identity
         if (preferredPath is not null && editRefs.Count > 0)
         {
@@ -183,7 +221,8 @@ public sealed class CharacterDesignService
             visualLockOverride: visForGen,
             projectRenderStyleLock: projectStyle,
             wardrobeLockDescription: wardrobeDescription,
-            hasIdentityRefs: editRefs.Count > 0);
+            hasIdentityRefs: editRefs.Count > 0,
+            hasCostumeRef: costumeRefPath is not null);
 
         onProgress?.Invoke(
             $"design prompt ready ({prompt.Length} chars) · image_provider={ImageApiLimits.ResolveProvider(imageProvider, imageModel)} max_refs={maxRefs}");
@@ -988,7 +1027,8 @@ public sealed class CharacterDesignService
         string? visualLockOverride = null,
         string? projectRenderStyleLock = null,
         string? wardrobeLockDescription = null,
-        bool hasIdentityRefs = true)
+        bool hasIdentityRefs = true,
+        bool hasCostumeRef = false)
     {
         var description = !string.IsNullOrWhiteSpace(descriptionOverride)
             ? descriptionOverride!
@@ -1136,19 +1176,32 @@ public sealed class CharacterDesignService
             var matchBody = !hasIdentityRefs
                 ? "Take ONLY the wardrobe/costume from the attached costume reference; " +
                   "face, hair, build, and species come from the text description below, never from that image. "
-                : isAnimal
-                    ? (illustrated
-                        ? "Match species, coat pattern, ears, and face shape from the illustrated book references. "
-                        : "Match species, coat, and face from the attached reference images. ")
-                    : (illustrated
-                        ? "Match face, hair, and default clothing from the preferred illustrated reference. "
-                        : "Match face, hair, and default clothing from the preferred reference photo/portrait. ");
+                : hasCostumeRef
+                    // Identity ref AND costume ref both attached: split them explicitly.
+                    // Without this, "match ... clothing from the preferred reference photo"
+                    // competes with the costume reference and each character's own (possibly
+                    // stale/pre-lock) identity photo wins on wardrobe details some of the time.
+                    ? "Match face, hair, and build from the preferred reference photo/portrait — " +
+                      "but NOT its wardrobe. Coat, hat/cap, and badge come ONLY from the separately " +
+                      "labeled costume reference image below, never from the identity photo, even if " +
+                      "the identity photo shows different or older wardrobe. "
+                    : isAnimal
+                        ? (illustrated
+                            ? "Match species, coat pattern, ears, and face shape from the illustrated book references. "
+                            : "Match species, coat, and face from the attached reference images. ")
+                        : (illustrated
+                            ? "Match face, hair, and default clothing from the preferred illustrated reference. "
+                            : "Match face, hair, and default clothing from the preferred reference photo/portrait. ");
 
             var priority1 = hasIdentityRefs
                 ? "PRIORITY 1 — IMAGES: The first attached image is the authoritative identity AND art style. " +
                   "Further images are the SAME character (markings/style only) or a costume reference " +
                   "as separately labeled below. " +
-                  "When text and images disagree, trust the images for face/identity. "
+                  "When text and images disagree, trust the images for face/identity" +
+                  (hasCostumeRef
+                      ? " — and trust the separately labeled costume reference (not the identity photo) " +
+                        "for wardrobe/hat/badge, even where they differ. "
+                      : ". ")
                 : "PRIORITY 1 — IMAGE: the attached reference is a COSTUME REFERENCE ONLY (see label below) — " +
                   "it shows the required wardrobe, not this character's face. This character's face/identity " +
                   "comes entirely from the text description below, not from that image. ";

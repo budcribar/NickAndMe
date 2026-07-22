@@ -1,6 +1,6 @@
 {
   "projectId": "TellTaleHeartV7",
-  "builtAtUtc": "2026-07-22T03:12:41.5327118+00:00",
+  "builtAtUtc": "2026-07-22T14:08:59.4832261+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
@@ -36,7 +36,7 @@
       "path": "source/cast_seeds.json",
       "role": "Cast seeds (looks, locks, voices)",
       "exists": true,
-      "bytes": 6249,
+      "bytes": 6258,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -68,7 +68,7 @@
       "path": "pipeline_state.json",
       "role": "Clip reviews, auto-review state, cost_ledger",
       "exists": true,
-      "bytes": 4484,
+      "bytes": 12232,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -92,7 +92,7 @@
       "path": "blueprint.clips.grok.json",
       "role": "Stage 2 shot plan / clips",
       "exists": true,
-      "bytes": 200130,
+      "bytes": 199652,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -116,15 +116,15 @@
       "path": "assets/characters",
       "role": "Locked character plates \u002B variants",
       "exists": true,
-      "bytes": 5219860,
-      "fileCount": 25,
+      "bytes": 6812714,
+      "fileCount": 35,
       "requiredForManualReview": true
     },
     {
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 6044322,
+      "bytes": 6111137,
       "fileCount": 15,
       "requiredForManualReview": true
     },
@@ -132,7 +132,7 @@
       "path": "assets/video/prompts",
       "role": "Full prompt .txt \u002B .meta.json per clip",
       "exists": true,
-      "bytes": 20701,
+      "bytes": 21289,
       "fileCount": 6,
       "requiredForManualReview": true
     },
@@ -180,7 +180,7 @@
       "path": "telemetry/cost_ledger.json",
       "role": "Cost events snapshot (from pipeline_state)",
       "exists": true,
-      "bytes": 2781,
+      "bytes": 13223,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -196,7 +196,7 @@
       "path": "telemetry/api_calls.jsonl",
       "role": "Live API call log (full prompts)",
       "exists": true,
-      "bytes": 696912,
+      "bytes": 829924,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -204,7 +204,7 @@
       "path": "telemetry/ffmpeg.jsonl",
       "role": "Condensed ffmpeg ops",
       "exists": true,
-      "bytes": 6090,
+      "bytes": 7484,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -212,7 +212,7 @@
       "path": "ARTIFACTS.md",
       "role": "Human map of this project for Claude/manual review",
       "exists": true,
-      "bytes": 3851,
+      "bytes": 3826,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -220,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 6862,
+      "bytes": 6832,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -228,7 +228,7 @@
       "path": "assets/video/scene_01.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 1075,
+      "bytes": 1076,
       "fileCount": null,
       "requiredForManualReview": false
     }

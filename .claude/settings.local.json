@@ -31,7 +31,13 @@
       "Bash(echo \"exit:$?\")",
       "Bash(curl -s -m 3 http://localhost:5079/)",
       "Bash(curl -s -m 3 -o /dev/null -w \"web http_code: %{http_code} exitcheck\\\\n\" http://localhost:5079/)",
-      "Bash(echo \"curl exit:$?\")"
+      "Bash(echo \"curl exit:$?\")",
+      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property LocalPort,OwningProcess\")",
+      "Bash(powershell -NoProfile -Command \"Get-Process -Id 27824 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path\")",
+      "Bash(powershell -NoProfile -Command \"Stop-Process -Id 27824 -Force -ErrorAction SilentlyContinue\")",
+      "Bash(curl -s -m 3 -o /dev/null -w \"http_code: %{http_code}\\\\n\" http://127.0.0.1:5088/health)",
+      "Bash(powershell -NoProfile -Command \"Get-Process -Id 26644 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\" 2>&1)",
+      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property OwningProcess\" 2>&1)"
     ]
   }
 }
