@@ -9,7 +9,8 @@
       "Bash(tasklist //FI \"PID eq 39676\")",
       "Bash(powershell -Command \"Get-Process -Id 39676 | Select-Object Id,ProcessName,Path\")",
       "Bash(taskkill *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

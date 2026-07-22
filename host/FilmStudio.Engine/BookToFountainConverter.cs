@@ -187,6 +187,10 @@ public static class BookToFountainConverter
         // Hard strip — models occasionally emit a Fountain page-break (===) right after
         // the title page; valid syntax, but nothing in the prompt asks for it here.
         text = StripFountainPageBreaks(text);
+        // Belt-and-suspenders for the case above: at least once, the === was a straight
+        // substitution for FADE IN: (not an addition alongside it), so stripping it left the
+        // draft with no FADE IN: at all — observed in JungleBook's screenplay.fountain.
+        text = EnsureFadeIn(text);
         if (!LooksLikeGoodFountain(text))
             throw new InvalidOperationException(
                 "Could not build a usable screenplay from the book. Try again or import a .fountain file.");
@@ -1568,6 +1572,22 @@ public static class BookToFountainConverter
                 $"\nDraft date: {DateTime.Now:M/d/yyyy}");
         }
         return text;
+    }
+
+    /// <summary>
+    /// Insert <c>FADE IN:</c> before the first scene heading if the model omitted it.
+    /// Idempotent — no-op if a FADE IN: line already exists anywhere in the draft. Needed
+    /// because StripFountainPageBreaks only removes an unwanted === marker; if that === was
+    /// a straight substitution for FADE IN: rather than an addition alongside it, stripping
+    /// it leaves nothing behind (observed in JungleBook's screenplay.fountain). Public so
+    /// tests can exercise it directly, same as StripFountainPageBreaks.
+    /// </summary>
+    public static string EnsureFadeIn(string text)
+    {
+        if (Regex.IsMatch(text, @"(?im)^FADE IN\s*:"))
+            return text;
+        var m = Regex.Match(text, @"(?im)^(INT\.|EXT\.|INT\./EXT\.|I/E\.|EST\.)");
+        return m.Success ? text.Insert(m.Index, "FADE IN:\n\n") : text;
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FilmStudio.Engine;
 using FilmStudio.Engine.Abstractions;
 using Xunit;
@@ -135,6 +136,37 @@ public class BookToFountainPathTests
         var fountain = "Title: Test\nAuthor: Unit\n\nFADE IN:\n\nINT. ROOM - DAY\n\nA sign reads: OPEN.\n";
         var cleaned = BookToFountainConverter.StripFountainPageBreaks(fountain);
         Assert.Equal(fountain.TrimEnd() + "\n", cleaned);
+    }
+
+    [Fact]
+    public void EnsureFadeIn_inserts_before_first_scene_heading_when_missing()
+    {
+        var fountain = "Title: Test\nAuthor: Unit\n\nINT. ROOM - DAY\n\nSomething happens.\n";
+        var fixed_ = BookToFountainConverter.EnsureFadeIn(fountain);
+        Assert.Contains("FADE IN:\n\nINT. ROOM - DAY", fixed_, StringComparison.Ordinal);
+        Assert.Equal(1, Regex.Matches(fixed_, "FADE IN:", RegexOptions.IgnoreCase).Count);
+    }
+
+    [Fact]
+    public void EnsureFadeIn_is_a_noop_when_already_present()
+    {
+        var fountain = "Title: Test\nAuthor: Unit\n\nFADE IN:\n\nINT. ROOM - DAY\n\nSomething happens.\n";
+        var unchanged = BookToFountainConverter.EnsureFadeIn(fountain);
+        Assert.Equal(fountain, unchanged);
+    }
+
+    [Fact]
+    public void StripFountainPageBreaks_then_EnsureFadeIn_recovers_from_a_straight_substitution()
+    {
+        // The exact regression this pair is for: the model emitted === where FADE IN: should
+        // have been (not alongside it) — stripping the === alone would leave no FADE IN: at all.
+        var fountain = "Title: Test\nAuthor: Unit\n\n===\n\nINT. ROOM - DAY\n\nSomething happens.\n";
+        var stripped = BookToFountainConverter.StripFountainPageBreaks(fountain);
+        Assert.DoesNotContain("===", stripped);
+        Assert.DoesNotContain("FADE IN", stripped, StringComparison.OrdinalIgnoreCase); // gap before the fix
+
+        var recovered = BookToFountainConverter.EnsureFadeIn(stripped);
+        Assert.Contains("FADE IN:\n\nINT. ROOM - DAY", recovered, StringComparison.Ordinal);
     }
 
     [Fact]
