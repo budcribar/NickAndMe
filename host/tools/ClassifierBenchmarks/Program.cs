@@ -32,10 +32,11 @@ try
     return cmd switch
     {
         "run" => await CmdRunAsync(paths, rest),
+        "throughput" => await CmdThroughputAsync(paths, rest),
         "report" => await CmdReportAsync(paths),
         "history" => await CmdHistoryAsync(paths),
         "list-prompts" => CmdListPrompts(paths, rest),
-        _ => Fail($"Unknown command '{cmd}'. Try: run | report | history | list-prompts"),
+        _ => Fail($"Unknown command '{cmd}'. Try: run | throughput | report | history | list-prompts"),
     };
 }
 catch (Exception ex)
@@ -307,5 +308,42 @@ static int CmdListPrompts(BenchPaths paths, string[] args)
             Console.WriteLine($"  {id}  ({ex.Message})");
         }
     }
+    return 0;
+}
+
+static async Task<int> CmdThroughputAsync(BenchPaths paths, string[] args)
+{
+    var flags = ParseFlags(args);
+    var tasks = SplitCsv(flags.GetValueOrDefault("tasks"));
+    if (tasks.Count == 0)
+        tasks = new List<string> { "ambient_sfx", "onscreen_cast", "silent_beat_action", "extend_cut", "species_kind", "plate_rank" };
+    var model = flags.GetValueOrDefault("model") ?? flags.GetValueOrDefault("models") ?? "grok-4.5";
+    var count = int.TryParse(flags.GetValueOrDefault("count"), out var c) ? c : 12;
+
+    var xaiKey = Environment.GetEnvironmentVariable("XAI_API_KEY");
+    var claudeKey = Environment.GetEnvironmentVariable("CLAUDE_API_KEY");
+    using var chat = new ChatRunner(xaiKey, claudeKey);
+
+    Console.WriteLine($"=== CLASSIFIER THROUGHPUT BENCHMARK ===");
+    Console.WriteLine($"Model: {model} | Classifications Target per Task: {count}");
+    Console.WriteLine($"------------------------------------------------------------------");
+
+    var results = new List<(string Task, int Items, long LatencyMs, double AvgMs, double ItemsPerSec)>();
+    foreach (var task in tasks)
+    {
+        Console.Write($"Running throughput for {task} ({count} items)... ");
+        var res = await TaskRunners.RunThroughputTaskAsync(paths, task, model, count, chat);
+        results.Add(res);
+        Console.WriteLine($"Done in {res.LatencyMs}ms ({res.AvgMs:F1}ms/item, {res.ItemsPerSec:F2} items/sec)");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"| Task | Model | Items | Total Latency (ms) | Avg Latency / Item (ms) | Throughput (items/sec) |");
+    Console.WriteLine($"|---|---|---|---|---|---|");
+    foreach (var r in results)
+    {
+        Console.WriteLine($"| `{r.Task}` | `{model}` | {r.Items} | {r.LatencyMs} | {r.AvgMs:F1} | **{r.ItemsPerSec:F2}** |");
+    }
+
     return 0;
 }

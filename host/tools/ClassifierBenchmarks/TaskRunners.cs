@@ -811,4 +811,105 @@ public static class TaskRunners
 
     static string Trunc(string s, int n) =>
         string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+
+    public static async Task<(string Task, int Items, long LatencyMs, double AvgMs, double ItemsPerSec)> RunThroughputTaskAsync(
+        BenchPaths paths,
+        string task,
+        string model,
+        int targetCount,
+        ChatRunner chat,
+        CancellationToken ct = default)
+    {
+        var promptId = DefaultPromptId(task);
+        var prompt = PromptStore.Load(paths, task, promptId);
+        var sw = Stopwatch.StartNew();
+
+        int processed = 0;
+        if (task == "ambient_sfx")
+        {
+            var goldPath = paths.GoldFile("The_Jungle_Book", "ambient_sfx");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                visual_event = Trunc(s.GetProperty("visual").GetString() ?? "", 320),
+            }).ToList();
+            await chat.CompleteAsync(model, 0.2, prompt.Text, JsonSerializer.Serialize(new { beats = payload }), ct);
+            processed = payload.Count;
+        }
+        else if (task == "onscreen_cast")
+        {
+            var goldPath = paths.GoldFile("The_Jungle_Book", "onscreen_cast");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                visual_event = Trunc(s.GetProperty("visual").GetString() ?? "", 320),
+                speaker = s.TryGetProperty("speaker", out var sp) ? sp.GetString() : null,
+            }).ToList();
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { beats = payload }), ct);
+            processed = payload.Count;
+        }
+        else if (task == "silent_beat_action")
+        {
+            var goldPath = paths.GoldFile("_all_books", "silent_beat_action");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                visual_event = Trunc(s.GetProperty("visual").GetString() ?? "", 280),
+                is_first_silent_in_scene = s.TryGetProperty("is_first_silent_in_scene", out var f) && f.GetBoolean(),
+            }).ToList();
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { beats = payload }), ct);
+            processed = payload.Count;
+        }
+        else if (task == "extend_cut")
+        {
+            var goldPath = paths.GoldFile("The_Jungle_Book", "extend_cut");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                visual_event = Trunc(s.GetProperty("visual").GetString() ?? "", 200),
+            }).ToList();
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { beats = payload }), ct);
+            processed = payload.Count;
+        }
+        else if (task == "species_kind")
+        {
+            var goldPath = paths.GoldFile("The_Jungle_Book", "species_kind");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                description = Trunc(s.GetProperty("description").GetString() ?? "", 200),
+            }).ToList();
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { characters = payload }), ct);
+            processed = payload.Count;
+        }
+        else if (task == "plate_rank")
+        {
+            var goldPath = paths.GoldFile("The_Jungle_Book", "plate_rank");
+            using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
+            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = samples.Select(s => new
+            {
+                id = s.GetProperty("id").GetString(),
+                character_name = s.GetProperty("character_name").GetString(),
+            }).ToList();
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { requests = payload }), ct);
+            processed = payload.Count;
+        }
+
+        sw.Stop();
+        long ms = sw.ElapsedMilliseconds;
+        double avg = processed > 0 ? (double)ms / processed : 0;
+        double ips = ms > 0 ? (double)processed / (ms / 1000.0) : 0;
+        return (task, processed, ms, avg, ips);
+    }
 }

@@ -1,4 +1,4 @@
-# S02C06  mode=video-extend chars=2 onScreen=2 refs=0 startFrame=no promptLen=3025 prevVideo=scene_02_clip_05.mp4 · learning-addenda · pre-budget 5657→3025
+# S02C06  mode=video-extend chars=2 onScreen=2 refs=0 startFrame=no promptLen=3025 prevVideo=_extend_in_s02c06.mp4 · learning-addenda · pre-budget 5657→3025
 # projectId: TellTaleHeartV7
 # mode: video-extend
 # castCount: 2

@@ -1,6 +1,6 @@
 {
   "projectId": "TellTaleHeartV7",
-  "builtAtUtc": "2026-07-22T16:06:46.8602914+00:00",
+  "builtAtUtc": "2026-07-22T20:25:39.7285233+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
@@ -36,7 +36,7 @@
       "path": "source/cast_seeds.json",
       "role": "Cast seeds (looks, locks, voices)",
       "exists": true,
-      "bytes": 6672,
+      "bytes": 6967,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -60,7 +60,7 @@
       "path": "project_rules.json",
       "role": "Approved house rules / style locks",
       "exists": true,
-      "bytes": 1010,
+      "bytes": 1074,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -68,7 +68,7 @@
       "path": "pipeline_state.json",
       "role": "Clip reviews, auto-review state, cost_ledger",
       "exists": true,
-      "bytes": 24414,
+      "bytes": 28539,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -100,7 +100,7 @@
       "path": "assets/movie_wip.mp4",
       "role": "Full cut (WIP)",
       "exists": true,
-      "bytes": 2508179,
+      "bytes": 27732926,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -108,7 +108,7 @@
       "path": "assets/movie_wip.mp4.sources.json",
       "role": "WIP concat sources \u002B assembly note",
       "exists": true,
-      "bytes": 882,
+      "bytes": 1234,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -124,16 +124,16 @@
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 34121845,
-      "fileCount": 55,
+      "bytes": 66483923,
+      "fileCount": 86,
       "requiredForManualReview": true
     },
     {
       "path": "assets/video/prompts",
       "role": "Full prompt .txt \u002B .meta.json per clip",
       "exists": true,
-      "bytes": 80604,
-      "fileCount": 26,
+      "bytes": 137020,
+      "fileCount": 40,
       "requiredForManualReview": true
     },
     {
@@ -180,7 +180,7 @@
       "path": "telemetry/cost_ledger.json",
       "role": "Cost events snapshot (from pipeline_state)",
       "exists": true,
-      "bytes": 26623,
+      "bytes": 29595,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -196,7 +196,7 @@
       "path": "telemetry/api_calls.jsonl",
       "role": "Live API call log (full prompts)",
       "exists": true,
-      "bytes": 1341651,
+      "bytes": 1437366,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -204,7 +204,7 @@
       "path": "telemetry/ffmpeg.jsonl",
       "role": "Condensed ffmpeg ops",
       "exists": true,
-      "bytes": 10618,
+      "bytes": 16614,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -212,7 +212,7 @@
       "path": "ARTIFACTS.md",
       "role": "Human map of this project for Claude/manual review",
       "exists": true,
-      "bytes": 3829,
+      "bytes": 3920,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -220,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 6840,
+      "bytes": 7080,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -228,16 +228,24 @@
       "path": "assets/video/scene_01.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 3752,
+      "bytes": 4220,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_02.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1931,
       "fileCount": null,
       "requiredForManualReview": false
     }
   ],
   "stats": {
-    "clipMp4Count": 13,
-    "sceneCompositeCount": 1,
-    "promptTxtCount": 13,
-    "promptMetaCount": 13,
+    "clipMp4Count": 20,
+    "sceneCompositeCount": 2,
+    "promptTxtCount": 20,
+    "promptMetaCount": 20,
     "autoReviewDraftCount": 0,
     "hasReviewIndex": false,
     "reviewFrameCount": 0,

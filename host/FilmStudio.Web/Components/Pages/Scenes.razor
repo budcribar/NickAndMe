@@ -612,11 +612,18 @@ else
                 }
             </p>
 
-            @* Full scene composite — hide while a clip is selected or this scene is regenerating *@
+            @* Full scene composite — hide while clip selected, remux/gen busy, or full player open *@
             @if (IsSceneGenBusy(_detail.SceneNumber))
             {
                 <p class="small text-muted mb-2">
-                    Scene composite hidden while generating…
+                    Scene composite hidden while combining…
+                </p>
+            }
+            else if (_showScenePlayer && _playingScene == _detail.SceneNumber)
+            {
+                <p class="small text-muted mb-2">
+                    Playing full scene above.
+                    <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="HideScenePlayer">Show inline preview</button>
                 </p>
             }
             else if (_detail.CompositeExists && _selectedClip is null)
@@ -1183,31 +1190,32 @@ else
                     string.Equals(snap.Kind, "remux", StringComparison.OrdinalIgnoreCase))
                 {
                     await RefreshWipMetaAsync();
+                    // Bust cache so next manual play / inline preview loads the new file.
+                    var bust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    _sceneVideoKey = bust;
+                    _inlineCompositeKey = bust;
+
                     if (_playWipAfterRemux)
                     {
                         _playWipAfterRemux = false;
                         if (_wipExists)
                         {
                             _showWipPlayer = true;
-                            _wipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            _wipVideoKey = bust;
                             _message = "WIP ready — player below";
                         }
                     }
                     else if (_playSceneAfterRemux is int playSn)
                     {
+                        // Explicit Play scene (auto-remux) — open player once.
                         _playSceneAfterRemux = null;
                         _playingScene = playSn;
                         _showScenePlayer = true;
-                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                        _inlineCompositeKey = _sceneVideoKey;
                         _message = $"Scene S{playSn:D2} ready — playing";
                     }
                     else if (snap.Scene is int sn && sn > 0)
                     {
-                        _playingScene = sn;
-                        _showScenePlayer = true;
-                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                        _inlineCompositeKey = _sceneVideoKey;
+                        // Rebuild scene: progress only — do not auto-open a second player.
                         _message = $"Scene S{sn:D2} composite rebuilt";
                     }
                 }
@@ -1459,17 +1467,24 @@ else
         _playingScene = null;
     }
 
-    /// <summary>FFmpeg concat clips → scene composite only (not WIP).</summary>
+    /// <summary>FFmpeg concat clips → scene composite only (not WIP). Progress only — no auto-play.</summary>
     private async Task RebuildSceneAsync(int sn)
     {
         _busy = true;
         _error = null;
         _message = null;
+        // Hide any open scene player so rebuild shows progress, not dual/stale playback.
+        _playSceneAfterRemux = null;
+        if (_playingScene == sn || _showScenePlayer)
+        {
+            _showScenePlayer = false;
+            _playingScene = null;
+        }
         try
         {
             await EnsureHubAsync();
             await Engine.StartRemuxAsync(_projectId, sn, rebuildWip: false);
-            _message = $"Rebuilding S{sn:D2} scene composite (clips → composite; WIP unchanged)";
+            _message = $"Rebuilding S{sn:D2} scene composite…";
             var jobs = await Engine.GetJobAsync();
             _job = jobs?.Job;
         }

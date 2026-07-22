@@ -1,0 +1,91 @@
+{
+  "builtAtUtc": "2026-07-22T20:18:00.7676994Z",
+  "scene": 2,
+  "count": 6,
+  "clips": [
+    {
+      "name": "scene_02_clip_01.mp4",
+      "scene": 2,
+      "clip": 1,
+      "bytes": 1497583,
+      "mtimeUtc": "2026-07-22T16:19:44.5077981Z"
+    },
+    {
+      "name": "scene_02_clip_02.mp4",
+      "scene": 2,
+      "clip": 2,
+      "bytes": 1403706,
+      "mtimeUtc": "2026-07-22T16:21:21.0925756Z"
+    },
+    {
+      "name": "scene_02_clip_03.mp4",
+      "scene": 2,
+      "clip": 3,
+      "bytes": 2595743,
+      "mtimeUtc": "2026-07-22T16:22:23.6268277Z"
+    },
+    {
+      "name": "scene_02_clip_04.mp4",
+      "scene": 2,
+      "clip": 4,
+      "bytes": 3199752,
+      "mtimeUtc": "2026-07-22T16:24:13.1947314Z"
+    },
+    {
+      "name": "scene_02_clip_05.mp4",
+      "scene": 2,
+      "clip": 5,
+      "bytes": 4901924,
+      "mtimeUtc": "2026-07-22T16:25:51.1477725Z"
+    },
+    {
+      "name": "scene_02_clip_06.mp4",
+      "scene": 2,
+      "clip": 6,
+      "bytes": 1778598,
+      "mtimeUtc": "2026-07-22T20:03:28.9063348Z"
+    }
+  ],
+  "included": [
+    {
+      "name": "scene_02_clip_01.mp4",
+      "scene": 2,
+      "clip": 1,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_02_clip_02.mp4",
+      "scene": 2,
+      "clip": 2,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_02_clip_03.mp4",
+      "scene": 2,
+      "clip": 3,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_02_clip_04.mp4",
+      "scene": 2,
+      "clip": 4,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_02_clip_05.mp4",
+      "scene": 2,
+      "clip": 5,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_02_clip_06.mp4",
+      "scene": 2,
+      "clip": 6,
+      "reason": "eligible"
+    }
+  ],
+  "excluded": [],
+  "strict": true,
+  "assemblyGate": true,
+  "totalDurationSeconds": 60.91
+}
