@@ -2679,6 +2679,18 @@ public sealed class FilmJobService
     {
         try
         {
+            var c = FindClipElementInBlueprint(root, scene, clipNum);
+            if (c is { } clip && clip.TryGetProperty("visual_prompt", out var vp))
+                return vp.GetString();
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    private static JsonElement? FindClipElementInBlueprint(JsonElement root, int scene, int clipNum)
+    {
+        try
+        {
             if (!root.TryGetProperty("scenes", out var scenes) ||
                 scenes.ValueKind != JsonValueKind.Array)
                 return null;
@@ -2686,14 +2698,31 @@ public sealed class FilmJobService
             {
                 if (!s.TryGetProperty("scene_number", out var sn) || !sn.TryGetInt32(out var n) || n != scene)
                     continue;
-                return FindClipInScene(s, clipNum) is { } c &&
-                       c.TryGetProperty("visual_prompt", out var vp)
-                    ? vp.GetString()
-                    : null;
+                return FindClipInScene(s, clipNum);
             }
         }
         catch { /* ignore */ }
         return null;
+    }
+
+    /// <summary>
+    /// True when the clip has spoken dialogue or VO text (not silent establish).
+    /// </summary>
+    internal static bool ClipHasSpokenAudio(JsonElement clipEl)
+    {
+        if (!clipEl.TryGetProperty("audio_payload", out var ap) ||
+            ap.ValueKind != JsonValueKind.Object)
+            return false;
+        var dialogue = ap.TryGetProperty("dialogue", out var d) ? d.GetString() ?? "" : "";
+        if (string.IsNullOrWhiteSpace(dialogue))
+            return false;
+        var delivery = (ap.TryGetProperty("delivery", out var del) ? del.GetString() ?? "none" : "none")
+            .Trim().ToLowerInvariant();
+        if (delivery is "none" or "")
+            return false;
+        return Stage2PlannerService.IsOnCameraDelivery(delivery) ||
+               delivery is "voiceover_internal" or "internal" or "narration" or "vo" or "thought" or
+                   "voiceover" or "voice_over" or "off_camera" or "offcamera";
     }
 
     private static JsonElement? FindClipInScene(JsonElement sceneEl, int clipNum)

@@ -308,6 +308,46 @@ public class ClipVideoPromptBuilderTests
         Assert.DoesNotContain(broken, cleaned, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("True! Nervous — very, very dreadfully nervous I had been and am;", "True!")]
+    [InlineData("Hello world.", "Hello")]
+    [InlineData("", "")]
+    public void FirstSpokenToken_extracts_opening(string line, string expected)
+    {
+        Assert.Equal(expected, ClipVideoPromptBuilder.FirstSpokenToken(line));
+    }
+
+    [Fact]
+    public void Build_audio_requires_opening_word()
+    {
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 2,
+              "visual_prompt": "INT. ROOM. Character_Narrator ON CAMERA lip-syncs \"True! Nervous very.\"",
+              "characters_on_screen": ["Character_Narrator"],
+              "veo_continuation_source": "none",
+              "audio_payload": {
+                "speaker": "Character_Narrator",
+                "dialogue": "True! Nervous very.",
+                "delivery": "spoken_on_camera"
+              }
+            }
+            """).RootElement;
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_Narrator"] = new()
+            {
+                Key = "Character_Narrator",
+                DisplayName = "Narrator",
+                Description = "pale man",
+            },
+        };
+        var built = ClipVideoPromptBuilder.Build(clip, Path.GetTempPath(), profiles);
+        Assert.Contains("Start speaking immediately with \"True!\"", built.Prompt, StringComparison.Ordinal);
+        Assert.Contains("exactly: \"True! Nervous very.\"", built.Prompt, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Build_audio_and_visual_use_sanitized_spoken_dialogue()
     {

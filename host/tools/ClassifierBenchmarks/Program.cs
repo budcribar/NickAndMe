@@ -111,7 +111,7 @@ static async Task<int> CmdRunAsync(BenchPaths paths, string[] args)
         ProjectId = flags.GetValueOrDefault("project") ?? "The_Jungle_Book",
         Tasks = SplitCsv(flags.GetValueOrDefault("tasks") ?? "ambient_sfx"),
         Models = SplitCsv(flags.GetValueOrDefault("models") ?? "grok-4.5"),
-        Prompts = SplitCsv(flags.GetValueOrDefault("prompts") ?? "v2_grounded"),
+        Prompts = SplitCsv(flags.GetValueOrDefault("prompts")),
         Temperatures = temps,
         Note = flags.GetValueOrDefault("note"),
     };
@@ -146,10 +146,11 @@ static async Task<int> CmdRunAsync(BenchPaths paths, string[] args)
 
     foreach (var task in cfg.Tasks)
     {
-        var promptIds = cfg.Prompts;
-        // if user passed prompts that don't apply, fall back to listing for task
-        if (promptIds.Count == 0)
-            promptIds = PromptStore.ListPromptIds(paths, task).ToList();
+        // No --prompts given: use this task's product-recommended default, not a
+        // one-size-fits-all guess that only happens to exist for some tasks.
+        var promptIds = cfg.Prompts.Count > 0
+            ? cfg.Prompts
+            : new List<string> { TaskRunners.DefaultPromptId(task) };
 
         foreach (var model in cfg.Models)
         {

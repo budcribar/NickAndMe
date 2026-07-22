@@ -223,13 +223,20 @@ public sealed class SilentBeatActionClassifier
         CancellationToken ct)
     {
         var flat = CollectAllBeatsForNeighbors(stage1);
+        // Group once per call instead of re-filtering+sorting the whole book's beat list
+        // for every single beat in the batch.
+        var byScene = flat
+            .GroupBy(x => x.Scene)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.IndexInScene).ToList());
         var payload = batch.Select(b =>
         {
             FlatNeighbor? prev = null, next = null;
-            var sceneBeats = flat.Where(x => x.Scene == b.Scene).OrderBy(x => x.IndexInScene).ToList();
-            var ix = sceneBeats.FindIndex(x => x.Id == b.Id);
-            if (ix > 0) prev = sceneBeats[ix - 1];
-            if (ix >= 0 && ix < sceneBeats.Count - 1) next = sceneBeats[ix + 1];
+            if (byScene.TryGetValue(b.Scene, out var sceneBeats))
+            {
+                var ix = sceneBeats.FindIndex(x => x.Id == b.Id);
+                if (ix > 0) prev = sceneBeats[ix - 1];
+                if (ix >= 0 && ix < sceneBeats.Count - 1) next = sceneBeats[ix + 1];
+            }
             return new Dictionary<string, object?>
             {
                 ["id"] = b.Id,

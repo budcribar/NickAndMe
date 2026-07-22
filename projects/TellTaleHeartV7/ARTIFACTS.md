@@ -2,22 +2,21 @@
 
 Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.
 
-Built: **2026-07-22 02:48:40Z** · Ready for manual final review: **no**
+Built: **2026-07-22 03:12:41Z** · Ready for manual final review: **no**
 
 ## Stats
 
-- **clipMp4Count**: 2
+- **clipMp4Count**: 3
 - **sceneCompositeCount**: 1
-- **promptTxtCount**: 2
-- **promptMetaCount**: 2
+- **promptTxtCount**: 3
+- **promptMetaCount**: 3
 - **autoReviewDraftCount**: 0
 - **hasReviewIndex**: False
 - **reviewFrameCount**: 0
-- **hasWip**: False
+- **hasWip**: True
 
 ## Missing (recommended for manual review)
 
-- `assets/movie_wip.mp4`
 - `assets/review/index.json`
 
 ## Map
@@ -35,8 +34,8 @@ Built: **2026-07-22 02:48:40Z** · Ready for manual final review: **no**
 | no | `pipeline_config.json` | Per-project gen config (model, resolution) |
 | no | `edit_feedback_log.json` | Human edit / pass-fail log |
 | yes | `blueprint.clips.grok.json` | Stage 2 shot plan / clips *(core)* |
-| no | `assets/movie_wip.mp4` | Full cut (WIP) *(core)* |
-| no | `assets/movie_wip.mp4.sources.json` | WIP concat sources + assembly note |
+| yes | `assets/movie_wip.mp4` | Full cut (WIP) *(core)* |
+| yes | `assets/movie_wip.mp4.sources.json` | WIP concat sources + assembly note |
 | yes | `assets/characters` | Locked character plates + variants *(core)* |
 | yes | `assets/video` | Clips + scene composites + duration sidecars *(core)* |
 | yes | `assets/video/prompts` | Full prompt .txt + .meta.json per clip *(core)* |

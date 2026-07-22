@@ -16,6 +16,14 @@ public sealed class OnScreenCastClassifier
     /// <summary>Shipped prompt id (matches host/evals/classifier_benchmarks/prompts/onscreen_cast/v2_grounded).</summary>
     public const string PromptVersion = "v2_grounded";
 
+    /// <summary>
+    /// Matches "voiceover" / "voice-over" / "voice over" or the abbreviation "V.O." / "VO" as a
+    /// whole word — NOT a bare "vo" substring, which false-positives on "voice", "avoid", "provoke", etc.
+    /// </summary>
+    private static readonly Regex VoiceoverPattern = new(
+        @"\bvoice[\s-]?over\b|\bv\.?\s*o\.?\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly IChatClient _chat;
     private readonly FilmStudioOptions _opts;
     private readonly ILogger<OnScreenCastClassifier> _log;
@@ -54,12 +62,12 @@ public sealed class OnScreenCastClassifier
         }
 
         // Baseline heuristic into beat field for fallback
+        var profiles = castKeys.ToDictionary(
+            k => k,
+            k => new ClipVideoPromptBuilder.CharacterProfile { DisplayName = k.Replace("Character_", "").Replace('_', ' ') },
+            StringComparer.OrdinalIgnoreCase);
         foreach (var t in targets)
         {
-            var profiles = castKeys.ToDictionary(
-                k => k,
-                k => new ClipVideoPromptBuilder.CharacterProfile { DisplayName = k.Replace("Character_", "").Replace('_', ' ') },
-                StringComparer.OrdinalIgnoreCase);
             var inferred = ClipVideoPromptBuilder.InferKeysFromProse(t.VisualEvent + " " + t.Dialogue, profiles);
             if (!string.IsNullOrWhiteSpace(t.SpeakerKey) &&
                 !inferred.Contains(t.SpeakerKey, StringComparer.OrdinalIgnoreCase) &&
@@ -248,8 +256,7 @@ JSON only:
                     VisualEvent = ve,
                     Dialogue = dlg,
                     SpeakerKey = sp,
-                    IsVoiceover = del.Contains("voiceover", StringComparison.OrdinalIgnoreCase) ||
-                                  del.Contains("vo", StringComparison.OrdinalIgnoreCase),
+                    IsVoiceover = VoiceoverPattern.IsMatch(del),
                     Beat = beat,
                 });
             }

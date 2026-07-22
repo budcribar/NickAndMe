@@ -447,6 +447,16 @@ public static class ClipVideoPromptBuilder
             RegexOptions.IgnoreCase);
     }
 
+    /// <summary>First word/token of a spoken line (for gen cues that protect the opening).</summary>
+    public static string FirstSpokenToken(string? dialogue)
+    {
+        if (string.IsNullOrWhiteSpace(dialogue))
+            return "";
+        // Prefer word + trailing ! ? if present (True!)
+        var m = Regex.Match(dialogue.Trim(), @"^[\p{L}\p{N}']+[!?]?");
+        return m.Success ? m.Value : "";
+    }
+
     /// <summary>
     /// Remove leftover fountain markup and awkward Character_* + pronoun glue from action prose.
     /// </summary>
@@ -805,6 +815,10 @@ public static class ClipVideoPromptBuilder
                              delivery is "voiceover_internal" or "internal" or "narration" or "vo" or "thought";
             // Full line, speech-safe punctuation (em-dash normalize, !- glue) — same words
             var quote = SanitizeSpokenDialogue(dialogue);
+            var open = FirstSpokenToken(quote);
+            var openCue = open.Length > 0
+                ? $" Start speaking immediately with \"{open}\" — do not skip, delay, or swallow the opening word."
+                : " Start speaking immediately with the first word of the line — do not skip the opening.";
             var bed = !string.IsNullOrWhiteSpace(ambient)
                 ? $" Ambient bed: {ambient.Trim()}."
                 : !string.IsNullOrWhiteSpace(sfx)
@@ -814,12 +828,12 @@ public static class ClipVideoPromptBuilder
             {
                 return
                     $"AUDIO: REQUIRED native Grok off-camera voiceover. {who} narrates " +
-                    $"exactly: \"{quote}\". Do not lip-sync on-screen cast to this VO.{bed}{voiceLock}";
+                    $"exactly: \"{quote}\".{openCue} Do not lip-sync on-screen cast to this VO.{bed}{voiceLock}";
             }
             // spoken_on_camera / on_camera (normalized)
             return
                 $"AUDIO: REQUIRED native Grok dialogue. {who} ON CAMERA lip-syncs " +
-                $"exactly: \"{quote}\". Other mouths closed. Speech intelligible; never silent.{bed}{voiceLock}";
+                $"exactly: \"{quote}\".{openCue} Other mouths closed. Speech intelligible; never silent.{bed}{voiceLock}";
         }
 
         if (!string.IsNullOrWhiteSpace(ambient) || !string.IsNullOrWhiteSpace(sfx))

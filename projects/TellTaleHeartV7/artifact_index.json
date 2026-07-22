@@ -1,11 +1,10 @@
 {
   "projectId": "TellTaleHeartV7",
-  "builtAtUtc": "2026-07-22T02:48:40.9277774+00:00",
+  "builtAtUtc": "2026-07-22T03:12:41.5327118+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
   "missingRequired": [
-    "assets/movie_wip.mp4",
     "assets/review/index.json"
   ],
   "entries": [
@@ -69,7 +68,7 @@
       "path": "pipeline_state.json",
       "role": "Clip reviews, auto-review state, cost_ledger",
       "exists": true,
-      "bytes": 2716,
+      "bytes": 4484,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -100,16 +99,16 @@
     {
       "path": "assets/movie_wip.mp4",
       "role": "Full cut (WIP)",
-      "exists": false,
-      "bytes": null,
+      "exists": true,
+      "bytes": 2508179,
       "fileCount": null,
       "requiredForManualReview": true
     },
     {
       "path": "assets/movie_wip.mp4.sources.json",
       "role": "WIP concat sources \u002B assembly note",
-      "exists": false,
-      "bytes": null,
+      "exists": true,
+      "bytes": 882,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -125,16 +124,16 @@
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 3367979,
-      "fileCount": 11,
+      "bytes": 6044322,
+      "fileCount": 15,
       "requiredForManualReview": true
     },
     {
       "path": "assets/video/prompts",
       "role": "Full prompt .txt \u002B .meta.json per clip",
       "exists": true,
-      "bytes": 15070,
-      "fileCount": 4,
+      "bytes": 20701,
+      "fileCount": 6,
       "requiredForManualReview": true
     },
     {
@@ -181,7 +180,7 @@
       "path": "telemetry/cost_ledger.json",
       "role": "Cost events snapshot (from pipeline_state)",
       "exists": true,
-      "bytes": 1508,
+      "bytes": 2781,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -197,7 +196,7 @@
       "path": "telemetry/api_calls.jsonl",
       "role": "Live API call log (full prompts)",
       "exists": true,
-      "bytes": 688515,
+      "bytes": 696912,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -205,7 +204,7 @@
       "path": "telemetry/ffmpeg.jsonl",
       "role": "Condensed ffmpeg ops",
       "exists": true,
-      "bytes": 2440,
+      "bytes": 6090,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -221,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 6861,
+      "bytes": 6862,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -229,19 +228,19 @@
       "path": "assets/video/scene_01.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 789,
+      "bytes": 1075,
       "fileCount": null,
       "requiredForManualReview": false
     }
   ],
   "stats": {
-    "clipMp4Count": 2,
+    "clipMp4Count": 3,
     "sceneCompositeCount": 1,
-    "promptTxtCount": 2,
-    "promptMetaCount": 2,
+    "promptTxtCount": 3,
+    "promptMetaCount": 3,
     "autoReviewDraftCount": 0,
     "hasReviewIndex": false,
     "reviewFrameCount": 0,
-    "hasWip": false
+    "hasWip": true
   }
 }

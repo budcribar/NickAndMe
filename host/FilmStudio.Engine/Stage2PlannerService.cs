@@ -726,6 +726,9 @@ public sealed class Stage2PlannerService
             return true;
         if (prevLocationId is not null && locationId is not null && prevLocationId != locationId)
             return true;
+        // Silent establish → first spoken/VO: hard cut so opening words are not clipped by extend
+        if (prevBeat is not null && BeatHasSpokenAudio(beat) && !BeatHasSpokenAudio(prevBeat))
+            return true;
         if (IsVoBeat(beat) && prevBeat is not null && IsOnCameraSpeech(prevBeat))
             return true;
         if (IsVoBeat(beat))
@@ -735,6 +738,23 @@ public sealed class Stage2PlannerService
                 @"\b(kick|smash|punch|sprint|crash|explod|slam|throw|rocket|wide shot|establishing|flashback|back to present|cut to)\b"))
             return true;
         return false;
+    }
+
+    /// <summary>True when the beat carries spoken dialogue or VO (not silent action).</summary>
+    private static bool BeatHasSpokenAudio(Dictionary<string, object?> beat)
+    {
+        var (delivery, _) = BeatAudio(beat);
+        if (delivery is "none" or "")
+            return false;
+        var dialogue = CoerceString(beat.TryGetValue("dialogue", out var d) ? d : null) ?? "";
+        if (string.IsNullOrWhiteSpace(dialogue) &&
+            beat.TryGetValue("audio", out var a) && a is Dictionary<string, object?> ad)
+            dialogue = CoerceString(ad.TryGetValue("dialogue", out var d2) ? d2 : null) ?? "";
+        if (string.IsNullOrWhiteSpace(dialogue))
+            return false;
+        return IsOnCameraDelivery(delivery) ||
+               delivery is "voiceover_internal" or "internal" or "narration" or "vo" or "thought" or
+                   "voiceover" or "voice_over" or "off_camera" or "offcamera";
     }
 
     private static bool IsVoBeat(Dictionary<string, object?> beat)
