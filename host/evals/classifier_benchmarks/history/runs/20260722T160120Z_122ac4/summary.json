@@ -1,0 +1,63 @@
+{
+  "runId": "20260722T160120Z_122ac4",
+  "utc": "2026-07-22 16:01:20Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "species_kind"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [
+      "v1_product",
+      "v2_focused"
+    ],
+    "temperatures": [
+      0
+    ],
+    "note": "Testing species_kind v2_focused",
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "species_kind",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v1_product",
+      "promptLabel": "Product SpeciesKindClassifier prompt",
+      "promptHash": "cf01f9be7a08",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 51,
+      "metric": "accuracy",
+      "baselineScore": 0.49019607843137253,
+      "aiScore": 0.8431372549019608,
+      "winner": "AI",
+      "latencyMs": 26085,
+      "aiParseHits": 51,
+      "samples": []
+    },
+    {
+      "task": "species_kind",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_focused",
+      "promptLabel": "Enhanced rules for animal species vs human vs collective groups",
+      "promptHash": "d5e97de56dff",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 51,
+      "metric": "accuracy",
+      "baselineScore": 0.49019607843137253,
+      "aiScore": 0.803921568627451,
+      "winner": "AI",
+      "latencyMs": 22424,
+      "aiParseHits": 51,
+      "note": "Adds explicit guidance for individual talking animals vs collective packs/crowds",
+      "samples": []
+    }
+  ]
+}

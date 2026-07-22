@@ -1,0 +1,6 @@
+{
+  "id": "v2_focused",
+  "task": "species_kind",
+  "label": "Enhanced rules for animal species vs human vs collective groups",
+  "notes": "Adds explicit guidance for individual talking animals vs collective packs/crowds"
+}

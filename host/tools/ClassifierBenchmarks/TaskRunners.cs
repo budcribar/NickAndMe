@@ -389,13 +389,15 @@ public static class TaskRunners
         using var goldDoc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
         var root = goldDoc.RootElement;
         var curated = root.TryGetProperty("curated", out var cEl) && cEl.GetBoolean();
-        var samples = new List<(string Key, string Project, string Id, string Visual, bool IsFirst, string Gold)>();
+        var samples = new List<(string Key, string Project, string Id, string Visual, bool IsFirst, string Setting, string BookContext, string Gold)>();
         foreach (var el in root.GetProperty("labels").EnumerateArray())
         {
             var book = el.TryGetProperty("projectId", out var pEl) ? pEl.GetString() ?? "" : "";
             var id = el.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? "" : "";
             var gold = el.TryGetProperty("gold", out var gEl) ? gEl.GetString() ?? "" : "";
             var visual = el.TryGetProperty("visual", out var vEl) ? vEl.GetString() ?? "" : "";
+            var setting = el.TryGetProperty("setting", out var sEl) ? sEl.GetString() ?? "" : "";
+            var note = el.TryGetProperty("note", out var nEl) ? nEl.GetString() ?? "" : "";
             var isFirst = el.TryGetProperty("is_first_silent_in_scene", out var fEl) &&
                           (fEl.ValueKind == JsonValueKind.True ||
                            (fEl.ValueKind == JsonValueKind.String &&
@@ -404,7 +406,7 @@ public static class TaskRunners
             var nGold = SilentBeatActionClassifier.NormalizeClass(gold) ?? gold.Trim().ToLowerInvariant();
             // Composite key so s1_b1 across books doesn't collide in the chat batch
             var key = $"{book}::{id}";
-            samples.Add((key, book, id, visual, isFirst, nGold));
+            samples.Add((key, book, id, visual, isFirst, setting, note, nGold));
         }
 
         // Batch chat (product uses ~30)
@@ -416,11 +418,17 @@ public static class TaskRunners
         {
             ct.ThrowIfCancellationRequested();
             var chunk = samples.Skip(offset).Take(batchSize).ToList();
-            var payload = chunk.Select(s => new Dictionary<string, object?>
+            var payload = chunk.Select(s =>
             {
-                ["id"] = s.Key,
-                ["visual_event"] = Trunc(s.Visual, 280),
-                ["is_first_silent_in_scene"] = s.IsFirst,
+                var d = new Dictionary<string, object?>
+                {
+                    ["id"] = s.Key,
+                    ["visual_event"] = Trunc(s.Visual, 280),
+                    ["is_first_silent_in_scene"] = s.IsFirst,
+                };
+                if (!string.IsNullOrWhiteSpace(s.Setting)) d["setting"] = Trunc(s.Setting, 100);
+                if (!string.IsNullOrWhiteSpace(s.BookContext)) d["book_context"] = Trunc(s.BookContext, 200);
+                return d;
             }).ToList();
             var raw = await chat.CompleteAsync(
                 model, temperature, prompt.Text,

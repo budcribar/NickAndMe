@@ -1,0 +1,42 @@
+{
+  "runId": "20260722T193044Z_1a22a5",
+  "utc": "2026-07-22 19:30:44Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "silent_beat_action"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [],
+    "temperatures": [
+      0
+    ],
+    "note": "Testing silent_beat_action with book_context",
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "silent_beat_action",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_product",
+      "promptLabel": "Product SilentBeatActionClassifier (v2) \u2014 SHIPPED",
+      "promptHash": "7aad11c81172",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 147,
+      "metric": "accuracy",
+      "baselineScore": 0.46938775510204084,
+      "aiScore": 0.8979591836734694,
+      "winner": "AI",
+      "latencyMs": 251686,
+      "aiParseHits": 147,
+      "note": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
+      "samples": []
+    }
+  ]
+}

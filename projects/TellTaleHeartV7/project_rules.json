@@ -3,17 +3,17 @@
   "active": [
     {
       "id": "style_from_cast",
-      "text": "STYLE LOCK: Period gothic live-action; candlelight and deep shadows; desaturated cool-brown palette; 19th-century domestic interiors; naturalistic skin and fabric texture; no modern clothing or lighting.",
+      "text": "STYLE LOCK: Period gothic live-action, mid-19th-century interiors; candlelight and deep shadows; desaturated cool-gray palette; naturalistic skin and fabric texture; no illustration or stylized animation.",
       "category": "style",
-      "approvedAt": "2026-07-22T01:29:16.1818164+00:00",
+      "approvedAt": "2026-07-22T16:18:25.4240808+00:00",
       "approvedBy": "cast_extract",
       "sourceFailCount": 0
     },
     {
       "id": "performance_from_cast",
-      "text": "PERFORMANCE LOCK: First-person confessional adaptation\u2014THE NARRATOR often faces and addresses the implied listener/camera when recounting; flashback scenes are objective staging where characters look at each other and scene action, not the viewer. Officers remain calm, civil, observational.",
+      "text": "PERFORMANCE LOCK: First-person confessional adaptation. The Narrator frequently addresses an implied listener/camera when in the bare room, calm-to-fevered direct address; flashback scenes are objective third-person staging where characters look at each other and scene action, not the viewer. Officers remain polite, observational, and scene-partner focused.",
       "category": "performance",
-      "approvedAt": "2026-07-22T01:29:16.2008788+00:00",
+      "approvedAt": "2026-07-22T16:18:25.4351094+00:00",
       "approvedBy": "cast_extract",
       "sourceFailCount": 0
     }

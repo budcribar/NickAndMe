@@ -2225,6 +2225,21 @@ public sealed class FilmJobService
             }
         }
 
+        // Imagine /videos/extensions rejects input video longer than 15s.
+        // Bad extension-tail trims (or re-extend chains) can leave a prev clip over that cap —
+        // clamp to the last ≤15s so continuity still uses the ending frames.
+        string? extendInputTemp = null;
+        if (prevVideoPath is not null)
+        {
+            var clamped = await ClampExtendInputIfNeededAsync(prevVideoPath, scene, clip, ct)
+                .ConfigureAwait(false);
+            if (clamped is not null)
+            {
+                extendInputTemp = clamped;
+                prevVideoPath = clamped;
+            }
+        }
+
         if (prevVideoPath is not null)
         {
             await AppendLogAsync(
@@ -2332,84 +2347,94 @@ public sealed class FilmJobService
             $"  [Grok] Submit S{scene:D2}C{clip} duration={duration}s res={resolution} " +
             $"model={model} mode={modeLabel} {built.PromptLogSummary}");
 
-        // Prefer official video continue; character refs only on fresh gens (API: no mix)
-        var requestId = await _grok.SubmitGenerationAsync(
-            built.Prompt,
-            duration,
-            resolution,
-            model,
-            ct,
-            referenceImagePaths: prevVideoPath is null && built.ReferenceImagePaths.Count > 0
-                ? built.ReferenceImagePaths
-                : null,
-            startFrameImagePath: null,
-            continueFromVideoPath: prevVideoPath);
-        await AppendLogAsync($"  [Grok] request_id={requestId}");
-
-        var url = await _grok.PollForVideoUrlAsync(
-            requestId,
-            msg => { _ = AppendLogAsync($"  [Grok] {msg}"); },
-            ct);
-
-        var outPath = Path.Combine(
-            projectDir, "assets", "video", $"scene_{scene:D2}_clip_{clip:D2}.mp4");
-
-        if (prevVideoPath is not null)
-        {
-            // Extension returns prev+new as one file — keep only the new portion as this clip
-            var extendedTmp = Path.Combine(
-                projectDir, "assets", "video", $"_extend_s{scene:D2}c{clip:D2}.mp4");
-            await _grok.DownloadToFileAsync(url, extendedTmp, ct);
-            await AppendLogAsync(
-                $"  [Grok] extended video downloaded ({new FileInfo(extendedTmp).Length} bytes) — trimming new {duration}s");
-            var trimmed = await TryTrimExtensionTailAsync(extendedTmp, outPath, duration, ct)
-                .ConfigureAwait(false);
-            if (!trimmed)
-            {
-                // Fallback: keep full extended file as this clip (better than nothing)
-                File.Copy(extendedTmp, outPath, overwrite: true);
-                await AppendLogAsync(
-                    "  [Grok] trim failed — saved full extended video as clip (includes previous)");
-            }
-            try { File.Delete(extendedTmp); } catch { /* ignore */ }
-        }
-        else
-        {
-            await _grok.DownloadToFileAsync(url, outPath, ct);
-        }
-
-        await AppendLogAsync($"  [Grok] saved {outPath}");
-
-        // Trim trailing silence on THIS clip before any later clip extends from it.
-        // Spoken lines keep a longer breath tail (~0.7s) so the next monologue clip does not butt-join.
-        var keepTail = ClipHasSpokenAudio(clipEl)
-            ? ClipSilenceTrimmer.SpeechBreathTailSeconds
-            : ClipSilenceTrimmer.DefaultKeepTailSeconds;
-        await SilenceTrimClipAsync(outPath, scene, clip, ct, keepTailSeconds: keepTail)
-            .ConfigureAwait(false);
-
-        // Always write duration sidecar (even when silence-trim is a no-op)
-        await EnsureClipDurationSidecarAsync(outPath, scene, clip, ct).ConfigureAwait(false);
-
         try
         {
-            var costProjectId = Snapshot.ProjectId ?? projectId ?? _projects.ActiveProjectId;
-            await _costs.RecordVideoGenerationAsync(
-                costProjectId,
-                scene,
-                clip,
+            // Prefer official video continue; character refs only on fresh gens (API: no mix)
+            var requestId = await _grok.SubmitGenerationAsync(
+                built.Prompt,
                 duration,
                 resolution,
                 model,
-                hasRefImage: built.ReferenceImagePaths.Count > 0 || prevVideoPath is not null,
-                isExtend: prevVideoPath is not null,
-                requestId: requestId,
-                ct: ct);
-            await AppendLogAsync($"  [Cost] tracked list-rate for S{scene:D2}C{clip}");
+                ct,
+                referenceImagePaths: prevVideoPath is null && built.ReferenceImagePaths.Count > 0
+                    ? built.ReferenceImagePaths
+                    : null,
+                startFrameImagePath: null,
+                continueFromVideoPath: prevVideoPath);
+            await AppendLogAsync($"  [Grok] request_id={requestId}");
+
+            var url = await _grok.PollForVideoUrlAsync(
+                requestId,
+                msg => { _ = AppendLogAsync($"  [Grok] {msg}"); },
+                ct);
+
+            var outPath = Path.Combine(
+                projectDir, "assets", "video", $"scene_{scene:D2}_clip_{clip:D2}.mp4");
+
+            if (prevVideoPath is not null)
+            {
+                // Extension returns prev+new as one file — keep only the new portion as this clip
+                var extendedTmp = Path.Combine(
+                    projectDir, "assets", "video", $"_extend_s{scene:D2}c{clip:D2}.mp4");
+                await _grok.DownloadToFileAsync(url, extendedTmp, ct);
+                await AppendLogAsync(
+                    $"  [Grok] extended video downloaded ({new FileInfo(extendedTmp).Length} bytes) — trimming new {duration}s");
+                var trimmed = await TryTrimExtensionTailAsync(extendedTmp, outPath, duration, ct)
+                    .ConfigureAwait(false);
+                if (!trimmed)
+                {
+                    // Fallback: keep full extended file as this clip (better than nothing)
+                    File.Copy(extendedTmp, outPath, overwrite: true);
+                    await AppendLogAsync(
+                        "  [Grok] trim failed — saved full extended video as clip (includes previous)");
+                }
+                try { File.Delete(extendedTmp); } catch { /* ignore */ }
+            }
+            else
+            {
+                await _grok.DownloadToFileAsync(url, outPath, ct);
+            }
+
+            await AppendLogAsync($"  [Grok] saved {outPath}");
+
+            // Trim trailing silence on THIS clip before any later clip extends from it.
+            // Spoken lines keep a longer breath tail (~0.7s) so the next monologue clip does not butt-join.
+            var keepTail = ClipHasSpokenAudio(clipEl)
+                ? ClipSilenceTrimmer.SpeechBreathTailSeconds
+                : ClipSilenceTrimmer.DefaultKeepTailSeconds;
+            await SilenceTrimClipAsync(outPath, scene, clip, ct, keepTailSeconds: keepTail)
+                .ConfigureAwait(false);
+
+            // Always write duration sidecar (even when silence-trim is a no-op)
+            await EnsureClipDurationSidecarAsync(outPath, scene, clip, ct).ConfigureAwait(false);
+
+            try
+            {
+                var costProjectId = Snapshot.ProjectId ?? projectId ?? _projects.ActiveProjectId;
+                await _costs.RecordVideoGenerationAsync(
+                    costProjectId,
+                    scene,
+                    clip,
+                    duration,
+                    resolution,
+                    model,
+                    hasRefImage: built.ReferenceImagePaths.Count > 0 || prevVideoPath is not null,
+                    isExtend: prevVideoPath is not null,
+                    requestId: requestId,
+                    ct: ct);
+                await AppendLogAsync($"  [Cost] tracked list-rate for S{scene:D2}C{clip}");
+            }
+            catch (Exception ex)
+            {
+                await AppendLogAsync($"  [Cost] ledger write skipped: {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            await AppendLogAsync($"  [Cost] ledger write skipped: {ex.Message}");
+            if (extendInputTemp is not null)
+            {
+                try { File.Delete(extendInputTemp); } catch { /* ignore */ }
+            }
         }
     }
 
@@ -2486,6 +2511,51 @@ public sealed class FilmJobService
     }
 
     /// <summary>
+    /// Imagine <c>/videos/extensions</c> rejects input longer than 15s
+    /// (<c>Input video must not exceed 15 seconds</c>).
+    /// </summary>
+    private const double MaxVideoExtendInputSeconds = 15.0;
+
+    /// <summary>
+    /// If <paramref name="prevVideoPath"/> is longer than the API max, write a temp file
+    /// with only the last ≤15s (ending frames for continuity) and return that path.
+    /// Returns null when no clamp is needed (caller keeps the original path).
+    /// </summary>
+    private async Task<string?> ClampExtendInputIfNeededAsync(
+        string prevVideoPath,
+        int scene,
+        int clip,
+        CancellationToken ct)
+    {
+        if (!_remux.IsAvailable() || !File.Exists(prevVideoPath))
+            return null;
+
+        var total = await ClipSilenceTrimmer.ProbeDurationSecondsAsync(
+            _remux.FfmpegPath, prevVideoPath, ct).ConfigureAwait(false);
+        if (total is not > MaxVideoExtendInputSeconds)
+            return null;
+
+        // Slightly under 15s so float rounding / container padding never trips the API.
+        var keepSec = Math.Min(total.Value, MaxVideoExtendInputSeconds - 0.05);
+        var dir = Path.GetDirectoryName(prevVideoPath)!;
+        var tmp = Path.Combine(dir, $"_extend_in_s{scene:D2}c{clip:D2}.mp4");
+        var ok = await TryExtractVideoTailAsync(prevVideoPath, tmp, keepSec, ct)
+            .ConfigureAwait(false);
+        if (!ok)
+        {
+            await AppendLogAsync(
+                $"  [Continuity] prev clip is {total.Value:F1}s (> {MaxVideoExtendInputSeconds:0}s API max) " +
+                "but tail clamp failed — extend will likely be rejected");
+            return null;
+        }
+
+        await AppendLogAsync(
+            $"  [Continuity] prev clip {total.Value:F1}s exceeds {MaxVideoExtendInputSeconds:0}s extend limit — " +
+            $"using last {keepSec:F1}s for API input");
+        return tmp;
+    }
+
+    /// <summary>
     /// Extension API returns prev+new. Keep only the last <paramref name="extensionSeconds"/>
     /// as this clip file so remux still stitches independent clips.
     /// </summary>
@@ -2495,25 +2565,48 @@ public sealed class FilmJobService
         int extensionSeconds,
         CancellationToken ct)
     {
+        var sec = Math.Max(1, extensionSeconds);
+        return await TryExtractVideoTailAsync(extendedVideoPath, outClipPath, sec, ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Extract the last <paramref name="tailSeconds"/> of a video into <paramref name="outPath"/>.
+    /// <c>-sseof</c> is an input option and must precede <c>-i</c> (same pattern as frame review).
+    /// </summary>
+    private async Task<bool> TryExtractVideoTailAsync(
+        string videoPath,
+        string outPath,
+        double tailSeconds,
+        CancellationToken ct)
+    {
         try
         {
             if (!_remux.IsAvailable()) return false;
-            Directory.CreateDirectory(Path.GetDirectoryName(outClipPath)!);
-            var sec = Math.Max(1, extensionSeconds);
-            // -sseof -N seeks N seconds before EOF; -t N takes that tail.
-            // Drain pipes via FfmpegProcess — WaitForExit without reading stderr deadlocks on re-encode.
+            Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+            var sec = Math.Max(0.5, tailSeconds);
+            // Format with invariant culture so "14.95" never becomes "14,95".
+            var secArg = sec.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            // -sseof -N MUST come before -i (input option). After -i it is ignored/fails,
+            // which previously left full prev+new files on disk and broke the next extend at 15s.
             var args =
-                $"-hide_banner -nostats -loglevel error -y -i \"{extendedVideoPath}\" -sseof -{sec} " +
-                $"-t {sec} -c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k \"{outClipPath}\"";
+                $"-hide_banner -nostats -loglevel error -y -sseof -{secArg} -i \"{videoPath}\" " +
+                $"-t {secArg} -c:v libx264 -preset veryfast -crf 18 -c:a aac -b:a 128k \"{outPath}\"";
             var r = await FfmpegProcess.RunAsync(
                     _remux.FfmpegPath, args, ct, timeoutMs: 180_000)
                 .ConfigureAwait(false);
-            return r.Success &&
-                   File.Exists(outClipPath) &&
-                   new FileInfo(outClipPath).Length >= 1024;
+            if (r.Success &&
+                File.Exists(outPath) &&
+                new FileInfo(outPath).Length >= 1024)
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(r.StdErr))
+                _log.LogWarning("ffmpeg tail extract failed: {Err}", r.StdErr.Trim());
+            return false;
         }
-        catch
+        catch (Exception ex)
         {
+            _log.LogWarning(ex, "ffmpeg tail extract exception for {Path}", videoPath);
             return false;
         }
     }

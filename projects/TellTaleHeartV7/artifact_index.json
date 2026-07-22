@@ -1,6 +1,6 @@
 {
   "projectId": "TellTaleHeartV7",
-  "builtAtUtc": "2026-07-22T14:57:35.4298231+00:00",
+  "builtAtUtc": "2026-07-22T16:06:46.8602914+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
@@ -92,7 +92,7 @@
       "path": "blueprint.clips.grok.json",
       "role": "Stage 2 shot plan / clips",
       "exists": true,
-      "bytes": 200066,
+      "bytes": 245475,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -124,7 +124,7 @@
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 34085565,
+      "bytes": 34121845,
       "fileCount": 55,
       "requiredForManualReview": true
     },
@@ -180,7 +180,7 @@
       "path": "telemetry/cost_ledger.json",
       "role": "Cost events snapshot (from pipeline_state)",
       "exists": true,
-      "bytes": 26624,
+      "bytes": 26623,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -196,7 +196,7 @@
       "path": "telemetry/api_calls.jsonl",
       "role": "Live API call log (full prompts)",
       "exists": true,
-      "bytes": 984763,
+      "bytes": 1341651,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -212,7 +212,7 @@
       "path": "ARTIFACTS.md",
       "role": "Human map of this project for Claude/manual review",
       "exists": true,
-      "bytes": 3826,
+      "bytes": 3829,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -220,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 6834,
+      "bytes": 6840,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -228,7 +228,7 @@
       "path": "assets/video/scene_01.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 3933,
+      "bytes": 3752,
       "fileCount": null,
       "requiredForManualReview": false
     }

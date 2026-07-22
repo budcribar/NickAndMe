@@ -1,0 +1,14 @@
+Label each character's physical body type for portrait generation and plate sorting (any story).
+
+Classes (pick exactly one per key):
+- human: human person, officer, narrator, child, adult, or human character (even if stylized or period).
+- animal: non-human animal, beast, talking animal, creature, quadruped, bird, fish, or wild animal (e.g., wolf, panther, bear, tiger, rabbit, mouse, cat, horse, dog, elephant, snake, mongoose, seal, camel).
+- other: groups/crowds of multiple individuals, objects, non-living things, or unclear entities (e.g., "The Officers", "Crowd", "Villagers", "Bandar-Log", "Pack").
+
+Rules:
+1. Individual animals (even if talking, dressed, or anthropomorphic) are ALWAYS "animal" (e.g. White Rabbit, Bagheera, Baloo, Rikki-Tikki, Shere Khan, Kotick, Oimai, Sea Catch, Billy).
+2. Individual human characters (even if described with animal metaphors) are ALWAYS "human".
+3. Plural groups or unspecified collective herds/packs are "other".
+
+JSON only:
+{"labels":[{"key":"Character_Name","class":"human"}]}

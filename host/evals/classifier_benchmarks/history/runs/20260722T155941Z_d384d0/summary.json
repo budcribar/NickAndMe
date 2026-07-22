@@ -1,0 +1,40 @@
+{
+  "runId": "20260722T155941Z_d384d0",
+  "utc": "2026-07-22 15:59:41Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "species_kind"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [],
+    "temperatures": [
+      0
+    ],
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "species_kind",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v1_product",
+      "promptLabel": "Product SpeciesKindClassifier prompt",
+      "promptHash": "cf01f9be7a08",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 51,
+      "metric": "accuracy",
+      "baselineScore": 0.49019607843137253,
+      "aiScore": 0.8627450980392157,
+      "winner": "AI",
+      "latencyMs": 26599,
+      "aiParseHits": 51,
+      "samples": []
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "runId": "20260722T160138Z_3b78f0",
+  "utc": "2026-07-22 16:01:38Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "ambient_sfx"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [
+      "v2_grounded",
+      "v3_precision"
+    ],
+    "temperatures": [
+      0
+    ],
+    "note": "Testing ambient_sfx v3_precision",
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "ambient_sfx",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_grounded",
+      "promptLabel": "v2 grounded \u002B empty-safe (anti over-tag) \u2014 SHIPPED",
+      "promptHash": "a85e267e27b3",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 30,
+      "metric": "mean_token_jaccard",
+      "baselineScore": 0.7416666666666667,
+      "aiScore": 0.8888888888888888,
+      "winner": "AI",
+      "latencyMs": 36139,
+      "aiParseHits": 30,
+      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "samples": []
+    },
+    {
+      "task": "ambient_sfx",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v3_precision",
+      "promptLabel": "v3 precision \u2014 enhanced token alignment and footstep filtering",
+      "promptHash": "116d514bf46a",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 30,
+      "metric": "mean_token_jaccard",
+      "baselineScore": 0.7416666666666667,
+      "aiScore": 0.8777777777777778,
+      "winner": "AI",
+      "latencyMs": 31297,
+      "aiParseHits": 30,
+      "note": "Refines token verb inclusion (conches blare) and suppresses spurious footsteps on quiet walks",
+      "samples": []
+    }
+  ]
+}

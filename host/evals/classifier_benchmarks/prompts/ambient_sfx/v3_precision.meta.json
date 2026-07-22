@@ -1,0 +1,6 @@
+{
+  "id": "v3_precision",
+  "task": "ambient_sfx",
+  "label": "v3 precision — enhanced token alignment and footstep filtering",
+  "notes": "Refines token verb inclusion (conches blare) and suppresses spurious footsteps on quiet walks"
+}
