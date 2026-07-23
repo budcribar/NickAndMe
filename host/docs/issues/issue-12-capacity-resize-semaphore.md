@@ -3,18 +3,21 @@
 | Field | Value |
 |-------|-------|
 | Severity | suggestion |
-| Status | open |
+| Status | **fixed** |
 | Branch | `fix/issue-12-capacity-resize-semaphore` |
-| Related files | host/FilmStudio.Engine/WorkerPools.cs (~104-118, 172-183) |
+| Related files | `host/FilmStudio.Engine/WorkerPools.cs` |
 
 ## Problem
 
-Capacity resize disposes the live SemaphoreSlim and replaces it. In-flight work may overshoot caps briefly, and waiters on the disposed semaphore can fault. Rare (admin config change under load) but multi-user-relevant.
+Capacity resize disposed the live `SemaphoreSlim` and replaced it. In-flight work could overshoot caps briefly, and waiters on the disposed semaphore could fault with `ObjectDisposedException`. Rare (admin config change under load) but multi-user-relevant.
 
-## Suggested fix
+## Fix implemented
 
-Drain-then-replace, or only allow capacity changes when InFlight == 0.
+1. **Replace only when fully idle** (`CurrentCount == configured max`) for global API and local ffmpeg pools.
+2. **Capture semaphore instances** under lock before `WaitAsync` so a concurrent resize cannot swap the reference mid-call; `Release` tolerates disposed (defensive).
+3. **Per-user map**: clear entries on per-user cap change without disposing held semaphores (in-flight work keeps its old instance until release).
+4. Tests: resize under load does not fault waiters.
 
-## Notes
+## Suggested fix (original)
 
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.
+Drain-then-replace, or only allow capacity changes when `InFlight == 0`.
