@@ -1,10 +1,10 @@
 /* ---- Batch generate panel ---- */
 .batch-panel {
-    border: 1px solid rgba(27, 110, 194, 0.28);
+    border: 1px solid var(--fs-border-color);
     border-radius: 0.75rem;
     background:
-        linear-gradient(135deg, rgba(27, 110, 194, 0.07) 0%, rgba(58, 6, 71, 0.04) 55%, #fff 100%);
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(27, 110, 194, 0.06);
+        linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(99, 102, 241, 0.02) 55%, var(--fs-bg-card) 100%);
+    box-shadow: var(--fs-shadow-card);
     overflow: hidden;
 }
 
@@ -15,7 +15,7 @@
     gap: 1rem;
     flex-wrap: wrap;
     padding: 0.9rem 1.1rem 0.65rem;
-    border-bottom: 1px solid rgba(27, 110, 194, 0.12);
+    border-bottom: 1px solid var(--fs-border-color);
 }
 
 .batch-panel__title {
@@ -32,28 +32,28 @@
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 0.55rem;
-    background: linear-gradient(145deg, #1b6ec2, #3a0647);
+    background: linear-gradient(145deg, #6366f1, #4338ca);
     color: #fff;
     font-size: 0.85rem;
     flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(27, 110, 194, 0.35);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
 }
 
 .batch-panel__heading {
     font-weight: 650;
     font-size: 1rem;
     line-height: 1.2;
-    color: #152238;
+    color: var(--fs-text-primary);
 }
 
 .batch-panel__sub {
     font-size: 0.8rem;
-    color: #6c757d;
+    color: var(--fs-text-muted);
     margin-top: 0.15rem;
 }
 
 .batch-panel__warn {
-    color: #b58100;
+    color: var(--fs-accent-amber);
     font-weight: 600;
 }
 
@@ -67,20 +67,20 @@
     text-align: center;
     padding: 0.35rem 0.65rem;
     border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid #e5e7eb;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--fs-border-color);
     transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .batch-stat--active {
-    border-color: rgba(27, 110, 194, 0.45);
-    background: rgba(27, 110, 194, 0.08);
-    box-shadow: 0 0 0 1px rgba(27, 110, 194, 0.08);
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12);
 }
 
 .batch-stat--clips {
-    border-color: rgba(37, 140, 101, 0.4);
-    background: rgba(37, 140, 101, 0.08);
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.1);
 }
 
 .batch-stat__value {
@@ -88,7 +88,7 @@
     font-size: 1.15rem;
     font-weight: 700;
     line-height: 1.15;
-    color: #152238;
+    color: var(--fs-text-primary);
     font-variant-numeric: tabular-nums;
 }
 
@@ -97,7 +97,7 @@
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6c757d;
+    color: var(--fs-text-muted);
     margin-top: 0.1rem;
 }
 
@@ -122,7 +122,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6c757d;
+    color: var(--fs-text-muted);
 }
 
 .batch-chip-group {
@@ -133,9 +133,9 @@
 
 .batch-chip {
     appearance: none;
-    border: 1px solid #ced4da;
-    background: #fff;
-    color: #343a40;
+    border: 1px solid var(--fs-border-color);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fs-text-muted);
     border-radius: 999px;
     padding: 0.35rem 0.75rem;
     font-size: 0.82rem;
@@ -149,37 +149,37 @@
 }
 
 .batch-chip:hover:not(:disabled) {
-    border-color: #1b6ec2;
-    color: #1b6ec2;
-    background: rgba(27, 110, 194, 0.06);
+    border-color: #818cf8;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.12);
 }
 
 .batch-chip:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 0.15rem rgba(37, 140, 251, 0.35);
+    box-shadow: 0 0 0 0.15rem rgba(99, 102, 241, 0.35);
 }
 
 .batch-chip:disabled,
 .batch-chip--disabled:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
 .batch-chip--on {
-    border-color: #1b6ec2;
-    background: #1b6ec2;
+    border-color: #6366f1;
+    background: #6366f1;
     color: #fff;
-    box-shadow: 0 1px 3px rgba(27, 110, 194, 0.35);
+    box-shadow: 0 1px 3px rgba(99, 102, 241, 0.4);
 }
 
 .batch-chip--on:hover:not(:disabled) {
-    background: #1861ac;
-    border-color: #1861ac;
+    background: #4f46e5;
+    border-color: #4f46e5;
     color: #fff;
 }
 
 .batch-chip--muted {
-    color: #6c757d;
+    color: var(--fs-text-muted);
 }
 
 .batch-chip__count {
@@ -193,7 +193,7 @@
     font-size: 0.72rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    background: rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .batch-chip--on .batch-chip__count {
@@ -214,7 +214,7 @@
     align-items: center;
     gap: 0.4rem;
     font-size: 0.85rem;
-    color: #495057;
+    color: var(--fs-text-muted);
     margin: 0;
     cursor: pointer;
     user-select: none;
@@ -234,9 +234,9 @@
     min-height: 2.6rem;
     padding: 0.55rem 1.15rem;
     border-radius: 0.55rem;
-    border: 1px solid #c5ccd6;
-    background: #eef1f5;
-    color: #6c757d;
+    border: 1px solid var(--fs-border-color);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--fs-text-muted);
     font-weight: 600;
     font-size: 0.95rem;
     line-height: 1.2;
@@ -245,20 +245,20 @@
 }
 
 .batch-go:disabled {
-    opacity: 0.85;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
 .batch-go--ready {
-    background: linear-gradient(135deg, #1b6ec2 0%, #1557a0 55%, #3a0647 140%);
-    border-color: #1557a0;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 55%, #4338ca 140%);
+    border-color: #4f46e5;
     color: #fff;
-    box-shadow: 0 2px 8px rgba(27, 110, 194, 0.35);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
 .batch-go--ready:hover:not(:disabled) {
     filter: brightness(1.05);
-    box-shadow: 0 4px 14px rgba(27, 110, 194, 0.4);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
     transform: translateY(-1px);
     color: #fff;
 }
@@ -270,7 +270,7 @@
 
 .batch-go--ready:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(37, 140, 251, 0.4);
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.4);
 }
 
 .batch-go__play {
@@ -288,8 +288,8 @@
 .batch-go__spin {
     width: 0.95rem;
     height: 0.95rem;
-    border: 2px solid rgba(108, 117, 125, 0.25);
-    border-top-color: #6c757d;
+    border: 2px solid rgba(148, 163, 184, 0.25);
+    border-top-color: #94a3b8;
     border-radius: 50%;
     animation: batch-spin 0.7s linear infinite;
 }
@@ -306,33 +306,33 @@
 .batch-panel__foot {
     padding: 0.45rem 1.1rem 0.7rem;
     font-size: 0.75rem;
-    color: #868e96;
-    border-top: 1px dashed rgba(0, 0, 0, 0.06);
+    color: var(--fs-text-muted);
+    border-top: 1px dashed var(--fs-border-color);
 }
 
 .batch-panel__foot code {
     font-size: 0.72rem;
-    color: #495057;
+    color: #cbd5e1;
 }
 
 /* Selected rows: slightly stronger than default table-active */
 ::deep tr.table-active {
-    --bs-table-bg-state: rgba(27, 110, 194, 0.1);
-    box-shadow: inset 3px 0 0 #1b6ec2;
+    --bs-table-bg-state: rgba(99, 102, 241, 0.14);
+    box-shadow: inset 3px 0 0 #6366f1;
 }
 
 .batch-row-gen {
-    border: 1px solid rgba(27, 110, 194, 0.35);
-    color: #1b6ec2;
-    background: rgba(27, 110, 194, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.1);
     font-weight: 600;
     border-radius: 0.4rem;
     min-width: 3rem;
 }
 
 .batch-row-gen:hover:not(:disabled) {
-    background: #1b6ec2;
-    border-color: #1b6ec2;
+    background: #6366f1;
+    border-color: #6366f1;
     color: #fff;
 }
 
