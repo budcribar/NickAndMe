@@ -1,0 +1,429 @@
+{
+  "builtAtUtc": "2026-07-23T23:04:15.8730255Z",
+  "scene": 16,
+  "count": 32,
+  "clips": [
+    {
+      "name": "scene_16_clip_01.mp4",
+      "scene": 16,
+      "clip": 1,
+      "bytes": 1166528,
+      "mtimeUtc": "2026-07-23T22:28:27.4239278Z"
+    },
+    {
+      "name": "scene_16_clip_02.mp4",
+      "scene": 16,
+      "clip": 2,
+      "bytes": 723515,
+      "mtimeUtc": "2026-07-23T22:28:27.4314729Z"
+    },
+    {
+      "name": "scene_16_clip_03.mp4",
+      "scene": 16,
+      "clip": 3,
+      "bytes": 661507,
+      "mtimeUtc": "2026-07-23T22:28:27.4374687Z"
+    },
+    {
+      "name": "scene_16_clip_04.mp4",
+      "scene": 16,
+      "clip": 4,
+      "bytes": 963318,
+      "mtimeUtc": "2026-07-23T22:28:27.4454644Z"
+    },
+    {
+      "name": "scene_16_clip_05.mp4",
+      "scene": 16,
+      "clip": 5,
+      "bytes": 438545,
+      "mtimeUtc": "2026-07-23T22:28:27.4504846Z"
+    },
+    {
+      "name": "scene_16_clip_06.mp4",
+      "scene": 16,
+      "clip": 6,
+      "bytes": 626957,
+      "mtimeUtc": "2026-07-23T22:28:27.4570203Z"
+    },
+    {
+      "name": "scene_16_clip_07.mp4",
+      "scene": 16,
+      "clip": 7,
+      "bytes": 875596,
+      "mtimeUtc": "2026-07-23T22:28:27.4667038Z"
+    },
+    {
+      "name": "scene_16_clip_08.mp4",
+      "scene": 16,
+      "clip": 8,
+      "bytes": 389910,
+      "mtimeUtc": "2026-07-23T22:28:27.4706949Z"
+    },
+    {
+      "name": "scene_16_clip_09.mp4",
+      "scene": 16,
+      "clip": 9,
+      "bytes": 1108914,
+      "mtimeUtc": "2026-07-23T22:28:27.4796937Z"
+    },
+    {
+      "name": "scene_16_clip_10.mp4",
+      "scene": 16,
+      "clip": 10,
+      "bytes": 1154575,
+      "mtimeUtc": "2026-07-23T22:28:27.4899196Z"
+    },
+    {
+      "name": "scene_16_clip_11.mp4",
+      "scene": 16,
+      "clip": 11,
+      "bytes": 999241,
+      "mtimeUtc": "2026-07-23T22:28:27.4995056Z"
+    },
+    {
+      "name": "scene_16_clip_12.mp4",
+      "scene": 16,
+      "clip": 12,
+      "bytes": 576648,
+      "mtimeUtc": "2026-07-23T22:28:27.5106252Z"
+    },
+    {
+      "name": "scene_16_clip_13.mp4",
+      "scene": 16,
+      "clip": 13,
+      "bytes": 556300,
+      "mtimeUtc": "2026-07-23T22:28:27.5186144Z"
+    },
+    {
+      "name": "scene_16_clip_14.mp4",
+      "scene": 16,
+      "clip": 14,
+      "bytes": 1110099,
+      "mtimeUtc": "2026-07-23T22:28:27.5336399Z"
+    },
+    {
+      "name": "scene_16_clip_15.mp4",
+      "scene": 16,
+      "clip": 15,
+      "bytes": 1301518,
+      "mtimeUtc": "2026-07-23T22:28:27.5477594Z"
+    },
+    {
+      "name": "scene_16_clip_16.mp4",
+      "scene": 16,
+      "clip": 16,
+      "bytes": 675289,
+      "mtimeUtc": "2026-07-23T22:28:27.5552955Z"
+    },
+    {
+      "name": "scene_16_clip_17.mp4",
+      "scene": 16,
+      "clip": 17,
+      "bytes": 1690429,
+      "mtimeUtc": "2026-07-23T22:28:27.5708270Z"
+    },
+    {
+      "name": "scene_16_clip_18.mp4",
+      "scene": 16,
+      "clip": 18,
+      "bytes": 1288338,
+      "mtimeUtc": "2026-07-23T22:28:27.5840044Z"
+    },
+    {
+      "name": "scene_16_clip_19.mp4",
+      "scene": 16,
+      "clip": 19,
+      "bytes": 1357368,
+      "mtimeUtc": "2026-07-23T22:28:27.5962522Z"
+    },
+    {
+      "name": "scene_16_clip_20.mp4",
+      "scene": 16,
+      "clip": 20,
+      "bytes": 1358215,
+      "mtimeUtc": "2026-07-23T22:28:27.6083911Z"
+    },
+    {
+      "name": "scene_16_clip_21.mp4",
+      "scene": 16,
+      "clip": 21,
+      "bytes": 1678118,
+      "mtimeUtc": "2026-07-23T22:28:27.6254324Z"
+    },
+    {
+      "name": "scene_16_clip_22.mp4",
+      "scene": 16,
+      "clip": 22,
+      "bytes": 1010525,
+      "mtimeUtc": "2026-07-23T22:28:27.6345211Z"
+    },
+    {
+      "name": "scene_16_clip_23.mp4",
+      "scene": 16,
+      "clip": 23,
+      "bytes": 639791,
+      "mtimeUtc": "2026-07-23T22:28:27.6415270Z"
+    },
+    {
+      "name": "scene_16_clip_24.mp4",
+      "scene": 16,
+      "clip": 24,
+      "bytes": 1206481,
+      "mtimeUtc": "2026-07-23T22:28:27.6515236Z"
+    },
+    {
+      "name": "scene_16_clip_25.mp4",
+      "scene": 16,
+      "clip": 25,
+      "bytes": 621971,
+      "mtimeUtc": "2026-07-23T22:28:27.6576251Z"
+    },
+    {
+      "name": "scene_16_clip_26.mp4",
+      "scene": 16,
+      "clip": 26,
+      "bytes": 1604579,
+      "mtimeUtc": "2026-07-23T22:28:27.6706244Z"
+    },
+    {
+      "name": "scene_16_clip_27.mp4",
+      "scene": 16,
+      "clip": 27,
+      "bytes": 750242,
+      "mtimeUtc": "2026-07-23T22:28:27.6786404Z"
+    },
+    {
+      "name": "scene_16_clip_28.mp4",
+      "scene": 16,
+      "clip": 28,
+      "bytes": 720886,
+      "mtimeUtc": "2026-07-23T22:28:27.6871893Z"
+    },
+    {
+      "name": "scene_16_clip_29.mp4",
+      "scene": 16,
+      "clip": 29,
+      "bytes": 672128,
+      "mtimeUtc": "2026-07-23T22:28:27.6937184Z"
+    },
+    {
+      "name": "scene_16_clip_30.mp4",
+      "scene": 16,
+      "clip": 30,
+      "bytes": 1165743,
+      "mtimeUtc": "2026-07-23T22:28:27.7032436Z"
+    },
+    {
+      "name": "scene_16_clip_31.mp4",
+      "scene": 16,
+      "clip": 31,
+      "bytes": 602775,
+      "mtimeUtc": "2026-07-23T22:28:27.7106710Z"
+    },
+    {
+      "name": "scene_16_clip_32.mp4",
+      "scene": 16,
+      "clip": 32,
+      "bytes": 909292,
+      "mtimeUtc": "2026-07-23T22:28:27.7176659Z"
+    }
+  ],
+  "included": [
+    {
+      "name": "scene_16_clip_01.mp4",
+      "scene": 16,
+      "clip": 1,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_02.mp4",
+      "scene": 16,
+      "clip": 2,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_03.mp4",
+      "scene": 16,
+      "clip": 3,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_04.mp4",
+      "scene": 16,
+      "clip": 4,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_05.mp4",
+      "scene": 16,
+      "clip": 5,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_06.mp4",
+      "scene": 16,
+      "clip": 6,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_07.mp4",
+      "scene": 16,
+      "clip": 7,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_08.mp4",
+      "scene": 16,
+      "clip": 8,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_09.mp4",
+      "scene": 16,
+      "clip": 9,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_10.mp4",
+      "scene": 16,
+      "clip": 10,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_11.mp4",
+      "scene": 16,
+      "clip": 11,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_12.mp4",
+      "scene": 16,
+      "clip": 12,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_13.mp4",
+      "scene": 16,
+      "clip": 13,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_14.mp4",
+      "scene": 16,
+      "clip": 14,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_15.mp4",
+      "scene": 16,
+      "clip": 15,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_16.mp4",
+      "scene": 16,
+      "clip": 16,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_17.mp4",
+      "scene": 16,
+      "clip": 17,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_18.mp4",
+      "scene": 16,
+      "clip": 18,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_19.mp4",
+      "scene": 16,
+      "clip": 19,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_20.mp4",
+      "scene": 16,
+      "clip": 20,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_21.mp4",
+      "scene": 16,
+      "clip": 21,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_22.mp4",
+      "scene": 16,
+      "clip": 22,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_23.mp4",
+      "scene": 16,
+      "clip": 23,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_24.mp4",
+      "scene": 16,
+      "clip": 24,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_25.mp4",
+      "scene": 16,
+      "clip": 25,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_26.mp4",
+      "scene": 16,
+      "clip": 26,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_27.mp4",
+      "scene": 16,
+      "clip": 27,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_28.mp4",
+      "scene": 16,
+      "clip": 28,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_29.mp4",
+      "scene": 16,
+      "clip": 29,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_30.mp4",
+      "scene": 16,
+      "clip": 30,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_31.mp4",
+      "scene": 16,
+      "clip": 31,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_16_clip_32.mp4",
+      "scene": 16,
+      "clip": 32,
+      "reason": "eligible"
+    }
+  ],
+  "excluded": [],
+  "strict": true,
+  "assemblyGate": true,
+  "totalDurationSeconds": 176.57
+}
