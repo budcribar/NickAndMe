@@ -3,18 +3,20 @@
 | Field | Value |
 |-------|-------|
 | Severity | suggestion |
-| Status | open |
+| Status | **fixed** |
 | Branch | `fix/issue-17-multiprovider-download-fallback` |
-| Related files | host/FilmStudio.Engine/MultiProviderVideoClient.cs (~72-81) |
+| Related files | `host/FilmStudio.Engine/MultiProviderVideoClient.cs` |
 
 ## Problem
 
-Download tries Grok first and falls back to Gemini on any catch when Gemini is configured. A transient Grok failure downloading a Grok URL may incorrectly hit Gemini (wrong auth/host), obscuring the real error.
+Download tried Grok first and fell back to Gemini on **any** catch when Gemini was configured. A transient Grok failure downloading a Grok URL could hit Gemini (wrong auth/host) and obscure the real error.
 
-## Suggested fix
+## Fix implemented
+
+1. **Route download by URL host** (`InferProviderFromDownloadUrl`): x.ai → Grok; googleapis / googleusercontent → Gemini.
+2. **No cross-provider fallback** on failure — single client attempt.
+3. Unknown host: use Grok if configured, else Gemini (still one attempt).
+
+## Suggested fix (original)
 
 Route download by tagged request id / URL host, or only fallback on 401/403.
-
-## Notes
-
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.

@@ -205,4 +205,27 @@ public class MultiProviderClientTests
         Assert.Equal(ModelProviderFamily.Xai, provider);
         Assert.Equal("req_legacy_no_tag", id);
     }
+
+    // ── Download routing by URL host (no cross-provider fallback) ──
+
+    [Theory]
+    [InlineData("https://api.x.ai/v1/videos/abc/content", ModelProviderFamily.Xai)]
+    [InlineData("https://cdn.x.ai/media/clip.mp4", ModelProviderFamily.Xai)]
+    [InlineData("https://generativelanguage.googleapis.com/v1beta/files/xyz", ModelProviderFamily.Google)]
+    [InlineData("https://storage.googleapis.com/bucket/video.mp4", ModelProviderFamily.Google)]
+    [InlineData("https://lh3.googleusercontent.com/a/video", ModelProviderFamily.Google)]
+    public void Video_download_url_infers_provider(string url, ModelProviderFamily expected)
+    {
+        Assert.Equal(expected, MultiProviderVideoClient.InferProviderFromDownloadUrl(url));
+    }
+
+    [Theory]
+    [InlineData("https://cdn.example.com/unsigned.mp4")]
+    [InlineData("not-a-url")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Video_download_url_unknown_host_returns_null(string? url)
+    {
+        Assert.Null(MultiProviderVideoClient.InferProviderFromDownloadUrl(url));
+    }
 }

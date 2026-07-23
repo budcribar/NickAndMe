@@ -62,23 +62,59 @@ public sealed class MultiProviderVideoClient : IVideoClient
 
     public Task DownloadToFileAsync(string url, string destPath, CancellationToken ct)
     {
-        // The URL returned by PollForVideoUrlAsync already tells us nothing about provider —
-        // both providers' download implementations only differ in auth header, and each one's
-        // EnsureAuth() is a no-op if its own env key isn't set, so trying Grok's client first
-        // and falling back to Gemini's on failure is safe and avoids needing a third id tag.
-        return DownloadWithFallbackAsync(url, destPath, ct);
+        // Route by URL host — never fall back to the other provider on download failure
+        // (wrong auth/host obscures the real error). Gemini downloads need the Google API key;
+        // Grok media URLs are typically signed GETs without swapping auth stacks.
+        var client = ResolveDownloadClient(url);
+        return client.DownloadToFileAsync(url, destPath, ct);
     }
 
-    private async Task DownloadWithFallbackAsync(string url, string destPath, CancellationToken ct)
+    /// <summary>
+    /// Pick download client from media URL host. Unknown hosts: Grok if configured, else Gemini.
+    /// No cross-provider retry.
+    /// </summary>
+    public IVideoClient ResolveDownloadClient(string url)
     {
-        try
-        {
-            await _grok.DownloadToFileAsync(url, destPath, ct).ConfigureAwait(false);
-        }
-        catch when (_gemini.IsConfigured)
-        {
-            await _gemini.DownloadToFileAsync(url, destPath, ct).ConfigureAwait(false);
-        }
+        var inferred = InferProviderFromDownloadUrl(url);
+        if (inferred == ModelProviderFamily.Google)
+            return _gemini;
+        if (inferred == ModelProviderFamily.Xai)
+            return _grok;
+
+        // CDN / opaque URL: prefer whichever client is configured (single attempt).
+        if (_grok.IsConfigured)
+            return _grok;
+        if (_gemini.IsConfigured)
+            return _gemini;
+        return _grok;
+    }
+
+    /// <summary>
+    /// Map absolute media URL host → provider. Null when the host is not recognized
+    /// (public so tests can cover routing without a full HTTP stack).
+    /// </summary>
+    public static ModelProviderFamily? InferProviderFromDownloadUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri))
+            return null;
+
+        var host = uri.Host;
+        if (host.Contains("googleapis", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("googleusercontent", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) ||
+            host.EndsWith(".google.com", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("google.com", StringComparison.OrdinalIgnoreCase))
+            return ModelProviderFamily.Google;
+
+        if (host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) ||
+            host.EndsWith(".x.ai", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("x.ai", StringComparison.OrdinalIgnoreCase) ||
+            host.Contains("xai", StringComparison.OrdinalIgnoreCase))
+            return ModelProviderFamily.Xai;
+
+        return null;
     }
 
     private (IVideoClient Client, string Id) Resolve(string requestId)
