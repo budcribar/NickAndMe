@@ -77,12 +77,8 @@
                         <span class="badge bg-info text-dark ms-1">@AdaptationPageBase.JobKindLabel(k)</span>
                     }
                     @{
-                        var jobIdx = Math.Max(Host.Job.Index, Host.ProgressIndex);
-                        var jobTot = Math.Max(Host.Job.Total, Host.ProgressTotal);
-                        var waiting = Host.JobRunning && AdaptationPageBase.IsJobInFlightMessage(Host.Job.Message);
-                        var displayIdx = waiting && jobIdx >= jobTot && jobTot > 0
-                            ? Math.Max(0, jobTot - 1)
-                            : jobIdx;
+                        var (jobIdx, jobTot, waiting, displayIdx) = AdaptationPageBase.ComputeJobProgress(
+                            Host.Job, Host.ProgressIndex, Host.ProgressTotal, Host.JobRunning);
                     }
                     @if (jobTot > 0)
                     {
@@ -103,14 +99,7 @@
             </div>
             @if (Host.JobRunning)
             {
-                int pct;
-                if (jobTot <= 0)
-                    pct = 35;
-                else if (waiting)
-                    pct = (int)Math.Round(100.0 * (displayIdx + 0.35) / jobTot);
-                else
-                    pct = (int)Math.Round(100.0 * Math.Clamp(displayIdx, 0, jobTot) / jobTot);
-                pct = Math.Clamp(pct, jobTot > 0 ? 5 : 8, Host.JobRunning ? 92 : 100);
+                var pct = AdaptationPageBase.ComputeProgressPercent(displayIdx, jobTot, waiting, Host.JobRunning);
                 <div class="progress mt-2" style="height: 0.85rem;" role="progressbar"
                      aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">
                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
@@ -153,69 +142,18 @@ else
     [Parameter, EditorRequired] public string Step { get; set; } = "book";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private bool OutlineEnabled =>
-        Host.Status is not null &&
-        (Host.Status.Screenplay.DraftExists ||
-         Host.Status.Book.ReadyForStage1 ||
-         Host.Status.Book.BookTextExists ||
-         Host.Status.Book.PdfExists ||
-         (Host.Status.Stage1.Present && Host.Status.Stage1.SceneCount > 0));
+    private bool OutlineEnabled => AdaptationPageBase.OutlineEnabled(Host.Status);
 
-    private bool ShotsEnabled =>
-        Host.Status is not null &&
-        Host.Status.Screenplay.ReadyForShots;
+    private bool ShotsEnabled => AdaptationPageBase.ShotsEnabled(Host.Status);
 
-    /// <summary>
-    /// Technical job log is admin-only. Operators use Import progress / simple status.
-    /// Import page never shows this card (progress lives in the Import card).
-    /// </summary>
-    private bool ShowJobPanel =>
-        Session.IsAdmin &&
-        Host.Job is not null &&
-        Step is not ("import" or "book") &&
-        (Host.Job.Status is "running" or "error" or "cancelled" ||
-         (Host.Job.Status == "done" && Host.Job.Kind is "stage1" or "stage2" or "book_prepare" or "book_import"));
+    private bool ShowJobPanel => AdaptationPageBase.ShowJobPanel(Session.IsAdmin, Host.Job, Step);
 
     protected override async Task OnInitializedAsync()
     {
         try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
     }
 
-    /// <summary>
-    /// Hide the banner when the current step already is the next action
-    /// (avoids “Next: import…” on the Import page).
-    /// </summary>
-    private bool ShowNextBanner
-    {
-        get
-        {
-            if (Host.Status is null) return false;
-            // Never show “Next: approve…” while a draft is still being written
-            if (Host.SuppressGuidanceBanners) return false;
-
-            var next = Host.Status.NextStep ?? "";
-            var step = Step ?? "";
-            if (step is "import" or "book")
-            {
-                // On import: only after the pipeline is idle and they should leave Import
-                // (draft exists → continue to screenplay). Don't say “approve” mid-import.
-                if (next is "sign_screenplay" or "generate_clips" or "run_stage2" or "replan_stage2"
-                    or "pin_characters")
-                    return Host.Status.Screenplay.DraftExists;
-                return next is "draft_screenplay" or "run_stage1";
-            }
-            if (step == "screenplay")
-            {
-                // Hide when the action is already “edit/approve screenplay”
-                return next is not ("sign_screenplay" or "draft_screenplay" or "run_stage1");
-            }
-            if (step == "shots")
-            {
-                // Hide plain “build shot plan”; keep replan / go elsewhere / generate
-                return next is not ("run_stage2" or "pin_characters");
-            }
-            return true;
-        }
-    }
+    private bool ShowNextBanner =>
+        AdaptationPageBase.ShowNextStepBanner(Host.Status, Host.SuppressGuidanceBanners, Step ?? "");
 
 }

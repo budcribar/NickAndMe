@@ -180,6 +180,10 @@ else if (_showScenePlayer && _playingScene is int busySn && IsSceneGenBusy(busyS
                 @if (_job.Total > 0)
                 {
                     <span class="text-muted">· @_job.Index / @_job.Total</span>
+                    @if (KeyFormatting.EstimateTimeRemaining(_job.StartedAt, _job.Index, _job.Total) is { } eta)
+                    {
+                        <span class="text-muted">· @eta</span>
+                    }
                 }
             </span>
             <div class="d-flex gap-2">
@@ -222,6 +226,10 @@ else if (Session.IsAdmin && _job is not null &&
                     @if (_job.Total > 0)
                     {
                         <span class="ms-1 text-muted">@_job.Index / @_job.Total</span>
+                        @if (KeyFormatting.EstimateTimeRemaining(_job.StartedAt, _job.Index, _job.Total) is { } eta)
+                        {
+                            <span class="ms-1 text-muted">· @eta</span>
+                        }
                     }
                     <span class="ms-2 small">@_job.Message</span>
                 </div>
@@ -369,6 +377,7 @@ else if (Session.IsAdmin && _job is not null &&
                                 class="form-select form-select-sm"
                                 style="width:auto"
                                 @bind="_genResolution"
+                                @bind:after="RefreshCostEstimateAsync"
                                 disabled="@_busy">
                             <option value="480p">480p</option>
                             <option value="720p">720p</option>
@@ -401,7 +410,13 @@ else if (Session.IsAdmin && _job is not null &&
                             <span class="batch-go__play" aria-hidden="true">▶</span>
                             <span>
                                 Generate @_selected.Count scene@(_selected.Count == 1 ? "" : "s")
-                                <span class="batch-go__meta">· ~@EstimateSelectedClips() clip@((EstimateSelectedClips() == 1) ? "" : "s")</span>
+                                <span class="batch-go__meta">
+                                    · ~@EstimateSelectedClips() clip@((EstimateSelectedClips() == 1) ? "" : "s")
+                                    @if (_costReport is not null)
+                                    {
+                                        <text> · ~$@(EstimateSelectedCostUsd().ToString("0.00"))</text>
+                                    }
+                                </span>
                             </span>
                         }
                     </button>
@@ -508,7 +523,7 @@ else if (Session.IsAdmin && _job is not null &&
                                             data-testid="@($"scenes-gen-{sn}")"
                                             data-scene="@sn"
                                             disabled="@(_busy || JobRunning || !CastReady || s.LockedByOther)"
-                                            title="@(!CastReady ? CastBlockedTitle : s.LockedByOther ? $"Locked by {s.LockOwnerUserId}" : "Generate this scene")"
+                                            title="@(!CastReady ? CastBlockedTitle : s.LockedByOther ? $"Locked by {s.LockOwnerUserId}" : EstimateSceneCostUsd(sn) is double c ? $"Generate this scene (~${c:0.00})" : "Generate this scene")"
                                             @onclick="() => GenOneSceneAsync(sn)">
                                         Gen
                                     </button>
@@ -545,6 +560,7 @@ else
                             class="form-select form-select-sm"
                             style="width:auto"
                             @bind="_genResolution"
+                            @bind:after="RefreshCostEstimateAsync"
                             disabled="@_busy">
                         <option value="480p">480p</option>
                         <option value="720p">720p</option>
@@ -569,6 +585,8 @@ else
                             ? CastBlockedTitle
                             : DetailLockedByOther
                             ? $"Locked by {_detailLockOwner}"
+                            : EstimateSceneCostUsd(_detail.SceneNumber) is double dc
+                            ? $"Generate missing clips in order (C01 → C02 → …) (~${dc:0.00})"
                             : "Generate missing clips in order (C01 → C02 → …)")"
                         @onclick="() => GenOneSceneAsync(_detail.SceneNumber)">
                     Generate scene
@@ -903,6 +921,8 @@ else
     private bool _onlyMissing = true;
     /// <summary>Video gen resolution (defaults from Configuration).</summary>
     private string _genResolution = "720p";
+    /// <summary>Cost estimate at the current resolution, refreshed on load and resolution change.</summary>
+    private CostReport? _costReport;
     /// <summary>Project-wide cast gate: every character voice + locked image before video spend.</summary>
     private bool _castChecked;
     private bool _castReady;
@@ -1271,6 +1291,7 @@ else
             await RefreshMyJobsAsync();
             await RefreshWipMetaAsync();
             await RefreshCastGateAsync();
+            await RefreshCostEstimateAsync();
         }
         catch (Exception ex)
         {
@@ -1278,6 +1299,34 @@ else
             _scenes = null;
         }
         finally { _busy = false; }
+    }
+
+    /// <summary>Refreshes the per-scene cost report at the currently selected generation resolution.</summary>
+    private async Task RefreshCostEstimateAsync()
+    {
+        if (string.IsNullOrEmpty(_projectId)) return;
+        try
+        {
+            var dto = await Engine.GetCostAsync(_projectId, draftResolution: _genResolution, heroResolution: _genResolution);
+            _costReport = dto?.Cost;
+        }
+        catch { _costReport = null; }
+    }
+
+    private double EstimateSelectedCostUsd()
+    {
+        if (_costReport is null) return 0;
+        var sum = 0.0;
+        foreach (var row in _costReport.Scenes.Where(r => _selected.Contains(r.Scene)))
+            sum += _onlyMissing ? row.RemainingDraftUsd : row.AllDraftUsd;
+        return sum;
+    }
+
+    private double? EstimateSceneCostUsd(int sceneNumber)
+    {
+        var row = _costReport?.Scenes.FirstOrDefault(r => r.Scene == sceneNumber);
+        if (row is null) return null;
+        return _onlyMissing ? row.RemainingDraftUsd : row.AllDraftUsd;
     }
 
     /// <summary>
@@ -1620,11 +1669,7 @@ else
         finally { _busy = false; }
     }
 
-    private async Task EnsureHubAsync()
-    {
-        if (Hub.IsConnected) return;
-        try { await Hub.StartAsync(); } catch { /* ignore */ }
-    }
+    private Task EnsureHubAsync() => Hub.EnsureStartedAsync();
 
     private static string StatusBadge(string status) => status switch
     {
@@ -1655,17 +1700,9 @@ else
         _dialoguePopup = null;
     }
 
-    private static string ShortChar(string key) =>
-        key.Replace("Character_", "", StringComparison.OrdinalIgnoreCase).Replace('_', ' ');
+    private static string ShortChar(string key) => KeyFormatting.ShortChar(key);
 
-    private static string ShortLoc(string key)
-    {
-        if (string.IsNullOrEmpty(key)) return "—";
-        return key
-            .Replace("Location_", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("Loc_", "", StringComparison.OrdinalIgnoreCase)
-            .Replace('_', ' ');
-    }
+    private static string ShortLoc(string key) => KeyFormatting.ShortLoc(key);
 
     private static string FormatSize(long bytes)
     {
@@ -1740,8 +1777,7 @@ else
         finally { _busy = false; }
     }
 
-    private static string CacheBust(string url) =>
-        url + (url.Contains('?') ? "&" : "?") + "v=" + DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    private static string CacheBust(string url) => KeyFormatting.CacheBust(url);
 
     private static string FormatBytes(long n) => FormatSize(n);
 

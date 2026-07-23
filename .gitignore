@@ -248,8 +248,14 @@ TestResults/
 *.nupkg
 *.snupkg
 **/Properties/launchSettings.json.user
-host/**/bin/
-host/**/obj/
+
+# Visual Studio / MSBuild output for every project under host/ — bin, obj, Debug/Release
+# artifacts, staticwebassets caches, scopedcss, dswa caches, the .vs solution folder, etc.
+# Blanket rule; do not replace with individually-listed generated files (they drift every
+# build). If `git status` still shows a bin/ or obj/ file as modified, it was committed
+# before this rule existed — `git rm --cached <path>` to untrack it (this rule then applies).
+host/**/bin/**
+host/**/obj/**
 host/**/.vs/
 *.slnx.user
 
@@ -263,13 +269,3 @@ host/loadsim*.json
 
 /host/playwright/node_modules
 /host/playwright/package-lock.json
-
-# Visual Studio / MSBuild output for every project under host/ (bin, obj, Debug/Release
-# build artifacts, staticwebassets caches, scopedcss, dswa caches, etc). One blanket rule
-# instead of individually-listed generated files — those drift every build and previously
-# had to be re-added to .gitignore by hand file-by-file.
-host/**/bin/**
-host/**/obj/**
-/host/FilmStudio.Web/obj/Debug/net10.0/compressed/1oe8lfys5g-{0}-46ein0sx1k-46ein0sx1k.gz
-/host/FilmStudio.Web/obj/Debug/net10.0/compressed/ifmkw8u0bh-{0}-abdmv1u4y3-abdmv1u4y3.gz
-/host/FilmStudio.Web/obj/Debug/net10.0/compressed/z5i4g3mbzm-{0}-v0zj4ognzu-v0zj4ognzu.gz

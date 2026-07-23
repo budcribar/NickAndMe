@@ -1,17 +1,18 @@
-﻿@page "/Error"
+@page "/Error"
 @using System.Diagnostics
 
-<PageTitle>Error</PageTitle>
+<PageTitle>Error — Film Studio</PageTitle>
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<h1 class="text-danger">Error</h1>
+<div class="alert alert-danger">
+    An error occurred while processing your request.
+    @if (ShowRequestId)
+    {
+        <div><strong>Request ID:</strong> <code>@RequestId</code></div>
+    }
+</div>
 
-@if (ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@RequestId</code>
-    </p>
-}
+<a class="btn btn-primary mb-3" href="/">← Back to Studio</a>
 
 <h3>Development Mode</h3>
 <p>

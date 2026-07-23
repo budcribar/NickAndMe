@@ -181,6 +181,13 @@
                             </div>
                         </div>
                     </div>
+                    @if (_chartWarning is { Length: > 0 } cw)
+                    {
+                        <div class="alert alert-warning py-1 small mb-2">
+                            Charts failed to update: @cw
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-1 align-baseline" @onclick="UpdateChartsAsync">Retry</button>
+                        </div>
+                    }
                     <div class="row g-3">
                         <div class="col-lg-6">
                             <div class="loadsim-chart-wrap">
@@ -423,6 +430,8 @@
     private List<AdminLockDto> _locks = new();
     private LoadSimLiveStateDto? _loadSim;
     private List<ProcessSampleDto> _processHistory = new();
+    /// <summary>Set when a chart upsert throws after we had real data to draw — surfaced in the UI so failures aren't silent.</summary>
+    private string? _chartWarning;
 
     private bool _started;
 
@@ -616,10 +625,16 @@
                     },
                     new { dualY = true, yTitle = "MB", y2Title = "threads" });
             }
+
+            _chartWarning = null;
         }
-        catch
+        catch (Exception ex)
         {
-            // Chart.js not ready
+            // First render can race Chart.js module init — only surface it to the admin
+            // once we've actually seen data to chart (otherwise every idle poll would show a false alarm).
+            _chartWarning = (_loadSim?.History is { Count: > 0 } || _processHistory is { Count: > 0 })
+                ? ex.Message
+                : null;
         }
     }
 

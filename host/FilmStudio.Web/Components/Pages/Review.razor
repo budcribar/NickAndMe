@@ -211,6 +211,10 @@ else
             <span class="ms-2 small">@_job.Message</span>
             @if (_job.Total > 0 && string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase))
             {
+                @if (KeyFormatting.EstimateTimeRemaining(_job.StartedAt, _job.Index, _job.Total) is { } eta)
+                {
+                    <span class="ms-2 small text-muted">@eta</span>
+                }
                 <div class="progress mt-2" style="height:6px">
                     <div class="progress-bar" role="progressbar"
                          style="width:@((_job.Index * 100.0 / Math.Max(1, _job.Total)).ToString("0.#"))%"></div>
@@ -966,8 +970,7 @@ else
         _playingClipNum = null;
     }
 
-    private static string CacheBust(string url) =>
-        url + (url.Contains('?') ? "&" : "?") + "v=" + DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    private static string CacheBust(string url) => KeyFormatting.CacheBust(url);
 
     private static string FormatBytes(long n) =>
         n >= 1_000_000 ? $"{n / 1_000_000.0:0.#} MB" :
@@ -1256,11 +1259,7 @@ else
         catch (Exception ex) { _error = ex.Message; }
     }
 
-    private async Task EnsureHubAsync()
-    {
-        if (Hub.IsConnected) return;
-        try { await Hub.StartAsync(); } catch { /* ignore */ }
-    }
+    private Task EnsureHubAsync() => Hub.EnsureStartedAsync();
 
     public async ValueTask DisposeAsync()
     {

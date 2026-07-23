@@ -73,6 +73,90 @@ public class ClipVideoPromptBuilderTests
     }
 
     [Fact]
+    public void Build_silent_clip_tells_model_not_to_show_speaking()
+    {
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 1,
+              "visual_prompt": "Character_OldMan sleeps. Character_Narrator watches from the shadows.",
+              "characters_on_screen": ["Character_OldMan", "Character_Narrator"],
+              "veo_continuation_source": "none",
+              "audio_payload": { "speaker": "", "dialogue": "", "delivery": "none" }
+            }
+            """).RootElement;
+
+        var tmp = Path.Combine(Path.GetTempPath(), "fs-clip-silent-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tmp);
+
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_OldMan"] = new()
+            {
+                Key = "Character_OldMan",
+                DisplayName = "Old Man",
+                Description = "frail elderly man",
+                VoiceProfile = "raspy whisper",
+            },
+            ["Character_Narrator"] = new()
+            {
+                Key = "Character_Narrator",
+                DisplayName = "Narrator",
+                VoiceOnly = true,
+                VoiceProfile = "calm storyteller",
+            },
+        };
+
+        var built = ClipVideoPromptBuilder.Build(clip, tmp, profiles, maxRefs: 5);
+
+        Assert.Contains("Silent beat", built.Prompt);
+        Assert.Contains("do not show any on-screen character", built.Prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("the spoken line", built.Prompt, StringComparison.OrdinalIgnoreCase);
+
+        try { Directory.Delete(tmp, true); } catch { /* ignore */ }
+    }
+
+    [Fact]
+    public void Build_clip_with_dialogue_still_uses_spoken_line_closing()
+    {
+        var clip = JsonDocument.Parse("""
+            {
+              "clip_number": 1,
+              "visual_prompt": "Character_OldMan speaks.",
+              "characters_on_screen": ["Character_OldMan"],
+              "veo_continuation_source": "none",
+              "audio_payload": {
+                "speaker": "Character_OldMan",
+                "dialogue": "Come closer.",
+                "delivery": "spoken_on_camera"
+              }
+            }
+            """).RootElement;
+
+        var tmp = Path.Combine(Path.GetTempPath(), "fs-clip-dialogue-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tmp);
+
+        var profiles = new Dictionary<string, ClipVideoPromptBuilder.CharacterProfile>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Character_OldMan"] = new()
+            {
+                Key = "Character_OldMan",
+                DisplayName = "Old Man",
+                Description = "frail elderly man",
+                VoiceProfile = "raspy whisper",
+            },
+        };
+
+        var built = ClipVideoPromptBuilder.Build(clip, tmp, profiles, maxRefs: 5);
+
+        Assert.Contains("the spoken line and primary action finish", built.Prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Silent beat", built.Prompt);
+
+        try { Directory.Delete(tmp, true); } catch { /* ignore */ }
+    }
+
+    [Fact]
     public void Build_video_extend_mode_when_previous_clip_file_exists()
     {
         var clip = JsonDocument.Parse("""

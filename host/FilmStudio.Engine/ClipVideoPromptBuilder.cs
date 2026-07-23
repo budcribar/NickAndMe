@@ -243,9 +243,21 @@ public static class ClipVideoPromptBuilder
         sb.AppendLine(continuityBlock);
         sb.AppendLine();
         sb.AppendLine("THIS CLIP:");
-        sb.AppendLine(
-            "End cleanly when the spoken line and primary action finish — " +
-            "do not hold a frozen pose or empty silence after dialogue.");
+        // This line used to be unconditional — telling the model to "end when the spoken line
+        // finishes" even on silent beats with empty audio_payload.dialogue. With no line ever
+        // specified, and CHARACTER VARIABLES listing every on-screen character's Voice profile
+        // right above it, that primed the model to invent speech/mouth movement on someone.
+        // Branch it so silent beats get an explicit "no dialogue, keep mouths neutral" cue instead.
+        var hasDialogue =
+            clipEl.TryGetProperty("audio_payload", out var apForClose) &&
+            apForClose.TryGetProperty("dialogue", out var dlgForClose) &&
+            !string.IsNullOrWhiteSpace(dlgForClose.GetString());
+        sb.AppendLine(hasDialogue
+            ? "End cleanly when the spoken line and primary action finish — " +
+              "do not hold a frozen pose or empty silence after dialogue."
+            : "Silent beat — no dialogue in this clip. Do not show any on-screen character " +
+              "speaking or mouthing words; keep mouths closed/neutral. " +
+              "End cleanly when the primary physical action finishes.");
         sb.Append(actionTagged);
         // Technical output spec owned here (not Stage2 blueprint) — resolution + frame rate
         sb.Append($" / {res}, {Math.Clamp(frameRate, 12, 60)}fps");

@@ -572,15 +572,7 @@ else
         return s.Length <= n ? s : s[..(n - 1)] + "…";
     }
 
-    private static string ShortChar(string key) =>
-        key.Replace("Character_", "", StringComparison.OrdinalIgnoreCase).Replace('_', ' ');
+    private static string ShortChar(string key) => KeyFormatting.ShortChar(key);
 
-    private static string ShortLoc(string key)
-    {
-        if (string.IsNullOrEmpty(key)) return "—";
-        return key
-            .Replace("Location_", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("Loc_", "", StringComparison.OrdinalIgnoreCase)
-            .Replace('_', ' ');
-    }
+    private static string ShortLoc(string key) => KeyFormatting.ShortLoc(key);
 }

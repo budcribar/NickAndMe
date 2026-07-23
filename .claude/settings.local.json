@@ -38,7 +38,10 @@
       "Bash(curl -s -m 3 -o /dev/null -w \"http_code: %{http_code}\\\\n\" http://127.0.0.1:5088/health)",
       "Bash(powershell -NoProfile -Command \"Get-Process -Id 26644 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\" 2>&1)",
       "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property OwningProcess\" 2>&1)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(git status *)",
+      "Bash(grep -n \"\\\\.vs/\\\\|^\\\\.vs$\\\\|\\\\.vs\\\\b\" ../.gitignore)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

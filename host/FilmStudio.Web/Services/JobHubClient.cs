@@ -57,6 +57,13 @@ public sealed class JobHubClient : IAsyncDisposable
         await _connection.StartAsync(ct);
     }
 
+    /// <summary>Best-effort connect — SignalR is optional for browse-only pages, so failures are swallowed.</summary>
+    public async Task EnsureStartedAsync()
+    {
+        if (IsConnected) return;
+        try { await StartAsync(); } catch { /* optional */ }
+    }
+
     private const string AuthHeaderUserId = "X-User-Id";
 
     public async Task StopAsync()

@@ -398,11 +398,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         finally { Busy = false; }
     }
 
-    protected async Task EnsureHubAsync()
-    {
-        if (Hub.IsConnected) return;
-        try { await Hub.StartAsync(); } catch { /* ignore */ }
-    }
+    protected Task EnsureHubAsync() => Hub.EnsureStartedAsync();
 
     public static string NextStepLabel(string step) => step switch
     {
@@ -462,6 +458,89 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
             "run_stage2" or "replan_stage2" or "generate_clips" or "done" => "/adaptation/shots",
             _ => "/adaptation/import",
         };
+    }
+
+    /// <summary>Step strip: Screenplay tab unlocks once a draft/outline exists in some form.</summary>
+    public static bool OutlineEnabled(AdaptationStatus? status) =>
+        status is not null &&
+        (status.Screenplay.DraftExists ||
+         status.Book.ReadyForStage1 ||
+         status.Book.BookTextExists ||
+         status.Book.PdfExists ||
+         (status.Stage1.Present && status.Stage1.SceneCount > 0));
+
+    /// <summary>Step strip: Characters/Shot-plan tabs unlock once the screenplay is signed off.</summary>
+    public static bool ShotsEnabled(AdaptationStatus? status) =>
+        status is not null && status.Screenplay.ReadyForShots;
+
+    /// <summary>
+    /// Technical job log is admin-only. Operators use Import progress / simple status.
+    /// Import page never shows this card (progress lives in the Import card).
+    /// </summary>
+    public static bool ShowJobPanel(bool isAdmin, JobSnapshot? job, string step) =>
+        isAdmin &&
+        job is not null &&
+        step is not ("import" or "book") &&
+        (job.Status is "running" or "error" or "cancelled" ||
+         (job.Status == "done" && job.Kind is "stage1" or "stage2" or "book_prepare" or "book_import"));
+
+    /// <summary>Merges job-reported and locally-tracked (log-scraped) progress into one index/total/waiting triple.</summary>
+    public static (int Index, int Total, bool Waiting, int DisplayIndex) ComputeJobProgress(
+        JobSnapshot job, int progressIndex, int progressTotal, bool jobRunning)
+    {
+        var index = Math.Max(job.Index, progressIndex);
+        var total = Math.Max(job.Total, progressTotal);
+        var waiting = jobRunning && IsJobInFlightMessage(job.Message);
+        var displayIndex = waiting && index >= total && total > 0
+            ? Math.Max(0, total - 1)
+            : index;
+        return (index, total, waiting, displayIndex);
+    }
+
+    /// <summary>Progress-bar percent for a running job — never 0% or 100% while still running, so the bar always reads as "in motion".</summary>
+    public static int ComputeProgressPercent(int displayIndex, int total, bool waiting, bool jobRunning)
+    {
+        int pct;
+        if (total <= 0)
+            pct = 35;
+        else if (waiting)
+            pct = (int)Math.Round(100.0 * (displayIndex + 0.35) / total);
+        else
+            pct = (int)Math.Round(100.0 * Math.Clamp(displayIndex, 0, total) / total);
+        return Math.Clamp(pct, total > 0 ? 5 : 8, jobRunning ? 92 : 100);
+    }
+
+    /// <summary>
+    /// Hide the "Next" banner when the current step already is the next action
+    /// (avoids "Next: import…" on the Import page).
+    /// </summary>
+    public static bool ShowNextStepBanner(AdaptationStatus? status, bool suppressGuidanceBanners, string step)
+    {
+        if (status is null) return false;
+        // Never show "Next: approve…" while a draft is still being written
+        if (suppressGuidanceBanners) return false;
+
+        var next = status.NextStep ?? "";
+        if (step is "import" or "book")
+        {
+            // On import: only after the pipeline is idle and they should leave Import
+            // (draft exists → continue to screenplay). Don't say "approve" mid-import.
+            if (next is "sign_screenplay" or "generate_clips" or "run_stage2" or "replan_stage2"
+                or "pin_characters")
+                return status.Screenplay.DraftExists;
+            return next is "draft_screenplay" or "run_stage1";
+        }
+        if (step == "screenplay")
+        {
+            // Hide when the action is already "edit/approve screenplay"
+            return next is not ("sign_screenplay" or "draft_screenplay" or "run_stage1");
+        }
+        if (step == "shots")
+        {
+            // Hide plain "build shot plan"; keep replan / go elsewhere / generate
+            return next is not ("run_stage2" or "pin_characters");
+        }
+        return true;
     }
 
     public virtual async ValueTask DisposeAsync()
