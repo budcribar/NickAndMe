@@ -198,6 +198,16 @@
       "gold_keys": ["Character_Little_Toomai"],
       "source": "blind_r1",
       "notes": "Visual is dialogue-only stub: speaker only. Do not add Kala Nag (or false Nag) from dialogue name alone."
+    },
+    {
+      "id": "s2_b3",
+      "visual": "Mother Wolf nurses her cubs at the den mouth by firelight. Outside, keeping watch, Father Wolf's eyes catch the moon.",
+      "dialogue": "Man! A man's cub. Look!",
+      "speaker": "Character_Narrator",
+      "is_voiceover": true,
+      "gold_keys": ["Character_Father_Wolf", "Character_Mother_Wolf", "Character_Wolf_Cubs"],
+      "source": "curated_addition",
+      "notes": "Narrator VO over the den scene — off-screen/voiceover speaker (is_voiceover=true) must be excluded from on-screen cast even though listed as speaker; only the visually-present wolves (and nursing cubs, per the Character_Wolf_Cubs group key used elsewhere, e.g. s8_b1) count. Added to exercise the tightened off-screen-speaker exclusion rule."
     }
   ]
 }

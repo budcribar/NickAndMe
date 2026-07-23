@@ -886,7 +886,7 @@ public static class TaskRunners
             var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
             var payload = samples.Select(s => new
             {
-                id = s.GetProperty("id").GetString(),
+                id = s.GetProperty("key").GetString(),
                 description = Trunc(s.GetProperty("description").GetString() ?? "", 200),
             }).ToList();
             await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { characters = payload }), ct);
@@ -894,15 +894,17 @@ public static class TaskRunners
         }
         else if (task == "plate_rank")
         {
-            var goldPath = paths.GoldFile("The_Jungle_Book", "plate_rank");
+            // Only Buster2 has a plate_rank gold file today (The_Jungle_Book's was never
+            // populated) — point at it directly instead of probing for a file that doesn't exist.
+            var goldPath = paths.GoldFile("Buster2", "plate_rank");
             using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(goldPath, ct));
-            var samples = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
-            var payload = samples.Select(s => new
+            var labels = doc.RootElement.GetProperty("labels").EnumerateArray().Take(targetCount).ToList();
+            var payload = labels.Select(s => new
             {
-                id = s.GetProperty("id").GetString(),
-                character_name = s.GetProperty("character_name").GetString(),
+                character_key = s.GetProperty("character_key").GetString(),
+                description = Trunc(s.GetProperty("description").GetString() ?? "", 280),
             }).ToList();
-            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(new { requests = payload }), ct);
+            await chat.CompleteAsync(model, 0.0, prompt.Text, JsonSerializer.Serialize(payload), ct);
             processed = payload.Count;
         }
 

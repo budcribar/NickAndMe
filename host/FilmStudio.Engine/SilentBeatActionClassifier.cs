@@ -525,8 +525,8 @@ Few-shot (generalize the pattern — do not only match wording):
 8) "He leaps onto the stool and hauls the other man into the tank." → big_action
    Why: leap + haul under force — energy is the point.
 
-Return JSON only:
-{ "labels": [ { "id": "s1_b2", "class": "hold", "reason": "short reaction" } ] }
+Return JSON only (no reason field):
+{ "labels": [ { "id": "s1_b2", "class": "hold" } ] }
 Use only the four class strings above.
 """;
 

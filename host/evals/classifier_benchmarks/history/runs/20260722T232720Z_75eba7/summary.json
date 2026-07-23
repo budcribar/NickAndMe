@@ -1,0 +1,100 @@
+{
+  "runId": "20260722T232720Z_75eba7",
+  "utc": "2026-07-22 23:27:20Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "onscreen_cast",
+      "silent_beat_action",
+      "ambient_sfx",
+      "species_kind"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [],
+    "temperatures": [
+      0
+    ],
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "onscreen_cast",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_grounded",
+      "promptLabel": "v2 grounded cast \u2014 SHIPPED",
+      "promptHash": "c787aeea84d7",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 20,
+      "metric": "mean_set_f1",
+      "baselineScore": 0.811904761904762,
+      "aiScore": 0.975,
+      "winner": "AI",
+      "latencyMs": 34164,
+      "aiParseHits": 20,
+      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "samples": []
+    },
+    {
+      "task": "silent_beat_action",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_product",
+      "promptLabel": "Product SilentBeatActionClassifier (v2) \u2014 SHIPPED",
+      "promptHash": "7aad11c81172",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 147,
+      "metric": "accuracy",
+      "baselineScore": 0.46938775510204084,
+      "aiScore": 0.8979591836734694,
+      "winner": "AI",
+      "latencyMs": 255046,
+      "aiParseHits": 147,
+      "note": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
+      "samples": []
+    },
+    {
+      "task": "ambient_sfx",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_grounded",
+      "promptLabel": "v2 grounded \u002B empty-safe (anti over-tag) \u2014 SHIPPED",
+      "promptHash": "a85e267e27b3",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 30,
+      "metric": "mean_token_jaccard",
+      "baselineScore": 0.7416666666666667,
+      "aiScore": 0.8722222222222221,
+      "winner": "AI",
+      "latencyMs": 37839,
+      "aiParseHits": 30,
+      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "samples": []
+    },
+    {
+      "task": "species_kind",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v1_product",
+      "promptLabel": "Product SpeciesKindClassifier prompt",
+      "promptHash": "cf01f9be7a08",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 51,
+      "metric": "accuracy",
+      "baselineScore": 0.49019607843137253,
+      "aiScore": 0.8431372549019608,
+      "winner": "AI",
+      "latencyMs": 20852,
+      "aiParseHits": 51,
+      "samples": []
+    }
+  ]
+}

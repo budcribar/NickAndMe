@@ -675,6 +675,30 @@ public sealed class ProjectStore
             if (File.Exists(full) && new FileInfo(full).Length >= 64)
                 return full;
         }
+
+        // Same class of bug as ClipVideoPromptBuilder.ResolveCharacterRefPathByNormalizedKey:
+        // Stage2 scene/clip data can reference a character under a naming/article variant
+        // (Character_The_Old_Man) that never matches cast_seeds.json's real key
+        // (Character_OldMan) by literal filename. Fall back to scanning actual *_ref.png
+        // files and matching the normalized key instead of returning null.
+        if (Directory.Exists(charDir))
+        {
+            var targetNorm = Stage2PlannerService.NormalizeCharacterKey(charKey);
+            if (targetNorm.Length > 0)
+            {
+                foreach (var file in Directory.EnumerateFiles(charDir, "*_ref.png"))
+                {
+                    var stem = Path.GetFileNameWithoutExtension(file);
+                    if (stem.StartsWith("wardrobe_", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (stem.EndsWith("_ref", StringComparison.OrdinalIgnoreCase))
+                        stem = stem[..^"_ref".Length];
+                    if (Stage2PlannerService.NormalizeCharacterKey(stem) == targetNorm &&
+                        new FileInfo(file).Length >= 64)
+                        return file;
+                }
+            }
+        }
         return null;
     }
 

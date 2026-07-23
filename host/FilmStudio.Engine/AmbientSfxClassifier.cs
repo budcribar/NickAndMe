@@ -77,40 +77,55 @@ public sealed class AmbientSfxClassifier
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var totalAttempts = 0;
 
+        var chunks = new List<List<Target>>();
         for (var offset = 0; offset < targets.Count; offset += DefaultBatchSize)
+            chunks.Add(targets.Skip(offset).Take(DefaultBatchSize).ToList());
+
+        using var sem = new SemaphoreSlim(4);
+        var tasks = chunks.Select(async chunk =>
         {
-            ct.ThrowIfCancellationRequested();
-            var chunk = targets.Skip(offset).Take(DefaultBatchSize).ToList();
-            var missing = chunk.Select(t => t.Id).ToList();
-            for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
+            await sem.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                totalAttempts++;
-                try
+                var missing = chunk.Select(t => t.Id).ToList();
+                for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
                 {
-                    var batch = missing.Select(id => byId[id]).ToList();
-                    var raw = await CallAsync(batch, model, temp, ct).ConfigureAwait(false);
-                    result.ChatCalls++;
-                    var parsed = ParseLabels(raw);
-                    foreach (var id in missing.ToList())
+                    Interlocked.Increment(ref totalAttempts);
+                    try
                     {
-                        if (!parsed.TryGetValue(id, out var pair)) continue;
-                        var t = byId[id];
-                        Apply(t.Beat, pair.Ambient, pair.Sfx);
-                        missing.Remove(id);
-                        labeled.Add(id);
+                        var batch = missing.Select(id => byId[id]).ToList();
+                        var raw = await CallAsync(batch, model, temp, ct).ConfigureAwait(false);
+                        var parsed = ParseLabels(raw);
+                        lock (labeled)
+                        {
+                            result.ChatCalls++;
+                            foreach (var id in missing.ToList())
+                            {
+                                if (!parsed.TryGetValue(id, out var pair)) continue;
+                                var t = byId[id];
+                                Apply(t.Beat, pair.Ambient, pair.Sfx);
+                                missing.Remove(id);
+                                labeled.Add(id);
+                            }
+                        }
+                        if (missing.Count > 0)
+                            await BackoffAsync(attempt, ct).ConfigureAwait(false);
                     }
-                    if (missing.Count > 0)
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        _log.LogWarning(ex, "AmbientSfx classify attempt {A} failed", attempt);
+                        result.LastError = Trim(ex.Message, 200);
                         await BackoffAsync(attempt, ct).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    _log.LogWarning(ex, "AmbientSfx classify attempt {A} failed", attempt);
-                    result.LastError = Trim(ex.Message, 200);
-                    await BackoffAsync(attempt, ct).ConfigureAwait(false);
+                    }
                 }
             }
-        }
+            finally
+            {
+                sem.Release();
+            }
+        });
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         result.Attempts = totalAttempts;
         result.AiCount = labeled.Count;

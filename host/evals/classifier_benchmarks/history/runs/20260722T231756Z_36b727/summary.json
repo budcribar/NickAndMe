@@ -1,0 +1,41 @@
+{
+  "runId": "20260722T231756Z_36b727",
+  "utc": "2026-07-22 23:17:56Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "ambient_sfx"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [],
+    "temperatures": [
+      0
+    ],
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "ambient_sfx",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_grounded",
+      "promptLabel": "v2 grounded \u002B empty-safe (anti over-tag) \u2014 SHIPPED",
+      "promptHash": "a85e267e27b3",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 30,
+      "metric": "mean_token_jaccard",
+      "baselineScore": 0.7416666666666667,
+      "aiScore": 0.8888888888888888,
+      "winner": "AI",
+      "latencyMs": 35341,
+      "aiParseHits": 30,
+      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "samples": []
+    }
+  ]
+}

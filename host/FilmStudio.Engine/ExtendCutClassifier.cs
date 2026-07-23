@@ -67,58 +67,74 @@ public sealed class ExtendCutClassifier
         var maxAttempts = Math.Clamp(_opts.SilentBeatClassifyMaxAttempts, 1, 5);
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         const int batchSize = 30;
+        var chunks = new List<List<Pair>>();
         for (var offset = 0; offset < pairs.Count; offset += batchSize)
+            chunks.Add(pairs.Skip(offset).Take(batchSize).ToList());
+
+        using var sem = new SemaphoreSlim(4);
+        var tasks = chunks.Select(async chunk =>
         {
-            var chunk = pairs.Skip(offset).Take(batchSize).ToList();
-            var missing = chunk.Select(p => p.Id).ToList();
-            var byId = chunk.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
-            for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
+            await sem.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                try
+                var missing = chunk.Select(p => p.Id).ToList();
+                var byId = chunk.ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
+                for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
                 {
-                    var payload = missing.Select(id =>
+                    try
                     {
-                        var p = byId[id];
-                        return new Dictionary<string, object?>
+                        var payload = missing.Select(id =>
                         {
-                            ["id"] = p.Id,
-                            ["prev_visual"] = Trunc(p.PrevVisual, 160),
-                            ["visual_event"] = Trunc(p.Visual, 200),
-                            ["same_location"] = p.SameLocation,
-                            ["action_class"] = p.ActionClass,
-                            ["heuristic"] = BaselineHardCut(p) ? "hard_cut" : "extend",
-                        };
-                    }).ToList();
-                    var user = "Label hard_cut vs extend for video continuity. JSON only.\n" +
-                               JsonSerializer.Serialize(new { beats = payload });
-                    var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.ExtendCutClassify)
-                        .ConfigureAwait(false);
-                    result.ChatCalls++;
-                    var parsed = ParseLabels(raw);
-                    foreach (var id in missing.ToList())
-                    {
-                        if (!parsed.TryGetValue(id, out var dec)) continue;
-                        var p = byId[id];
-                        p.Beat["cut_decision"] = dec;
-                        if (dec == "hard_cut")
-                            p.Beat["continuity"] = "new_setup";
-                        else
-                            p.Beat["continuity"] = "continuous_from_previous_beat";
-                        missing.Remove(id);
-                        labeled.Add(id);
+                            var p = byId[id];
+                            return new Dictionary<string, object?>
+                            {
+                                ["id"] = p.Id,
+                                ["prev_visual"] = Trunc(p.PrevVisual, 160),
+                                ["visual_event"] = Trunc(p.Visual, 200),
+                                ["same_location"] = p.SameLocation,
+                                ["action_class"] = p.ActionClass,
+                                ["heuristic"] = BaselineHardCut(p) ? "hard_cut" : "extend",
+                            };
+                        }).ToList();
+                        var user = "Label hard_cut vs extend for video continuity. JSON only.\n" +
+                                   JsonSerializer.Serialize(new { beats = payload });
+                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.ExtendCutClassify)
+                            .ConfigureAwait(false);
+                        var parsed = ParseLabels(raw);
+                        lock (labeled)
+                        {
+                            result.ChatCalls++;
+                            foreach (var id in missing.ToList())
+                            {
+                                if (!parsed.TryGetValue(id, out var dec)) continue;
+                                var p = byId[id];
+                                p.Beat["cut_decision"] = dec;
+                                if (dec == "hard_cut")
+                                    p.Beat["continuity"] = "new_setup";
+                                else
+                                    p.Beat["continuity"] = "continuous_from_previous_beat";
+                                missing.Remove(id);
+                                labeled.Add(id);
+                            }
+                        }
+                        if (missing.Count > 0)
+                            await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
                     }
-                    if (missing.Count > 0)
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        _log.LogWarning(ex, "ExtendCut attempt {A}", attempt);
+                        result.LastError = ex.Message;
                         await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    _log.LogWarning(ex, "ExtendCut attempt {A}", attempt);
-                    result.LastError = ex.Message;
-                    await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
+                    }
                 }
             }
-        }
+            finally
+            {
+                sem.Release();
+            }
+        });
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         result.AiCount = labeled.Count;
         result.FallbackCount = pairs.Count - labeled.Count;

@@ -1,0 +1,44 @@
+{
+  "runId": "20260723T005323Z_8d18a1",
+  "utc": "2026-07-23 00:53:23Z",
+  "schema": "classifier_benchmark_run.v1",
+  "config": {
+    "projectId": "The_Jungle_Book",
+    "tasks": [
+      "onscreen_cast"
+    ],
+    "models": [
+      "grok-4.5"
+    ],
+    "prompts": [
+      "v2_grounded"
+    ],
+    "temperatures": [
+      0
+    ],
+    "note": "off-screen speaker gold case, corrected wolf-cubs label",
+    "temperature": 0
+  },
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "results": [
+    {
+      "task": "onscreen_cast",
+      "projectId": "The_Jungle_Book",
+      "model": "grok-4.5",
+      "promptId": "v2_grounded",
+      "promptLabel": "v2 grounded cast \u2014 SHIPPED",
+      "promptHash": "c787aeea84d7",
+      "temperature": 0,
+      "curatedGold": true,
+      "sampleCount": 21,
+      "metric": "mean_set_f1",
+      "baselineScore": 0.8113378684807258,
+      "aiScore": 0.9761904761904762,
+      "winner": "AI",
+      "latencyMs": 39603,
+      "aiParseHits": 21,
+      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "samples": []
+    }
+  ]
+}

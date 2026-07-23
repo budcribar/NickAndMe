@@ -735,6 +735,38 @@ public static class ClipVideoPromptBuilder
             if (File.Exists(full) && new FileInfo(full).Length >= 64)
                 return full;
         }
+        return ResolveCharacterRefPathByNormalizedKey(charDir, key);
+    }
+
+    /// <summary>
+    /// Fallback when the literal key has no matching file: e.g. Stage2 scene/clip data uses
+    /// Character_The_Old_Man while cast_seeds.json (the actual locked portrait) uses
+    /// Character_OldMan. Commit 150db61 fixed this same mismatch for the character
+    /// description/visual-lock text and voice lock (<see cref="GetCharacterProfile"/> via
+    /// <see cref="Stage2PlannerService.NormalizeCharacterKey"/>), but never reached this
+    /// reference-IMAGE lookup — the actual photo pinning the character's face/eye/wardrobe
+    /// across clips — so it silently sent no reference image at all for any on-screen
+    /// character whose blueprint key didn't happen to collide with its cast_seeds key.
+    /// Scans actual *_ref.png files on disk (not a passed-in key list) so it works from every
+    /// call site, including ones with no character-profile dictionary in scope.
+    /// </summary>
+    private static string? ResolveCharacterRefPathByNormalizedKey(string charDir, string key)
+    {
+        if (!Directory.Exists(charDir)) return null;
+        var targetNorm = Stage2PlannerService.NormalizeCharacterKey(key);
+        if (targetNorm.Length == 0) return null;
+
+        foreach (var file in Directory.EnumerateFiles(charDir, "*_ref.png"))
+        {
+            var stem = Path.GetFileNameWithoutExtension(file);
+            if (stem.StartsWith("wardrobe_", StringComparison.OrdinalIgnoreCase))
+                continue; // shared costume plates, not a character's own portrait
+            if (stem.EndsWith("_ref", StringComparison.OrdinalIgnoreCase))
+                stem = stem[..^"_ref".Length];
+            if (Stage2PlannerService.NormalizeCharacterKey(stem) == targetNorm &&
+                new FileInfo(file).Length >= 64)
+                return file;
+        }
         return null;
     }
 

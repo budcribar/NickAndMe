@@ -2,6 +2,189 @@
   "schema": "classifier_benchmark_history.v1",
   "runs": [
     {
+      "runId": "20260723T005617Z_23f629",
+      "utc": "2026-07-23 00:56:17Z",
+      "projectId": "Buster2",
+      "tasks": [
+        "plate_rank"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v2_picture_book"
+      ],
+      "summaryRel": "runs/20260723T005617Z_23f629/summary.json",
+      "note": "verify plate_rank after TaskRunners.cs fix",
+      "scores": [
+        {
+          "task": "plate_rank",
+          "model": "grok-4.5",
+          "promptId": "v2_picture_book",
+          "temperature": 0,
+          "metric": "mean_recall_at_3_capped",
+          "baselineScore": 0.5,
+          "aiScore": 1,
+          "winner": "AI",
+          "sampleCount": 2,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260723T005323Z_8d18a1",
+      "utc": "2026-07-23 00:53:23Z",
+      "projectId": "The_Jungle_Book",
+      "tasks": [
+        "onscreen_cast"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v2_grounded"
+      ],
+      "summaryRel": "runs/20260723T005323Z_8d18a1/summary.json",
+      "note": "off-screen speaker gold case, corrected wolf-cubs label",
+      "scores": [
+        {
+          "task": "onscreen_cast",
+          "model": "grok-4.5",
+          "promptId": "v2_grounded",
+          "temperature": 0,
+          "metric": "mean_set_f1",
+          "baselineScore": 0.8113378684807258,
+          "aiScore": 0.9761904761904762,
+          "winner": "AI",
+          "sampleCount": 21,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260723T005124Z_1edb1d",
+      "utc": "2026-07-23 00:51:24Z",
+      "projectId": "The_Jungle_Book",
+      "tasks": [
+        "onscreen_cast"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [
+        "v2_grounded"
+      ],
+      "summaryRel": "runs/20260723T005124Z_1edb1d/summary.json",
+      "note": "add off-screen speaker gold case (Narrator VO over den scene)",
+      "scores": [
+        {
+          "task": "onscreen_cast",
+          "model": "grok-4.5",
+          "promptId": "v2_grounded",
+          "temperature": 0,
+          "metric": "mean_set_f1",
+          "baselineScore": 0.8208616780045352,
+          "aiScore": 0.9666666666666667,
+          "winner": "AI",
+          "sampleCount": 21,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260722T232720Z_75eba7",
+      "utc": "2026-07-22 23:27:20Z",
+      "projectId": "The_Jungle_Book",
+      "tasks": [
+        "onscreen_cast",
+        "silent_beat_action",
+        "ambient_sfx",
+        "species_kind"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [],
+      "summaryRel": "runs/20260722T232720Z_75eba7/summary.json",
+      "scores": [
+        {
+          "task": "onscreen_cast",
+          "model": "grok-4.5",
+          "promptId": "v2_grounded",
+          "temperature": 0,
+          "metric": "mean_set_f1",
+          "baselineScore": 0.811904761904762,
+          "aiScore": 0.975,
+          "winner": "AI",
+          "sampleCount": 20,
+          "curatedGold": true
+        },
+        {
+          "task": "silent_beat_action",
+          "model": "grok-4.5",
+          "promptId": "v2_product",
+          "temperature": 0,
+          "metric": "accuracy",
+          "baselineScore": 0.46938775510204084,
+          "aiScore": 0.8979591836734694,
+          "winner": "AI",
+          "sampleCount": 147,
+          "curatedGold": true
+        },
+        {
+          "task": "ambient_sfx",
+          "model": "grok-4.5",
+          "promptId": "v2_grounded",
+          "temperature": 0,
+          "metric": "mean_token_jaccard",
+          "baselineScore": 0.7416666666666667,
+          "aiScore": 0.8722222222222221,
+          "winner": "AI",
+          "sampleCount": 30,
+          "curatedGold": true
+        },
+        {
+          "task": "species_kind",
+          "model": "grok-4.5",
+          "promptId": "v1_product",
+          "temperature": 0,
+          "metric": "accuracy",
+          "baselineScore": 0.49019607843137253,
+          "aiScore": 0.8431372549019608,
+          "winner": "AI",
+          "sampleCount": 51,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
+      "runId": "20260722T231756Z_36b727",
+      "utc": "2026-07-22 23:17:56Z",
+      "projectId": "The_Jungle_Book",
+      "tasks": [
+        "ambient_sfx"
+      ],
+      "models": [
+        "grok-4.5"
+      ],
+      "prompts": [],
+      "summaryRel": "runs/20260722T231756Z_36b727/summary.json",
+      "scores": [
+        {
+          "task": "ambient_sfx",
+          "model": "grok-4.5",
+          "promptId": "v2_grounded",
+          "temperature": 0,
+          "metric": "mean_token_jaccard",
+          "baselineScore": 0.7416666666666667,
+          "aiScore": 0.8888888888888888,
+          "winner": "AI",
+          "sampleCount": 30,
+          "curatedGold": true
+        }
+      ]
+    },
+    {
       "runId": "20260722T193044Z_1a22a5",
       "utc": "2026-07-22 19:30:44Z",
       "projectId": "The_Jungle_Book",

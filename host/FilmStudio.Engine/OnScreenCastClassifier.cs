@@ -91,53 +91,69 @@ public sealed class OnScreenCastClassifier
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         const int batchSize = 25;
 
+        var chunks = new List<List<Target>>();
         for (var offset = 0; offset < targets.Count; offset += batchSize)
+            chunks.Add(targets.Skip(offset).Take(batchSize).ToList());
+
+        using var sem = new SemaphoreSlim(4);
+        var tasks = chunks.Select(async chunk =>
         {
-            var chunk = targets.Skip(offset).Take(batchSize).ToList();
-            var missing = chunk.Select(t => t.Id).ToList();
-            var byId = chunk.ToDictionary(t => t.Id, StringComparer.OrdinalIgnoreCase);
-            for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
+            await sem.WaitAsync(ct).ConfigureAwait(false);
+            try
             {
-                try
+                var missing = chunk.Select(t => t.Id).ToList();
+                var byId = chunk.ToDictionary(t => t.Id, StringComparer.OrdinalIgnoreCase);
+                for (var attempt = 1; attempt <= maxAttempts && missing.Count > 0; attempt++)
                 {
-                    var payload = missing.Select(id =>
+                    try
                     {
-                        var t = byId[id];
-                        return new Dictionary<string, object?>
+                        var payload = missing.Select(id =>
                         {
-                            ["id"] = t.Id,
-                            ["visual_event"] = Trunc(t.VisualEvent, 240),
-                            ["dialogue"] = Trunc(t.Dialogue, 120),
-                            ["speaker_key"] = t.SpeakerKey,
-                            ["is_voiceover"] = t.IsVoiceover,
-                            ["heuristic_keys"] = t.HeuristicKeys,
-                        };
-                    }).ToList();
-                    var user = "Pick on-screen Character_* keys from the closed cast. JSON only.\n" +
-                               JsonSerializer.Serialize(new { cast_keys = castKeys, beats = payload });
-                    var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.OnScreenCastClassify)
-                        .ConfigureAwait(false);
-                    result.ChatCalls++;
-                    var parsed = ParseLabels(raw, castKeys);
-                    foreach (var id in missing.ToList())
-                    {
-                        if (!parsed.TryGetValue(id, out var keys)) continue;
-                        byId[id].Beat["characters_on_screen"] = keys.Cast<object?>().ToList();
-                        missing.Remove(id);
-                        labeled.Add(id);
+                            var t = byId[id];
+                            return new Dictionary<string, object?>
+                            {
+                                ["id"] = t.Id,
+                                ["visual_event"] = Trunc(t.VisualEvent, 240),
+                                ["dialogue"] = Trunc(t.Dialogue, 120),
+                                ["speaker_key"] = t.SpeakerKey,
+                                ["is_voiceover"] = t.IsVoiceover,
+                                ["heuristic_keys"] = t.HeuristicKeys,
+                            };
+                        }).ToList();
+                        var user = "Pick on-screen Character_* keys from the closed cast. JSON only.\n" +
+                                   JsonSerializer.Serialize(new { cast_keys = castKeys, beats = payload });
+                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.OnScreenCastClassify)
+                            .ConfigureAwait(false);
+                        var parsed = ParseLabels(raw, castKeys);
+                        lock (labeled)
+                        {
+                            result.ChatCalls++;
+                            foreach (var id in missing.ToList())
+                            {
+                                if (!parsed.TryGetValue(id, out var keys)) continue;
+                                byId[id].Beat["characters_on_screen"] = keys.Cast<object?>().ToList();
+                                missing.Remove(id);
+                                labeled.Add(id);
+                            }
+                        }
+                        if (missing.Count > 0)
+                            await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
                     }
-                    if (missing.Count > 0)
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        _log.LogWarning(ex, "OnScreenCast attempt {A}", attempt);
+                        result.LastError = ex.Message;
                         await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    _log.LogWarning(ex, "OnScreenCast attempt {A}", attempt);
-                    result.LastError = ex.Message;
-                    await Task.Delay(Math.Max(0, _opts.SilentBeatClassifyBackoffBaseMs) * attempt, ct);
+                    }
                 }
             }
-        }
+            finally
+            {
+                sem.Release();
+            }
+        });
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
         result.AiCount = labeled.Count;
         result.FallbackCount = targets.Count - labeled.Count;
@@ -157,7 +173,7 @@ Closed set only: return Character_* keys from cast_keys. Never invent keys outsi
 - Group cast keys when the visual shows that group acting (e.g. monkey troop, cub litter, seal crowd) and the key exists in cast_keys.
 
 ## Exclude
-- Voiceover-only speakers unless the visual also shows them on camera.
+- Voiceover-only or off-screen speakers (is_voiceover: true, or spoken from off-screen / another room) UNLESS the visual explicitly shows their physical body on camera.
 - Names mentioned only in dialogue or as possession of a prop ("Shere Khan's hide", "Kala Nag" in a line) when the visual does not show that character body on screen.
 - Corpses, skins, hides, trophies, photos, statues — not living on-screen cast.
 - Anonymous crowd/pack without a matching group cast key (do not invent individuals).
