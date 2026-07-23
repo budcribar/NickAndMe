@@ -101,8 +101,8 @@ flowchart TD
   3. **AI Vision Style Gate (`RequirePortraitStyleGate`)**: An AI Vision Classifier audits generated portraits against the project's global render style (e.g. *period live-action gothic* vs. *3D CG animation*) before locking, ensuring zero visual style drift across the cast.
 
 ### 4. Stage 2: Shot Planning & AI Classifier Suite (`Stage2PlannerService`)
-- **AI Engine**: **14 Specialized Grok 4.5 Classifiers**
-- **Action**: Transforms the Fountain screenplay into a frame-accurate, timestamped shot plan (`blueprint.clips.json`) using 14 AI classifiers:
+- **AI Engine**: **15 Specialized Grok 4.5 Classifiers**
+- **Action**: Transforms the Fountain screenplay into a frame-accurate, timestamped shot plan (`blueprint.clips.json`) using 15 AI classifiers:
   1. **`OnScreenCastClassifier`**: Evaluates dialogue and action per beat to determine on-screen vs. off-screen/VO characters per shot, enforcing off-camera speaker rules.
   2. **`SilentBeatActionClassifier`**: Classifies silent action beats (`action_class`) with surrounding narrative context to allocate precise duration budgets ($3\text{s}$–$8\text{s}$).
   3. **`AmbientSfxClassifier`**: Separates background ambient soundscapes from transient sound effects (SFX).
@@ -117,6 +117,7 @@ flowchart TD
   12. **`CharacterEmotionArcClassifier`**: Acts as an Acting Coach & Performance Director, calculating emotional intensity ($1$–$10$ scale) and facial micro-expressions per beat to drive acting performances in video generation.
   13. **`SoundDesignComposerClassifier`**: Acts as a Film Sound Designer & Audio Supervisor, composing 3-layer audio blueprints (`ambient_layer`, `foley_layer`, `score_layer`) per beat for multi-channel synthesis and `ffmpeg` remuxing.
   14. **`DepthOfFieldClassifier`**: Acts as a Focus Puller & Optical Cinematographer, assigning optical aperture settings ($f/1.4$ to $f/8$), primary focal planes, and dynamic rack-focus transitions per shot.
+  15. **`ColorPaletteGradingClassifier`**: Acts as a Master Colorist & Film Stock Director, assigning film stock emulsion characteristics (*Kodak Vision3 500T 5219*, *Fuji Eterna*), color palettes, and color grading prompts per scene.
 - **Deterministic Pacing**: *Silent Prelude Coalescing* automatically folds 5s silent lead-in beats into Beat 2 so voiceover/dialogue begins on frame 1 of the scene.
 
 ### 5. Video Generation (`ClipVideoPromptBuilder` & `GrokVideoClient` / `GeminiVideoClient`)
