@@ -103,6 +103,7 @@ public static class ChatCallModes
     public const string ShotPlanRefineClassify = "shot_plan_refine_classify";
     public const string BeatPacingClassify = "beat_pacing_classify";
     public const string CinematicLightingClassify = "cinematic_lighting_classify";
+    public const string CameraDirectorClassify = "camera_director_classify";
 }
 
 /// <summary>

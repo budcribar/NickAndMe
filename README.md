@@ -101,8 +101,8 @@ flowchart TD
   3. **AI Vision Style Gate (`RequirePortraitStyleGate`)**: An AI Vision Classifier audits generated portraits against the project's global render style (e.g. *period live-action gothic* vs. *3D CG animation*) before locking, ensuring zero visual style drift across the cast.
 
 ### 4. Stage 2: Shot Planning & AI Classifier Suite (`Stage2PlannerService`)
-- **AI Engine**: **8 Specialized Grok 4.5 Classifiers**
-- **Action**: Transforms the Fountain screenplay into a frame-accurate, timestamped shot plan (`blueprint.clips.json`) using 8 AI classifiers:
+- **AI Engine**: **9 Specialized Grok 4.5 Classifiers**
+- **Action**: Transforms the Fountain screenplay into a frame-accurate, timestamped shot plan (`blueprint.clips.json`) using 9 AI classifiers:
   1. **`OnScreenCastClassifier`**: Evaluates dialogue and action per beat to determine on-screen vs. off-screen/VO characters per shot, enforcing off-camera speaker rules.
   2. **`SilentBeatActionClassifier`**: Classifies silent action beats (`action_class`) with surrounding narrative context to allocate precise duration budgets ($3\text{s}$–$8\text{s}$).
   3. **`AmbientSfxClassifier`**: Separates background ambient soundscapes from transient sound effects (SFX).
@@ -111,6 +111,7 @@ flowchart TD
   6. **`ShotPlanRefiningClassifier`**: Evaluates multi-clip monologues to generate progressive camera angles (Establishing Wide $\rightarrow$ Close-Up on detail $\rightarrow$ Reaction Shot), eliminating static visual prompt repetition across extended scenes.
   7. **`BeatPacingClassifier`**: Analyzes narrative rhythm, suspense, and emotional weight to assign dynamic clip duration budgets ($2\text{s}$–$12\text{s}$) tailored to scene tension.
   8. **`CinematicLightingClassifier`**: Generates rich atmospheric lighting descriptions, shadow quality, volumetric effects, and mood color palettes locked across all shots in a scene.
+  9. **`CameraDirectorClassifier`**: Assigns professional lens choices (24mm wide anamorphic, 85mm portrait), camera movements (dolly push-in, low-angle tracking, tripod hold), and shot composition directives per beat.
 - **Deterministic Pacing**: *Silent Prelude Coalescing* automatically folds 5s silent lead-in beats into Beat 2 so voiceover/dialogue begins on frame 1 of the scene.
 
 ### 5. Video Generation (`ClipVideoPromptBuilder` & `GrokVideoClient` / `GeminiVideoClient`)

@@ -167,6 +167,12 @@ public sealed class FakeGrokChatClient : IChatClient
             return Task.FromResult("""{"lighting_token":"Chiaroscuro flickering candlelight with deep obsidian shadows and desaturated cool-gray volumetric fog"}""");
         }
 
+        if (mode == ChatCallModes.CameraDirectorClassify ||
+            sys.Contains("Virtuoso Film Director and Director of Photography", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult("""{"directives":[]}""");
+        }
+
         // ── Minimal Stage1-shaped stub ─────────────────────────────────────
         return Task.FromResult("""
             {

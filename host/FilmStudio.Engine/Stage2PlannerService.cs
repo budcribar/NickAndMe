@@ -50,6 +50,7 @@ public sealed class Stage2PlannerService
     private readonly ShotPlanRefiningClassifier? _shotPlanRefiner;
     private readonly BeatPacingClassifier? _beatPacingClassifier;
     private readonly CinematicLightingClassifier? _lightingClassifier;
+    private readonly CameraDirectorClassifier? _cameraClassifier;
 
     public Stage2PlannerService(
         ProjectStore projects,
@@ -61,7 +62,8 @@ public sealed class Stage2PlannerService
         SpeciesKindClassifier? speciesKindClassifier = null,
         ShotPlanRefiningClassifier? shotPlanRefiner = null,
         BeatPacingClassifier? beatPacingClassifier = null,
-        CinematicLightingClassifier? lightingClassifier = null)
+        CinematicLightingClassifier? lightingClassifier = null,
+        CameraDirectorClassifier? cameraClassifier = null)
     {
         _projects = projects;
         _log = log;
@@ -73,6 +75,7 @@ public sealed class Stage2PlannerService
         _shotPlanRefiner = shotPlanRefiner;
         _beatPacingClassifier = beatPacingClassifier;
         _lightingClassifier = lightingClassifier;
+        _cameraClassifier = cameraClassifier;
     }
 
     public async Task<Stage2PlanResult> PlanAsync(
@@ -179,7 +182,17 @@ public sealed class Stage2PlannerService
             {
                 aiLighting = await _lightingClassifier.ClassifySceneLightingAsync(s, onProgress, ct).ConfigureAwait(false);
             }
-            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting);
+            Dictionary<string, CameraDirective>? aiCamera = null;
+            if (_cameraClassifier is not null)
+            {
+                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
+                    .Where(b => !IsNoopTransitionBeat(b))
+                    .ToList();
+                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
+                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
+                aiCamera = await _cameraClassifier.ClassifySceneCameraAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
+            }
+            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera);
             // Skip transition-only phantoms (e.g. FADE IN before first heading)
             if (plannedScene is null)
             {
@@ -407,7 +420,8 @@ public sealed class Stage2PlannerService
         Dictionary<string, object?> charSeeds,
         string? styleLock,
         Dictionary<string, int>? aiPacing = null,
-        string? aiLighting = null)
+        string? aiLighting = null,
+        Dictionary<string, CameraDirective>? aiCamera = null)
     {
         var sceneInput = new Dictionary<string, object?>(scene);
         if (!string.IsNullOrWhiteSpace(aiLighting))
@@ -496,7 +510,16 @@ public sealed class Stage2PlannerService
             // Story-specific negatives only; provider global negatives applied at gen time.
             var neg = BuildStoryNegativePrompt(beat, wardrobe, clipCast);
 
-            clips.Add(new Dictionary<string, object?>
+            var beatIdStr = CoerceString(beat.TryGetValue("beat_id", out var bi) ? bi : null) ?? $"b{i + 1}";
+            string? cameraMoveToken = null;
+            if (aiCamera is not null && aiCamera.TryGetValue(beatIdStr, out var camDir))
+            {
+                if (!string.IsNullOrWhiteSpace(camDir.FramingPrompt))
+                    vp = $"{vp} Camera directive: {camDir.FramingPrompt}";
+                cameraMoveToken = $"{camDir.LensSpec}, {camDir.CameraMovement}";
+            }
+
+            var clipDict = new Dictionary<string, object?>
             {
                 ["clip_number"] = i + 1,
                 ["timestamp"] = FormatTs(t, t + dur),
@@ -505,12 +528,21 @@ public sealed class Stage2PlannerService
                 ["visual_prompt"] = vp,
                 ["negative_prompt"] = neg,
                 ["audio_payload"] = BuildAudioPayload(beat),
-                ["stage1_beat_id"] = beat.TryGetValue("beat_id", out var bi) ? bi : $"b{i + 1}",
+                ["stage1_beat_id"] = beatIdStr,
                 ["primary_subject"] = beat.TryGetValue("primary_subject", out var psub) ? psub : null,
                 ["characters_on_screen"] = clipCast.Cast<object?>().ToList(),
                 ["duration_seconds"] = dur,
-            });
-            beatMap.Add(CoerceString(beat.TryGetValue("beat_id", out var bid) ? bid : null) ?? $"b{i + 1}");
+            };
+
+            if (aiCamera is not null && aiCamera.TryGetValue(beatIdStr, out var cd))
+            {
+                clipDict["shot_scale_hint"] = cd.ShotScale;
+                if (!string.IsNullOrWhiteSpace(cameraMoveToken))
+                    clipDict["camera_movement_token"] = cameraMoveToken;
+            }
+
+            clips.Add(clipDict);
+            beatMap.Add(beatIdStr);
             t += dur;
             prevLid = lid;
             prevBeat = beat;

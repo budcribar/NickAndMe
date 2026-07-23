@@ -77,6 +77,7 @@ builder.Services.AddSingleton<PlateRankClassifier>();
 builder.Services.AddSingleton<ShotPlanRefiningClassifier>();
 builder.Services.AddSingleton<BeatPacingClassifier>();
 builder.Services.AddSingleton<CinematicLightingClassifier>();
+builder.Services.AddSingleton<CameraDirectorClassifier>();
 builder.Services.AddSingleton<Stage2PlannerService>();
 builder.Services.AddSingleton<FfmpegRemuxService>();
 builder.Services.AddSingleton<IFfmpegRemux>(sp => sp.GetRequiredService<FfmpegRemuxService>());
