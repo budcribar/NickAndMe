@@ -23,7 +23,7 @@
       "Bash(curl -s -m 5 -o /dev/null -w \"web status: %{http_code}\\\\n\" http://localhost:5079/)",
       "Bash(node -e \"console.log\\(require\\('playwright/package.json'\\).version\\)\")",
       "Bash(node wardrobe-uniform-verify.mjs)",
-      "Bash(node -e ' *)",
+      "Bash(node -e *)",
       "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088,5079 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property LocalPort,OwningProcess\")",
       "Bash(powershell -NoProfile -Command \"Get-Process -Id 4940,10152 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path,StartTime\")",
       "Bash(powershell -NoProfile -Command \"Stop-Process -Id 10152,4940 -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; Get-Process -Id 10152,4940 -ErrorAction SilentlyContinue\")",
@@ -37,7 +37,8 @@
       "Bash(powershell -NoProfile -Command \"Stop-Process -Id 27824 -Force -ErrorAction SilentlyContinue\")",
       "Bash(curl -s -m 3 -o /dev/null -w \"http_code: %{http_code}\\\\n\" http://127.0.0.1:5088/health)",
       "Bash(powershell -NoProfile -Command \"Get-Process -Id 26644 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\" 2>&1)",
-      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property OwningProcess\" 2>&1)"
+      "Bash(powershell -NoProfile -Command \"Get-NetTCPConnection -LocalPort 5088 -State Listen -ErrorAction SilentlyContinue | Select-Object -Property OwningProcess\" 2>&1)",
+      "Skill(update-config)"
     ]
   }
 }
