@@ -1,4 +1,4 @@
-# S01C01  mode=fresh chars=1 onScreen=1 refs=1 startFrame=no promptLen=1330 · learning-addenda
+# S01C01  mode=fresh chars=1 onScreen=1 refs=1 startFrame=no promptLen=3477 · learning-addenda · pre-budget 6109→3477
 # projectId: TellTaleHeartV7
 # mode: fresh
 # castCount: 1
@@ -8,33 +8,19 @@
 # startFrame: (none)
 # characters: Character_The_Narrator
 
-STYLE LOCK: Period gothic live-action; candlelight and deep shadows; desaturated cool-brown palette; 19th-century domestic interiors; naturalistic skin and fabric texture; no modern clothing or lighting
+STYLE LOCK: Period gothic live-action, mid-19th-century interiors; candlelight and deep shadows; desaturated cool-gray palette; naturalistic skin and fabric texture; no illustration or stylized animation
 
 CHARACTER VARIABLES (use these identities consistently; do not redesign faces or wardrobe):
-- Character_The_Narrator <IMAGE_1> [The Narrator]: Match appearance of reference <IMAGE_1> exactly.
+- Character_The_Narrator <IMAGE_1> [The Narrator]: Lean man of middle years (about 40–50), pale sallow skin, hollow cheeks, dark disordered medium-length hair, bright intense dark eyes, thin tense mouth; plain dark wool waistcoat over white shirtsleeves, dark trousers; period clothing. Visual lock: Same lean pale face, dark disordered hair, and bright intense dark eyes in every scene; always plain dark waistcoat and shirtsleeves as default; never elderly, never white-haired, never the filmed blue eye. Voice: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O. Match appearance of reference <IMAGE_1> exactly.
 
 CAST COUNT: exactly 1 distinct on-screen character identity(ies) only — Character_The_Narrator. Do not invent extra people, duplicate faces, or crowd extras not listed.
+
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "True! Nervous — very, very dreadfully nervous I had been and am;". Start speaking immediately with "True!" — do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_The_Narrator: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O.
 
 Follow the camera framing and location in this prompt exactly. Prioritize the PRIMARY subject and ONE clear action with visible motion; background characters may stay mostly still.
 
 THIS CLIP:
 End cleanly when the spoken line and primary action finish — do not hold a frozen pose or empty silence after dialogue.
-INT. BARE ROOM - NIGHT. A single chair. A rough table. Candlelight. THE NARRATOR sits facing us-pale, composed, hands folded too carefully. He leans in Character_The_Narrator <IMAGE_1> is on screen. / 720p, 24fps
+INT. BARE ROOM - NIGHT. A single chair. A rough table. Candlelight. THE NARRATOR sits facing us-pale, composed, hands folded too carefully. He leans in. The Narrator speaks. Character_The_Narrator <IMAGE_1> ON CAMERA lip-syncs "True! Nervous — very, very dreadfully nervous I had been and am;". Character_The_Narrator <IMAGE_1> still wears plain dark waistcoat, white shirtsleeves, rolled cuffs Camera directive: Medium shot across rough table, 35mm lens, slow push-in as Narrator leans forward into candlelight. Performance: Acting intensity 6/10: Tightly controlled pale stare, lips pressed thin with faint tremor Optics: f/1.4 shallow depth of field, creamy background bokeh Color grading: Kodak Vision3 500T 5219 film stock, desaturated cool-teal shadows and warm amber candle highlights / 480p, 24fps
 
-NEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props.
-
-# Film Studio gen pack (active addendum)
-
-Apply these house rules when building clip video prompts:
-- Dialogue clips must have audible speech and visible lip motion for the speaker; never silent mouths on dialogue.
-- Continuity: when extending from previous clip, match wardrobe, place, and facing from the last frames.
-- Respect VOICE LOCK and character visual locks exactly.
-- Prefer tight action after speech; avoid long empty holds.
-- Align performance energy with audio state. On silent or ambient-only clips: no roaring open mouth, no lip-sync shout, no screaming-at-camera performance. Restrained physical tension (clenched fist, tight jaw, white knuckles, held stare) is allowed and often preferred. On dialogue clips: mouth and gesture match the line and delivery; do not invent rage if the line is calm or measured.
-- FACE / PERFORMANCE: State the intended facial expression and gaze for the beat. Match project PERFORMANCE rules (e.g. confessional address vs objective/observed). On dialogue: mouth and expression match the line and energy. On silent/ambient: no speech-performance open mouth; restrained tension is OK. When the beat needs a readable face, keep eyes open enough to read expression unless the plan explicitly calls for sleep, death, or covered eyes. Do not invent a default beauty-blank or wrong-emotion face. Avoid mismatched face: wrong emotion vs line, speech-mouth on silent, shut/averted eyes on address beats, or plastic unreadable face when identity is locked.
-- STYLE MATCH (global): Match locked character refs and the project render style (picture-book CG, photoreal period, etc.). Do not swap or merge Character_* faces. Do not drift into a different medium mid-film (e.g. photoreal live-action when the project is stylized 3D, or plastic CGI faces when the project is photoreal). Project house rules name the exact medium.
-- CAST COUNT: Honor any CAST COUNT line in the clip prompt — exact named on-screen identities only; no extra crowd or duplicate faces.
-
-PROJECT HOUSE RULES (approved):
-- [style] STYLE LOCK: Period gothic live-action; candlelight and deep shadows; desaturated cool-brown palette; 19th-century domestic interiors; naturalistic skin and fabric texture; no modern clothing or lighting.
-- [performance] PERFORMANCE LOCK: First-person confessional adaptation—THE NARRATOR often faces and addresses the implied listener/camera when recounting; flashback scenes are objective staging where characters look at each other and scene action, not the viewer. Officers remain calm, civil, observational.
+NEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets, no modern wristwatches, no electric light bulbs, no plastic, no zippers, no modern cars, no printed logos, no denim, no asphalt, no modern hair gel, no sneakers, no power lines, no smartphones.

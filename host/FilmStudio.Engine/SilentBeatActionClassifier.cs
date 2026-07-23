@@ -50,11 +50,14 @@ public sealed class SilentBeatActionClassifier
     public async Task<SilentBeatClassifyResult> ClassifyStage1Async(
         Dictionary<string, object?> stage1,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? overrideModel = null)
     {
-        var model = string.IsNullOrWhiteSpace(_opts.SilentBeatClassifyModel)
-            ? DefaultModel
-            : _opts.SilentBeatClassifyModel.Trim();
+        var model = !string.IsNullOrWhiteSpace(overrideModel)
+            ? overrideModel
+            : (string.IsNullOrWhiteSpace(_opts.SilentBeatClassifyModel)
+                ? DefaultModel
+                : _opts.SilentBeatClassifyModel.Trim());
         var temp = _opts.SilentBeatClassifyTemperature;
         if (double.IsNaN(temp) || temp < 0)
             temp = DefaultTemperature;

@@ -71,18 +71,14 @@
         <div class="card-body py-2">
             <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
                 <div>
-                    <span class="badge bg-secondary" data-testid="job-status">@Host.Job.Status</span>
-                    @if (Host.Job.Kind is { Length: > 0 } k)
-                    {
-                        <span class="badge bg-info text-dark ms-1">@AdaptationPageBase.JobKindLabel(k)</span>
-                    }
+                    <span class="visually-hidden" data-testid="job-status">@Host.Job.Status</span>
                     @{
                         var (jobIdx, jobTot, waiting, displayIdx) = AdaptationPageBase.ComputeJobProgress(
                             Host.Job, Host.ProgressIndex, Host.ProgressTotal, Host.JobRunning);
                     }
                     @if (jobTot > 0)
                     {
-                        <span class="small text-muted ms-1">
+                        <span class="small text-muted me-2">
                             @displayIdx / @jobTot completed
                             @if (waiting)
                             {
@@ -90,7 +86,16 @@
                             }
                         </span>
                     }
-                    <span class="ms-2 small">@Host.Job.Message</span>
+                    <span class="small">@Host.Job.Message</span>
+                    @if (Host.Job.Log.Count > 0)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-link text-muted p-0 ms-2 text-decoration-none"
+                                @onclick="() => _showHistory = !_showHistory"
+                                title="Toggle job history log">
+                            @(_showHistory ? "▲ Hide history" : "▼ History")
+                        </button>
+                    }
                 </div>
                 @if (Host.JobRunning)
                 {
@@ -108,7 +113,7 @@
                     </div>
                 </div>
             }
-            @if (Host.Job.Log.Count > 0)
+            @if (_showHistory && Host.Job.Log.Count > 0)
             {
                 <pre class="small mb-0 mt-2" style="max-height: 200px; overflow: auto;">@string.Join("\n", Host.Job.Log.TakeLast(40))</pre>
             }
@@ -141,6 +146,8 @@ else
     [Parameter, EditorRequired] public AdaptationPageBase Host { get; set; } = null!;
     [Parameter, EditorRequired] public string Step { get; set; } = "book";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _showHistory;
 
     private bool OutlineEnabled => AdaptationPageBase.OutlineEnabled(Host.Status);
 

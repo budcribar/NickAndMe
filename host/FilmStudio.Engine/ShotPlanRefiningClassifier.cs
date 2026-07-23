@@ -65,7 +65,8 @@ public sealed class ShotPlanRefiningClassifier
     public async Task<bool> RefinePlannedSceneAsync(
         Dictionary<string, object?> plannedScene,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled) return false;
 
@@ -92,11 +93,11 @@ public sealed class ShotPlanRefiningClassifier
         try
         {
             var userPrompt = BuildUserPrompt(plannedScene, clips);
-            var model = _opts.ShotPlanRefineClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.ShotPlanRefineClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.ShotPlanRefineClassify).ConfigureAwait(false);

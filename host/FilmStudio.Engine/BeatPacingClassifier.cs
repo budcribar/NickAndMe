@@ -64,7 +64,8 @@ public sealed class BeatPacingClassifier
         Dictionary<string, object?> scene,
         List<Dictionary<string, object?>> beats,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled || beats.Count == 0) return null;
 
@@ -73,11 +74,11 @@ public sealed class BeatPacingClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene, beats);
-            var model = _opts.BeatPacingClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.BeatPacingClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.BeatPacingClassify).ConfigureAwait(false);

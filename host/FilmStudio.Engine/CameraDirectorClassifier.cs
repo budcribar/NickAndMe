@@ -69,7 +69,8 @@ public sealed class CameraDirectorClassifier
         Dictionary<string, object?> scene,
         List<Dictionary<string, object?>> beats,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled || beats.Count == 0) return null;
 
@@ -78,11 +79,11 @@ public sealed class CameraDirectorClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene, beats);
-            var model = _opts.CameraDirectorClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.CameraDirectorClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.CameraDirectorClassify).ConfigureAwait(false);

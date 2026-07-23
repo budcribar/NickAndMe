@@ -128,13 +128,15 @@
 }
 
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
-    color: white;
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0.08) 100%);
+    color: #ffffff;
+    border-left: 3px solid #6366f1;
+    border-radius: 6px;
 }
 
 .nav-item ::deep .nav-link:hover {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
 }
 
 /* Disabled workflow links (deps not met) — not clickable, no error pages */

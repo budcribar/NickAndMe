@@ -59,7 +59,8 @@ public sealed class ColorPaletteGradingClassifier
     public async Task<ColorGradingDirective?> ClassifySceneColorGradingAsync(
         Dictionary<string, object?> scene,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled) return null;
 
@@ -68,11 +69,11 @@ public sealed class ColorPaletteGradingClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene);
-            var model = _opts.ColorPaletteGradingClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.ColorPaletteGradingClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.ColorPaletteGradingClassify).ConfigureAwait(false);

@@ -62,7 +62,8 @@ public sealed class WardrobeContinuityClassifier
         Dictionary<string, object?> scene,
         List<string> cast,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled || cast.Count == 0) return null;
 
@@ -71,11 +72,11 @@ public sealed class WardrobeContinuityClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene, cast);
-            var model = _opts.WardrobeContinuityClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.WardrobeContinuityClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.WardrobeContinuityClassify).ConfigureAwait(false);

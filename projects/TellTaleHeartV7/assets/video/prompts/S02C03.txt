@@ -1,4 +1,4 @@
-# S02C03  mode=video-extend chars=2 onScreen=2 refs=0 startFrame=no promptLen=2965 prevVideo=scene_02_clip_02.mp4 · learning-addenda · pre-budget 5597→2965
+# S02C03  mode=video-extend chars=2 onScreen=2 refs=0 startFrame=no promptLen=3327 prevVideo=scene_02_clip_02.mp4 · learning-addenda · pre-budget 5959→3327
 # projectId: TellTaleHeartV7
 # mode: video-extend
 # castCount: 2
@@ -16,8 +16,8 @@ CHARACTER VARIABLES (use these identities consistently; do not redesign faces or
 
 CAST COUNT: exactly 2 distinct on-screen character identity(ies) only — Character_The_Narrator, Character_The_Old_Man. Do not invent extra people, duplicate faces, or crowd extras not listed.
 
-AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "it.". Start speaking immediately with "it" — do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_The_Narrator: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O.
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "Whenever it fell upon me, my blood ran cold;". Start speaking immediately with "Whenever" — do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_The_Narrator: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O.
 
 PREVIOUS CLIP (already provided as video input — continue from its last frame):
-INT. OLD MAN'S BEDCHAMBER - DAY. also on screen: Character_The_Old_Man. THE OLD MAN turns in a shaft of gray light. His pale blue eye-filmed, vulture-like-catches THE NARRATOR in the doorway. THE NARRATOR's face goes cold. OFF-CAMERA VOICEOVER Character_The_Narrator says "He had the eye of a vulture - a pale blue eye, with a film over". Character_The_Narrator still wears plain dark waistcoat, dark period trousers, white shirtsleeves
+INT. OLD MAN'S BEDCHAMBER - DAY. also on screen: Character_The_Old_Man. THE OLD MAN turns in a shaft of gray light. His pale blue eye-filmed, vulture-like-catches THE NARRATOR in the doorway. THE NARRATOR's face goes cold. OFF-CAMERA VOICEOVER Character_The_Narrator says "it.". Character_The_Narrator still wears dark woolen waistcoat, plain shirtsleeves, tailored trousers Camera directive: Close-up on Old Man's face, 85mm lens, sharp focus racks to the pale filmed vulture eye. Performance: Acting intensity 6/10: Pinprick pupils and rigid jaw as dread drains color from face Optics: f/1.4 shallow depth of field, creamy background bokeh Color grading: Kodak Vision3 250D 5207 film stock, desaturated cool-gray shadows and pale icy-blue highlights
 [prompt shortened after API length limit — retry]

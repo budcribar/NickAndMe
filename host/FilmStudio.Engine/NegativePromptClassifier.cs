@@ -55,7 +55,8 @@ public sealed class NegativePromptClassifier
     public async Task<string?> ClassifySceneNegativeAsync(
         Dictionary<string, object?> scene,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled) return null;
 
@@ -64,11 +65,11 @@ public sealed class NegativePromptClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene);
-            var model = _opts.NegativePromptClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.NegativePromptClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.NegativePromptClassify).ConfigureAwait(false);

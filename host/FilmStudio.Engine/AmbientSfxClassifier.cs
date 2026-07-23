@@ -38,11 +38,14 @@ public sealed class AmbientSfxClassifier
     public async Task<AmbientSfxClassifyResult> ClassifyStage1Async(
         Dictionary<string, object?> stage1,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? overrideModel = null)
     {
-        var model = string.IsNullOrWhiteSpace(_opts.AmbientSfxClassifyModel)
-            ? DefaultModel
-            : _opts.AmbientSfxClassifyModel.Trim();
+        var model = !string.IsNullOrWhiteSpace(overrideModel)
+            ? overrideModel
+            : (string.IsNullOrWhiteSpace(_opts.AmbientSfxClassifyModel)
+                ? DefaultModel
+                : _opts.AmbientSfxClassifyModel.Trim());
         var temp = _opts.AmbientSfxClassifyTemperature;
         if (double.IsNaN(temp) || temp < 0) temp = 0.2;
         var maxAttempts = Math.Clamp(_opts.AmbientSfxClassifyMaxAttempts, 1, 5);

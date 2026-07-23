@@ -34,14 +34,16 @@ public sealed class SpeciesKindClassifier
     public async Task<SimpleClassifyResult> ClassifyStage1Async(
         Dictionary<string, object?> stage1,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
+        var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.SpeciesKindClassifyModel;
         var result = new SimpleClassifyResult
         {
             Name = "species_kind",
             PromptVersion = PromptVersion,
             Enabled = IsEnabled,
-            Model = _opts.SpeciesKindClassifyModel,
+            Model = effectiveModel,
         };
         var seeds = GetSeeds(stage1);
         result.ItemCount = seeds.Count;
@@ -57,7 +59,6 @@ public sealed class SpeciesKindClassifier
         }
 
         onProgress?.Invoke($"Classifying species kind for {seeds.Count} cast…");
-        var model = string.IsNullOrWhiteSpace(_opts.SpeciesKindClassifyModel) ? "grok-4.5" : _opts.SpeciesKindClassifyModel;
         var maxAttempts = Math.Clamp(_opts.SilentBeatClassifyMaxAttempts, 1, 5);
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var missing = seeds.Select(s => s.Key).ToList();
@@ -80,7 +81,7 @@ public sealed class SpeciesKindClassifier
                 }).ToList();
                 var user = "Label each cast key animal|human|other. JSON only.\n" +
                            JsonSerializer.Serialize(new { cast = payload });
-                var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.SpeciesKindClassify)
+                var raw = await _chat.CompleteAsync(SystemPrompt(), user, effectiveModel, 0, ct, ChatCallModes.SpeciesKindClassify)
                     .ConfigureAwait(false);
                 result.ChatCalls++;
                 var parsed = ParseLabels(raw);

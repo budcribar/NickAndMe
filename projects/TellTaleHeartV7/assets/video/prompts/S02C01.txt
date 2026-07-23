@@ -1,4 +1,4 @@
-# S02C01  mode=fresh chars=2 onScreen=2 refs=2 startFrame=no promptLen=2895 · learning-addenda · pre-budget 5527→2895
+# S02C01  mode=fresh chars=2 onScreen=2 refs=2 startFrame=no promptLen=4045 · learning-addenda · pre-budget 6677→4039
 # projectId: TellTaleHeartV7
 # mode: fresh
 # castCount: 2
@@ -16,10 +16,13 @@ CHARACTER VARIABLES (use these identities consistently; do not redesign faces or
 
 CAST COUNT: exactly 2 distinct on-screen character identity(ies) only — Character_The_Narrator, Character_The_Old_Man. Do not invent extra people, duplicate faces, or crowd extras not listed.
 
+AUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: "He had the eye of a vulture - a pale blue eye, with a film over". Start speaking immediately with "He" — do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley. VOICE LOCK Character_The_Narrator: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O.
+
 Follow the camera framing and location in this prompt exactly. Prioritize the PRIMARY subject and ONE clear action with visible motion; background characters may stay mostly still.
 
 THIS CLIP:
-Silent beat — no dialogue in this clip. Do not show any on-screen character speaking or mouthing words; keep mouths closed/neutral. End cleanly when the primary physical action finishes.
-INT. OLD MAN'S BEDCHAMBER - DAY. also on screen: Character_The_Old_Man <IMAGE_2>. THE OLD MAN turns in a shaft of gray light. His pale blue eye-filmed, vulture-like-catches THE NARRATOR in the doorway. THE NARRATOR's face goes cold. Character_The_Narrator <IMAGE_1> still wears plain dark waistcoat, dark period trousers, white shirtsleeves / 720p, 24fps
+End cleanly when the spoken line and primary action finish — do not hold a frozen pose or empty silence after dialogue.
+INT. OLD MAN'S BEDCHAMBER - DAY. also on screen: Character_The_Old_Man <IMAGE_2>. THE OLD MAN turns in a shaft of gray light. His pale blue eye-filmed, vulture-like-catches THE NARRATOR in the doorway. THE NARRATOR's face goes cold. OFF-CAMERA VOICEOVER Character_The_Narrator <IMAGE_1> says "He had the eye of a vulture - a pale blue eye, with a film over". Character_The_Narrator <IMAGE_1> still wears dark woolen waistcoat, plain shirtsleeves, tailored trousers Camera directive: Medium shot through doorway, 35mm lens, slow dolly-in as Old Man turns into gray light shaft. Performance: Acting intensity 5/10: Pale eye-tightening and icy fixed gaze as cold recognition sets in Optics: f/1.4 shallow depth of field, creamy background bokeh Color grading: Kodak Vision3 250D 5207 film stock, desaturated cool-gray shadows and pale icy-blue highlights / 480p, 24fps
 
-NEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets.
+NEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no
+[prompt shortened after API length limit — retry]

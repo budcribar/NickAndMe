@@ -43,14 +43,16 @@ public sealed class OnScreenCastClassifier
     public async Task<SimpleClassifyResult> ClassifyStage1Async(
         Dictionary<string, object?> stage1,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
+        var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.OnScreenCastClassifyModel;
         var result = new SimpleClassifyResult
         {
             Name = "onscreen_cast",
             PromptVersion = PromptVersion,
             Enabled = IsEnabled,
-            Model = _opts.OnScreenCastClassifyModel,
+            Model = effectiveModel,
         };
         var castKeys = ExtractCastKeys(stage1);
         var targets = CollectSilentAndDialogue(stage1);
@@ -86,7 +88,6 @@ public sealed class OnScreenCastClassifier
         }
 
         onProgress?.Invoke($"Classifying on-screen cast for {targets.Count} beat(s)…");
-        var model = string.IsNullOrWhiteSpace(_opts.OnScreenCastClassifyModel) ? "grok-4.5" : _opts.OnScreenCastClassifyModel;
         var maxAttempts = Math.Clamp(_opts.SilentBeatClassifyMaxAttempts, 1, 5);
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         const int batchSize = 25;
@@ -122,7 +123,7 @@ public sealed class OnScreenCastClassifier
                         }).ToList();
                         var user = "Pick on-screen Character_* keys from the closed cast. JSON only.\n" +
                                    JsonSerializer.Serialize(new { cast_keys = castKeys, beats = payload });
-                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.OnScreenCastClassify)
+                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, effectiveModel, 0, ct, ChatCallModes.OnScreenCastClassify)
                             .ConfigureAwait(false);
                         var parsed = ParseLabels(raw, castKeys);
                         lock (labeled)

@@ -1,0 +1,23 @@
+{
+  "projectId": "TellTaleHeartV7",
+  "scene": 1,
+  "clip": 12,
+  "mode": "video-extend",
+  "castCount": 1,
+  "onScreenKeys": [
+    "Character_The_Narrator"
+  ],
+  "characterKeys": [
+    "Character_The_Narrator"
+  ],
+  "refs": [],
+  "refsAttachedToApi": false,
+  "styleHead": "STYLE LOCK: Period gothic live-action; candlelight and deep shadows; desaturated cool-brown palette; 19th-century domestic interiors; naturalistic skin and fabric texture; no modern clothing or lighting",
+  "castCountLine": "CAST COUNT: exactly 1 distinct on-screen character identity(ies) only \u2014 Character_The_Narrator. Do not invent extra people, duplicate faces, or crowd extras not listed.",
+  "actionText": "INT. BARE ROOM - NIGHT. The Narrator speaks. Character_The_Narrator ON CAMERA lip-syncs \u0022I loved the old man. He had never wronged me. He had never given me insult.\u0022",
+  "prompt": "STYLE LOCK: Period gothic live-action; candlelight and deep shadows; desaturated cool-brown palette; 19th-century domestic interiors; naturalistic skin and fabric texture; no modern clothing or lighting\r\n\r\nCHARACTER VARIABLES (use these identities consistently; do not redesign faces or wardrobe):\r\n- Character_The_Narrator [The Narrator]:\r\n\r\nCAST COUNT: exactly 1 distinct on-screen character identity(ies) only \u2014 Character_The_Narrator. Do not invent extra people, duplicate faces, or crowd extras not listed.\r\n\r\nAUDIO: REQUIRED native Grok off-camera voiceover. Character_The_Narrator narrates exactly: \u0022I loved the old man. He had never wronged me. He had never given me insult.\u0022. Start speaking immediately with \u0022I\u0022 \u2014 do not skip, delay, or swallow the opening word. After the last word, hold a brief natural pause with a closed mouth (about half a second); do not freeze mid-syllable or trail into empty staring. Do not lip-sync on-screen cast to this VO. Secondary layer = soft room tone / Foley.\r\n\r\nPREVIOUS CLIP (already provided as video input \u2014 continue from its last frame):\nINT. BARE ROOM - NIGHT. The Narrator speaks. Character_The_Narrator ON CAMERA lip-syncs \u0022but once conceived, it haunted me day and night. Object there was none. Passion there was none.\u0022\n\nCONTINUITY: This is a seamless EXTENSION of the provided previous video. Pick up from its last frame. Same character identity, wardrobe, lighting, and location. Natural progressive motion only \u2014 do not invent a new establishing shot or redesign faces/outfits. IDENTITY: Match locked plate descriptions in CHARACTER VARIABLES exactly \u2014 do not drift to illustration, anime, cartoon, or a different face/wardrobe. On-screen: Character_The_Narrator.\r\n\r\nTHIS CLIP:\r\nEnd cleanly when the spoken line and primary action finish \u2014 do not hold a frozen pose or empty silence after dialogue.\r\nINT. BARE ROOM - NIGHT. The Narrator speaks. Character_The_Narrator ON CAMERA lip-syncs \u0022I loved the old man. He had never wronged me. He had never given me insult.\u0022 / 720p, 24fps\r\n\r\nNEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props.",
+  "promptLen": 2262,
+  "promptLogSummary": "mode=video-extend chars=1 onScreen=1 refs=0 startFrame=no promptLen=2262 prevVideo=scene_01_clip_11.mp4 \u00B7 learning-addenda \u00B7 pre-budget 4825\u21922262",
+  "startFrame": null,
+  "builtAtUtc": "2026-07-22T14:45:48.6583986\u002B00:00"
+}

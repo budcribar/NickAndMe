@@ -35,14 +35,16 @@ public sealed class ExtendCutClassifier
     public async Task<SimpleClassifyResult> ClassifyStage1Async(
         Dictionary<string, object?> stage1,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
+        var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.ExtendCutClassifyModel;
         var result = new SimpleClassifyResult
         {
             Name = "extend_hardcut",
             PromptVersion = PromptVersion,
             Enabled = IsEnabled,
-            Model = _opts.ExtendCutClassifyModel,
+            Model = effectiveModel,
         };
         var pairs = CollectPairs(stage1);
         result.ItemCount = pairs.Count;
@@ -63,10 +65,9 @@ public sealed class ExtendCutClassifier
         }
 
         onProgress?.Invoke($"Classifying extend vs hard-cut for {pairs.Count} beat(s)…");
-        var model = string.IsNullOrWhiteSpace(_opts.ExtendCutClassifyModel) ? "grok-4.5" : _opts.ExtendCutClassifyModel;
         var maxAttempts = Math.Clamp(_opts.SilentBeatClassifyMaxAttempts, 1, 5);
         var labeled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        const int batchSize = 30;
+        const int batchSize = 25;
         var chunks = new List<List<Pair>>();
         for (var offset = 0; offset < pairs.Count; offset += batchSize)
             chunks.Add(pairs.Skip(offset).Take(batchSize).ToList());
@@ -89,16 +90,19 @@ public sealed class ExtendCutClassifier
                             return new Dictionary<string, object?>
                             {
                                 ["id"] = p.Id,
+                                ["scene"] = p.Scene,
+                                ["setting"] = p.Setting,
                                 ["prev_visual"] = Trunc(p.PrevVisual, 160),
-                                ["visual_event"] = Trunc(p.Visual, 200),
-                                ["same_location"] = p.SameLocation,
+                                ["prev_speaker"] = p.PrevSpeaker,
+                                ["visual_event"] = Trunc(p.VisualEvent, 200),
+                                ["speaker"] = p.Speaker,
                                 ["action_class"] = p.ActionClass,
                                 ["heuristic"] = BaselineHardCut(p) ? "hard_cut" : "extend",
                             };
                         }).ToList();
                         var user = "Label hard_cut vs extend for video continuity. JSON only.\n" +
                                    JsonSerializer.Serialize(new { beats = payload });
-                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, model, 0, ct, ChatCallModes.ExtendCutClassify)
+                        var raw = await _chat.CompleteAsync(SystemPrompt(), user, effectiveModel, 0, ct, ChatCallModes.ExtendCutClassify)
                             .ConfigureAwait(false);
                         var parsed = ParseLabels(raw);
                         lock (labeled)
@@ -194,7 +198,7 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
     }
 
     private static bool BaselineHardCut(Pair p) =>
-        BaselineHardCut(p.Visual, p.ActionClass, p.SameLocation, p.IsFirst);
+        BaselineHardCut(p.VisualEvent, p.ActionClass, p.SameLocation, p.IsFirst);
 
     private static List<Pair> CollectPairs(Dictionary<string, object?> stage1)
     {
@@ -205,10 +209,12 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
         {
             if (sItem is not Dictionary<string, object?> scene) continue;
             si++;
+            var setting = scene.TryGetValue("setting", out var st) ? st?.ToString() ?? "" : "";
             var primary = scene.TryGetValue("primary_location_id", out var pl) ? pl?.ToString() ?? "" : "";
             var beats = scene.TryGetValue("story_beats", out var sb) && sb is List<object?> bl ? bl : new();
             string? prevVe = null;
             string? prevLid = null;
+            string? prevSpeaker = null;
             var bi = 0;
             var first = true;
             foreach (var bItem in beats)
@@ -220,11 +226,16 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
                 if (string.IsNullOrWhiteSpace(ve) && string.IsNullOrWhiteSpace(dlg)) continue;
                 var lid = beat.TryGetValue("location_id", out var l) ? l?.ToString() ?? primary : primary;
                 var ac = beat.TryGetValue("action_class", out var a) ? a?.ToString() ?? "" : "";
+                var speaker = beat.TryGetValue("speaker", out var sp) ? sp?.ToString() ?? "" : "";
                 list.Add(new Pair
                 {
                     Id = $"s{si}_b{bi}",
-                    Visual = ve,
+                    Scene = si,
+                    Setting = setting,
+                    VisualEvent = ve,
                     PrevVisual = prevVe ?? "",
+                    Speaker = speaker,
+                    PrevSpeaker = prevSpeaker ?? "",
                     ActionClass = ac,
                     SameLocation = prevLid is null || string.Equals(prevLid, lid, StringComparison.OrdinalIgnoreCase),
                     IsFirst = first,
@@ -233,6 +244,7 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
                 first = false;
                 prevVe = ve;
                 prevLid = lid;
+                prevSpeaker = speaker;
             }
         }
         return list;
@@ -255,8 +267,12 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
     private sealed class Pair
     {
         public required string Id { get; init; }
-        public string Visual { get; init; } = "";
+        public int Scene { get; init; }
+        public string Setting { get; init; } = "";
+        public string VisualEvent { get; init; } = "";
         public string PrevVisual { get; init; } = "";
+        public string Speaker { get; init; } = "";
+        public string PrevSpeaker { get; init; } = "";
         public string ActionClass { get; init; } = "";
         public bool SameLocation { get; init; }
         public bool IsFirst { get; init; }

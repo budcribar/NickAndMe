@@ -70,7 +70,8 @@ public sealed class SoundDesignComposerClassifier
         Dictionary<string, object?> scene,
         List<Dictionary<string, object?>> beats,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled || beats.Count == 0) return null;
 
@@ -79,11 +80,11 @@ public sealed class SoundDesignComposerClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene, beats);
-            var model = _opts.SoundDesignComposerClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.SoundDesignComposerClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.SoundDesignComposerClassify).ConfigureAwait(false);

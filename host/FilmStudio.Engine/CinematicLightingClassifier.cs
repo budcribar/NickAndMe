@@ -54,7 +54,8 @@ public sealed class CinematicLightingClassifier
     public async Task<string?> ClassifySceneLightingAsync(
         Dictionary<string, object?> scene,
         Action<string>? onProgress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? model = null)
     {
         if (!IsEnabled) return null;
 
@@ -63,11 +64,11 @@ public sealed class CinematicLightingClassifier
         try
         {
             var userPrompt = BuildUserPrompt(scene);
-            var model = _opts.CinematicLightingClassifyModel;
+            var effectiveModel = !string.IsNullOrWhiteSpace(model) ? model : _opts.CinematicLightingClassifyModel;
             var response = await _chat.CompleteAsync(
                 SystemPrompt(),
                 userPrompt,
-                model,
+                effectiveModel,
                 temperature: 0.2,
                 ct: ct,
                 mode: ChatCallModes.CinematicLightingClassify).ConfigureAwait(false);
