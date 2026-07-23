@@ -173,6 +173,12 @@ public sealed class FakeGrokChatClient : IChatClient
             return Task.FromResult("""{"directives":[]}""");
         }
 
+        if (mode == ChatCallModes.NegativePromptClassify ||
+            sys.Contains("Period Visual Continuity Guard", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult("""{"negative_tokens":"no modern wristwatches, no electric light bulbs, no plastic, no zippers, no printed text"}""");
+        }
+
         // ── Minimal Stage1-shaped stub ─────────────────────────────────────
         return Task.FromResult("""
             {

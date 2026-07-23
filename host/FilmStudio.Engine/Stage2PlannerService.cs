@@ -51,6 +51,7 @@ public sealed class Stage2PlannerService
     private readonly BeatPacingClassifier? _beatPacingClassifier;
     private readonly CinematicLightingClassifier? _lightingClassifier;
     private readonly CameraDirectorClassifier? _cameraClassifier;
+    private readonly NegativePromptClassifier? _negativeClassifier;
 
     public Stage2PlannerService(
         ProjectStore projects,
@@ -63,7 +64,8 @@ public sealed class Stage2PlannerService
         ShotPlanRefiningClassifier? shotPlanRefiner = null,
         BeatPacingClassifier? beatPacingClassifier = null,
         CinematicLightingClassifier? lightingClassifier = null,
-        CameraDirectorClassifier? cameraClassifier = null)
+        CameraDirectorClassifier? cameraClassifier = null,
+        NegativePromptClassifier? negativeClassifier = null)
     {
         _projects = projects;
         _log = log;
@@ -76,6 +78,7 @@ public sealed class Stage2PlannerService
         _beatPacingClassifier = beatPacingClassifier;
         _lightingClassifier = lightingClassifier;
         _cameraClassifier = cameraClassifier;
+        _negativeClassifier = negativeClassifier;
     }
 
     public async Task<Stage2PlanResult> PlanAsync(
@@ -192,7 +195,12 @@ public sealed class Stage2PlannerService
                 sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
                 aiCamera = await _cameraClassifier.ClassifySceneCameraAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
             }
-            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera);
+            string? aiNegative = null;
+            if (_negativeClassifier is not null)
+            {
+                aiNegative = await _negativeClassifier.ClassifySceneNegativeAsync(s, onProgress, ct).ConfigureAwait(false);
+            }
+            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera, aiNegative);
             // Skip transition-only phantoms (e.g. FADE IN before first heading)
             if (plannedScene is null)
             {
@@ -421,7 +429,8 @@ public sealed class Stage2PlannerService
         string? styleLock,
         Dictionary<string, int>? aiPacing = null,
         string? aiLighting = null,
-        Dictionary<string, CameraDirective>? aiCamera = null)
+        Dictionary<string, CameraDirective>? aiCamera = null,
+        string? aiNegative = null)
     {
         var sceneInput = new Dictionary<string, object?>(scene);
         if (!string.IsNullOrWhiteSpace(aiLighting))
@@ -509,6 +518,10 @@ public sealed class Stage2PlannerService
 
             // Story-specific negatives only; provider global negatives applied at gen time.
             var neg = BuildStoryNegativePrompt(beat, wardrobe, clipCast);
+            if (!string.IsNullOrWhiteSpace(aiNegative))
+            {
+                neg = string.IsNullOrWhiteSpace(neg) ? aiNegative : $"{neg}, {aiNegative}";
+            }
 
             var beatIdStr = CoerceString(beat.TryGetValue("beat_id", out var bi) ? bi : null) ?? $"b{i + 1}";
             string? cameraMoveToken = null;

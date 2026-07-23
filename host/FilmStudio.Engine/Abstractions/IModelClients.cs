@@ -104,6 +104,7 @@ public static class ChatCallModes
     public const string BeatPacingClassify = "beat_pacing_classify";
     public const string CinematicLightingClassify = "cinematic_lighting_classify";
     public const string CameraDirectorClassify = "camera_director_classify";
+    public const string NegativePromptClassify = "negative_prompt_classify";
 }
 
 /// <summary>

@@ -98,6 +98,9 @@ public sealed class FilmStudioOptions
     public bool ClassifyCameraDirectorWithChat { get; set; } = true;
     public string CameraDirectorClassifyModel { get; set; } = "grok-4.5";
 
+    public bool ClassifyNegativePromptWithChat { get; set; } = true;
+    public string NegativePromptClassifyModel { get; set; } = "grok-4.5";
+
     /// <summary>
     /// Optional ThreadPool min-thread ramp for multi-user / LoadSim ready-barrier.
     /// Leave defaults (0) unless soaks show global latency floors under concurrent clients.
