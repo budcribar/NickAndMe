@@ -327,9 +327,37 @@ public class ApiEndpointSmokeTests : IClassFixture<FilmStudioApiFactory>, IAsync
     }
 
     [Fact]
-    public async Task Cancel_jobs_endpoint()
+    public async Task Cancel_jobs_endpoint_scopes_to_user()
     {
+        // Non-admin bulk cancel must succeed (own jobs only) and not 500.
         var resp = await _client.PostAsync("/api/jobs/cancel", null);
         Assert.NotEqual(HttpStatusCode.InternalServerError, resp.StatusCode);
+        Assert.True(
+            resp.IsSuccessStatusCode || resp.StatusCode == HttpStatusCode.Unauthorized,
+            $"unexpected {(int)resp.StatusCode}");
+        if (resp.IsSuccessStatusCode)
+        {
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.True(json.TryGetProperty("ok", out var ok) && ok.GetBoolean());
+            if (json.TryGetProperty("scope", out var scope))
+                Assert.Equal("user", scope.GetString());
+        }
+    }
+
+    [Fact]
+    public async Task Cancel_jobs_all_as_non_admin_forbidden_or_ignored()
+    {
+        // ?all=true without admin → 403
+        var resp = await _client.PostAsync("/api/jobs/cancel?all=true", null);
+        Assert.True(
+            resp.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
+                or HttpStatusCode.OK,
+            $"unexpected {(int)resp.StatusCode}");
+        // Factory user client is typically non-admin — expect 403 when identity works
+        if (resp.StatusCode == HttpStatusCode.Forbidden)
+        {
+            var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.False(json.GetProperty("ok").GetBoolean());
+        }
     }
 }

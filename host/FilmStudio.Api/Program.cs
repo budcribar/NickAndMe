@@ -920,10 +920,37 @@ app.MapPost("/api/jobs/gen-batch", async (StartBatchGenRequest body, FilmJobServ
     }
 });
 
-app.MapPost("/api/jobs/cancel", async (FilmJobService jobService) =>
+/// <summary>
+/// Cancel active jobs. Non-admin: caller's jobs only.
+/// Admin: same unless <c>?all=true</c> (cancel every user's jobs).
+/// Prefer <c>POST /api/jobs/{jobId}/cancel</c> when a specific id is known.
+/// </summary>
+app.MapPost("/api/jobs/cancel", async (
+    FilmJobService jobService,
+    IUserContext user,
+    bool? all) =>
 {
-    await jobService.CancelAsync();
-    return Results.Ok(new { ok = true, job = jobService.GetSnapshot() });
+    var cancelAllUsers = user.IsAdmin && all == true;
+    if (all == true && !user.IsAdmin)
+    {
+        return Results.Json(
+            new { ok = false, error = "admin role required to cancel all users' jobs" },
+            statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    var cancelled = await jobService.CancelAsync(
+        jobId: null,
+        userId: cancelAllUsers ? null : user.UserId,
+        cancelAllUsers: cancelAllUsers);
+
+    return Results.Ok(new
+    {
+        ok = true,
+        cancelled,
+        scope = cancelAllUsers ? "all" : "user",
+        userId = cancelAllUsers ? null : user.UserId,
+        job = jobService.GetSnapshot(),
+    });
 });
 
 app.MapGet("/api/stage2-status", async (ProjectStore store, CancellationToken ct) =>

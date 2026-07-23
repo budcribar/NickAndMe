@@ -152,25 +152,100 @@ public sealed class FilmJobService
 
     public IServerMetricsService Metrics => _metrics;
 
-    public Task CancelAsync(string? jobId = null)
+    /// <summary>
+    /// Cancel one job by id, or cancel active jobs in scope.
+    /// </summary>
+    /// <param name="jobId">When set, cancel only this job (ownership is enforced at the API).</param>
+    /// <param name="userId">
+    /// When canceling without <paramref name="jobId"/> and <paramref name="cancelAllUsers"/> is false,
+    /// only cancel jobs owned by this user. Required for bulk cancel unless canceling all users.
+    /// </param>
+    /// <param name="cancelAllUsers">
+    /// When true (admin only at API), cancel every active job regardless of owner.
+    /// </param>
+    /// <returns>Number of jobs that were marked cancelled / had CTS cancelled.</returns>
+    public Task<int> CancelAsync(
+        string? jobId = null,
+        string? userId = null,
+        bool cancelAllUsers = false)
     {
         if (!string.IsNullOrWhiteSpace(jobId))
         {
-            _jobs.TryCancel(jobId);
-            if (_jobCts.TryGetValue(jobId, out var cts))
-            {
-                try { cts.Cancel(); } catch { /* ignore */ }
-            }
-            return Task.CompletedTask;
+            var n = CancelOneJob(jobId!) ? 1 : 0;
+            return Task.FromResult(n);
         }
 
-        // Cancel all active job CTSes
+        // Refuse unscoped bulk cancel — callers must pass userId or cancelAllUsers.
+        if (!cancelAllUsers && string.IsNullOrWhiteSpace(userId))
+            return Task.FromResult(0);
+
+        var cancelled = 0;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Prefer store records (have UserId) over bare CTS keys.
+        var records = cancelAllUsers
+            ? _jobs.List(userId: null, take: 200)
+            : _jobs.List(userId: userId, take: 200);
+
+        foreach (var rec in records)
+        {
+            if (!IsActiveJobStatus(rec.Status))
+                continue;
+            if (!seen.Add(rec.JobId))
+                continue;
+            if (CancelOneJob(rec.JobId))
+                cancelled++;
+        }
+
+        // CTS entries that might lack a store row (edge case)
         foreach (var kv in _jobCts.ToArray())
         {
-            _jobs.TryCancel(kv.Key);
-            try { kv.Value.Cancel(); } catch { /* ignore */ }
+            if (!seen.Add(kv.Key))
+                continue;
+            var rec = _jobs.Get(kv.Key);
+            if (!IsInBulkCancelScope(rec?.UserId, userId, cancelAllUsers))
+                continue;
+            if (CancelOneJob(kv.Key))
+                cancelled++;
         }
-        return Task.CompletedTask;
+
+        return Task.FromResult(cancelled);
+    }
+
+    /// <summary>Whether a job owner matches bulk-cancel scope (unit-tested).</summary>
+    public static bool IsInBulkCancelScope(
+        string? jobUserId,
+        string? requestUserId,
+        bool cancelAllUsers)
+    {
+        if (cancelAllUsers)
+            return true;
+        if (string.IsNullOrWhiteSpace(requestUserId))
+            return false;
+        return string.Equals(jobUserId, requestUserId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsActiveJobStatus(string? status) =>
+        string.Equals(status, "running", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "queued", StringComparison.OrdinalIgnoreCase);
+
+    private bool CancelOneJob(string jobId)
+    {
+        var storeHit = _jobs.TryCancel(jobId);
+        var ctsHit = false;
+        if (_jobCts.TryGetValue(jobId, out var cts))
+        {
+            try
+            {
+                cts.Cancel();
+                ctsHit = true;
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+        return storeHit || ctsHit;
     }
 
     private void EnsureCanStart(string? userId)
