@@ -87,6 +87,18 @@ public sealed class SupportedModelEntry
     /// </summary>
     public string? FeatureRequestUrl { get; init; }
 
+    /// <summary>
+    /// When true (default for Grok Imagine Video), clip 2+ can continue via video-extend.
+    /// False for providers that only support text/image-to-video (e.g. Veo today).
+    /// </summary>
+    public bool SupportsVideoContinue { get; init; } = true;
+
+    /// <summary>
+    /// When true, locked character reference plates can be attached on fresh gen.
+    /// False for backends that reject multi-image / reference conditioning.
+    /// </summary>
+    public bool SupportsReferenceImages { get; init; } = true;
+
     /// <summary>Provider id for config / cost reports (<c>grok</c>, <c>gemini</c>, <c>anthropic</c>).</summary>
     public string ProviderId => Provider switch
     {
@@ -134,6 +146,8 @@ public static class SupportedModelCatalog
                 ["1080p"] = 0.25,
             },
             Notes = "Also uses videos/extensions for clip continue.",
+            SupportsVideoContinue = true,
+            SupportsReferenceImages = true,
         },
         new()
         {
@@ -152,12 +166,13 @@ public static class SupportedModelCatalog
                 ["720p"] = 0.40,
                 ["1080p"] = 0.40,
             },
-            Notes = "Wired via GeminiVideoClient (Veo long-running-operation flow). Not smoke-tested " +
-                    "against a live account yet — see the CONFIDENCE NOTE on that class. " +
-                    "Reference/extend-clip mechanics differ from Grok Imagine and are not mapped: " +
-                    "only text-to-video and image-to-video (first frame) work today. " +
-                    "$0.40/sec is the Standard-quality rate (same at 720p/1080p); Lite/Fast " +
-                    "quality tiers are cheaper but not separately modeled here.",
+            // Fail-closed: multi-clip scenes and locked cast plates need these.
+            SupportsVideoContinue = false,
+            SupportsReferenceImages = false,
+            Notes = "Wired via GeminiVideoClient (text/image-to-video only). No clip-to-clip continue " +
+                    "and no locked character reference plates — multi-clip scenes and cast-gated gen " +
+                    "require Grok Imagine Video. Not smoke-tested against a live account yet. " +
+                    "$0.40/sec Standard (720p/1080p).",
             FeatureRequestUrl = "https://github.com/budcribar/FilmStudio/issues",
         },
 
@@ -458,6 +473,8 @@ public static class SupportedModelCatalog
         Notes = e.Notes,
         FeatureRequestUrl = e.FeatureRequestUrl,
         ProviderId = e.ProviderId,
+        SupportsVideoContinue = e.SupportsVideoContinue,
+        SupportsReferenceImages = e.SupportsReferenceImages,
     };
 }
 
@@ -480,4 +497,6 @@ public sealed class SupportedModelDto
     public string? Notes { get; set; }
     public string? FeatureRequestUrl { get; set; }
     public string? ProviderId { get; set; }
+    public bool SupportsVideoContinue { get; set; } = true;
+    public bool SupportsReferenceImages { get; set; } = true;
 }

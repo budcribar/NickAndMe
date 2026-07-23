@@ -59,15 +59,23 @@ public sealed class ApiWorkerPool
     {
         EnsureCaps();
         userId = string.IsNullOrWhiteSpace(userId) ? "local" : userId.Trim();
-        await _global.WaitAsync(ct).ConfigureAwait(false);
-        var userSem = GetUserSemaphore(userId);
+        // Capture instances under lock so a concurrent resize cannot dispose the sem we Wait on.
+        SemaphoreSlim global;
+        SemaphoreSlim userSem;
+        lock (_semGate)
+        {
+            global = _global;
+            userSem = GetUserSemaphoreUnlocked(userId);
+        }
+
+        await global.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             await userSem.WaitAsync(ct).ConfigureAwait(false);
         }
         catch
         {
-            _global.Release();
+            try { global.Release(); } catch (ObjectDisposedException) { /* resized */ }
             throw;
         }
 
@@ -78,17 +86,17 @@ public sealed class ApiWorkerPool
         }
         finally
         {
-            userSem.Release();
-            _global.Release();
+            try { userSem.Release(); } catch (ObjectDisposedException) { /* resized */ }
+            try { global.Release(); } catch (ObjectDisposedException) { /* resized */ }
             _metrics?.NoteApiSlotReleased(userId);
         }
     }
 
-    private SemaphoreSlim GetUserSemaphore(string userId)
+    private SemaphoreSlim GetUserSemaphoreUnlocked(string userId)
     {
         return _perUser.GetOrAdd(userId, _ =>
         {
-            var n = Math.Max(1, (_opts.Value.Capacity ?? new CapacityOptions()).MaxVideoInFlightPerUser);
+            var n = Math.Max(1, _configuredPerUser);
             return new SemaphoreSlim(n, n);
         });
     }
@@ -105,14 +113,22 @@ public sealed class ApiWorkerPool
         {
             if (g != _configuredGlobal)
             {
-                // Best-effort resize: replace semaphore (in-flight may briefly overshoot)
-                var old = _global;
-                _global = new SemaphoreSlim(g, g);
-                _configuredGlobal = g;
-                try { old.Dispose(); } catch { /* ignore */ }
+                // Only replace when fully idle — disposing a SemaphoreSlim with waiters
+                // faults in-flight RunAsync (ObjectDisposedException on Wait/Release).
+                if (_global.CurrentCount == _configuredGlobal)
+                {
+                    var old = _global;
+                    _global = new SemaphoreSlim(g, g);
+                    _configuredGlobal = g;
+                    try { old.Dispose(); } catch { /* ignore */ }
+                }
+                // else: keep old cap; retry on next EnsureCaps when idle
             }
+
             if (p != _configuredPerUser)
             {
+                // Drop map entries only — do not dispose semaphores that may still be held
+                // by in-flight work. New users get the new cap via GetOrAdd.
                 _configuredPerUser = p;
                 _perUser.Clear();
             }
@@ -156,7 +172,9 @@ public sealed class LocalWorkerPool
     public async Task RunAsync(Func<CancellationToken, Task> work, CancellationToken ct)
     {
         EnsureCaps();
-        await _sem.WaitAsync(ct).ConfigureAwait(false);
+        SemaphoreSlim sem;
+        lock (_gate) { sem = _sem; }
+        await sem.WaitAsync(ct).ConfigureAwait(false);
         _metrics?.NoteFfmpegSlotAcquired();
         try
         {
@@ -164,7 +182,7 @@ public sealed class LocalWorkerPool
         }
         finally
         {
-            try { _sem.Release(); } catch (ObjectDisposedException) { /* resized */ }
+            try { sem.Release(); } catch (ObjectDisposedException) { /* resized */ }
             _metrics?.NoteFfmpegSlotReleased();
         }
     }
@@ -176,10 +194,14 @@ public sealed class LocalWorkerPool
         lock (_gate)
         {
             if (n == _configured) return;
-            var old = _sem;
-            _sem = new SemaphoreSlim(n, n);
-            _configured = n;
-            try { old.Dispose(); } catch { /* ignore */ }
+            // Only replace when fully idle (no waiters / holders).
+            if (_sem.CurrentCount == _configured)
+            {
+                var old = _sem;
+                _sem = new SemaphoreSlim(n, n);
+                _configured = n;
+                try { old.Dispose(); } catch { /* ignore */ }
+            }
         }
     }
 }

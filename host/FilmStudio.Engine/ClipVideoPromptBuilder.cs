@@ -153,7 +153,8 @@ public static class ClipVideoPromptBuilder
         }
 
         var style = (styleHead ?? ExtractStyleHead(rawVisual) ?? "").Trim();
-        var varBlock = BuildCharacterVariablesBlock(allKeys, characters, imageTagByKey, useReferenceImages);
+        var activeKeys = ResolveFocusKeysForClip(onScreenKeys, clipEl);
+        var varBlock = BuildCharacterVariablesBlock(allKeys, characters, imageTagByKey, useReferenceImages, activeKeys);
         var audioBlock = BuildAudioBlock(clipEl, characters);
 
         var continuityBlock = mode switch
@@ -782,11 +783,104 @@ public static class ClipVideoPromptBuilder
         return null;
     }
 
+    /// <summary>
+    /// Keys that need a full identity lock in the CHARACTER VARIABLES block.
+    /// Prefer Stage 2 <c>focus_keys</c>; else primary_subject ∪ speaker (all on-screen for high-motion).
+    /// No verb-list parsing of action prose — metadata only (Agents.md).
+    /// </summary>
+    public static HashSet<string> ResolveFocusKeysForClip(
+        IReadOnlyList<string> onScreenKeys,
+        JsonElement clipEl)
+    {
+        var onScreen = onScreenKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (onScreen.Count <= 1)
+            return new HashSet<string>(onScreen, StringComparer.OrdinalIgnoreCase);
+
+        // Prefer explicit Stage 2 list when present
+        if (clipEl.TryGetProperty("focus_keys", out var fk) && fk.ValueKind == JsonValueKind.Array)
+        {
+            var fromPlan = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var el in fk.EnumerateArray())
+            {
+                if (el.ValueKind == JsonValueKind.String &&
+                    el.GetString() is { Length: > 0 } k &&
+                    onScreen.Any(o => string.Equals(o, k, StringComparison.OrdinalIgnoreCase)))
+                    fromPlan.Add(k);
+            }
+            if (fromPlan.Count > 0)
+                return fromPlan;
+        }
+
+        string? primary = null;
+        if (clipEl.TryGetProperty("primary_subject", out var psEl) && psEl.ValueKind == JsonValueKind.String)
+            primary = psEl.GetString();
+
+        string? speaker = null;
+        if (clipEl.TryGetProperty("audio_payload", out var ap) && ap.ValueKind == JsonValueKind.Object &&
+            ap.TryGetProperty("speaker", out var spEl) && spEl.ValueKind == JsonValueKind.String)
+            speaker = spEl.GetString();
+
+        string? actionClass = null;
+        if (clipEl.TryGetProperty("action_class", out var acEl) && acEl.ValueKind == JsonValueKind.String)
+            actionClass = acEl.GetString();
+
+        return ResolveFocusKeys(onScreen, primary, speaker, actionClass);
+    }
+
+    /// <summary>
+    /// Deterministic focus set from plan fields (shared by Stage 2 writer and gen-time builder).
+    /// </summary>
+    public static HashSet<string> ResolveFocusKeys(
+        IReadOnlyList<string> onScreenKeys,
+        string? primarySubject,
+        string? speaker,
+        string? actionClass)
+    {
+        var onScreen = onScreenKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (onScreen.Count == 0)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (onScreen.Count == 1)
+            return new HashSet<string>(onScreen, StringComparer.OrdinalIgnoreCase);
+
+        var ac = (actionClass ?? "").Trim().ToLowerInvariant();
+        // High-motion / ensemble: full locks for everyone visible
+        if (ac is "big_action")
+            return new HashSet<string>(onScreen, StringComparer.OrdinalIgnoreCase);
+
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void TryAdd(string? key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            var hit = onScreen.FirstOrDefault(o =>
+                string.Equals(o, key, StringComparison.OrdinalIgnoreCase));
+            if (hit is not null)
+                set.Add(hit);
+        }
+
+        TryAdd(primarySubject);
+        TryAdd(speaker);
+
+        if (set.Count == 0)
+            set.Add(onScreen[0]);
+
+        return set;
+    }
+
     private static string BuildCharacterVariablesBlock(
         IReadOnlyList<string> keys,
         IReadOnlyDictionary<string, CharacterProfile> characters,
         IReadOnlyDictionary<string, string> imageTagByKey,
-        bool useImageTags)
+        bool useImageTags,
+        HashSet<string>? activeKeys = null)
     {
         if (keys.Count == 0) return "";
         var sb = new StringBuilder();
@@ -807,6 +901,19 @@ public static class ClipVideoPromptBuilder
                 sb.AppendLine(
                     $"- {key}{tag} [{display}] VOICE ONLY — not on screen." +
                     (voice.Length > 0 ? $" Voice: {voice}" : ""));
+                any = true;
+                continue;
+            }
+
+            // Multi-character compaction: non-focus on-screen cast get a short identity line
+            var isActive = activeKeys is null || activeKeys.Contains(key);
+            if (!isActive && keys.Count > 1)
+            {
+                var shortDesc = desc.Length > 60 ? desc.Substring(0, 57) + "..." : desc;
+                var compact =
+                    $"- {key}{tag} [{display}]: Also present (not shot focus); keep identity consistent: {shortDesc}.";
+                if (useImageTags && tag.Length > 0) compact += $" Match reference {tag.Trim()}.";
+                sb.AppendLine(compact);
                 any = true;
                 continue;
             }

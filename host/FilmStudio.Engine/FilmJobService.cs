@@ -152,25 +152,100 @@ public sealed class FilmJobService
 
     public IServerMetricsService Metrics => _metrics;
 
-    public Task CancelAsync(string? jobId = null)
+    /// <summary>
+    /// Cancel one job by id, or cancel active jobs in scope.
+    /// </summary>
+    /// <param name="jobId">When set, cancel only this job (ownership is enforced at the API).</param>
+    /// <param name="userId">
+    /// When canceling without <paramref name="jobId"/> and <paramref name="cancelAllUsers"/> is false,
+    /// only cancel jobs owned by this user. Required for bulk cancel unless canceling all users.
+    /// </param>
+    /// <param name="cancelAllUsers">
+    /// When true (admin only at API), cancel every active job regardless of owner.
+    /// </param>
+    /// <returns>Number of jobs that were marked cancelled / had CTS cancelled.</returns>
+    public Task<int> CancelAsync(
+        string? jobId = null,
+        string? userId = null,
+        bool cancelAllUsers = false)
     {
         if (!string.IsNullOrWhiteSpace(jobId))
         {
-            _jobs.TryCancel(jobId);
-            if (_jobCts.TryGetValue(jobId, out var cts))
-            {
-                try { cts.Cancel(); } catch { /* ignore */ }
-            }
-            return Task.CompletedTask;
+            var n = CancelOneJob(jobId!) ? 1 : 0;
+            return Task.FromResult(n);
         }
 
-        // Cancel all active job CTSes
+        // Refuse unscoped bulk cancel — callers must pass userId or cancelAllUsers.
+        if (!cancelAllUsers && string.IsNullOrWhiteSpace(userId))
+            return Task.FromResult(0);
+
+        var cancelled = 0;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Prefer store records (have UserId) over bare CTS keys.
+        var records = cancelAllUsers
+            ? _jobs.List(userId: null, take: 200)
+            : _jobs.List(userId: userId, take: 200);
+
+        foreach (var rec in records)
+        {
+            if (!IsActiveJobStatus(rec.Status))
+                continue;
+            if (!seen.Add(rec.JobId))
+                continue;
+            if (CancelOneJob(rec.JobId))
+                cancelled++;
+        }
+
+        // CTS entries that might lack a store row (edge case)
         foreach (var kv in _jobCts.ToArray())
         {
-            _jobs.TryCancel(kv.Key);
-            try { kv.Value.Cancel(); } catch { /* ignore */ }
+            if (!seen.Add(kv.Key))
+                continue;
+            var rec = _jobs.Get(kv.Key);
+            if (!IsInBulkCancelScope(rec?.UserId, userId, cancelAllUsers))
+                continue;
+            if (CancelOneJob(kv.Key))
+                cancelled++;
         }
-        return Task.CompletedTask;
+
+        return Task.FromResult(cancelled);
+    }
+
+    /// <summary>Whether a job owner matches bulk-cancel scope (unit-tested).</summary>
+    public static bool IsInBulkCancelScope(
+        string? jobUserId,
+        string? requestUserId,
+        bool cancelAllUsers)
+    {
+        if (cancelAllUsers)
+            return true;
+        if (string.IsNullOrWhiteSpace(requestUserId))
+            return false;
+        return string.Equals(jobUserId, requestUserId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsActiveJobStatus(string? status) =>
+        string.Equals(status, "running", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(status, "queued", StringComparison.OrdinalIgnoreCase);
+
+    private bool CancelOneJob(string jobId)
+    {
+        var storeHit = _jobs.TryCancel(jobId);
+        var ctsHit = false;
+        if (_jobCts.TryGetValue(jobId, out var cts))
+        {
+            try
+            {
+                cts.Cancel();
+                ctsHit = true;
+            }
+            catch
+            {
+                /* ignore */
+            }
+        }
+        return storeHit || ctsHit;
     }
 
     private void EnsureCanStart(string? userId)
@@ -1855,8 +1930,7 @@ public sealed class FilmJobService
 
         try
         {
-            if (!_grok.IsConfigured)
-                throw new InvalidOperationException("XAI_API_KEY is not set.");
+            await EnsureVideoProviderConfiguredAsync(projectId, ct).ConfigureAwait(false);
 
             using var bp = await _projects.LoadBlueprintAsync(projectId, ct)
                 ?? throw new InvalidOperationException(
@@ -1932,6 +2006,14 @@ public sealed class FilmJobService
                 return;
             }
 
+            // Fail before any API spend if the selected video model cannot do multi-clip / plates.
+            await EnsureVideoModelCapabilitiesAsync(
+                    projectId,
+                    needContinue: work.Any(w => w.Clip > 1),
+                    needReferenceImages: req.RequireLockedCharacters,
+                    ct)
+                .ConfigureAwait(false);
+
             var resolution = await ResolveVideoResolutionAsync(projectId, req.Resolution, ct);
             await UpdateAsync(s =>
             {
@@ -1987,10 +2069,15 @@ public sealed class FilmJobService
                 }
             }
 
-            var status = failed > 0 && done == 0 ? "error" : "done";
-            var msg = failed > 0
-                ? $"Batch finished with errors ({done} ok, {failed} failed)"
-                : $"Batch finished ({done} clip(s))";
+            var status = failed > 0 && done == 0 ? "error"
+                : failed > 0 ? "partial"
+                : "done";
+            var msg = status switch
+            {
+                "error" => $"Batch failed ({failed} clip(s) failed, none ok)",
+                "partial" => $"Batch partial ({done} ok, {failed} failed)",
+                _ => $"Batch finished ({done} clip(s))",
+            };
             await FinishAsync(status, msg, failed > 0 ? msg : null);
         }
         catch (OperationCanceledException)
@@ -2026,8 +2113,7 @@ public sealed class FilmJobService
 
         try
         {
-            if (!_grok.IsConfigured)
-                throw new InvalidOperationException("XAI_API_KEY is not set.");
+            await EnsureVideoProviderConfiguredAsync(projectId, ct).ConfigureAwait(false);
 
             using var bp = await _projects.LoadBlueprintAsync(projectId, ct)
                 ?? throw new InvalidOperationException(
@@ -2072,6 +2158,14 @@ public sealed class FilmJobService
                 await FinishAsync("done", "No clips to generate");
                 return;
             }
+
+            // Fail before any API spend if the selected video model cannot do multi-clip / plates.
+            await EnsureVideoModelCapabilitiesAsync(
+                    projectId,
+                    needContinue: todo.Any(t => t.ClipNum > 1),
+                    needReferenceImages: req.RequireLockedCharacters,
+                    ct)
+                .ConfigureAwait(false);
 
             var resolution = await ResolveVideoResolutionAsync(projectId, req.Resolution, ct);
             var startMsg = $"Scene {req.Scene}: {todo.Count} clip(s) @ {resolution}";
@@ -2128,13 +2222,28 @@ public sealed class FilmJobService
                     failed++;
                     _log.LogError(ex, "Clip S{Scene}C{Clip} failed", req.Scene, cn);
                     await AppendLogAsync($"Failed S{req.Scene:D2} C{cn}: {ex.Message}");
+                    // Full-scene sequential gen: later clips need previous on disk — stop after first fail.
+                    // Single-clip regen (req.Clip set) keeps trying only that one clip (already filtered).
+                    if (req.Clip is null or <= 0 && i + 1 < todo.Count)
+                    {
+                        await AppendLogAsync(
+                            "Stopping scene gen after first clip failure " +
+                            $"(remaining {todo.Count - i - 1} clip(s) need previous video).");
+                        break;
+                    }
                 }
             }
 
-            var status = failed > 0 && done == 0 ? "error" : "done";
-            var msg = failed > 0
-                ? $"Finished with errors ({done} ok, {failed} failed)"
-                : $"Generation finished ({done} clip(s))";
+            // partial = some clips ok, some failed (not "done" — remux/continue need a clear signal)
+            var status = failed > 0 && done == 0 ? "error"
+                : failed > 0 ? "partial"
+                : "done";
+            var msg = status switch
+            {
+                "error" => $"Scene gen failed ({failed} clip(s) failed, none ok)",
+                "partial" => $"Scene gen partial ({done} ok, {failed} failed)",
+                _ => $"Generation finished ({done} clip(s))",
+            };
             await FinishAsync(status, msg, failed > 0 ? msg : null);
 
             // P0 learning: single-clip regen (typical after auto-review apply)
@@ -2211,6 +2320,8 @@ public sealed class FilmJobService
         // Clip 2+ requires previous on disk (no gaps). Cast-set changes reseed fresh+refs (PR2).
         string? prevVisual = null;
         string? prevVideoPath = null;
+        // Disposable working copy of prev for silence-trim / extend — never rewrite clip N-1 on disk.
+        string? prevExtendWorkTemp = null;
         var cont = clipEl.TryGetProperty("veo_continuation_source", out var ce)
             ? (ce.GetString() ?? "none")
             : "none";
@@ -2229,15 +2340,13 @@ public sealed class FilmJobService
                     $"Generate S{scene:D2}C{clip - 1:D2} first — later clips continue from the previous video.");
             }
 
-            // Keep a longer breath tail on spoken→spoken so monologue joins feel natural
-            JsonElement? prevMetaForTail = previousClipEl;
-            if (prevMetaForTail is null && blueprintRoot is { } brTail)
-                prevMetaForTail = FindClipElementInBlueprint(brTail, scene, clip - 1);
-            var prevKeepTail = SpeechTailKeepSeconds(
-                prevMetaForTail, currentHasSpeech: ClipHasSpokenAudio(clipEl));
-            await SilenceTrimClipAsync(prevOnDisk, scene, clip - 1, ct, keepTailSeconds: prevKeepTail)
-                .ConfigureAwait(false);
-            prevVideoPath = prevOnDisk;
+            // Breath-tail silence trim for extend input only. Mutating prevOnDisk in place used to
+            // permanently shorten a finished clip when this job then failed/cancelled before C_N
+            // was written (no backup of N-1). Work on a throwaway copy instead.
+            prevExtendWorkTemp = Path.Combine(
+                projectDir, "assets", "video", $"_prev_extend_s{scene:D2}c{clip:D2}.mp4");
+            File.Copy(prevOnDisk, prevExtendWorkTemp, overwrite: true);
+            prevVideoPath = prevExtendWorkTemp;
         }
 
         if (previousClipEl is { } prevEl &&
@@ -2249,174 +2358,187 @@ public sealed class FilmJobService
 
         // PR2: reseed with locked refs when on-screen cast set changes (API drops refs on extend).
         var reseedFresh = false;
-        if (prevVideoPath is not null && _opts.IdentityReseedOnCastChange)
-        {
-            var curKeys = ClipVideoPromptBuilder.ResolveOnScreenCharacterKeys(clipEl)
-                .Where(k => !(profiles.TryGetValue(k, out var cp) && cp.VoiceOnly))
-                .Select(k => k)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            var prevKeys = previousClipEl is { } pe
-                ? ClipVideoPromptBuilder.ResolveOnScreenCharacterKeys(pe)
-                    .Where(k => !(profiles.TryGetValue(k, out var pp) && pp.VoiceOnly))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
-                    .ToList()
-                : new List<string>();
-            if (prevKeys.Count > 0 && !OnScreenSetsEqual(curKeys, prevKeys))
-            {
-                reseedFresh = true;
-                await AppendLogAsync(
-                    $"  [Identity] Cast set changed " +
-                    $"[{string.Join(", ", prevKeys)}] → [{string.Join(", ", curKeys)}] — " +
-                    "fresh gen with locked refs (not video-extend)");
-                prevVideoPath = null; // API: attach refs
-                // Keep prevVisual for continuity prose only
-            }
-        }
-
-        // Silent → first spoken/VO: video-extend often clips the opening word (mouth stays closed
-        // from the prior silent clip). Require prev on disk for order, but gen fresh + plates.
-        if (prevVideoPath is not null)
-        {
-            JsonElement? prevMeta = previousClipEl;
-            if (prevMeta is null && blueprintRoot is { } br)
-                prevMeta = FindClipElementInBlueprint(br, scene, clip - 1);
-            if (prevMeta is { } pm && ClipHasSpokenAudio(clipEl) && !ClipHasSpokenAudio(pm))
-            {
-                reseedFresh = true;
-                prevVideoPath = null;
-                await AppendLogAsync(
-                    $"  [Speech] S{scene:D2}C{clip:D2} is first spoken after silence — " +
-                    "fresh gen with locked refs (not video-extend) so the opening word is not clipped");
-            }
-        }
-
         // Imagine /videos/extensions rejects input video longer than 15s.
         // Bad extension-tail trims (or re-extend chains) can leave a prev clip over that cap —
         // clamp to the last ≤15s so continuity still uses the ending frames.
         string? extendInputTemp = null;
-        if (prevVideoPath is not null)
+        try
         {
-            var clamped = await ClampExtendInputIfNeededAsync(prevVideoPath, scene, clip, ct)
-                .ConfigureAwait(false);
-            if (clamped is not null)
+            // Breath-tail silence trim on the disposable copy only (never mutates clip N-1 on disk).
+            if (prevVideoPath is not null && prevExtendWorkTemp is not null)
             {
-                extendInputTemp = clamped;
-                prevVideoPath = clamped;
+                JsonElement? prevMetaForTail = previousClipEl;
+                if (prevMetaForTail is null && blueprintRoot is { } brTail)
+                    prevMetaForTail = FindClipElementInBlueprint(brTail, scene, clip - 1);
+                var prevKeepTail = SpeechTailKeepSeconds(
+                    prevMetaForTail, currentHasSpeech: ClipHasSpokenAudio(clipEl));
+                await SilenceTrimClipAsync(
+                        prevExtendWorkTemp, scene, clip - 1, ct, keepTailSeconds: prevKeepTail)
+                    .ConfigureAwait(false);
             }
-        }
 
-        if (prevVideoPath is not null)
-        {
-            await AppendLogAsync(
-                $"  [Continuity] Imagine video-extend from S{scene:D2}C{clip - 1:D2} " +
-                $"({Path.GetFileName(prevVideoPath)})");
-        }
-        else if (reseedFresh && prevOnDisk is not null)
-        {
-            await AppendLogAsync(
-                $"  [Identity] Reseed S{scene:D2}C{clip:D2} after S{scene:D2}C{clip - 1:D2} " +
-                "(locked character refs attached)");
-        }
-
-        string? styleHead = null;
-        try
-        {
-            var rules = _projectRules.GetActiveRulesBlock(projectId);
-            if (!string.IsNullOrWhiteSpace(rules))
+            if (prevVideoPath is not null && _opts.IdentityReseedOnCastChange)
             {
-                var m = System.Text.RegularExpressions.Regex.Match(
-                    rules, @"STYLE LOCK:\s*([^\n]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (m.Success)
-                    styleHead = "STYLE LOCK: " + m.Groups[1].Value.Trim().TrimEnd('.', ' ');
+                var curKeys = ClipVideoPromptBuilder.ResolveOnScreenCharacterKeys(clipEl)
+                    .Where(k => !(profiles.TryGetValue(k, out var cp) && cp.VoiceOnly))
+                    .Select(k => k)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                var prevKeys = previousClipEl is { } pe
+                    ? ClipVideoPromptBuilder.ResolveOnScreenCharacterKeys(pe)
+                        .Where(k => !(profiles.TryGetValue(k, out var pp) && pp.VoiceOnly))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                    : new List<string>();
+                if (prevKeys.Count > 0 && !OnScreenSetsEqual(curKeys, prevKeys))
+                {
+                    reseedFresh = true;
+                    await AppendLogAsync(
+                        $"  [Identity] Cast set changed " +
+                        $"[{string.Join(", ", prevKeys)}] → [{string.Join(", ", curKeys)}] — " +
+                        "fresh gen with locked refs (not video-extend)");
+                    prevVideoPath = null; // API: attach refs
+                    // Keep prevVisual for continuity prose only
+                }
             }
-        }
-        catch { /* non-fatal */ }
 
-        var built = ClipVideoPromptBuilder.Build(
-            clipEl,
-            projectDir,
-            characters: profiles,
-            previousClipVisualPrompt: prevVisual,
-            previousClipVideoPath: prevVideoPath,
-            startFrameImagePath: null,
-            maxRefs: 5,
-            styleHead: styleHead,
-            resolution: resolution);
+            // Silent → first spoken/VO: video-extend often clips the opening word (mouth stays closed
+            // from the prior silent clip). Require prev on disk for order, but gen fresh + plates.
+            if (prevVideoPath is not null)
+            {
+                JsonElement? prevMeta = previousClipEl;
+                if (prevMeta is null && blueprintRoot is { } br)
+                    prevMeta = FindClipElementInBlueprint(br, scene, clip - 1);
+                if (prevMeta is { } pm && ClipHasSpokenAudio(clipEl) && !ClipHasSpokenAudio(pm))
+                {
+                    reseedFresh = true;
+                    prevVideoPath = null;
+                    await AppendLogAsync(
+                        $"  [Speech] S{scene:D2}C{clip:D2} is first spoken after silence — " +
+                        "fresh gen with locked refs (not video-extend) so the opening word is not clipped");
+                }
+            }
 
-        if (string.IsNullOrWhiteSpace(built.Prompt))
-            throw new InvalidOperationException("clip missing visual_prompt");
+            if (prevVideoPath is not null)
+            {
+                var clamped = await ClampExtendInputIfNeededAsync(prevVideoPath, scene, clip, ct)
+                    .ConfigureAwait(false);
+                if (clamped is not null)
+                {
+                    extendInputTemp = clamped;
+                    prevVideoPath = clamped;
+                }
+            }
 
-        // Fresh / reseed: every on-screen cast key must have a locked ref attached
-        if (prevVideoPath is null)
-            EnsureFreshGenHasLockedRefs(projectId, projectDir, built, profiles);
-        else
-        {
-            // Extend still requires locks on disk even when API cannot attach them
-            EnsureOnScreenLocksExist(projectId, projectDir, built, profiles);
-        }
+            if (prevVideoPath is not null)
+            {
+                await AppendLogAsync(
+                    $"  [Continuity] Imagine video-extend from S{scene:D2}C{clip - 1:D2} " +
+                    $"({Path.GetFileName(prevVideoPath)})");
+            }
+            else if (reseedFresh && prevOnDisk is not null)
+            {
+                await AppendLogAsync(
+                    $"  [Identity] Reseed S{scene:D2}C{clip:D2} after S{scene:D2}C{clip - 1:D2} " +
+                    "(locked character refs attached)");
+            }
 
-        // P2/P4: active gen pack + approved project rules
-        var addenda = new List<string>();
-        try
-        {
-            var pack = _promptPacks.LoadActivePackText(PromptPackService.KindGen);
-            if (!string.IsNullOrWhiteSpace(pack))
-                addenda.Add(pack.Trim());
-            var rules = _projectRules.GetActiveRulesBlock(projectId);
-            if (!string.IsNullOrWhiteSpace(rules))
-                addenda.Add(rules.Trim());
-        }
-        catch { /* non-fatal */ }
+            string? styleHead = null;
+            try
+            {
+                var rules = _projectRules.GetActiveRulesBlock(projectId);
+                if (!string.IsNullOrWhiteSpace(rules))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(
+                        rules, @"STYLE LOCK:\s*([^\n]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    if (m.Success)
+                        styleHead = "STYLE LOCK: " + m.Groups[1].Value.Trim().TrimEnd('.', ' ');
+                }
+            }
+            catch { /* non-fatal */ }
 
-        if (addenda.Count > 0)
-        {
-            built = built.WithPrompt(built.Prompt.TrimEnd() + "\n\n" + string.Join("\n\n", addenda), " · learning-addenda");
-        }
+            var built = ClipVideoPromptBuilder.Build(
+                clipEl,
+                projectDir,
+                characters: profiles,
+                previousClipVisualPrompt: prevVisual,
+                previousClipVideoPath: prevVideoPath,
+                startFrameImagePath: null,
+                maxRefs: 5,
+                styleHead: styleHead,
+                resolution: resolution);
 
-        // Pre-budget to xAI video ~4096 char hard cap (strip gen pack / house rules first).
-        // Avoids a guaranteed first-attempt 400 on every clip.
-        var preLen = built.Prompt.Length;
-        var fitted = ClipVideoPromptBuilder.FitPromptToVideoBudget(built.Prompt);
-        if (fitted.Length < preLen)
-        {
-            built = built.WithPrompt(fitted, $" · pre-budget {preLen}→{fitted.Length}");
+            if (string.IsNullOrWhiteSpace(built.Prompt))
+                throw new InvalidOperationException("clip missing visual_prompt");
+
+            // Fresh / reseed: every on-screen cast key must have a locked ref attached
+            if (prevVideoPath is null)
+                EnsureFreshGenHasLockedRefs(projectId, projectDir, built, profiles);
+            else
+            {
+                // Extend still requires locks on disk even when API cannot attach them
+                EnsureOnScreenLocksExist(projectId, projectDir, built, profiles);
+            }
+
+            // P2/P4: active gen pack + approved project rules
+            var addenda = new List<string>();
+            try
+            {
+                var pack = _promptPacks.LoadActivePackText(PromptPackService.KindGen);
+                if (!string.IsNullOrWhiteSpace(pack))
+                    addenda.Add(pack.Trim());
+                var rules = _projectRules.GetActiveRulesBlock(projectId);
+                if (!string.IsNullOrWhiteSpace(rules))
+                    addenda.Add(rules.Trim());
+            }
+            catch { /* non-fatal */ }
+
+            if (addenda.Count > 0)
+            {
+                built = built.WithPrompt(built.Prompt.TrimEnd() + "\n\n" + string.Join("\n\n", addenda), " · learning-addenda");
+            }
+
+            // Pre-budget to xAI video ~4096 char hard cap (strip gen pack / house rules first).
+            // Avoids a guaranteed first-attempt 400 on every clip.
+            var preLen = built.Prompt.Length;
+            var fitted = ClipVideoPromptBuilder.FitPromptToVideoBudget(built.Prompt);
+            if (fitted.Length < preLen)
+            {
+                built = built.WithPrompt(fitted, $" · pre-budget {preLen}→{fitted.Length}");
+                await AppendLogAsync(
+                    $"  [Prompt] pre-budget {preLen}→{fitted.Length} chars (video hard cap {ClipVideoPromptBuilder.VideoPromptHardCapChars})");
+            }
+
+            // Persist + log full prompt for evaluation (admin logs surface this)
+            await WriteAndLogPromptAsync(projectId, projectDir, scene, clip, built, ct).ConfigureAwait(false);
+
+            if (built.Prompt.Contains("VOICE LOCK", StringComparison.OrdinalIgnoreCase))
+                await AppendLogAsync("  [Voice] VOICE LOCK from character profile");
+            if (built.ReferenceImagePaths.Count > 0)
+                await AppendLogAsync(
+                    $"  [Refs] attached={built.RefsAttachedToApi} count={built.ReferenceImagePaths.Count}: " +
+                    string.Join(", ", built.ReferenceImagePaths.Select(Path.GetFileName)));
+            else if (prevVideoPath is not null)
+                await AppendLogAsync("  [Refs] video-extend — locked plates not attached to API (IDENTITY text only)");
+
+            // Dialogue-aware duration (tight for short lines — billed per second)
+            var duration = ClipDurationEstimator.EstimateForClip(clipEl);
+            await AppendLogAsync($"  [Duration] estimated {duration}s (dialogue-aware, max {ClipDurationEstimator.MaxSeconds}s)");
+            // Extension / ref: new portion typically max 10s
+            if (prevVideoPath is not null || built.ReferenceImagePaths.Count > 0)
+                duration = Math.Min(duration, 10);
+
+            var model = await ResolveVideoModelAsync(projectId, ct);
+            if (string.IsNullOrWhiteSpace(resolution))
+                resolution = await ResolveVideoResolutionAsync(projectId, null, ct);
+
+            var modeLabel = prevVideoPath is not null ? "video-extend" : built.Mode;
             await AppendLogAsync(
-                $"  [Prompt] pre-budget {preLen}→{fitted.Length} chars (video hard cap {ClipVideoPromptBuilder.VideoPromptHardCapChars})");
-        }
+                $"  [Grok] Submit S{scene:D2}C{clip} duration={duration}s res={resolution} " +
+                $"model={model} mode={modeLabel} {built.PromptLogSummary}");
 
-        // Persist + log full prompt for evaluation (admin logs surface this)
-        await WriteAndLogPromptAsync(projectId, projectDir, scene, clip, built, ct).ConfigureAwait(false);
-
-        if (built.Prompt.Contains("VOICE LOCK", StringComparison.OrdinalIgnoreCase))
-            await AppendLogAsync("  [Voice] VOICE LOCK from character profile");
-        if (built.ReferenceImagePaths.Count > 0)
-            await AppendLogAsync(
-                $"  [Refs] attached={built.RefsAttachedToApi} count={built.ReferenceImagePaths.Count}: " +
-                string.Join(", ", built.ReferenceImagePaths.Select(Path.GetFileName)));
-        else if (prevVideoPath is not null)
-            await AppendLogAsync("  [Refs] video-extend — locked plates not attached to API (IDENTITY text only)");
-
-        // Dialogue-aware duration (tight for short lines — billed per second)
-        var duration = ClipDurationEstimator.EstimateForClip(clipEl);
-        await AppendLogAsync($"  [Duration] estimated {duration}s (dialogue-aware, max {ClipDurationEstimator.MaxSeconds}s)");
-        // Extension / ref: new portion typically max 10s
-        if (prevVideoPath is not null || built.ReferenceImagePaths.Count > 0)
-            duration = Math.Min(duration, 10);
-
-        var model = await ResolveVideoModelAsync(projectId, ct);
-        if (string.IsNullOrWhiteSpace(resolution))
-            resolution = await ResolveVideoResolutionAsync(projectId, null, ct);
-
-        var modeLabel = prevVideoPath is not null ? "video-extend" : built.Mode;
-        await AppendLogAsync(
-            $"  [Grok] Submit S{scene:D2}C{clip} duration={duration}s res={resolution} " +
-            $"model={model} mode={modeLabel} {built.PromptLogSummary}");
-
-        try
-        {
             // Prefer official video continue; character refs only on fresh gens (API: no mix)
             var requestId = await _grok.SubmitGenerationAsync(
                 built.Prompt,
@@ -2506,6 +2628,10 @@ public sealed class FilmJobService
             if (extendInputTemp is not null)
             {
                 try { File.Delete(extendInputTemp); } catch { /* ignore */ }
+            }
+            if (prevExtendWorkTemp is not null)
+            {
+                try { File.Delete(prevExtendWorkTemp); } catch { /* ignore */ }
             }
         }
     }
@@ -2980,6 +3106,39 @@ public sealed class FilmJobService
     }
 
     /// <summary>
+    /// Fail closed before video spend when the selected model lacks continue/refs required for this job.
+    /// </summary>
+    private async Task EnsureVideoModelCapabilitiesAsync(
+        string projectId,
+        bool needContinue,
+        bool needReferenceImages,
+        CancellationToken ct)
+    {
+        if (!needContinue && !needReferenceImages)
+            return;
+
+        var modelId = await ResolveVideoModelAsync(projectId, ct).ConfigureAwait(false);
+        var entry = SupportedModelCatalog.ResolveOrDefault(modelId, ModelCapability.Video);
+        if (needContinue && !entry.SupportsVideoContinue)
+        {
+            throw new InvalidOperationException(
+                $"Video model '{entry.Id}' does not support clip-to-clip continue " +
+                "(required for clip 2+). Switch project video model to grok-imagine-video " +
+                "(or another model with video-extend). " +
+                (string.IsNullOrWhiteSpace(entry.Notes) ? "" : entry.Notes));
+        }
+
+        if (needReferenceImages && !entry.SupportsReferenceImages)
+        {
+            throw new InvalidOperationException(
+                $"Video model '{entry.Id}' cannot attach locked character reference plates. " +
+                "Switch project video model to grok-imagine-video, or disable the cast lock gate " +
+                "only if you accept identity drift. " +
+                (string.IsNullOrWhiteSpace(entry.Notes) ? "" : entry.Notes));
+        }
+    }
+
+    /// <summary>
     /// Project <c>model_name</c> → catalog (endpoint/keys), else host <see cref="FilmStudioOptions.DefaultModel"/>.
     /// </summary>
     private async Task<string> ResolveVideoModelAsync(string projectId, CancellationToken ct)
@@ -3013,6 +3172,29 @@ public sealed class FilmJobService
             "1080" or "1080p" => "1080p",
             _ => v.EndsWith('p') ? v : $"{v}p",
         };
+    }
+
+    /// <summary>
+    /// Require env keys for the project's selected video model (not a hardcoded XAI_API_KEY message).
+    /// MultiProvider IsConfigured is true if either provider has a key — that misdirects Gemini-only setups.
+    /// </summary>
+    private async Task EnsureVideoProviderConfiguredAsync(string projectId, CancellationToken ct)
+    {
+        var modelId = await ResolveVideoModelAsync(projectId, ct).ConfigureAwait(false);
+        var entry = SupportedModelCatalog.ResolveOrDefault(modelId, ModelCapability.Video);
+
+        // Ambient multi-user key (Grok) counts as configured for Xai models.
+        if (entry.Provider == ModelProviderFamily.Xai &&
+            !string.IsNullOrWhiteSpace(ApiKeyScope.Current))
+            return;
+
+        var missing = SupportedModelCatalog.MissingEnvKeys(entry);
+        if (missing.Count == 0)
+            return;
+
+        var keys = string.Join(" / ", missing);
+        throw new InvalidOperationException(
+            $"{keys} is not set (required for video model '{entry.Id}' / {entry.ProviderId}).");
     }
 
     /// <summary>

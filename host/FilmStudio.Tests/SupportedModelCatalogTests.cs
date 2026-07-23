@@ -49,6 +49,18 @@ public class SupportedModelCatalogTests
         Assert.Equal(ModelProviderFamily.Google, m.Provider);
         Assert.Equal("gemini", m.ProviderId);
         Assert.Contains("GEMINI_API_KEY", m.RequiredEnvKeys);
+        // Capability flags gate multi-clip / cast-locked gen before API spend
+        Assert.False(m.SupportsVideoContinue);
+        Assert.False(m.SupportsReferenceImages);
+    }
+
+    [Fact]
+    public void Grok_video_supports_continue_and_reference_images()
+    {
+        var m = SupportedModelCatalog.Find("grok-imagine-video", ModelCapability.Video);
+        Assert.NotNull(m);
+        Assert.True(m!.SupportsVideoContinue);
+        Assert.True(m.SupportsReferenceImages);
     }
 
     [Fact]

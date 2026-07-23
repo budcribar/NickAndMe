@@ -184,6 +184,13 @@ else if (_showScenePlayer && _playingScene is int busySn && IsSceneGenBusy(busyS
         </div>
     </div>
 }
+else if (ShowOperatorGenPartial && _job is not null)
+{
+    <div class="alert alert-warning py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span class="small">@(_job.Message ?? "Some clips finished; others failed.")</span>
+        <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="ReloadListAsync">Refresh</button>
+    </div>
+}
 else if (ShowOperatorGenError && _job is not null)
 {
     <div class="alert alert-danger py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -192,9 +199,9 @@ else if (ShowOperatorGenError && _job is not null)
     </div>
 }
 else if (Session.IsAdmin && _job is not null &&
-         (_job.Status is "running" or "queued" or "done" or "error" or "cancelled"))
+         (_job.Status is "running" or "queued" or "done" or "partial" or "error" or "cancelled"))
 {
-    <div class="card mb-3 border-@(_job.Status is "running" or "queued" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
+    <div class="card mb-3 border-@(_job.Status is "running" or "queued" ? "primary" : _job.Status == "error" ? "danger" : _job.Status == "partial" ? "warning" : "secondary")">
         <div class="card-body py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
@@ -1062,6 +1069,12 @@ else
         IsScenesWorkflowJob(_job.Kind) &&
         string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase);
 
+    private bool ShowOperatorGenPartial =>
+        !Session.IsAdmin &&
+        _job is not null &&
+        IsScenesWorkflowJob(_job.Kind) &&
+        string.Equals(_job.Status, "partial", StringComparison.OrdinalIgnoreCase);
+
     private static string OperatorGenStatusText(JobSnapshot job) => job.Kind switch
     {
         "remux" => "Combining video…",
@@ -1242,7 +1255,7 @@ else
     {
         _job = snap;
         _ = InvokeAsync(RefreshMyJobsAsync);
-        if (snap.Status is "done" or "error" or "cancelled")
+        if (snap.Status is "done" or "partial" or "error" or "cancelled")
             _ = InvokeAsync(async () =>
             {
                 await SoftReloadAsync();

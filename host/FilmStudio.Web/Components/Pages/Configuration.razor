@@ -337,7 +337,11 @@ else
             ? string.Join(", ", m.RequiredEnvKeys)
             : "—";
         var ep = string.IsNullOrEmpty(m.EndpointPath) ? "" : $" · {m.EndpointPath}";
-        return $"{m.Provider}{ep} · key: {keys}";
+        var baseHint = $"{m.Provider}{ep} · key: {keys}";
+        // Surface catalog limitations (e.g. Veo: no clip continue / no locked plates).
+        if (!string.IsNullOrWhiteSpace(m.Notes))
+            return $"{baseHint} — {m.Notes}";
+        return baseHint;
     }
 
     private async Task LoadAsync()
