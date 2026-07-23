@@ -52,6 +52,7 @@ public sealed class Stage2PlannerService
     private readonly CinematicLightingClassifier? _lightingClassifier;
     private readonly CameraDirectorClassifier? _cameraClassifier;
     private readonly NegativePromptClassifier? _negativeClassifier;
+    private readonly WardrobeContinuityClassifier? _wardrobeClassifier;
 
     public Stage2PlannerService(
         ProjectStore projects,
@@ -65,7 +66,8 @@ public sealed class Stage2PlannerService
         BeatPacingClassifier? beatPacingClassifier = null,
         CinematicLightingClassifier? lightingClassifier = null,
         CameraDirectorClassifier? cameraClassifier = null,
-        NegativePromptClassifier? negativeClassifier = null)
+        NegativePromptClassifier? negativeClassifier = null,
+        WardrobeContinuityClassifier? wardrobeClassifier = null)
     {
         _projects = projects;
         _log = log;
@@ -79,6 +81,7 @@ public sealed class Stage2PlannerService
         _lightingClassifier = lightingClassifier;
         _cameraClassifier = cameraClassifier;
         _negativeClassifier = negativeClassifier;
+        _wardrobeClassifier = wardrobeClassifier;
     }
 
     public async Task<Stage2PlanResult> PlanAsync(
@@ -200,7 +203,13 @@ public sealed class Stage2PlannerService
             {
                 aiNegative = await _negativeClassifier.ClassifySceneNegativeAsync(s, onProgress, ct).ConfigureAwait(false);
             }
-            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera, aiNegative);
+            Dictionary<string, string>? aiWardrobe = null;
+            if (_wardrobeClassifier is not null)
+            {
+                var sceneCast = UnionCharactersOnScreen(s);
+                aiWardrobe = await _wardrobeClassifier.ClassifySceneWardrobeAsync(s, sceneCast, onProgress, ct).ConfigureAwait(false);
+            }
+            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera, aiNegative, aiWardrobe);
             // Skip transition-only phantoms (e.g. FADE IN before first heading)
             if (plannedScene is null)
             {
@@ -430,7 +439,8 @@ public sealed class Stage2PlannerService
         Dictionary<string, int>? aiPacing = null,
         string? aiLighting = null,
         Dictionary<string, CameraDirective>? aiCamera = null,
-        string? aiNegative = null)
+        string? aiNegative = null,
+        Dictionary<string, string>? aiWardrobe = null)
     {
         var sceneInput = new Dictionary<string, object?>(scene);
         if (!string.IsNullOrWhiteSpace(aiLighting))
@@ -486,6 +496,16 @@ public sealed class Stage2PlannerService
             sceneWork["render_style_lock"] = styleLock;
 
         var wardrobe = InitWardrobeState(cast, charSeeds, scene);
+        if (aiWardrobe is not null && aiWardrobe.Count > 0)
+        {
+            foreach (var (k, v) in aiWardrobe)
+            {
+                if (!string.IsNullOrWhiteSpace(v))
+                {
+                    wardrobe[k] = new List<string> { v };
+                }
+            }
+        }
         var clips = new List<object?>();
         var beatMap = new List<object?>();
         var t = 0;
