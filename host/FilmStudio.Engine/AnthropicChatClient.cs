@@ -41,14 +41,8 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
             _http.BaseAddress = new Uri(ApiBase + "/");
     }
 
-    public bool IsConfigured
-    {
-        get
-        {
-            EnsureAuth();
-            return _http.DefaultRequestHeaders.Contains("x-api-key");
-        }
-    }
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv));
 
     public async Task<string> CompleteAsync(
         string systemPrompt,
@@ -144,12 +138,24 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
         int promptChars,
         CancellationToken ct)
     {
-        EnsureAuth();
+        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv);
         var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var sw = Stopwatch.StartNew();
         try
         {
-            using var resp = await _http.PostAsJsonAsync(endpoint, payload, ct).ConfigureAwait(false);
+            // Auth on a per-request message, not _http.DefaultRequestHeaders: this client is a
+            // singleton shared by every concurrent classifier call, and mutating shared headers
+            // per-call is a race (one call's key can leak into or clobber another's in flight).
+            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = JsonContent.Create(payload),
+            };
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                req.Headers.Add("x-api-key", key.Trim());
+                req.Headers.Add("anthropic-version", ApiVersion);
+            }
+            using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
             var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             if (!resp.IsSuccessStatusCode)
             {
@@ -250,17 +256,6 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
             _ => "image/jpeg",
         };
         return (mime, Convert.ToBase64String(bytes));
-    }
-
-    private void EnsureAuth()
-    {
-        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv);
-        _http.DefaultRequestHeaders.Remove("x-api-key");
-        _http.DefaultRequestHeaders.Remove("anthropic-version");
-        if (string.IsNullOrWhiteSpace(key))
-            return;
-        _http.DefaultRequestHeaders.Add("x-api-key", key.Trim());
-        _http.DefaultRequestHeaders.Add("anthropic-version", ApiVersion);
     }
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];

@@ -59,7 +59,17 @@
       "Bash(tasklist //FI \"IMAGENAME eq dotnet.exe\" //FO CSV)",
       "Bash(tasklist //FI \"IMAGENAME eq FilmStudio.Web.exe\" //FO CSV)",
       "Bash(tasklist //FI \"IMAGENAME eq FilmStudio.Api.exe\" //FO CSV)",
-      "Bash(grep -n \"theme\\\\|color\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\" /c/Users/budcr/source/repos/FilmStudio/host/FilmStudio.Web/wwwroot/js/fountain/fountain-editor.js)"
+      "Bash(grep -n \"theme\\\\|color\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\" /c/Users/budcr/source/repos/FilmStudio/host/FilmStudio.Web/wwwroot/js/fountain/fountain-editor.js)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(awk 'NR==130' /c/Users/budcr/source/repos/FilmStudio/host/FilmStudio.Engine/CachingChatClient.cs)",
+      "Bash(grep -vE '^$')",
+      "Bash(grep -iE '^0[0-8bcef]$|^1[0-9a-f]$')",
+      "Bash(dotnet add *)",
+      "WebSearch",
+      "WebFetch(domain:docs.x.ai)",
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:openrouter.ai)",
+      "WebFetch(domain:x.ai)"
     ]
   }
 }

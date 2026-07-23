@@ -267,5 +267,9 @@ host/**/.vs/
 loadsim*.json
 host/loadsim*.json
 
+# Chat classifier response cache (CachingChatClient) — regenerable, grows unbounded,
+# not meant to be shared/versioned like the rest of .filmstudio/.
+.filmstudio/chat_cache/
+
 /host/playwright/node_modules
 /host/playwright/package-lock.json

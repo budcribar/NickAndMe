@@ -55,7 +55,7 @@ public sealed class PlateRankClassifier
                 var user = JsonSerializer.Serialize(new
                 {
                     character_key = charKey,
-                    description = Trunc(description, 240),
+                    description = Trunc(description, 60),
                     candidates = candidateNames.Take(24).ToList(),
                     instruction = "Return top 3 basenames best matching the character (illustration pages, not pure text).",
                 });
@@ -134,6 +134,6 @@ JSON: {"ranked":["page_03.png","cover.png","embedded_p02.jpg"]}
         return (fenceEnd >= 0 ? raw[..fenceEnd] : raw).TrimEnd();
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 }

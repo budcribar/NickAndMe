@@ -144,7 +144,7 @@ public sealed class AmbientSfxClassifier
         var payload = batch.Select(b => new Dictionary<string, object?>
         {
             ["id"] = b.Id,
-            ["visual_event"] = Trunc(b.VisualEvent, 320),
+            ["visual_event"] = Trunc(b.VisualEvent, 80),
             ["heuristic_ambient"] = b.HeuristicAmbient,
             ["heuristic_sfx"] = b.HeuristicSfx,
         }).ToList();
@@ -298,8 +298,8 @@ JSON only:
         return (fenceEnd >= 0 ? raw[..fenceEnd] : raw).TrimEnd();
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
     private static string Trim(string s, int n) =>
         string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
 

@@ -67,7 +67,7 @@ public sealed class LearningProposalService
             i++;
             sb.AppendLine(
                 $"{i}. [{f.Type}] project={f.ProjectId} S{f.Scene:D2}C{f.Clip:D2} " +
-                $"cat={f.Category ?? "?"} note={Trim(f.Note, 200)}");
+                $"cat={f.Category ?? "?"} note={Trim(f.Note, 50)}");
             if (!string.IsNullOrWhiteSpace(f.Before) || !string.IsNullOrWhiteSpace(f.After))
                 sb.AppendLine($"   before/after present: beforeLen={f.Before?.Length ?? 0} afterLen={f.After?.Length ?? 0}");
         }
@@ -119,9 +119,6 @@ public sealed class LearningProposalService
         }
     }
 
-    private static string Trim(string? s, int n)
-    {
-        s ??= "";
-        return s.Length <= n ? s : s[..n];
-    }
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trim(string? s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 }

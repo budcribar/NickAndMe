@@ -11,9 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.10" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="2.0.0" />
     <PackageReference Include="PdfPig" Version="0.1.15" />
     <PackageReference Include="PDFtoImage" Version="4.1.1" />
     <!-- Ships Windows ffmpeg.exe under Resources/ (content file). -->
@@ -26,11 +29,7 @@
     <_BundledFfmpeg Condition="'$(_BundledFfmpeg)' == '' or !Exists('$(_BundledFfmpeg)')">$(USERPROFILE)\.nuget\packages\soenneker.libraries.ffmpeg\3.0.658\content\Resources\ffmpeg.exe</_BundledFfmpeg>
   </PropertyGroup>
   <ItemGroup Condition="Exists('$(_BundledFfmpeg)')">
-    <Content Include="$(_BundledFfmpeg)"
-             Link="Resources\ffmpeg.exe"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest"
-             Visible="false" />
+    <Content Include="$(_BundledFfmpeg)" Link="Resources\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
 
 </Project>

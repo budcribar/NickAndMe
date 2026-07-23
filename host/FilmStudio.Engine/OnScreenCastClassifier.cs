@@ -114,8 +114,8 @@ public sealed class OnScreenCastClassifier
                             return new Dictionary<string, object?>
                             {
                                 ["id"] = t.Id,
-                                ["visual_event"] = Trunc(t.VisualEvent, 240),
-                                ["dialogue"] = Trunc(t.Dialogue, 120),
+                                ["visual_event"] = Trunc(t.VisualEvent, 60),
+                                ["dialogue"] = Trunc(t.Dialogue, 30),
                                 ["speaker_key"] = t.SpeakerKey,
                                 ["is_voiceover"] = t.IsVoiceover,
                                 ["heuristic_keys"] = t.HeuristicKeys,
@@ -292,8 +292,8 @@ JSON only:
         return (fenceEnd >= 0 ? raw[..fenceEnd] : raw).TrimEnd();
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 
     private sealed class Target
     {

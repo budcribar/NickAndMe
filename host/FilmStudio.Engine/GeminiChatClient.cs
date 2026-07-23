@@ -38,14 +38,8 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
             _http.BaseAddress = new Uri(ApiBase + "/");
     }
 
-    public bool IsConfigured
-    {
-        get
-        {
-            EnsureAuth();
-            return _http.DefaultRequestHeaders.Contains("x-goog-api-key");
-        }
-    }
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv));
 
     public async Task<string> CompleteAsync(
         string systemPrompt,
@@ -137,13 +131,22 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
         int promptChars,
         CancellationToken ct)
     {
-        EnsureAuth();
+        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
         var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var endpoint = $"models/{Uri.EscapeDataString(model)}:generateContent";
         var sw = Stopwatch.StartNew();
         try
         {
-            using var resp = await _http.PostAsJsonAsync(endpoint, payload, ct).ConfigureAwait(false);
+            // Auth on a per-request message, not _http.DefaultRequestHeaders: this client is a
+            // singleton shared by every concurrent classifier call, and mutating shared headers
+            // per-call is a race (one call's key can leak into or clobber another's in flight).
+            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = JsonContent.Create(payload),
+            };
+            if (!string.IsNullOrWhiteSpace(key))
+                req.Headers.Add("x-goog-api-key", key.Trim());
+            using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
             var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             if (!resp.IsSuccessStatusCode)
             {
@@ -248,15 +251,6 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
             _ => "image/jpeg",
         };
         return (mime, Convert.ToBase64String(bytes));
-    }
-
-    private void EnsureAuth()
-    {
-        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
-        _http.DefaultRequestHeaders.Remove("x-goog-api-key");
-        if (string.IsNullOrWhiteSpace(key))
-            return;
-        _http.DefaultRequestHeaders.Add("x-goog-api-key", key.Trim());
     }
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];

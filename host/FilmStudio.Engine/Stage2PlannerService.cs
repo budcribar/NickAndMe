@@ -185,77 +185,52 @@ public sealed class Stage2PlannerService
             ct.ThrowIfCancellationRequested();
             var sn = ToInt(s.TryGetValue("scene_number", out var n) ? n : 0);
             onProgress?.Invoke($"  Scene {sn}…");
-            Dictionary<string, int>? aiPacing = null;
-            if (_beatPacingClassifier is not null)
-            {
-                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
-                    .Where(b => !IsNoopTransitionBeat(b))
-                    .ToList();
-                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
-                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
-                aiPacing = await _beatPacingClassifier.ClassifyScenePacingAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
-            }
-            string? aiLighting = null;
-            if (_lightingClassifier is not null)
-            {
-                aiLighting = await _lightingClassifier.ClassifySceneLightingAsync(s, onProgress, ct).ConfigureAwait(false);
-            }
-            Dictionary<string, CameraDirective>? aiCamera = null;
-            if (_cameraClassifier is not null)
-            {
-                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
-                    .Where(b => !IsNoopTransitionBeat(b))
-                    .ToList();
-                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
-                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
-                aiCamera = await _cameraClassifier.ClassifySceneCameraAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
-            }
-            string? aiNegative = null;
-            if (_negativeClassifier is not null)
-            {
-                aiNegative = await _negativeClassifier.ClassifySceneNegativeAsync(s, onProgress, ct).ConfigureAwait(false);
-            }
-            Dictionary<string, string>? aiWardrobe = null;
-            if (_wardrobeClassifier is not null)
-            {
-                var sceneCast = UnionCharactersOnScreen(s);
-                aiWardrobe = await _wardrobeClassifier.ClassifySceneWardrobeAsync(s, sceneCast, onProgress, ct).ConfigureAwait(false);
-            }
-            Dictionary<string, EmotionDirective>? aiEmotion = null;
-            if (_emotionClassifier is not null)
-            {
-                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
-                    .Where(b => !IsNoopTransitionBeat(b))
-                    .ToList();
-                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
-                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
-                aiEmotion = await _emotionClassifier.ClassifySceneEmotionAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
-            }
-            Dictionary<string, SoundDesignDirective>? aiSound = null;
-            if (_soundComposerClassifier is not null)
-            {
-                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
-                    .Where(b => !IsNoopTransitionBeat(b))
-                    .ToList();
-                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
-                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
-                aiSound = await _soundComposerClassifier.ClassifySceneSoundDesignAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
-            }
-            Dictionary<string, DepthOfFieldDirective>? aiDof = null;
-            if (_dofClassifier is not null)
-            {
-                var sceneBeats = GetList(s, "story_beats").OfType<Dictionary<string, object?>>()
-                    .Where(b => !IsNoopTransitionBeat(b))
-                    .ToList();
-                sceneBeats = ClipDurationEstimator.ExpandLongDialogueBeats(sceneBeats);
-                sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
-                aiDof = await _dofClassifier.ClassifySceneDepthOfFieldAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
-            }
-            ColorGradingDirective? aiColor = null;
-            if (_colorGradingClassifier is not null)
-            {
-                aiColor = await _colorGradingClassifier.ClassifySceneColorGradingAsync(s, onProgress, ct).ConfigureAwait(false);
-            }
+            // All 9 read only from `s` / their own independently-built sceneBeats clone and
+            // return a fresh result — none mutate shared state — so they run concurrently
+            // instead of one round-trip at a time. Each classifier's underlying IChatClient
+            // sets auth per-request now (not on shared HttpClient.DefaultRequestHeaders), so
+            // this fan-out is safe there too.
+            var pacingTask = _beatPacingClassifier is not null
+                ? _beatPacingClassifier.ClassifyScenePacingAsync(s, BuildSceneBeats(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, int>?>(null);
+            var lightingTask = _lightingClassifier is not null
+                ? _lightingClassifier.ClassifySceneLightingAsync(s, onProgress, ct)
+                : Task.FromResult<string?>(null);
+            var cameraTask = _cameraClassifier is not null
+                ? _cameraClassifier.ClassifySceneCameraAsync(s, BuildSceneBeats(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, CameraDirective>?>(null);
+            var negativeTask = _negativeClassifier is not null
+                ? _negativeClassifier.ClassifySceneNegativeAsync(s, onProgress, ct)
+                : Task.FromResult<string?>(null);
+            var wardrobeTask = _wardrobeClassifier is not null
+                ? _wardrobeClassifier.ClassifySceneWardrobeAsync(s, UnionCharactersOnScreen(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, string>?>(null);
+            var emotionTask = _emotionClassifier is not null
+                ? _emotionClassifier.ClassifySceneEmotionAsync(s, BuildSceneBeats(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, EmotionDirective>?>(null);
+            var soundTask = _soundComposerClassifier is not null
+                ? _soundComposerClassifier.ClassifySceneSoundDesignAsync(s, BuildSceneBeats(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, SoundDesignDirective>?>(null);
+            var dofTask = _dofClassifier is not null
+                ? _dofClassifier.ClassifySceneDepthOfFieldAsync(s, BuildSceneBeats(s), onProgress, ct)
+                : Task.FromResult<Dictionary<string, DepthOfFieldDirective>?>(null);
+            var colorTask = _colorGradingClassifier is not null
+                ? _colorGradingClassifier.ClassifySceneColorGradingAsync(s, onProgress, ct)
+                : Task.FromResult<ColorGradingDirective?>(null);
+
+            await Task.WhenAll(
+                pacingTask, lightingTask, cameraTask, negativeTask, wardrobeTask,
+                emotionTask, soundTask, dofTask, colorTask).ConfigureAwait(false);
+
+            var aiPacing = pacingTask.Result;
+            var aiLighting = lightingTask.Result;
+            var aiCamera = cameraTask.Result;
+            var aiNegative = negativeTask.Result;
+            var aiWardrobe = wardrobeTask.Result;
+            var aiEmotion = emotionTask.Result;
+            var aiSound = soundTask.Result;
+            var aiDof = dofTask.Result;
+            var aiColor = colorTask.Result;
             var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting, aiCamera, aiNegative, aiWardrobe, aiEmotion, aiSound, aiDof, aiColor);
             // Skip transition-only phantoms (e.g. FADE IN before first heading)
             if (plannedScene is null)
@@ -702,6 +677,21 @@ public sealed class Stage2PlannerService
         ["spoiler_constraints"] = scene.TryGetValue("spoiler_constraints", out var sp) ? sp : new List<object?>(),
         ["source_book_refs"] = scene.TryGetValue("source_book_refs", out var sbr) ? sbr : new List<object?>(),
     };
+
+    /// <summary>
+    /// Filtered, expanded, coalesced story-beat list for a scene, ready to hand to a per-scene
+    /// classifier. Called once per classifier that needs it (not shared) — several run
+    /// concurrently for the same scene, and each gets its own independent clone so none can
+    /// observe another's in-progress work even if a future classifier starts mutating beats.
+    /// </summary>
+    private static List<Dictionary<string, object?>> BuildSceneBeats(Dictionary<string, object?> scene)
+    {
+        var beats = GetList(scene, "story_beats").OfType<Dictionary<string, object?>>()
+            .Where(b => !IsNoopTransitionBeat(b))
+            .ToList();
+        beats = ClipDurationEstimator.ExpandLongDialogueBeats(beats);
+        return CoalesceSilentPreludeBeats(beats);
+    }
 
     /// <summary>
     /// If Beat 1 of a scene is a short silent action beat (<= 5s, no dialogue) preceding a dialogue/VO beat (Beat 2)

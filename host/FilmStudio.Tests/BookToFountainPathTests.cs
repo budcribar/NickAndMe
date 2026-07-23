@@ -18,9 +18,21 @@ public class BookToFountainPathTests
         Assert.True(
             b.SingleShotBookMaxChars > BookToFountainConverter.SingleShotMaxChars,
             $"expected single-shot max >> legacy 28k, got {b.SingleShotBookMaxChars}");
-        Assert.Equal(BookToFountainConverter.DefaultSingleShotBookMaxChars, b.SingleShotBookMaxChars);
         Assert.InRange(b.ChunkSoftMaxChars, 4_000, b.SingleShotBookMaxChars);
         Assert.Equal(BookToFountainConverter.MaxAdaptChunks, b.MaxChunks);
+    }
+
+    [Fact]
+    public void ResolvePromptBudget_known_model_trusts_catalog_window_past_the_conservative_default()
+    {
+        // grok-4.5's real catalog window (500k tokens) is large enough that its token-derived
+        // budget hits the absolute safety ceiling, not the conservative "we don't really know"
+        // default — that default exists for models we have no verified data on, not for ones we do.
+        var b = BookToFountainConverter.ResolvePromptBudget("grok-4.5");
+        Assert.True(
+            b.SingleShotBookMaxChars > BookToFountainConverter.DefaultSingleShotBookMaxChars,
+            $"expected a known large-context model to exceed the conservative default, got {b.SingleShotBookMaxChars}");
+        Assert.Equal(BookToFountainConverter.AbsoluteSingleShotCeiling, b.SingleShotBookMaxChars);
     }
 
     [Fact]
@@ -29,6 +41,15 @@ public class BookToFountainPathTests
         var b = BookToFountainConverter.ResolvePromptBudget("some-future-chat");
         Assert.True(b.SingleShotBookMaxChars >= BookToFountainConverter.SingleShotMaxChars);
         Assert.True(b.ChunkSoftMaxChars >= 4_000);
+    }
+
+    [Fact]
+    public void ResolvePromptBudget_unknown_model_stays_at_conservative_default()
+    {
+        // No catalog entry → no verified context window → stay under the conservative default
+        // rather than the (unfounded) 128k-token guess pushing past it.
+        var b = BookToFountainConverter.ResolvePromptBudget("some-future-chat");
+        Assert.Equal(BookToFountainConverter.DefaultSingleShotBookMaxChars, b.SingleShotBookMaxChars);
     }
 
     [Fact]

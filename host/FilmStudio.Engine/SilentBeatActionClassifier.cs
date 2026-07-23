@@ -250,13 +250,13 @@ public sealed class SilentBeatActionClassifier
                 ["scene"] = b.Scene,
                 ["beat_index"] = b.IndexInScene,
                 ["is_first_silent_in_scene"] = b.IsFirstSilentInScene,
-                ["setting"] = Trunc(b.Setting, 100),
-                ["visual_event"] = Trunc(b.VisualEvent, 280),
+                ["setting"] = Trunc(b.Setting, 25),
+                ["visual_event"] = Trunc(b.VisualEvent, 70),
                 ["prev_beat"] = prev is null ? null : DescribeNeighbor(prev),
                 ["next_beat"] = next is null ? null : DescribeNeighbor(next),
             };
             if (!string.IsNullOrWhiteSpace(b.BookProse))
-                d["book_prose"] = Trunc(b.BookProse, 200);
+                d["book_prose"] = Trunc(b.BookProse, 50);
             return d;
         }).ToList();
 
@@ -363,12 +363,12 @@ public sealed class SilentBeatActionClassifier
     private static object DescribeNeighbor(FlatNeighbor b)
     {
         if (b.IsSilent)
-            return new { kind = "silent", visual = Trunc(b.VisualEvent, 120) };
+            return new { kind = "silent", visual = Trunc(b.VisualEvent, 30) };
         return new
         {
             kind = "dialogue",
-            visual = Trunc(b.VisualEvent, 80),
-            dialogue = Trunc(b.Dialogue, 80),
+            visual = Trunc(b.VisualEvent, 20),
+            dialogue = Trunc(b.Dialogue, 20),
         };
     }
 
@@ -639,8 +639,8 @@ Use only the four class strings above.
             @"\b(store after store|ransacks?|shopping|searching|counters|trays of|shop after shop)\b");
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 
     private static string Trim(string s, int n) =>
         string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";

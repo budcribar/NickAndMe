@@ -51,6 +51,32 @@ public sealed class SupportedModelEntry
     /// <summary>When false, hidden from Configuration pickers.</summary>
     public bool Enabled { get; init; } = true;
 
+    /// <summary>
+    /// Context window (max input tokens), for callers that need to budget large prompts against
+    /// the actual model — e.g. book-to-screenplay chunking. Null for models where this isn't a
+    /// meaningful concept (video/image) or isn't verified yet. Sourced from provider docs as of
+    /// 2026-07; providers do increase these over time, so re-check before trusting an old number
+    /// for a cost/quality-sensitive decision.
+    /// </summary>
+    public int? MaxInputTokens { get; init; }
+
+    /// <summary>USD per 1,000,000 input tokens (Chat / Vision only). Null when not applicable.</summary>
+    public double? InputCostPerMillionTokens { get; init; }
+
+    /// <summary>USD per 1,000,000 output tokens (Chat / Vision only). Null when not applicable.</summary>
+    public double? OutputCostPerMillionTokens { get; init; }
+
+    /// <summary>
+    /// USD per second of generated output (Video only). Null when not applicable. This is a
+    /// separate figure from the project-level <c>cost_estimates.video_output_per_sec</c> table
+    /// in Configuration — that one is an operator-editable planning estimate keyed by resolution
+    /// for whichever video model is active; this is the catalog's own reference price per model.
+    /// </summary>
+    public double? VideoCostPerSecond { get; init; }
+
+    /// <summary>USD per generated image (Image only). Null when not applicable.</summary>
+    public double? ImageCostPerImage { get; init; }
+
     public string? Notes { get; init; }
 
     /// <summary>
@@ -97,7 +123,12 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "videos/generations",
             RequiredEnvKeys = [XaiApiKeyEnv],
-            Notes = "Also uses videos/extensions for clip continue.",
+            // xAI docs, 2026-07: $0.05/sec @ 480p (matches this project's own Configuration →
+            // Cost estimates default), $0.07/sec @ 720p, $0.25/sec @ 1080p. This field carries
+            // the base/lowest-resolution rate; per-resolution rates stay in project config.
+            VideoCostPerSecond = 0.05,
+            Notes = "Also uses videos/extensions for clip continue. $0.05/sec @480p, $0.07/sec " +
+                    "@720p, $0.25/sec @1080p — VideoCostPerSecond here is the 480p base rate.",
         },
         new()
         {
@@ -108,10 +139,15 @@ public static class SupportedModelCatalog
             ApiBase = GoogleApiBase,
             EndpointPath = "models/veo-3.1:predictLongRunning",
             RequiredEnvKeys = [GoogleApiKeyEnv],
+            // Google AI pricing, 2026-07: $0.40/sec Standard quality (720p/1080p). Lite ($0.05/sec)
+            // and Fast ($0.10/sec) tiers exist but aren't separately selectable in this catalog.
+            VideoCostPerSecond = 0.40,
             Notes = "Wired via GeminiVideoClient (Veo long-running-operation flow). Not smoke-tested " +
                     "against a live account yet — see the CONFIDENCE NOTE on that class. " +
                     "Reference/extend-clip mechanics differ from Grok Imagine and are not mapped: " +
-                    "only text-to-video and image-to-video (first frame) work today.",
+                    "only text-to-video and image-to-video (first frame) work today. " +
+                    "$0.40/sec is the Standard-quality rate; Lite/Fast tiers are cheaper but not " +
+                    "separately modeled here.",
             FeatureRequestUrl = "https://github.com/budcribar/FilmStudio/issues",
         },
 
@@ -125,7 +161,9 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "images/generations",
             RequiredEnvKeys = [XaiApiKeyEnv],
-            Notes = "Edits use the multi-image edit path on the same family.",
+            ImageCostPerImage = 0.05, // xAI docs, 2026-07 (1K); 2K is $0.07
+            Notes = "Edits use the multi-image edit path on the same family. $0.05/image (1K), " +
+                    "$0.07/image (2K).",
         },
         new()
         {
@@ -136,6 +174,7 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "images/generations",
             RequiredEnvKeys = [XaiApiKeyEnv],
+            ImageCostPerImage = 0.02, // xAI docs, 2026-07 (1K and 2K both $0.02)
         },
         new()
         {
@@ -146,9 +185,10 @@ public static class SupportedModelCatalog
             ApiBase = GoogleApiBase,
             EndpointPath = "models/gemini-3-pro-image:generateContent",
             RequiredEnvKeys = [GoogleApiKeyEnv],
+            ImageCostPerImage = 0.134, // Google pricing, 2026-07 (1K/2K); 4K is $0.24
             Notes = "Wired via GeminiImageClient. Supports up to 14 reference images (see " +
                     "ImageApiLimits.cs), vs. Grok's 3. Response-shape parsing is not smoke-tested " +
-                    "against a live account yet.",
+                    "against a live account yet. $0.134/image (1K/2K), $0.24/image (4K).",
             FeatureRequestUrl = "https://github.com/budcribar/FilmStudio/issues",
         },
         // Note: no Claude/Anthropic entry here on purpose — Anthropic does not offer an image
@@ -165,7 +205,13 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "chat/completions",
             RequiredEnvKeys = [XaiApiKeyEnv],
-            Notes = "Stage planning, cast scrub, screenplay helpers.",
+            MaxInputTokens = 500_000, // xAI docs, 2026-07: docs.x.ai/developers/models/grok-4.5
+            // xAI docs, 2026-07: base tier (<200k tokens in request). Tiered rate above 200k
+            // doubles to $4/$12 per docs.x.ai/developers/pricing.
+            InputCostPerMillionTokens = 2.00,
+            OutputCostPerMillionTokens = 6.00,
+            Notes = "Stage planning, cast scrub, screenplay helpers. $2/$6 per 1M in/out tokens " +
+                    "under 200k-token requests; $4/$12 above that threshold.",
         },
         new()
         {
@@ -176,6 +222,9 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "chat/completions",
             RequiredEnvKeys = [XaiApiKeyEnv],
+            MaxInputTokens = 256_000, // OpenRouter x-ai/grok-4 listing, 2026-07
+            InputCostPerMillionTokens = 3.00, // OpenRouter x-ai/grok-4, 2026-07
+            OutputCostPerMillionTokens = 15.00,
         },
         new()
         {
@@ -186,8 +235,16 @@ public static class SupportedModelCatalog
             ApiBase = AnthropicApiBase,
             EndpointPath = "messages",
             RequiredEnvKeys = [AnthropicApiKeyEnv],
+            // Anthropic docs, 2026-07: platform.claude.com/docs — 1M is both default and max,
+            // no smaller context variant. (128k max output, separate from this input figure.)
+            MaxInputTokens = 1_000_000,
+            // Introductory pricing, active through 2026-08-31 per Anthropic docs; standard
+            // pricing after that is $3/$15 per 1M in/out tokens (same page).
+            InputCostPerMillionTokens = 2.00,
+            OutputCostPerMillionTokens = 10.00,
             Notes = "Wired via AnthropicChatClient, routed automatically through " +
-                    "MultiProviderChatClient for planning/QA calls.",
+                    "MultiProviderChatClient for planning/QA calls. $2/$10 per 1M in/out tokens " +
+                    "(introductory, through 2026-08-31); $3/$15 standard after.",
             FeatureRequestUrl = "https://github.com/budcribar/FilmStudio/issues",
         },
         new()
@@ -199,9 +256,14 @@ public static class SupportedModelCatalog
             ApiBase = GoogleApiBase,
             EndpointPath = "models/gemini-3-pro:generateContent",
             RequiredEnvKeys = [GoogleApiKeyEnv],
+            MaxInputTokens = 1_000_000, // Google AI docs, 2026-07 (64k max output, separate)
+            // Google AI pricing, 2026-07: base tier (<200k tokens). Above 200k: $4/$18.
+            InputCostPerMillionTokens = 2.00,
+            OutputCostPerMillionTokens = 12.00,
             Notes = "Wired via GeminiChatClient, routed automatically through " +
                     "MultiProviderChatClient for planning/QA calls. Response-shape parsing is not " +
-                    "smoke-tested against a live account yet.",
+                    "smoke-tested against a live account yet. $2/$12 per 1M in/out tokens under " +
+                    "200k-token requests; $4/$18 above that threshold.",
             FeatureRequestUrl = "https://github.com/budcribar/FilmStudio/issues",
         },
 
@@ -215,6 +277,9 @@ public static class SupportedModelCatalog
             ApiBase = XaiApiBase,
             EndpointPath = "chat/completions",
             RequiredEnvKeys = [XaiApiKeyEnv],
+            MaxInputTokens = 500_000,
+            InputCostPerMillionTokens = 2.00, // same rate as the chat entry — same underlying model
+            OutputCostPerMillionTokens = 6.00,
             Notes = "Book plates / frame QA when wired.",
         },
         new()
@@ -226,6 +291,9 @@ public static class SupportedModelCatalog
             ApiBase = AnthropicApiBase,
             EndpointPath = "messages",
             RequiredEnvKeys = [AnthropicApiKeyEnv],
+            MaxInputTokens = 1_000_000,
+            InputCostPerMillionTokens = 2.00, // same rate as the chat entry — same underlying model
+            OutputCostPerMillionTokens = 10.00,
             Notes = "Wired for clip/frame review (CompleteWithImagesAsync) via " +
                     "MultiProviderVisionClient. Book-page OCR and cast classify still run on Grok " +
                     "only — those two methods are not implemented for Anthropic.",
@@ -240,6 +308,9 @@ public static class SupportedModelCatalog
             ApiBase = GoogleApiBase,
             EndpointPath = "models/gemini-3-pro:generateContent",
             RequiredEnvKeys = [GoogleApiKeyEnv],
+            MaxInputTokens = 1_000_000,
+            InputCostPerMillionTokens = 2.00, // same rate as the chat entry — same underlying model
+            OutputCostPerMillionTokens = 12.00,
             Notes = "Wired for clip/frame review (CompleteWithImagesAsync) via " +
                     "MultiProviderVisionClient. Book-page OCR and cast classify still run on Grok " +
                     "only — those two methods are not implemented for Gemini. Response-shape " +
@@ -367,6 +438,11 @@ public static class SupportedModelCatalog
         EndpointPath = e.EndpointPath,
         RequiredEnvKeys = e.RequiredEnvKeys.ToList(),
         Enabled = e.Enabled,
+        MaxInputTokens = e.MaxInputTokens,
+        InputCostPerMillionTokens = e.InputCostPerMillionTokens,
+        OutputCostPerMillionTokens = e.OutputCostPerMillionTokens,
+        VideoCostPerSecond = e.VideoCostPerSecond,
+        ImageCostPerImage = e.ImageCostPerImage,
         Notes = e.Notes,
         FeatureRequestUrl = e.FeatureRequestUrl,
         ProviderId = e.ProviderId,
@@ -384,6 +460,11 @@ public sealed class SupportedModelDto
     public string EndpointPath { get; set; } = "";
     public List<string> RequiredEnvKeys { get; set; } = new();
     public bool Enabled { get; set; } = true;
+    public int? MaxInputTokens { get; set; }
+    public double? InputCostPerMillionTokens { get; set; }
+    public double? OutputCostPerMillionTokens { get; set; }
+    public double? VideoCostPerSecond { get; set; }
+    public double? ImageCostPerImage { get; set; }
     public string? Notes { get; set; }
     public string? FeatureRequestUrl { get; set; }
     public string? ProviderId { get; set; }

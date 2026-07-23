@@ -74,8 +74,8 @@ public sealed class SpeciesKindClassifier
                     return new Dictionary<string, object?>
                     {
                         ["key"] = s.Key,
-                        ["description"] = Trunc(s.Description, 280),
-                        ["visual_lock"] = Trunc(s.VisualLock, 200),
+                        ["description"] = Trunc(s.Description, 70),
+                        ["visual_lock"] = Trunc(s.VisualLock, 50),
                         ["heuristic"] = BaselineKind(s.Key, s.Description, s.VisualLock),
                     };
                 }).ToList();
@@ -186,8 +186,8 @@ JSON: {"labels":[{"key":"Character_Narrator","class":"human"}]}
         return (fenceEnd >= 0 ? raw[..fenceEnd] : raw).TrimEnd();
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 
     private sealed class SeedRow
     {

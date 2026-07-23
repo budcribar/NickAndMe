@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using FilmStudio.Core.Models;
 using FilmStudio.Engine.Abstractions;
 
 namespace FilmStudio.Engine;
@@ -686,27 +687,34 @@ public static class BookToFountainConverter
     }
 
     /// <summary>
-    /// Resolve single-shot / chunk budgets for a chat model id.
-    /// Catalog has no context-window fields yet — known Grok ids get large defaults.
+    /// Resolve single-shot / chunk budgets for a chat model id, using the model's real context
+    /// window from <see cref="SupportedModelCatalog"/> when known. Unlisted/unknown ids (a model
+    /// not yet added to the catalog, or a typo) fall back to <see cref="DefaultSingleShotBookMaxChars"/>
+    /// — a conservative guess for a model we have no real data on — rather than assuming a large
+    /// window they may not have. A model WITH a verified catalog window is trusted up to
+    /// <see cref="AbsoluteSingleShotCeiling"/> instead of being clamped down to that same
+    /// conservative default: the whole point of tracking real per-model windows is that a
+    /// 1M-token model should get to single-shot books the 120k-char default would have forced
+    /// into needless multi-chunk fallback (which the class doc calls out as a quality compromise).
     /// </summary>
     public static PromptBudget ResolvePromptBudget(string? modelId)
     {
         var id = string.IsNullOrWhiteSpace(modelId) ? "grok-4.5" : modelId.Trim();
         // ~3.2 chars/token heuristic; leave headroom for system + user scaffolding.
-        // Phase 2: read MaxInputTokens from SupportedModelCatalog when present.
-        var inputTokens = id.ToLowerInvariant() switch
-        {
-            "grok-4.5" or "grok-4" => 128_000,
-            _ => 128_000,
-        };
+        var catalogInputTokens = SupportedModelCatalog.Find(id, ModelCapability.Chat)?.MaxInputTokens;
+        var inputTokens = catalogInputTokens ?? 128_000;
 
         var reserved = ReservedOverheadChars;
         var tokenDerivedBookMax = Math.Clamp(
             (int)(inputTokens * 3.2) - reserved,
             8_000,
             AbsoluteSingleShotCeiling);
-        // Product default caps large windows; smaller models keep the tighter token-derived max.
-        var bookMax = Math.Min(DefaultSingleShotBookMaxChars, tokenDerivedBookMax);
+        // Known model → trust its real window (up to the absolute ceiling). Unknown model → stay
+        // under the conservative product default, since tokenDerivedBookMax there is built from
+        // a guess, not a verified number.
+        var bookMax = catalogInputTokens.HasValue
+            ? tokenDerivedBookMax
+            : Math.Min(DefaultSingleShotBookMaxChars, tokenDerivedBookMax);
 
         var chunkSoft = Math.Clamp(
             Math.Min(DefaultChunkSoftMaxChars, Math.Max(4_000, bookMax / 2)),

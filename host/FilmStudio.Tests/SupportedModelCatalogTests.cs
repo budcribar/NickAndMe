@@ -119,4 +119,84 @@ public class SupportedModelCatalogTests
             Assert.Contains("ocr", notes);
         }
     }
+
+    [Theory]
+    [InlineData("grok-4.5", ModelCapability.Chat, 500_000)]
+    [InlineData("grok-4", ModelCapability.Chat, 256_000)]
+    [InlineData("claude-sonnet-5", ModelCapability.Chat, 1_000_000)]
+    [InlineData("gemini-3-pro", ModelCapability.Chat, 1_000_000)]
+    public void Chat_models_carry_real_context_window(string id, ModelCapability cap, int expectedMaxInputTokens)
+    {
+        // Provider-documented context windows (2026-07) — BookToFountainConverter.
+        // ResolvePromptBudget reads this instead of assuming every model is 128k.
+        var e = SupportedModelCatalog.Find(id, cap);
+        Assert.NotNull(e);
+        Assert.Equal(expectedMaxInputTokens, e!.MaxInputTokens);
+    }
+
+    [Fact]
+    public void Video_and_image_models_leave_context_window_unset()
+    {
+        // Not a meaningful concept for these capabilities — should stay null, not a guessed value.
+        foreach (var cap in new[] { ModelCapability.Video, ModelCapability.Image })
+        {
+            foreach (var e in SupportedModelCatalog.ForCapability(cap, enabledOnly: false))
+                Assert.Null(e.MaxInputTokens);
+        }
+    }
+
+    [Theory]
+    [InlineData("grok-4.5", ModelCapability.Chat, 2.00, 6.00)]
+    [InlineData("grok-4", ModelCapability.Chat, 3.00, 15.00)]
+    [InlineData("claude-sonnet-5", ModelCapability.Chat, 2.00, 10.00)]
+    [InlineData("gemini-3-pro", ModelCapability.Chat, 2.00, 12.00)]
+    public void Chat_models_carry_real_token_pricing(
+        string id, ModelCapability cap, double expectedInput, double expectedOutput)
+    {
+        // Provider-documented base-tier USD/1M-token pricing (2026-07).
+        var e = SupportedModelCatalog.Find(id, cap);
+        Assert.NotNull(e);
+        Assert.Equal(expectedInput, e!.InputCostPerMillionTokens);
+        Assert.Equal(expectedOutput, e.OutputCostPerMillionTokens);
+    }
+
+    [Fact]
+    public void Video_models_carry_per_second_pricing()
+    {
+        var grok = SupportedModelCatalog.Find("grok-imagine-video", ModelCapability.Video);
+        var veo = SupportedModelCatalog.Find("veo-3.1", ModelCapability.Video);
+        Assert.Equal(0.05, grok?.VideoCostPerSecond);
+        Assert.Equal(0.40, veo?.VideoCostPerSecond);
+    }
+
+    [Fact]
+    public void Image_models_carry_per_image_pricing()
+    {
+        Assert.Equal(0.05, SupportedModelCatalog.Find("grok-imagine-image-quality", ModelCapability.Image)?.ImageCostPerImage);
+        Assert.Equal(0.02, SupportedModelCatalog.Find("grok-imagine-image", ModelCapability.Image)?.ImageCostPerImage);
+        Assert.Equal(0.134, SupportedModelCatalog.Find("gemini-3-pro-image", ModelCapability.Image)?.ImageCostPerImage);
+    }
+
+    [Fact]
+    public void Chat_models_leave_video_and_image_pricing_unset()
+    {
+        foreach (var e in SupportedModelCatalog.ForCapability(ModelCapability.Chat, enabledOnly: false))
+        {
+            Assert.Null(e.VideoCostPerSecond);
+            Assert.Null(e.ImageCostPerImage);
+        }
+    }
+
+    [Fact]
+    public void Video_and_image_models_leave_token_pricing_unset()
+    {
+        foreach (var cap in new[] { ModelCapability.Video, ModelCapability.Image })
+        {
+            foreach (var e in SupportedModelCatalog.ForCapability(cap, enabledOnly: false))
+            {
+                Assert.Null(e.InputCostPerMillionTokens);
+                Assert.Null(e.OutputCostPerMillionTokens);
+            }
+        }
+    }
 }

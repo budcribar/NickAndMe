@@ -33,14 +33,7 @@ public sealed class GrokChatClient : IChatClient
             _http.BaseAddress = new Uri(ApiBase + "/");
     }
 
-    public bool IsConfigured
-    {
-        get
-        {
-            EnsureAuth();
-            return _http.DefaultRequestHeaders.Authorization is not null;
-        }
-    }
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task<string> CompleteAsync(
         string systemPrompt,
@@ -50,7 +43,7 @@ public sealed class GrokChatClient : IChatClient
         CancellationToken ct = default,
         string? mode = null)
     {
-        EnsureAuth();
+        var key = ResolveApiKey();
         var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var payload = new Dictionary<string, object?>
         {
@@ -66,7 +59,16 @@ public sealed class GrokChatClient : IChatClient
         var sw = Stopwatch.StartNew();
         try
         {
-            using var resp = await _http.PostAsJsonAsync("chat/completions", payload, ct);
+            // Auth on a per-request message, not _http.DefaultRequestHeaders: this client is a
+            // singleton shared by every concurrent classifier call, and mutating shared headers
+            // per-call is a race (one call's key can leak into or clobber another's in flight).
+            using var req = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+            {
+                Content = JsonContent.Create(payload),
+            };
+            if (!string.IsNullOrWhiteSpace(key))
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key.Trim());
+            using var resp = await _http.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
             if (!resp.IsSuccessStatusCode)
             {
@@ -215,18 +217,8 @@ public sealed class GrokChatClient : IChatClient
         return raw.Length <= 2000 ? raw : raw[..2000];
     }
 
-    private void EnsureAuth()
-    {
-        var key = Abstractions.ApiKeyScope.Current
-                  ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            _http.DefaultRequestHeaders.Authorization = null;
-            return;
-        }
-        _http.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", key.Trim());
-    }
+    private static string? ResolveApiKey() =>
+        Abstractions.ApiKeyScope.Current ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];
 }

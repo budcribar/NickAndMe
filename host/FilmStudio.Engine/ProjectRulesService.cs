@@ -167,9 +167,10 @@ public sealed class ProjectRulesService
         {
             t = "Hold this film’s render medium consistently: " + t;
         }
-        if (t.Length > 600)
-            t = t[..597].TrimEnd() + "…";
-        return t;
+        // Token-accurate now (was raw character count) — see PromptTokenizer. This text is
+        // stored and re-injected into many future prompts, so an accurate budget matters more
+        // here than in a one-shot classifier field.
+        return PromptTokenizer.TruncateToTokens(t, 150);
     }
 
     /// <summary>
@@ -238,9 +239,10 @@ public sealed class ProjectRulesService
         {
             t = "PERFORMANCE LOCK: " + t;
         }
-        if (t.Length > 700)
-            t = t[..697].TrimEnd() + "…";
-        return t;
+        // Token-accurate now (was raw character count) — see PromptTokenizer. This text is
+        // stored and re-injected into many future prompts, so an accurate budget matters more
+        // here than in a one-shot classifier field.
+        return PromptTokenizer.TruncateToTokens(t, 175);
     }
 
     private string? TryReadCastField(string projectId, string propertyName)
@@ -384,9 +386,11 @@ public sealed class ProjectRulesService
             "framing" => "Follow planned framing/action in visual_prompt; avoid empty holds and wrong shots.",
             _ => string.IsNullOrWhiteSpace(sample)
                 ? $"Address repeated review fails in category '{category}'."
-                : $"Address '{category}' issues (e.g. {Trim(sample, 120)}).",
+                : $"Address '{category}' issues (e.g. {Trim(sample, 30)}).",
         };
     }
 
-    private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];
+    // Token-accurate now (was raw character count) — see PromptTokenizer. Stored rule text,
+    // re-injected into many future prompts, so an accurate budget matters here.
+    private static string Trim(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 }

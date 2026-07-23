@@ -172,7 +172,17 @@ else
     // real on all three and now follows the configured quality model.
     builder.Services.AddSingleton<IVideoClient, MultiProviderVideoClient>();
     builder.Services.AddSingleton<IImageClient, MultiProviderImageClient>();
-    builder.Services.AddSingleton<IChatClient, MultiProviderChatClient>();
+    builder.Services.AddSingleton<MultiProviderChatClient>();
+    // CachingChatClient wraps the real dispatcher so every classifier / planning call gets an
+    // on-disk response cache for free (see CachingChatClient for why this beats local
+    // tokenization for "speed"). Registered as itself too so admin endpoints (cache clear) can
+    // reach it directly. Fakes mode below stays undecorated — tests assert call counts against
+    // the fakes directly.
+    builder.Services.AddSingleton(sp => new CachingChatClient(
+        sp.GetRequiredService<MultiProviderChatClient>(),
+        sp.GetRequiredService<IOptions<FilmStudioOptions>>(),
+        sp.GetRequiredService<ILogger<CachingChatClient>>()));
+    builder.Services.AddSingleton<IChatClient>(sp => sp.GetRequiredService<CachingChatClient>());
     builder.Services.AddSingleton<IVisionClient, MultiProviderVisionClient>();
 }
 
@@ -645,6 +655,20 @@ app.MapPut("/api/admin/config", async (
     {
         return Results.BadRequest(new { ok = false, error = ex.Message });
     }
+});
+
+app.MapPost("/api/admin/chat-cache/clear", (IUserContext user, IServiceProvider sp) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+    // Not registered under FilmStudio:UseFakes (fakes never hit the network, so there's nothing
+    // to cache) — report that plainly instead of a DI resolution error.
+    var cache = sp.GetService<CachingChatClient>();
+    if (cache is null)
+        return Results.Ok(new { ok = true, filesRemoved = 0, note = "chat cache not active (fakes mode)" });
+    var removed = cache.ClearCache();
+    return Results.Ok(new { ok = true, filesRemoved = removed });
 });
 
 app.MapPost("/api/admin/jobs/{jobId}/cancel", async (string jobId, IUserContext user, FilmJobService jobService) =>

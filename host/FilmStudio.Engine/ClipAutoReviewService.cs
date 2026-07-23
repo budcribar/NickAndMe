@@ -446,7 +446,12 @@ public sealed class ClipAutoReviewService
                 var name = p?.DisplayName ?? key;
                 var look = p?.Description ?? "";
                 var voice = p?.VoiceProfile ?? "";
-                sb.AppendLine($"- {key} ({name}) look: {Trim(look, 200)} voice: {Trim(voice, 120)}");
+                // Token-accurate (was character-count Trim): this line becomes part of the
+                // vision-review prompt, unlike the other Trim(...) calls in this file (those
+                // trim audit-log diffs / stored response summaries, not outgoing prompt text).
+                sb.AppendLine(
+                    $"- {key} ({name}) look: {PromptTokenizer.TruncateToTokens(look, 50)} " +
+                    $"voice: {PromptTokenizer.TruncateToTokens(voice, 30)}");
             }
         }
         sb.AppendLine();

@@ -51,6 +51,33 @@ public sealed class FilmStudioOptions
     public bool EnableReadCaches { get; set; } = true;
 
     /// <summary>
+    /// When true (default), cache chat completions on disk under <c>.filmstudio/chat_cache/</c>,
+    /// keyed by a hash of (model, temperature, system prompt, user prompt). A repeated classifier
+    /// call with byte-identical input skips the network round-trip entirely — free, instant, and
+    /// (unlike a live call) exactly reproducible across reruns, which matters for evals and
+    /// re-planning after an unrelated edit. Only caches temperature ≈ 0 calls by default — see
+    /// <see cref="ChatCacheNonZeroTemperature"/>. Env: <c>FilmStudio__ChatCacheEnabled=false</c>.
+    /// </summary>
+    public bool ChatCacheEnabled { get; set; } = true;
+
+    /// <summary>
+    /// When true, also cache chat completions requested at temperature &gt; 0. Off by default:
+    /// nonzero temperature is normally requested precisely to get varied responses across calls,
+    /// so caching it would silently defeat the caller's intent.
+    /// </summary>
+    public bool ChatCacheNonZeroTemperature { get; set; }
+
+    /// <summary>
+    /// Cache key salt, folded into every cache key alongside model/temperature/prompts. The
+    /// cache has no way to detect that a provider quietly changed a model's behavior under an
+    /// unchanged model id (retrained weights, endpoint/schema change, etc.) — bump this string
+    /// when that happens and every existing entry stops matching, effectively invalidating the
+    /// whole cache without deleting files by hand. <c>POST /api/admin/chat-cache/clear</c>
+    /// deletes them outright if you'd rather reclaim the disk space immediately.
+    /// </summary>
+    public string ChatCacheVersion { get; set; } = "1";
+
+    /// <summary>
     /// When true (default), batch-classify silent beat <c>action_class</c> via chat at shot-plan
     /// time for duration budgeting. On failure: retry then heuristic fallback.
     /// Env: <c>FilmStudio__ClassifySilentBeatsWithChat=false</c>.

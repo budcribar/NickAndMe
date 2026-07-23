@@ -92,9 +92,9 @@ public sealed class ExtendCutClassifier
                                 ["id"] = p.Id,
                                 ["scene"] = p.Scene,
                                 ["setting"] = p.Setting,
-                                ["prev_visual"] = Trunc(p.PrevVisual, 160),
+                                ["prev_visual"] = Trunc(p.PrevVisual, 40),
                                 ["prev_speaker"] = p.PrevSpeaker,
-                                ["visual_event"] = Trunc(p.VisualEvent, 200),
+                                ["visual_event"] = Trunc(p.VisualEvent, 50),
                                 ["speaker"] = p.Speaker,
                                 ["action_class"] = p.ActionClass,
                                 ["heuristic"] = BaselineHardCut(p) ? "hard_cut" : "extend",
@@ -261,8 +261,8 @@ JSON: {"labels":[{"id":"s1_b3","class":"extend"}]}
         return (fenceEnd >= 0 ? raw[..fenceEnd] : raw).TrimEnd();
     }
 
-    private static string Trunc(string s, int n) =>
-        string.IsNullOrEmpty(s) ? "" : s.Length <= n ? s : s[..n] + "…";
+    // Token-accurate now (was raw character count) — see PromptTokenizer.
+    private static string Trunc(string s, int maxTokens) => PromptTokenizer.TruncateToTokens(s, maxTokens);
 
     private sealed class Pair
     {
