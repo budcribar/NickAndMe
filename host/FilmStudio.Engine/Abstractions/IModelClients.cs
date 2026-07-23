@@ -102,6 +102,7 @@ public static class ChatCallModes
     public const string PlateRankClassify = "plate_rank_classify";
     public const string ShotPlanRefineClassify = "shot_plan_refine_classify";
     public const string BeatPacingClassify = "beat_pacing_classify";
+    public const string CinematicLightingClassify = "cinematic_lighting_classify";
 }
 
 /// <summary>

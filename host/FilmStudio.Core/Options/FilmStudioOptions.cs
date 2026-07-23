@@ -92,6 +92,9 @@ public sealed class FilmStudioOptions
     public bool ClassifyBeatPacingWithChat { get; set; } = true;
     public string BeatPacingClassifyModel { get; set; } = "grok-4.5";
 
+    public bool ClassifyCinematicLightingWithChat { get; set; } = true;
+    public string CinematicLightingClassifyModel { get; set; } = "grok-4.5";
+
     /// <summary>
     /// Optional ThreadPool min-thread ramp for multi-user / LoadSim ready-barrier.
     /// Leave defaults (0) unless soaks show global latency floors under concurrent clients.

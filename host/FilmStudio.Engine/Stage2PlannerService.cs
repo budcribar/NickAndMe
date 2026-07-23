@@ -49,6 +49,7 @@ public sealed class Stage2PlannerService
     private readonly SpeciesKindClassifier? _speciesKindClassifier;
     private readonly ShotPlanRefiningClassifier? _shotPlanRefiner;
     private readonly BeatPacingClassifier? _beatPacingClassifier;
+    private readonly CinematicLightingClassifier? _lightingClassifier;
 
     public Stage2PlannerService(
         ProjectStore projects,
@@ -59,7 +60,8 @@ public sealed class Stage2PlannerService
         ExtendCutClassifier? extendCutClassifier = null,
         SpeciesKindClassifier? speciesKindClassifier = null,
         ShotPlanRefiningClassifier? shotPlanRefiner = null,
-        BeatPacingClassifier? beatPacingClassifier = null)
+        BeatPacingClassifier? beatPacingClassifier = null,
+        CinematicLightingClassifier? lightingClassifier = null)
     {
         _projects = projects;
         _log = log;
@@ -70,6 +72,7 @@ public sealed class Stage2PlannerService
         _speciesKindClassifier = speciesKindClassifier;
         _shotPlanRefiner = shotPlanRefiner;
         _beatPacingClassifier = beatPacingClassifier;
+        _lightingClassifier = lightingClassifier;
     }
 
     public async Task<Stage2PlanResult> PlanAsync(
@@ -171,7 +174,12 @@ public sealed class Stage2PlannerService
                 sceneBeats = CoalesceSilentPreludeBeats(sceneBeats);
                 aiPacing = await _beatPacingClassifier.ClassifyScenePacingAsync(s, sceneBeats, onProgress, ct).ConfigureAwait(false);
             }
-            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing);
+            string? aiLighting = null;
+            if (_lightingClassifier is not null)
+            {
+                aiLighting = await _lightingClassifier.ClassifySceneLightingAsync(s, onProgress, ct).ConfigureAwait(false);
+            }
+            var plannedScene = PlanScene(s, resolution, locSeeds, charSeeds, styleLock, aiPacing, aiLighting);
             // Skip transition-only phantoms (e.g. FADE IN before first heading)
             if (plannedScene is null)
             {
@@ -398,9 +406,15 @@ public sealed class Stage2PlannerService
         Dictionary<string, object?> locSeeds,
         Dictionary<string, object?> charSeeds,
         string? styleLock,
-        Dictionary<string, int>? aiPacing = null)
+        Dictionary<string, int>? aiPacing = null,
+        string? aiLighting = null)
     {
-        var beats = GetList(scene, "story_beats").OfType<Dictionary<string, object?>>()
+        var sceneInput = new Dictionary<string, object?>(scene);
+        if (!string.IsNullOrWhiteSpace(aiLighting))
+        {
+            sceneInput["lighting_continuity_token"] = aiLighting;
+        }
+        var beats = GetList(sceneInput, "story_beats").OfType<Dictionary<string, object?>>()
             .Where(b => !IsNoopTransitionBeat(b))
             .ToList();
         // Idempotent: monologues already split at fountain import stay; legacy long cues expand here
@@ -419,11 +433,11 @@ public sealed class Stage2PlannerService
 
         if (beats.Count == 0)
         {
-            return BaseSceneShell(scene, lids, primary, cast, GrokSceneMin, new List<object?>(), new List<object?>());
+            return BaseSceneShell(sceneInput, lids, primary, cast, GrokSceneMin, new List<object?>(), new List<object?>());
         }
 
         // Prefer per-beat dialogue/action estimates over padding every clip to fill a scene budget
-        var target = ToInt(scene.TryGetValue("duration_target_seconds", out var dt) ? dt : 0);
+        var target = ToInt(sceneInput.TryGetValue("duration_target_seconds", out var dt) ? dt : 0);
         var durs = ClipDurationEstimator.AllocateForBeats(
             beats,
             sceneTargetSeconds: target > 0 ? target : null);
@@ -441,7 +455,7 @@ public sealed class Stage2PlannerService
         }
         var total = durs.Sum();
 
-        var sceneWork = new Dictionary<string, object?>(scene)
+        var sceneWork = new Dictionary<string, object?>(sceneInput)
         {
             ["characters_on_screen"] = cast.Cast<object?>().ToList(),
         };
