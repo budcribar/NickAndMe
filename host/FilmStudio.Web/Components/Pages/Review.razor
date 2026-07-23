@@ -659,7 +659,7 @@ else
     private void OnJobUpdated(JobSnapshot snap)
     {
         _job = snap;
-        if (snap.Status is "done" or "error" or "cancelled")
+        if (snap.Status is "done" or "partial" or "error" or "cancelled")
         {
             _ = InvokeAsync(async () =>
             {

@@ -192,7 +192,7 @@ else if (ShowOperatorGenError && _job is not null)
     </div>
 }
 else if (Session.IsAdmin && _job is not null &&
-         (_job.Status is "running" or "queued" or "done" or "error" or "cancelled"))
+         (_job.Status is "running" or "queued" or "done" or "partial" or "error" or "cancelled"))
 {
     <div class="card mb-3 border-@(_job.Status is "running" or "queued" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
         <div class="card-body py-2">
@@ -1242,7 +1242,7 @@ else
     {
         _job = snap;
         _ = InvokeAsync(RefreshMyJobsAsync);
-        if (snap.Status is "done" or "error" or "cancelled")
+        if (snap.Status is "done" or "partial" or "error" or "cancelled")
             _ = InvokeAsync(async () =>
             {
                 await SoftReloadAsync();

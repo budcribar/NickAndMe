@@ -1987,10 +1987,15 @@ public sealed class FilmJobService
                 }
             }
 
-            var status = failed > 0 && done == 0 ? "error" : "done";
-            var msg = failed > 0
-                ? $"Batch finished with errors ({done} ok, {failed} failed)"
-                : $"Batch finished ({done} clip(s))";
+            var status = failed > 0 && done == 0 ? "error"
+                : failed > 0 ? "partial"
+                : "done";
+            var msg = status switch
+            {
+                "error" => $"Batch failed ({failed} clip(s) failed, none ok)",
+                "partial" => $"Batch partial ({done} ok, {failed} failed)",
+                _ => $"Batch finished ({done} clip(s))",
+            };
             await FinishAsync(status, msg, failed > 0 ? msg : null);
         }
         catch (OperationCanceledException)
@@ -2128,13 +2133,28 @@ public sealed class FilmJobService
                     failed++;
                     _log.LogError(ex, "Clip S{Scene}C{Clip} failed", req.Scene, cn);
                     await AppendLogAsync($"Failed S{req.Scene:D2} C{cn}: {ex.Message}");
+                    // Full-scene sequential gen: later clips need previous on disk — stop after first fail.
+                    // Single-clip regen (req.Clip set) keeps trying only that one clip (already filtered).
+                    if (req.Clip is null or <= 0 && i + 1 < todo.Count)
+                    {
+                        await AppendLogAsync(
+                            "Stopping scene gen after first clip failure " +
+                            $"(remaining {todo.Count - i - 1} clip(s) need previous video).");
+                        break;
+                    }
                 }
             }
 
-            var status = failed > 0 && done == 0 ? "error" : "done";
-            var msg = failed > 0
-                ? $"Finished with errors ({done} ok, {failed} failed)"
-                : $"Generation finished ({done} clip(s))";
+            // partial = some clips ok, some failed (not "done" — remux/continue need a clear signal)
+            var status = failed > 0 && done == 0 ? "error"
+                : failed > 0 ? "partial"
+                : "done";
+            var msg = status switch
+            {
+                "error" => $"Scene gen failed ({failed} clip(s) failed, none ok)",
+                "partial" => $"Scene gen partial ({done} ok, {failed} failed)",
+                _ => $"Generation finished ({done} clip(s))",
+            };
             await FinishAsync(status, msg, failed > 0 ? msg : null);
 
             // P0 learning: single-clip regen (typical after auto-review apply)

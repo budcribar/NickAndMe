@@ -3,18 +3,20 @@
 | Field | Value |
 |-------|-------|
 | Severity | suggestion |
-| Status | open |
+| Status | **fixed** |
 | Branch | `fix/issue-11-partial-scene-status` |
-| Related files | host/FilmStudio.Engine/FilmJobService.cs (RunSceneGenAsync finish path) |
+| Related files | `host/FilmStudio.Engine/FilmJobService.cs`; `host/FilmStudio.Web/Components/Pages/Scenes.razor` |
 
 ## Problem
 
-Scene gen continues after individual clip failures and finishes status "done" with "Finished with errors (N ok, M failed)" when any clip succeeded. Partial scenes are operable, but clip N+1 then fails with "generate previous first," and remux may assemble a holey sequence without a hard gate.
+Scene gen continued after individual clip failures and finished status `"done"` with "Finished with errors (N ok, M failed)" when any clip succeeded. Partial scenes looked successful; later clips then failed with "generate previous first," and remux could assemble a holey sequence without a clear job signal.
 
-## Suggested fix
+## Fix implemented
+
+1. **Job status** — mixed success uses `"partial"` (not `"done"`). All failed → `"error"`. All ok → `"done"`. Same for batch gen.
+2. **Stop on first failure** for full-scene gen (`req.Clip` not set): sequential clips need previous on disk; remaining clips are not attempted after the first failure.
+3. **UI** — Scenes/Review treat `"partial"` as a terminal status so soft-reload runs.
+
+## Suggested fix (original)
 
 Optional stopOnFirstFailure (default true for full-scene gen); or mark scene incomplete and refuse remux until missing/failed clips are resolved. Keep batch partial success but surface a distinct status ("partial") instead of "done".
-
-## Notes
-
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.
