@@ -14,14 +14,23 @@ public enum ModelCapability
 /// <summary>
 /// Backend family — maps to API base URL + required env keys.
 /// User never picks this; it is derived from the model id via the catalog.
+/// Clients are selected by <see cref="SupportedModelEntry.Id"/> through multi-provider
+/// facades (chat / image / video / vision) in FilmStudio.Engine.
 /// </summary>
 public enum ModelProviderFamily
 {
-    /// <summary>xAI (api.x.ai) — <c>XAI_API_KEY</c>.</summary>
+    /// <summary>xAI (api.x.ai) — <c>XAI_API_KEY</c>. Full product path (chat, image, video, vision/OCR).</summary>
     Xai = 0,
-    /// <summary>Google Gemini (reserved; not fully wired yet).</summary>
+    /// <summary>
+    /// Google Gemini / Veo (<c>GEMINI_API_KEY</c>) — wired via GeminiChatClient, GeminiImageClient,
+    /// GeminiVideoClient (text/image-to-video only), MultiProviderVisionClient for frame review.
+    /// Book-page OCR and cast-on-image classify stay Grok-only; Veo has no clip-extend / multi-ref plates.
+    /// </summary>
     Google = 1,
-    /// <summary>Anthropic Claude (reserved; not fully wired yet).</summary>
+    /// <summary>
+    /// Anthropic Claude (<c>ANTHROPIC_API_KEY</c>) — wired via AnthropicChatClient and
+    /// MultiProviderVisionClient for frame review. No image generation API; OCR/cast classify stay Grok-only.
+    /// </summary>
     Anthropic = 2,
 }
 
@@ -117,11 +126,17 @@ public static class SupportedModelCatalog
     public const string XaiApiBase = "https://api.x.ai/v1";
     public const string XaiApiKeyEnv = "XAI_API_KEY";
 
-    /// <summary>Google Gemini API. No client wired yet — see notes on entries below.</summary>
+    /// <summary>
+    /// Google Gemini API base. Clients: GeminiChatClient, GeminiImageClient, GeminiVideoClient
+    /// (Veo long-running), MultiProvider* routing. Gaps: video extend / multi-ref plates; OCR/cast classify.
+    /// </summary>
     public const string GoogleApiBase = "https://generativelanguage.googleapis.com/v1beta";
     public const string GoogleApiKeyEnv = "GEMINI_API_KEY";
 
-    /// <summary>Anthropic Messages API. No client wired yet — see notes on entries below.</summary>
+    /// <summary>
+    /// Anthropic Messages API base. Clients: AnthropicChatClient; vision frame review via
+    /// MultiProviderVisionClient. No image-gen product; OCR/cast classify remain Grok-only.
+    /// </summary>
     public const string AnthropicApiBase = "https://api.anthropic.com/v1";
     public const string AnthropicApiKeyEnv = "ANTHROPIC_API_KEY";
 
@@ -305,7 +320,7 @@ public static class SupportedModelCatalog
             MaxInputTokens = 500_000,
             InputCostPerMillionTokens = 2.00, // same rate as the chat entry — same underlying model
             OutputCostPerMillionTokens = 6.00,
-            Notes = "Book plates / frame QA when wired.",
+            Notes = "GrokVisionClient: book-page OCR, cast-on-image classify, and multi-image frame review.",
         },
         new()
         {

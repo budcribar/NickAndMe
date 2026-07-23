@@ -3,18 +3,18 @@
 | Field | Value |
 |-------|-------|
 | Severity | nit |
-| Status | open |
+| Status | **fixed** |
 | Branch | `fix/issue-15-catalog-stale-comments` |
-| Related files | host/FilmStudio.Core/Models/SupportedModelCatalog.cs (ModelProviderFamily + Google/Anthropic constants) |
+| Related files | `host/FilmStudio.Core/Models/SupportedModelCatalog.cs` |
 
 ## Problem
 
-Comments still say Google/Anthropic "reserved; not fully wired" / "No client wired yet" while Gemini*Client / AnthropicChatClient and multi-provider dispatch exist. Stale docs mislead operators and agents.
+Comments still said Google/Anthropic "reserved; not fully wired" / "No client wired yet" while Gemini*Client / AnthropicChatClient and multi-provider dispatch exist. Stale docs mislead operators and agents.
 
-## Suggested fix
+## Fix implemented
 
-Update catalog comments to match actual wiring and remaining gaps (OCR vision Grok-only, Veo no extend / no refs).
+1. **`ModelProviderFamily`** — document real clients and remaining gaps (Veo no extend/refs; OCR/cast Grok-only).
+2. **`GoogleApiBase` / `AnthropicApiBase`** — replace "No client wired yet" with actual client names and gaps.
+3. **Grok vision entry Notes** — describe OCR / cast classify / frame review (not "when wired").
 
-## Notes
-
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.
+Per-model Notes for Veo / Claude / Gemini chat-image-vision were already accurate and left intact.
