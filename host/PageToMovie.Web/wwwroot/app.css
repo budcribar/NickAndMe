@@ -378,6 +378,27 @@ input[type="file"]:disabled::file-selector-button {
     background-color: var(--fs-overlay-soft);
 }
 
+/* Home: My jobs collapse header */
+.home-jobs-toggle {
+    background: var(--fs-overlay-soft, var(--bs-card-cap-bg, transparent));
+    color: inherit;
+    cursor: pointer;
+}
+.home-jobs-toggle:hover {
+    filter: brightness(1.06);
+}
+.home-jobs-chevron {
+    display: inline-block;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: transform 0.15s ease;
+    transform: rotate(-90deg); /* collapsed: points right */
+    opacity: 0.75;
+}
+.home-jobs-chevron--open {
+    transform: rotate(0deg); /* expanded: points down (panel open below) */
+}
+
 /* List groups (project list, cast list) — explicit high-contrast theme text color. */
 .list-group-item {
     background-color: var(--fs-bg-card);

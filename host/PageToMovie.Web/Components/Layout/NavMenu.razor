@@ -100,13 +100,18 @@
             <div class="nav-item px-3 mt-3 pt-3 border-top border-secondary border-opacity-25">
                 @if (!Collapsed)
                 {
-                    <div class="d-flex align-items-center justify-content-between text-muted small px-1 mb-2">
-                        <span class="text-truncate" title="@Session.UserId">👤 @Session.UserId</span>
+                    <div class="nav-user-row text-muted small px-1 mb-1" title="@Session.UserId">
+                        <span class="nav-user-name text-truncate">@Session.UserId</span>
                     </div>
                 }
-                <button type="button" class="btn btn-sm btn-outline-danger w-100" @onclick="LogoutAsync" title="Sign out">
-                    <span class="bi bi-box-arrow-right" aria-hidden="true"></span>
-                    @if (!Collapsed) { <span class="ms-1">Sign Out</span> }
+                <button type="button"
+                        class="nav-link nav-logout"
+                        data-testid="nav-sign-out"
+                        title="Sign out"
+                        @onclick="LogoutAsync"
+                        @onclick:stopPropagation="true">
+                    <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Sign out</span> }
                 </button>
             </div>
         }
@@ -114,8 +119,8 @@
         {
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="/login" title="Sign In / Register">
-                    <span class="bi bi-person-circle" aria-hidden="true"></span>
-                    @if (!Collapsed) { <span class="nav-label">Sign In / Register</span> }
+                    <span class="bi bi-person-nav-menu" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Sign in</span> }
                 </NavLink>
             </div>
         }

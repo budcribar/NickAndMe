@@ -55,45 +55,16 @@
                         to create projects and save your Grok API key.
                     </div>
                 }
-                @if (_showNew && Session.IsLoggedIn)
-                {
-                    <div class="border rounded p-3 mb-3 bg-light">
-                        @if (ActiveProject.Status is not null && !ActiveProject.Status.XaiConfigured)
-                        {
-                            <div class="alert alert-warning py-1 px-2 small mb-2">
-                                ⚠️ <strong>Notice:</strong> No AI API key yet.
-                                <a href="configuration" class="alert-link">Add your Grok key →</a>
-                                before book import / OCR.
-                            </div>
-                        }
-                        <label class="form-label small mb-1">Name</label>
-                        <input class="form-control form-control-sm mb-2"
-                               data-testid="home-new-project-name"
-                               value="@_newName"
-                               @oninput="OnNewNameInput"
-                               @onkeydown="OnNewNameKeyDown"
-                               disabled="@_busy"
-                               placeholder="e.g. My Short Film"
-                               maxlength="80"
-                               autofocus />
-                        <button class="btn btn-success btn-sm"
-                                data-testid="home-create-project"
-                                disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))"
-                                @onclick="CreateProjectAsync">
-                            Create
-                        </button>
-                    </div>
-                }
 
                 @if (_projects is null)
                 {
                     <p class="text-muted mb-0">Loading…</p>
                 }
-                else if (_projects.Projects.Count == 0)
+                else if (_projects.Projects.Count == 0 && !_showNew)
                 {
-                    <p class="text-muted mb-0">No projects yet. Create one to get started.</p>
+                    <p class="text-muted mb-0">No projects yet. Click <strong>New project</strong> to get started.</p>
                 }
-                else
+                else if (_projects.Projects.Count > 0)
                 {
                     <div class="list-group project-list">
                         @foreach (var p in _projects.Projects)
@@ -124,6 +95,40 @@
                                 }
                             </div>
                         }
+                    </div>
+                }
+
+                @* New project form sits under the list so the list stays stable; Create is on the right. *@
+                @if (_showNew && Session.IsLoggedIn)
+                {
+                    <div class="border rounded p-2 mt-3 bg-body-tertiary">
+                        @if (ActiveProject.Status is not null && !ActiveProject.Status.XaiConfigured)
+                        {
+                            <div class="alert alert-warning py-1 px-2 small mb-2">
+                                ⚠️ <strong>Notice:</strong> No AI API key yet.
+                                <a href="configuration" class="alert-link">Add your Grok key →</a>
+                                before book import / OCR.
+                            </div>
+                        }
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <input class="form-control form-control-sm flex-grow-1"
+                                   style="min-width: 10rem;"
+                                   data-testid="home-new-project-name"
+                                   value="@_newName"
+                                   @oninput="OnNewNameInput"
+                                   @onkeydown="OnNewNameKeyDown"
+                                   disabled="@_busy"
+                                   placeholder="Project name"
+                                   maxlength="80"
+                                   autofocus
+                                   aria-label="New project name" />
+                            <button class="btn btn-success btn-sm flex-shrink-0"
+                                    data-testid="home-create-project"
+                                    disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))"
+                                    @onclick="CreateProjectAsync">
+                                Create
+                            </button>
+                        </div>
                     </div>
                 }
 
@@ -162,86 +167,100 @@
 
     <div class="col-md-7">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>My jobs</span>
+            <button type="button"
+                    class="card-header d-flex justify-content-between align-items-center w-100 border-0 text-start home-jobs-toggle"
+                    data-testid="home-jobs-toggle"
+                    aria-expanded="@(_jobsExpanded ? "true" : "false")"
+                    @onclick="ToggleJobsExpanded">
+                <span class="d-flex align-items-center gap-2">
+                    <span class="home-jobs-chevron @(_jobsExpanded ? "home-jobs-chevron--open" : null)" aria-hidden="true">▾</span>
+                    <span>My jobs</span>
+                    @if (HasActiveJob)
+                    {
+                        <span class="badge text-bg-primary">@FriendlyStatus(_job!.Status)</span>
+                    }
+                </span>
                 <span class="badge text-bg-secondary">@_myJobs.Count</span>
-            </div>
-            <div class="card-body">
-                @if (_myJobs.Count == 0 && _job is null)
-                {
-                    <p class="text-muted mb-0">No recent jobs. Generation and adaptation work will show up here.</p>
-                }
-                else
-                {
-                    <ul class="list-group list-group-flush mb-3">
-                        @foreach (var j in _myJobs.Take(8))
-                        {
-                            <li class="list-group-item px-0 py-2 small">
-                                <span class="badge bg-secondary">@FriendlyStatus(j.Status)</span>
-                                <span>@FriendlyKind(j.Kind)</span>
-                                @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
-                                <div class="text-muted">@FriendlyJobLine(j)</div>
-                            </li>
-                        }
-                    </ul>
-                }
-                @if (_job is not null)
-                {
-                    var jobLine = FriendlyJobLine(_job);
-                    var showError = string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase)
-                                    && !string.IsNullOrWhiteSpace(_job.Error);
-                    <p class="mb-1">
-                        <strong>Current:</strong>
-                        <span class="badge bg-secondary">@FriendlyStatus(_job.Status)</span>
-                        @if (_job.Total > 0)
-                        {
-                            <span class="ms-1">@_job.Index / @_job.Total</span>
-                        }
-                    </p>
-                    @if (showError || string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase))
+            </button>
+            @if (_jobsExpanded)
+            {
+                <div class="card-body">
+                    @if (_myJobs.Count == 0 && _job is null)
                     {
-                        <div class="alert alert-danger py-2 small mb-2">
-                            <div class="fw-semibold mb-1">@FriendlyKind(_job.Kind) failed</div>
-                            <div>@FriendlyOperatorError(_job)</div>
-                            @if (Session.IsAdmin &&
-                                 !string.IsNullOrWhiteSpace(_job.Error) &&
-                                 !string.Equals(_job.Error.Trim(), FriendlyOperatorError(_job), StringComparison.Ordinal))
+                        <p class="text-muted mb-0">No recent jobs. Generation and adaptation work will show up here.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush mb-3">
+                            @foreach (var j in _myJobs.Take(8))
                             {
-                                <div class="text-muted mt-1" style="word-break: break-word;">
-                                    <code class="small">@_job.Error</code>
-                                </div>
+                                <li class="list-group-item px-0 py-2 small">
+                                    <span class="badge bg-secondary">@FriendlyStatus(j.Status)</span>
+                                    <span>@FriendlyKind(j.Kind)</span>
+                                    @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
+                                    <div class="text-muted">@FriendlyJobLine(j)</div>
+                                </li>
                             }
-                        </div>
+                        </ul>
                     }
-                    else if (!string.IsNullOrWhiteSpace(jobLine))
+                    @if (_job is not null)
                     {
-                        <p class="small mb-2">@jobLine</p>
-                    }
-                    @if (Session.IsAdmin && _job.Log.Count > 0)
-                    {
-                        <details class="mb-2" open="@JobLogHasVideoPayload(_job)">
-                            <summary class="small text-muted" style="cursor:pointer">
-                                Details (admin)
-                                @if (JobLogHasVideoPayload(_job))
+                        var jobLine = FriendlyJobLine(_job);
+                        var showError = string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase)
+                                        && !string.IsNullOrWhiteSpace(_job.Error);
+                        <p class="mb-1">
+                            <strong>Current:</strong>
+                            <span class="badge bg-secondary">@FriendlyStatus(_job.Status)</span>
+                            @if (_job.Total > 0)
+                            {
+                                <span class="ms-1">@_job.Index / @_job.Total</span>
+                            }
+                        </p>
+                        @if (showError || string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="alert alert-danger py-2 small mb-2">
+                                <div class="fw-semibold mb-1">@FriendlyKind(_job.Kind) failed</div>
+                                <div>@FriendlyOperatorError(_job)</div>
+                                @if (Session.IsAdmin &&
+                                     !string.IsNullOrWhiteSpace(_job.Error) &&
+                                     !string.Equals(_job.Error.Trim(), FriendlyOperatorError(_job), StringComparison.Ordinal))
                                 {
-                                    <span class="badge text-bg-dark ms-1">video API</span>
+                                    <div class="text-muted mt-1" style="word-break: break-word;">
+                                        <code class="small">@_job.Error</code>
+                                    </div>
                                 }
-                            </summary>
-                            <pre class="small mb-0 mt-1" style="max-height: 420px; overflow: auto; white-space: pre-wrap;">@string.Join("\n", _job.Log.TakeLast(400))</pre>
-                            <p class="form-text mb-0 mt-1">
-                                Full prompts also under <code>projects/…/assets/video/prompts/SxxCyy.txt</code>
-                            </p>
-                        </details>
+                            </div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(jobLine))
+                        {
+                            <p class="small mb-2">@jobLine</p>
+                        }
+                        @if (Session.IsAdmin && _job.Log.Count > 0)
+                        {
+                            <details class="mb-2" open="@JobLogHasVideoPayload(_job)">
+                                <summary class="small text-muted" style="cursor:pointer">
+                                    Details (admin)
+                                    @if (JobLogHasVideoPayload(_job))
+                                    {
+                                        <span class="badge text-bg-dark ms-1">video API</span>
+                                    }
+                                </summary>
+                                <pre class="small mb-0 mt-1" style="max-height: 420px; overflow: auto; white-space: pre-wrap;">@string.Join("\n", _job.Log.TakeLast(400))</pre>
+                                <p class="form-text mb-0 mt-1">
+                                    Full prompts also under <code>projects/…/assets/video/prompts/SxxCyy.txt</code>
+                                </p>
+                            </details>
+                        }
+                        @if (string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(_job.Status, "queued", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <button class="btn btn-outline-danger btn-sm mt-2" disabled="@_busy" @onclick="CancelAsync">
+                                Cancel
+                            </button>
+                        }
                     }
-                    @if (string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(_job.Status, "queued", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <button class="btn btn-outline-danger btn-sm mt-2" disabled="@_busy" @onclick="CancelAsync">
-                            Cancel
-                        </button>
-                    }
-                }
-            </div>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -259,11 +278,34 @@
     private string? _deleteId;
     private string _deleteLabel = "";
     private string _deleteConfirm = "";
+    /// <summary>My jobs panel; collapsed by default, auto-opens when a job is running/queued.</summary>
+    private bool _jobsExpanded;
+    /// <summary>Null = follow auto rules; otherwise honor last user click.</summary>
+    private bool? _jobsUserPreference;
 
     private bool CanConfirmDelete =>
         _deleteId is not null &&
         (string.Equals(_deleteConfirm.Trim(), _deleteId, StringComparison.OrdinalIgnoreCase) ||
          string.Equals(_deleteConfirm.Trim(), _deleteLabel.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private bool HasActiveJob =>
+        _job is not null &&
+        (string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(_job.Status, "queued", StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleJobsExpanded()
+    {
+        _jobsExpanded = !_jobsExpanded;
+        _jobsUserPreference = _jobsExpanded;
+    }
+
+    private void SyncJobsExpandedFromJob()
+    {
+        if (_jobsUserPreference is bool prefer)
+            _jobsExpanded = prefer;
+        else
+            _jobsExpanded = HasActiveJob; // collapsed when idle, open when work is running
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -284,6 +326,7 @@
     private void OnJobUpdated(JobSnapshot snap)
     {
         _job = snap;
+        SyncJobsExpandedFromJob();
         _ = InvokeAsync(async () =>
         {
             try
@@ -296,6 +339,7 @@
                     ?? new List<JobSnapshot>();
             }
             catch { /* ignore */ }
+            SyncJobsExpandedFromJob();
             StateHasChanged();
         });
     }
@@ -354,6 +398,7 @@
                     ?? new List<JobSnapshot>();
             }
             catch { _myJobs = new List<JobSnapshot>(); }
+            SyncJobsExpandedFromJob();
         }
         catch (Exception ex)
         {
