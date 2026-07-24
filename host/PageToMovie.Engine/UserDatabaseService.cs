@@ -34,8 +34,14 @@ public class UserDatabaseService
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<UserDatabaseService>.Instance;
         _protector = dataProtection?.CreateProtector("PageToMovie.UserApiKeys");
 
-        var workspace = options?.Value?.WorkspaceRoot ?? Path.GetTempPath();
-        var dataDir = Directory.Exists("/app/data") ? "/app/data" : Path.Combine(workspace, "data");
+        var workspace = options?.Value?.WorkspaceRoot;
+        var dataDir = Directory.Exists("/data")
+            ? "/data"
+            : Directory.Exists("/app/data")
+                ? "/app/data"
+                : !string.IsNullOrWhiteSpace(workspace)
+                    ? Path.Combine(workspace, "data")
+                    : Path.Combine(Path.GetTempPath(), "PageToMovie", "data");
         Directory.CreateDirectory(dataDir);
         _dbPath = Path.Combine(dataDir, "pagetomovie.db");
 

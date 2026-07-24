@@ -3473,10 +3473,28 @@ public sealed class ProjectStore
 
     private string ResolveWorkspaceRoot()
     {
-        if (!string.IsNullOrWhiteSpace(_opts.WorkspaceRoot) &&
-            Directory.Exists(_opts.WorkspaceRoot))
+        if (!string.IsNullOrWhiteSpace(_opts.WorkspaceRoot))
         {
-            return Path.GetFullPath(_opts.WorkspaceRoot);
+            try
+            {
+                var full = Path.GetFullPath(_opts.WorkspaceRoot);
+                if (!Directory.Exists(full))
+                {
+                    Directory.CreateDirectory(full);
+                }
+                return full;
+            }
+            catch { /* fallback below */ }
+        }
+
+        // Persistent Docker / Railway volume mounts
+        if (Directory.Exists("/data"))
+        {
+            return "/data";
+        }
+        if (Directory.Exists("/app/data"))
+        {
+            return "/app/data";
         }
 
         // host/PageToMovie.Engine → host → repo

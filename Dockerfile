@@ -44,6 +44,12 @@ ENV PORT=5088
 ENV PageToMovie_JWT_KEY="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
 ENV PAGETOMOVIE_JWT_KEY="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
 ENV PageToMovie__Auth__JwtSigningKey="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
+ENV PageToMovie__WorkspaceRoot="/data"
+
+# Create persistent storage volume directory
+RUN mkdir -p /data
+VOLUME ["/data"]
+
 EXPOSE 5088
 
 ENTRYPOINT ["dotnet", "PageToMovie.Api.dll"]
