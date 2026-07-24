@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/doc/">
+    <File Path="docs/async-io-pass-plan.md" />
+    <File Path="docs/loadsim-soak.md" />
+    <File Path="docs/multi-user-100-plan.md" />
+    <File Path="docs/perf-findings-2026-07.md" />
+    <File Path="docs/supported-models.md" />
+  </Folder>
+  <Project Path="PageToMovie.Api/PageToMovie.Api.csproj" />
+  <Project Path="PageToMovie.Core/PageToMovie.Core.csproj" />
+  <Project Path="PageToMovie.Engine/PageToMovie.Engine.csproj" />
+  <Project Path="PageToMovie.Fakes/PageToMovie.Fakes.csproj" />
+  <Project Path="PageToMovie.LoadSim/PageToMovie.LoadSim.csproj" />
+  <Project Path="PageToMovie.Tests/PageToMovie.Tests.csproj" />
+  <Project Path="PageToMovie.Web/PageToMovie.Web.csproj" />
+  <Project Path="tools/ClassifierBenchmarks/ClassifierBenchmarks.csproj" />
+</Solution>

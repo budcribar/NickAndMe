@@ -5,7 +5,7 @@
 ## Product
 - Class: `ExtendCutClassifier`
 - Writes `cut_decision` = hard_cut|extend; `ForceNone` honors it first
-- Config: `FilmStudio__ClassifyExtendCutWithChat`
+- Config: `PageToMovie__ClassifyExtendCutWithChat`
 
 ## Baseline
 First clip / location change / big_action / establishing / verb regex (same spirit as ForceNone).

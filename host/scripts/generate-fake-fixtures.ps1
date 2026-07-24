@@ -1,11 +1,11 @@
-# Generate merge-realistic and load-light MP4 fixtures for FilmStudio.Fakes
+# Generate merge-realistic and load-light MP4 fixtures for PageToMovie.Fakes
 $ErrorActionPreference = "Stop"
-$outDir = Join-Path $PSScriptRoot "..\FilmStudio.Fakes\Fixtures"
+$outDir = Join-Path $PSScriptRoot "..\PageToMovie.Fakes\Fixtures"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
 $ffCandidates = @(
-  (Join-Path $PSScriptRoot "..\FilmStudio.Api\bin\Debug\net10.0\Resources\ffmpeg.exe"),
-  (Join-Path $PSScriptRoot "..\FilmStudio.Engine\bin\Debug\net10.0\Resources\ffmpeg.exe"),
+  (Join-Path $PSScriptRoot "..\PageToMovie.Api\bin\Debug\net10.0\Resources\ffmpeg.exe"),
+  (Join-Path $PSScriptRoot "..\PageToMovie.Engine\bin\Debug\net10.0\Resources\ffmpeg.exe"),
   "ffmpeg"
 )
 $ff = $ffCandidates | Where-Object { $_ -eq "ffmpeg" -or (Test-Path $_) } | Select-Object -First 1

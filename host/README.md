@@ -5,14 +5,14 @@ Visual Studio / `dotnet` solution: **Blazor UI + C# API/engine**, with live **Si
 
 ```text
 host/
-  FilmStudio.slnx          # open this in Visual Studio
-  FilmStudio.Core/         # shared models + options
-  FilmStudio.Engine/       # project store + Grok jobs + remux
-  FilmStudio.Api/          # REST + SignalR hub (:5088)
-  FilmStudio.Web/          # Blazor Server UI
-  FilmStudio.Fakes/        # fake Grok clients + fixtures
-  FilmStudio.LoadSim/      # concurrent virtual-user load client
-  FilmStudio.Tests/        # unit tests
+  PageToMovie.slnx          # open this in Visual Studio
+  PageToMovie.Core/         # shared models + options
+  PageToMovie.Engine/       # project store + Grok jobs + remux
+  PageToMovie.Api/          # REST + SignalR hub (:5088)
+  PageToMovie.Web/          # Blazor Server UI
+  PageToMovie.Fakes/        # fake Grok clients + fixtures
+  PageToMovie.LoadSim/      # concurrent virtual-user load client
+  PageToMovie.Tests/        # unit tests
   docs/                    # multi-user plan, loadsim soak guide
 ```
 
@@ -20,10 +20,10 @@ host/
 
 | Project | Role |
 |---------|------|
-| **FilmStudio.Web** | Blazor UI (projects, adaptation, scenes, characters, review, cost) |
-| **FilmStudio.Api** | Backend: REST + `/hubs/jobs` SignalR |
-| **FilmStudio.Engine** | Native C# job runner (Stage 1/2 adaptation, AI classifiers, video prompt builder, remux, book prepare) |
-| **FilmStudio.Core** | DTOs / options |
+| **PageToMovie.Web** | Blazor UI (projects, adaptation, scenes, characters, review, cost) |
+| **PageToMovie.Api** | Backend: REST + `/hubs/jobs` SignalR |
+| **PageToMovie.Engine** | Native C# job runner (Stage 1/2 adaptation, AI classifiers, video prompt builder, remux, book prepare) |
+| **PageToMovie.Core** | DTOs / options |
 
 > **AI Pipeline Overview**: See the root [README.md](../README.md#how-film-studio-converts-source-text-to-a-movie-step-by-step-ai-pipeline) for the complete 7-step guide detailing how LLMs, Vision Classifiers, Image/Video Generation APIs, and 6 specialized AI Classifiers transform raw text into a finished film.
 
@@ -32,7 +32,7 @@ host/
 ### 1) API / engine first (set API key for real gen)
 
 ```powershell
-cd C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Api
+cd C:\Users\budcr\source\repos\NickAndMe\host\PageToMovie.Api
 $env:XAI_API_KEY = "your-key"   # required for Stage 1 / images / video / vision
 dotnet run
 # Must listen on http://127.0.0.1:5088
@@ -42,12 +42,12 @@ dotnet run
 
 You need **two processes**: Api **and** Web. If only Web is running, health checks fail with connection refused.
 
-ffmpeg for remux/WIP is **bundled** on Windows via NuGet (`Soenneker.Libraries.FFmpeg` → `Resources/ffmpeg.exe`). Override with `FilmStudio:FfmpegPath` if needed.
+ffmpeg for remux/WIP is **bundled** on Windows via NuGet (`Soenneker.Libraries.FFmpeg` → `Resources/ffmpeg.exe`). Override with `PageToMovie:FfmpegPath` if needed.
 
 ### 2) Blazor UI
 
 ```powershell
-cd C:\Users\budcr\source\repos\NickAndMe\host\FilmStudio.Web
+cd C:\Users\budcr\source\repos\NickAndMe\host\PageToMovie.Web
 dotnet run
 # e.g. https://localhost:7206  or  http://localhost:5079
 ```
@@ -56,7 +56,7 @@ Web calls API at `EngineApi:BaseUrl` = `http://127.0.0.1:5088` (see `appsettings
 
 ### Visual Studio
 
-Open `host/FilmStudio.slnx`, set **multiple startup projects**: Api + Web.
+Open `host/PageToMovie.slnx`, set **multiple startup projects**: Api + Web.
 
 ## REST (Api)
 
@@ -85,7 +85,7 @@ Events: `JobUpdated` (JobSnapshot), `JobLog` (string)
 
 ## Config
 
-`FilmStudio.Api/appsettings.json` → `FilmStudio:WorkspaceRoot` (empty = auto-detect repo root).
+`PageToMovie.Api/appsettings.json` → `PageToMovie:WorkspaceRoot` (empty = auto-detect repo root).
 
 ### YouTube upload (Review screen)
 
@@ -98,10 +98,10 @@ button appears until an admin connects a channel. To enable it:
    enable the **YouTube Data API v3**.
 2. Add an authorized redirect URI matching your Api host, e.g.
    `http://127.0.0.1:5088/api/youtube/oauth2callback`.
-3. Set in `FilmStudio.Api/appsettings.json` (or env vars
-   `FilmStudio__YouTube__ClientId` / `__ClientSecret` / `__RedirectUri`):
+3. Set in `PageToMovie.Api/appsettings.json` (or env vars
+   `PageToMovie__YouTube__ClientId` / `__ClientSecret` / `__RedirectUri`):
    ```json
-   "FilmStudio": {
+   "PageToMovie": {
      "YouTube": {
        "ClientId": "...apps.googleusercontent.com",
        "ClientSecret": "...",
@@ -110,18 +110,18 @@ button appears until an admin connects a channel. To enable it:
    }
    ```
 4. Sign in as admin, open **Review**, click **Connect YouTube**, and approve access. The
-   refresh token is stored under `{workspace}/.filmstudio/youtube_token/` — one shared
-   channel per FilmStudio instance, not per-user.
+   refresh token is stored under `{workspace}/.PageToMovie/youtube_token/` — one shared
+   channel per PageToMovie instance, not per-user.
 
 ## LoadSim (Phase E)
 
 ```powershell
 # Terminal 1 — API with fakes
-$env:FILMSTUDIO_USE_FAKES = "true"
-dotnet run --project FilmStudio.Api
+$env:PageToMovie_USE_FAKES = "true"
+dotnet run --project PageToMovie.Api
 
 # Terminal 2 — virtual users
-dotnet run --project FilmStudio.LoadSim -- --users 25 --duration 90 --scenario mixed --out loadsim-results.json
+dotnet run --project PageToMovie.LoadSim -- --users 25 --duration 90 --scenario mixed --out loadsim-results.json
 ```
 
 Uses checked-in **`projects/LoadSimBuster`** (isolated from real Buster). See `docs/loadsim-soak.md`.

@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-18-cost-ledger-probed-duration` |
-| Related files | `host/FilmStudio.Engine/FilmJobService.cs`; `CostReportService.cs` |
+| Related files | `host/PageToMovie.Engine/FilmJobService.cs`; `CostReportService.cs` |
 
 ## Problem
 

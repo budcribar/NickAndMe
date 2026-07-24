@@ -22,7 +22,7 @@
     "note": "post Strip() fix - full model matrix",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "onscreen_cast",
@@ -40,7 +40,7 @@
       "winner": "AI",
       "latencyMs": 35742,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",
@@ -360,7 +360,7 @@
       "winner": "AI",
       "latencyMs": 18644,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",
@@ -680,7 +680,7 @@
       "winner": "AI",
       "latencyMs": 5547,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",
@@ -1000,7 +1000,7 @@
       "winner": "AI",
       "latencyMs": 24314,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",

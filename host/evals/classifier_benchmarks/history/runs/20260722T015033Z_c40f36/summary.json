@@ -20,7 +20,7 @@
     "note": "cheap-model probe",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "onscreen_cast",
@@ -38,7 +38,7 @@
       "winner": "AI",
       "latencyMs": 4877,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": []
     },
     {
@@ -57,7 +57,7 @@
       "winner": "AI",
       "latencyMs": 24883,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": []
     }
   ]

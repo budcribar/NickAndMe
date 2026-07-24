@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-17-multiprovider-download-fallback` |
-| Related files | `host/FilmStudio.Engine/MultiProviderVideoClient.cs` |
+| Related files | `host/PageToMovie.Engine/MultiProviderVideoClient.cs` |
 
 ## Problem
 

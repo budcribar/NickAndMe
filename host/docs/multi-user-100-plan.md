@@ -1,6 +1,6 @@
 # Multi-user architecture plan (≈100 concurrent users)
 
-**Goal:** Evolve FilmStudio from single-operator / single-job to support ~**100 concurrent UI sessions**, with **per-user API keys**, **scene-level isolation**, **fair local workers**, a **load simulator** that does not burn real xAI credits, and an **admin console** (login, live server state, server configuration).
+**Goal:** Evolve PageToMovie from single-operator / single-job to support ~**100 concurrent UI sessions**, with **per-user API keys**, **scene-level isolation**, **fair local workers**, a **load simulator** that does not burn real xAI credits, and an **admin console** (login, live server state, server configuration).
 
 **Non-goals (v1 of this plan):** CRDT co-editing, multi-region, full SaaS billing portal, multi-admin RBAC beyond `admin` vs `user`.
 
@@ -40,7 +40,7 @@
            │  X-User-Id       │  role=admin             │
            ▼                  ▼                         ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│ FilmStudio.Api                                                         │
+│ PageToMovie.Api                                                         │
 │  Auth (user + admin roles)                                             │
 │  JobRouter → JobQueue (multi-job)                                      │
 │  ApiWorkerPool / LocalWorkerPool                                       │
@@ -84,7 +84,7 @@ Admin is a **first-class role**, not “whoever knows the API port.”
 |------|-----------|
 | Role | `admin` vs `user` (claim / config) |
 | Auth | Cookie or JWT after `POST /api/auth/login` |
-| Credentials | Config: `FilmStudio:Admin:Username` + `PasswordHash` (or env `FILMSTUDIO_ADMIN_PASSWORD` for dev) |
+| Credentials | Config: `PageToMovie:Admin:Username` + `PasswordHash` (or env `PageToMovie_ADMIN_PASSWORD` for dev) |
 | Session | Sliding expiry (e.g. 8h); logout clears cookie |
 | Dev shortcut | Optional `Admin:AllowDevBypass` only in Development |
 | LoadSim | **Never** uses admin credentials; stays on user headers |
@@ -227,7 +227,7 @@ JobTiming {
 
 **Persistence:**
 
-- Write to `FilmStudio:RuntimeConfigPath` (e.g. `host/FilmStudio.Api/runtime-config.json`) or under workspace `.filmstudio/runtime-config.json`.  
+- Write to `PageToMovie:RuntimeConfigPath` (e.g. `host/PageToMovie.Api/runtime-config.json`) or under workspace `.PageToMovie/runtime-config.json`.  
 - `IRuntimeConfigStore`: load on startup → merge over appsettings → **hot apply** to worker pools (update semaphores / caps).  
 - Audit: append `admin_config_audit.jsonl` (who, when, old→new).
 
@@ -298,13 +298,13 @@ If later you run a **shared** key mode, same RR is mandatory for Grok fairness.
 
 ```text
 host/
-  FilmStudio.Core/          # models, options, interfaces (expand)
-  FilmStudio.Engine/        # domain + real clients
-  FilmStudio.Api/           # HTTP + SignalR host
-  FilmStudio.Web/           # Blazor UI
-  FilmStudio.Fakes/         # NEW: fake Grok, fake ffmpeg, in-mem locks optional
-  FilmStudio.LoadSim/       # NEW: concurrent user simulator (console)
-  FilmStudio.Tests/         # NEW: unit + integration (WebApplicationFactory)
+  PageToMovie.Core/          # models, options, interfaces (expand)
+  PageToMovie.Engine/        # domain + real clients
+  PageToMovie.Api/           # HTTP + SignalR host
+  PageToMovie.Web/           # Blazor UI
+  PageToMovie.Fakes/         # NEW: fake Grok, fake ffmpeg, in-mem locks optional
+  PageToMovie.LoadSim/       # NEW: concurrent user simulator (console)
+  PageToMovie.Tests/         # NEW: unit + integration (WebApplicationFactory)
   docs/multi-user-100-plan.md  # this file
 ```
 
@@ -314,7 +314,7 @@ host/
 
 Introduce interfaces **at the edges** that cost money or CPU. Keep domain services depending on interfaces.
 
-### 4.1 Core interfaces (`FilmStudio.Core` or `FilmStudio.Engine/Abstractions`)
+### 4.1 Core interfaces (`PageToMovie.Core` or `PageToMovie.Engine/Abstractions`)
 
 | Interface | Real | Fake behavior |
 |-----------|------|----------------|
@@ -337,7 +337,7 @@ Introduce interfaces **at the edges** that cost money or CPU. Keep domain servic
 
 ```csharp
 // appsettings / env
-"FilmStudio": {
+"PageToMovie": {
   "UseFakes": true,
   "Fakes": {
     "VideoDelayMs": 200,
@@ -382,7 +382,7 @@ else
 
 #### How fake file size / duration is determined
 
-1. **Primary: prebuilt fixture library** (checked into `FilmStudio.Fakes/Fixtures/` or generated once via script into that folder).
+1. **Primary: prebuilt fixture library** (checked into `PageToMovie.Fakes/Fixtures/` or generated once via script into that folder).
 2. **FakeGrokVideoClient** selects a fixture and **`File.Copy`** to `scene_XX_clip_YY.mp4` (same path layout as real gens).
 3. Size = **fixture file length on disk** (deterministic).
 
@@ -410,7 +410,7 @@ Tune bitrate so output lands near **~4.5 MB / 10s** (NickAndMe average), e.g. vi
 **Selection policy:**
 
 ```text
-FilmStudio:Fakes:VideoMode =
+PageToMovie:Fakes:VideoMode =
   MergeRealistic  → always clip_merge_10s (or map by requested duration)  // DEFAULT for remux/WIP tests
   LoadLight       → clip_tiny_1s  // 100 VU path stress only
 ```
@@ -442,9 +442,9 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 **A1. Abstractions + DI** ✅
 
 - `IGrokVideoClient`, `IGrokImageClient`, `IGrokChatClient`, `IGrokVisionClient`, `IFfmpegRemux`, `IJobStore`
-- Real clients implement interfaces; DI switches on `FilmStudio:UseFakes` / `FILMSTUDIO_USE_FAKES`
+- Real clients implement interfaces; DI switches on `PageToMovie:UseFakes` / `PageToMovie_USE_FAKES`
 
-**A2. FilmStudio.Fakes** ✅
+**A2. PageToMovie.Fakes** ✅
 
 - `FakeGrokVideoClient` (fixture copy), image/chat/vision fakes
 - Fixtures: `clip_merge_10s.mp4` (NickAndMe-scale ~8 MB), `clip_tiny_1s.mp4`
@@ -460,7 +460,7 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 **A4. Capacity options** ✅
 
-- `CapacityOptions` + `FakesOptions` on `FilmStudioOptions`
+- `CapacityOptions` + `FakesOptions` on `PageToMovieOptions`
 - Enforced at start (`MaxVideoInFlight`, `MaxQueuePerUser`)
 - `GET /api/capacity`
 
@@ -490,7 +490,7 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 **B4. Admin authentication** ✅
 
 - `POST /api/auth/login` → JWT with `role=admin` (+ user).
-- Password: plain `Auth:AdminPassword` / hash / env `FILMSTUDIO_ADMIN_PASSWORD`; dev `AllowDevBypass`.
+- Password: plain `Auth:AdminPassword` / hash / env `PageToMovie_ADMIN_PASSWORD`; dev `AllowDevBypass`.
 - `GET /api/auth/me` → `{ userId, roles[], isAdmin, hasApiKey }`.
 - `GET /api/admin/state` → process + capacity + live jobs skeleton (403 if not admin).
 - Blazor: `/admin/login`, `/admin` (poll 5s), nav Admin link.
@@ -552,7 +552,7 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 **D3. Admin server configuration (`/admin/config`)** ✅
 
-- `IRuntimeConfigStore` → `.filmstudio/runtime-config.json` + audit jsonl.
+- `IRuntimeConfigStore` → `.PageToMovie/runtime-config.json` + audit jsonl.
 - `GET/PUT /api/admin/config` hot-applies capacity/fakes; UseFakes marked restart-required.
 
 **D4. Nav + security** ✅
@@ -567,7 +567,7 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 ### Phase E — LoadSim + soak (+ admin validation) — **IMPLEMENTED (2026-07-17)**
 
-- Ship `FilmStudio.LoadSim` ✅ — console client, CLI, gates, `loadsim-results.json`.
+- Ship `PageToMovie.LoadSim` ✅ — console client, CLI, gates, `loadsim-results.json`.
 - Manual soak: see `host/docs/loadsim-soak.md` (100×10 min procedure).
 - **Admin check:** documented in soak guide (watch `/admin` during run; hot-tune capacity).
 
@@ -617,7 +617,7 @@ Optional: write .duration.json sidecar with fixture duration for fast UI probe
 
 **F2. Cleanup** ✅
 
-- `FilmStudio.Api.http` + `host/README.md` updated.
+- `PageToMovie.Api.http` + `host/README.md` updated.
 - Breaking change note below.
 
 **Changelog (breaking):**  
@@ -628,18 +628,18 @@ Clients must call `GET /api/jobs?mine=1` (list) or `GET /api/jobs/{id}` (detail)
 
 ---
 
-## 6. FilmStudio.LoadSim (client simulator)
+## 6. PageToMovie.LoadSim (client simulator)
 
 ### 6.1 Project type
 
-- `host/FilmStudio.LoadSim/FilmStudio.LoadSim.csproj` — **console** `net10.0`
-- References: `FilmStudio.Core` (DTOs only) or raw HttpClient + SignalR.Client
+- `host/PageToMovie.LoadSim/PageToMovie.LoadSim.csproj` — **console** `net10.0`
+- References: `PageToMovie.Core` (DTOs only) or raw HttpClient + SignalR.Client
 - **No** dependency on Engine (client-only)
 
 ### 6.2 CLI
 
 ```text
-dotnet run --project host/FilmStudio.LoadSim -- \
+dotnet run --project host/PageToMovie.LoadSim -- \
   --baseUrl http://127.0.0.1:5088 \
   --users 100 \
   --duration 600 \
@@ -716,12 +716,12 @@ ProjectId = per-user project OR shared "Buster" (flag --sharedProject)
 
 ```text
 # Terminal 1
-set FilmStudio__UseFakes=true
-set FilmStudio__Capacity__MaxVideoInFlight=12
-dotnet run --project host/FilmStudio.Api
+set PageToMovie__UseFakes=true
+set PageToMovie__Capacity__MaxVideoInFlight=12
+dotnet run --project host/PageToMovie.Api
 
 # Terminal 2
-dotnet run --project host/FilmStudio.LoadSim -- --users 100 --duration 300 --scenario mixed
+dotnet run --project host/PageToMovie.LoadSim -- --users 100 --duration 300 --scenario mixed
 ```
 
 **Do not** point LoadSim at production with real keys and high gen weight.
@@ -796,8 +796,8 @@ dotnet run --project host/FilmStudio.LoadSim -- --users 100 --duration 300 --sce
 
 ## 11. Immediate next PR (start here)
 
-1. Create `FilmStudio.Fakes` + `IGrokVideoClient` extraction + `UseFakes` switch.  
-2. Create `FilmStudio.LoadSim` with **browse-only** 100 VUs (no gen).  
+1. Create `PageToMovie.Fakes` + `IGrokVideoClient` extraction + `UseFakes` switch.  
+2. Create `PageToMovie.LoadSim` with **browse-only** 100 VUs (no gen).  
 3. Add `GET /api/capacity` stub (static caps + process uptime).  
 4. Stub **admin login** + `GET /api/admin/state` (process uptime only) + empty `/admin` page.
 

@@ -1,0 +1,723 @@
+using PageToMovie.Core.Models;
+using PageToMovie.Web.Services;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+
+namespace PageToMovie.Web.Components.Pages;
+
+/// <summary>Shared project / job / status logic for Adaptation step pages.</summary>
+public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
+{
+    [Inject] protected EngineApiClient Engine { get; set; } = null!;
+    [Inject] protected JobHubClient Hub { get; set; } = null!;
+    [Inject] protected NavigationManager Nav { get; set; } = null!;
+    [Inject] protected ActiveProjectState ActiveProject { get; set; } = null!;
+
+    public bool Busy;
+    /// <summary>Short operator-facing label while <see cref="Busy"/> (shown with progress bar).</summary>
+    public string? BusyMessage;
+    public string? Error;
+    public string? Message;
+    public string ProjectId = "";
+    /// <summary>Display name for the active project (set on Home; read-only here).</summary>
+    public string ProjectLabel = "";
+    public AdaptationStatus? Status;
+    public JobSnapshot? Job;
+    public IBrowserFile? PendingFile;
+
+    public int TotalMinutes = 15;
+    public int ChunkPages = 10;
+    public string Model = "grok-4.5";
+    public bool Resume;
+
+
+    private CancellationTokenSource? _pollCts;
+    public int ProgressIndex;
+    public int ProgressTotal;
+
+    public bool JobRunning =>
+        string.Equals(Job?.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Job?.Status, "queued", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Hide “Next” / stale status alerts while a pipeline step is still running
+    /// (e.g. Import writing the draft after book prepare finished).
+    /// </summary>
+    public bool SuppressGuidanceBanners => Busy || JobRunning;
+
+    /// <summary>import | screenplay | shots</summary>
+    public abstract string StepKey { get; }
+
+    public bool CanRunOutline =>
+        Status is not null &&
+        (Status.Book.ReadyForStage1 ||
+         (Status.Stage1.Present &&
+          Status.Stage1.SceneCount > 0 &&
+          Status.Book.BookTextExists));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Hub.JobUpdated += OnJobUpdated;
+        Hub.JobLog += OnJobLog;
+        try
+        {
+            await ActiveProject.RefreshFromApiAsync(Engine);
+            if (!ActiveProject.HasProject)
+            {
+                Error = "No project selected. Create or choose one on Studio.";
+                return;
+            }
+            ProjectId = ActiveProject.ProjectId!;
+            ProjectLabel = ActiveProject.Label ?? ProjectId;
+
+            try { await Hub.StartAsync(); } catch { /* optional */ }
+
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    private void OnJobUpdated(JobSnapshot snap)
+    {
+        Job = snap;
+        AbsorbProgressFromSnapshot(snap);
+        AbsorbProgressFromLine(snap.Message);
+        if (snap.Status is "done" or "error" or "cancelled")
+        {
+            _pollCts?.Cancel();
+            if (snap.Status == "done" && ProgressTotal > 0)
+                ProgressIndex = ProgressTotal;
+            _ = InvokeAsync(async () =>
+            {
+                await SoftLoadAsync();
+                try { await ActiveProject.RefreshReadinessAsync(Engine); } catch { /* nav gates */ }
+                if (snap.Status == "done")
+                {
+                    // Avoid flashing technical “Book ready · quality=good…” while Import
+                    // continues into draft generation (Busy stays true).
+                    if (!Busy)
+                        Message = OperatorJobDoneMessage(snap);
+                }
+                else if (snap.Status == "error")
+                    Error = snap.Error ?? snap.Message ?? "Job failed";
+                StateHasChanged();
+            });
+        }
+        else
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnJobLog(string line)
+    {
+        if (Job is null)
+        {
+            // Preserve phase Total when log arrives before full snapshot (avoid Total=0 → 35% bar).
+            Job = new JobSnapshot
+            {
+                Status = "running",
+                Message = line,
+                Log = new List<string> { line },
+                Index = ProgressIndex,
+                Total = ProgressTotal > 0 ? ProgressTotal : 10,
+            };
+        }
+        else
+        {
+            Job.Message = line;
+            if (Job.Log.Count == 0 || Job.Log[^1] != line)
+            {
+                Job.Log.Add(line);
+                if (Job.Log.Count > 120)
+                    Job.Log = Job.Log.TakeLast(120).ToList();
+            }
+        }
+        AbsorbProgressFromLine(line);
+        if (Job is not null)
+        {
+            // Always keep a positive Total for adapt jobs so the bar can move.
+            if (Job.Total <= 0)
+                Job.Total = ProgressTotal > 0 ? ProgressTotal : 10;
+            if (ProgressTotal > 0)
+                Job.Total = Math.Max(Job.Total, ProgressTotal);
+            if (ProgressIndex > 0)
+                Job.Index = Math.Max(Job.Index, ProgressIndex);
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    protected void AbsorbProgressFromSnapshot(JobSnapshot snap)
+    {
+        if (snap.Total > 0)
+            ProgressTotal = Math.Max(ProgressTotal, snap.Total);
+        if (snap.Index > 0)
+            ProgressIndex = Math.Max(ProgressIndex, snap.Index);
+        // Never let a live adapt job report Total=0 after we have phase scale.
+        if (JobRunning && ProgressTotal <= 0 &&
+            snap.Kind is "stage1" or "stage2" or "book_import" or "book_prepare")
+            ProgressTotal = 10;
+    }
+
+    protected void AbsorbProgressFromLine(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        // Prefer a fixed 10-step phase scale for screenplay/shot-plan jobs so the bar
+        // moves on phase messages even when there are no "chunk i/N" lines (single-pass).
+        ProgressTotal = Math.Max(ProgressTotal, 10);
+
+        var mChunk = System.Text.RegularExpressions.Regex.Match(
+            line, @"chunk\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (mChunk.Success &&
+            int.TryParse(mChunk.Groups[1].Value, out var cIdx) &&
+            int.TryParse(mChunk.Groups[2].Value, out var cTot) &&
+            cTot > 0)
+        {
+            var done = line.Contains("done", StringComparison.OrdinalIgnoreCase);
+            var frac = done
+                ? Math.Clamp((double)cIdx / cTot, 0, 1)
+                : Math.Clamp((cIdx - 1.0) / cTot, 0, 1);
+            ProgressIndex = Math.Max(ProgressIndex, 4 + (int)Math.Round(4.0 * frac));
+            return;
+        }
+
+        var mVis = System.Text.RegularExpressions.Regex.Match(
+            line, @"(?:Grok vision|Reading page|page)\s+(\d+)\s*/\s*(\d+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (mVis.Success &&
+            int.TryParse(mVis.Groups[1].Value, out var vIdx) &&
+            int.TryParse(mVis.Groups[2].Value, out var vTot) &&
+            vTot > 0)
+        {
+            var frac = Math.Clamp((vIdx - 1.0) / vTot, 0, 1);
+            ProgressIndex = Math.Max(ProgressIndex, 1 + (int)Math.Round(2.0 * frac));
+            return;
+        }
+
+        if (line.Contains("Screenplay ready", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("Stage 2 complete", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("shot plan ready", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 10);
+        else if (line.Contains("approving", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Fountain draft saved", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("plate", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Attaching", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Merged", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 9);
+        else if (line.Contains("Merge", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Stitch", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 8);
+        else if (line.Contains("repair", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("retry", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 7);
+        else if (line.Contains("single pass", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Adapting", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Book split", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Writing screenplay", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Drafting", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 5);
+        else if (line.Contains("Target runtime", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Planning", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("building", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 3);
+        else if (line.Contains("prepare", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Extract", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Checking book", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("book text", StringComparison.OrdinalIgnoreCase) ||
+                 line.Contains("Loading screenplay", StringComparison.OrdinalIgnoreCase))
+            ProgressIndex = Math.Max(ProgressIndex, 1);
+    }
+
+    public static bool IsJobInFlightMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return false;
+        return message.Contains("waiting", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("calling", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("parsing", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Grok vision", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Reading page", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("single pass", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Adapting", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Writing screenplay", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Drafting", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Operator-facing live job line (no provider / path / mechanism jargon).
+    /// </summary>
+    public static string OperatorJobRunningMessage(JobSnapshot snap)
+    {
+        if (string.Equals(snap.Status, "queued", StringComparison.OrdinalIgnoreCase))
+            return "Waiting…";
+
+        var msg = snap.Message ?? "";
+        var kind = snap.Kind ?? "";
+
+        var page = System.Text.RegularExpressions.Regex.Match(
+            msg, @"page\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (page.Success)
+            return $"Reading book — page {page.Groups[1].Value} of {page.Groups[2].Value}";
+
+        var chunk = System.Text.RegularExpressions.Regex.Match(
+            msg, @"chunk\s+(\d+)\s*/\s*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (chunk.Success)
+            return $"Writing screenplay — part {chunk.Groups[1].Value} of {chunk.Groups[2].Value}";
+
+        var scene = System.Text.RegularExpressions.Regex.Match(
+            msg, @"Scene\s+(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (scene.Success && kind is "stage2")
+            return $"Planning shots — scene {scene.Groups[1].Value}";
+
+        if (msg.Contains("Merge", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Stitch", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Combining", StringComparison.OrdinalIgnoreCase))
+            return "Combining screenplay parts…";
+        if (msg.Contains("repair", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("retry", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Refin", StringComparison.OrdinalIgnoreCase))
+            return "Refining screenplay…";
+        if (msg.Contains("approving", StringComparison.OrdinalIgnoreCase))
+            return "Approving screenplay…";
+        if (msg.Contains("plate", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Attaching", StringComparison.OrdinalIgnoreCase))
+            return "Matching book pictures…";
+        if (msg.Contains("Adapting", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("single pass", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Fountain", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("screenplay", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Phase 2", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Writing", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Drafting", StringComparison.OrdinalIgnoreCase) ||
+            kind is "stage1" or "book_import")
+        {
+            if (kind is "stage2")
+                return "Building shot plan…";
+            return "Writing screenplay…";
+        }
+        if (msg.Contains("Planning", StringComparison.OrdinalIgnoreCase) || kind is "stage2")
+            return "Building shot plan…";
+        if (msg.Contains("extract", StringComparison.OrdinalIgnoreCase))
+            return "Extracting text from the book…";
+        if (msg.Contains("vision", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("OCR", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Grok", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("Reading", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("prepare", StringComparison.OrdinalIgnoreCase) ||
+            kind is "book_prepare")
+            return "Reading book…";
+        if (string.IsNullOrWhiteSpace(msg))
+            return kind switch
+            {
+                "stage2" => "Building shot plan…",
+                "stage1" or "book_import" => "Writing screenplay…",
+                _ => "Working…",
+            };
+        // Last resort: short clean message, never dump long engine lines
+        return msg.Length > 80 ? msg[..77] + "…" : msg;
+    }
+
+    public virtual async Task LoadAsync()
+    {
+        Busy = true;
+        Error = null;
+        try
+        {
+            var dto = await Engine.GetAdaptationAsync(ProjectId);
+            Status = dto?.Adaptation;
+            ApplyDefaultsFromStatus();
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            Status = null;
+        }
+        finally { Busy = false; }
+    }
+
+    public async Task SoftLoadAsync()
+    {
+        try
+        {
+            var dto = await Engine.GetAdaptationAsync(ProjectId);
+            Status = dto?.Adaptation;
+            ApplyDefaultsFromStatus();
+        }
+        catch { /* ignore */ }
+    }
+
+    protected void ApplyDefaultsFromStatus()
+    {
+        if (Status?.Book.SuggestedTotalMinutes is int m && m > 0)
+            TotalMinutes = Math.Clamp(m, 3, 180);
+        if (Status?.Book.SuggestedChunkPages is int c && c > 0)
+            ChunkPages = Math.Clamp(c, 5, 30);
+        if (!string.IsNullOrWhiteSpace(Status?.PlanningModel))
+            Model = Status.PlanningModel;
+    }
+
+    public void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        PendingFile = e.File;
+        Message = $"Selected {e.File.Name} ({e.File.Size:N0} bytes)";
+    }
+
+    public async Task UploadAsync()
+    {
+        if (PendingFile is null) return;
+        Busy = true;
+        Error = null;
+        try
+        {
+            const long max = 80 * 1024 * 1024;
+            await using var stream = PendingFile.OpenReadStream(max);
+            await Engine.UploadBookAsync(ProjectId, PendingFile.Name, stream);
+            Message = $"Saved {PendingFile.Name}";
+            PendingFile = null;
+            await LoadAsync();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+        finally { Busy = false; }
+    }
+
+    public async Task PrepareBookAsync(bool forceVision)
+    {
+        Busy = true;
+        Error = null;
+        Message = null;
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartBookPrepareAsync(
+                ProjectId,
+                forceExtract: true,
+                forceVision: forceVision,
+                autoVision: true);
+            Message = forceVision
+                ? "Re-reading book pages… watch the log below"
+                : "Preparing book… watch the log below";
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+            StartJobPolling();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+        finally { Busy = false; }
+    }
+
+    /// <summary>
+    /// Book → Fountain draft (and approve for shot build). Uses prompts/book_to_fountain.txt only.
+    /// </summary>
+    public async Task RunOutlineAsync()
+    {
+        Busy = true;
+        Error = null;
+        Message = null;
+        try
+        {
+            await EnsureHubAsync();
+            ProgressIndex = 0;
+            ProgressTotal = 10;
+            await Engine.StartStage1Async(new StartStage1Request
+            {
+                ProjectId = ProjectId,
+                TotalMinutes = TotalMinutes,
+                Model = Model,
+            });
+            Message = null; // live progress card is enough
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+            AbsorbProgressFromSnapshot(Job ?? new JobSnapshot());
+            StartJobPolling();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+        finally { Busy = false; }
+    }
+
+    public async Task RunShotsAsync()
+    {
+        Busy = true;
+        Error = null;
+        Message = null;
+        try
+        {
+            await EnsureHubAsync();
+            ProgressIndex = 0;
+            ProgressTotal = 10;
+            // Resolution comes from project Configuration (shot plan structure is resolution-independent;
+            // config is only used as a default tag if the planner still stamps prompts).
+            await Engine.StartStage2Async(new StartStage2Request
+            {
+                ProjectId = ProjectId,
+                Scenes = "all",
+            });
+            Message = null; // live progress card is enough
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+            AbsorbProgressFromSnapshot(Job ?? new JobSnapshot());
+            StartJobPolling();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+        finally { Busy = false; }
+    }
+
+    protected void StartJobPolling()
+    {
+        _pollCts?.Cancel();
+        _pollCts = new CancellationTokenSource();
+        var ct = _pollCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await Task.Delay(1500, ct);
+                    var jobs = await Engine.GetJobAsync(ct);
+                    var snap = jobs?.Job;
+                    if (snap is null) continue;
+                    await InvokeAsync(() =>
+                    {
+                        Job = snap;
+                        AbsorbProgressFromSnapshot(snap);
+                        AbsorbProgressFromLine(snap.Message);
+                        if (Job is not null && ProgressTotal > 0)
+                        {
+                            Job.Index = Math.Max(Job.Index, ProgressIndex);
+                            Job.Total = Math.Max(Job.Total, ProgressTotal);
+                        }
+                        StateHasChanged();
+                    });
+                    if (snap.Status is "done" or "error" or "cancelled" or "idle")
+                    {
+                        if (snap.Status is "done" or "error" or "cancelled")
+                            await InvokeAsync(async () => { await SoftLoadAsync(); StateHasChanged(); });
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { /* expected */ }
+            catch { /* ignore poll errors */ }
+        }, CancellationToken.None);
+    }
+
+    public async Task CancelAsync()
+    {
+        Busy = true;
+        try
+        {
+            await Engine.CancelJobAsync();
+            Message = "Cancel requested";
+            var jobs = await Engine.GetJobAsync();
+            Job = jobs?.Job;
+        }
+        catch (Exception ex) { Error = ex.Message; }
+        finally { Busy = false; }
+    }
+
+    protected Task EnsureHubAsync() => Hub.EnsureStartedAsync();
+
+    public static string NextStepLabel(string step) => step switch
+    {
+        "import_book" => "Import a screenplay, PDF, or text file",
+        "fix_book_text" => "Prepare imported text, or import a screenplay",
+        "sign_screenplay" => "Open Screenplay, edit if needed, then approve",
+        "draft_screenplay" => "Create a screenplay draft from the book",
+        "run_stage1" => "Build the screenplay from the book",
+        "pin_characters" => "Approve cast voices and locked images on Characters",
+        "run_stage2" => "Build the shot plan",
+        "replan_stage2" => "Update the shot plan (screenplay changed)",
+        "generate_clips" => "Open Scenes and create video clips",
+        _ => "Looks complete — refine on Characters or Scenes",
+    };
+
+    /// <summary>Short operator copy when a background job finishes (no OCR/engine jargon).</summary>
+    public static string OperatorJobDoneMessage(JobSnapshot snap) => snap.Kind switch
+    {
+        "book_prepare" => "Book text is ready",
+        "book_import" => "Screenplay draft ready",
+        "stage1" => snap.Message is { Length: > 0 } m && !m.Contains("quality=", StringComparison.Ordinal)
+            ? m
+            : "Screenplay draft ready",
+        "stage2" => "Shot plan ready",
+        _ => string.IsNullOrWhiteSpace(snap.Message) || snap.Message.Contains("quality=", StringComparison.Ordinal)
+            ? "Step finished"
+            : snap.Message!,
+    };
+
+    public static string NextStepAlertClass(string step) => step switch
+    {
+        "generate_clips" or "done" => "alert-success",
+        "replan_stage2" or "fix_book_text" or "sign_screenplay" => "alert-warning",
+        _ => "alert-info",
+    };
+
+    public static string JobKindLabel(string? kind) => kind switch
+    {
+        "book_prepare" => "book",
+        "book_import" => "import",
+        "stage1" => "screenplay",
+        "stage2" => "shot plan",
+        _ => kind ?? "",
+    };
+
+    /// <summary>Suggested path for /adaptation redirect.</summary>
+    public static string SuggestedStepPath(AdaptationStatus? status)
+    {
+        if (status is null) return "/adaptation/import";
+        return status.NextStep switch
+        {
+            "import_book" or "fix_book_text" => "/adaptation/import",
+            "sign_screenplay" or "draft_screenplay" or "run_stage1" => "/adaptation/screenplay",
+            "pin_characters" => "/characters",
+            // Shot plan is still an Adaptation step (rebuild lives here). Scenes has its own nav item —
+            // do not bounce /adaptation → /scenes or operators cannot find Rebuild shot plan.
+            "run_stage2" or "replan_stage2" or "generate_clips" or "done" => "/adaptation/shots",
+            _ => "/adaptation/import",
+        };
+    }
+
+    /// <summary>Step strip: Screenplay tab unlocks once a draft/outline exists in some form.</summary>
+    public static bool OutlineEnabled(AdaptationStatus? status) =>
+        status is not null &&
+        (status.Screenplay.DraftExists ||
+         status.Book.ReadyForStage1 ||
+         status.Book.BookTextExists ||
+         status.Book.PdfExists ||
+         (status.Stage1.Present && status.Stage1.SceneCount > 0));
+
+    /// <summary>Step strip: Characters/Shot-plan tabs unlock once the screenplay is signed off.</summary>
+    public static bool ShotsEnabled(AdaptationStatus? status) =>
+        status is not null && status.Screenplay.ReadyForShots;
+
+    /// <summary>
+    /// Compact progress + Cancel while adaptation jobs run (operators and admin).
+    /// Import page never shows this card (progress lives in the Import card).
+    /// Admin can expand log after the job finishes; operators never see raw logs here.
+    /// </summary>
+    public static bool ShowJobPanel(bool isAdmin, JobSnapshot? job, string step)
+    {
+        if (job is null || step is "import" or "book")
+            return false;
+
+        var kind = job.Kind ?? "";
+        var adaptationJob = kind is "stage1" or "stage2" or "book_prepare" or "book_import";
+        if (job.Status is "running" or "queued")
+            return adaptationJob || isAdmin;
+
+        // Idle finished/error: admin-only so operators don't see leftover job cards
+        if (!isAdmin)
+            return false;
+        return job.Status is "error" or "cancelled" ||
+               (job.Status == "done" && adaptationJob);
+    }
+
+    /// <summary>Merges job-reported and locally-tracked (log-scraped) progress into one index/total/waiting triple.</summary>
+    public static (int Index, int Total, bool Waiting, int DisplayIndex) ComputeJobProgress(
+        JobSnapshot job, int progressIndex, int progressTotal, bool jobRunning)
+    {
+        var index = Math.Max(job.Index, progressIndex);
+        var total = Math.Max(job.Total, progressTotal);
+        var waiting = jobRunning && IsJobInFlightMessage(job.Message);
+        var displayIndex = waiting && index >= total && total > 0
+            ? Math.Max(0, total - 1)
+            : index;
+        return (index, total, waiting, displayIndex);
+    }
+
+    /// <summary>
+    /// Progress-bar percent for a running job — never 0% or 100% while still running.
+    /// When Total is missing or a long adapt call is in-flight, soft-crawls so the bar
+    /// does not freeze at a single placeholder (old Total=0 → hard 35%).
+    /// </summary>
+    public static int ComputeProgressPercent(int displayIndex, int total, bool waiting, bool jobRunning)
+        => ComputeProgressPercent(displayIndex, total, waiting, jobRunning, startedAt: null);
+
+    public static int ComputeProgressPercent(
+        int displayIndex, int total, bool waiting, bool jobRunning, DateTimeOffset? startedAt)
+    {
+        if (!jobRunning)
+            return 100;
+
+        int basePct;
+        if (total <= 0)
+        {
+            // Soft indeterminate crawl ~12% → ~70% over a few minutes (no hard 35% stick).
+            basePct = SoftCrawlPercent(startedAt, floor: 12, ceiling: 70, tauSeconds: 90);
+        }
+        else if (waiting)
+        {
+            var stepped = (int)Math.Round(100.0 * (displayIndex + 0.35) / total);
+            // During long single-pass adapt, ease upward from the stepped floor so the bar
+            // keeps moving between phase messages.
+            var crawl = SoftCrawlPercent(startedAt, floor: stepped, ceiling: 88, tauSeconds: 120);
+            basePct = Math.Max(stepped, crawl);
+        }
+        else
+        {
+            basePct = (int)Math.Round(100.0 * Math.Clamp(displayIndex, 0, total) / total);
+        }
+
+        return Math.Clamp(basePct, total > 0 ? 5 : 8, 92);
+    }
+
+    /// <summary>Asymptotic crawl floor→ceiling with half-life ~tauSeconds.</summary>
+    public static int SoftCrawlPercent(DateTimeOffset? startedAt, int floor, int ceiling, double tauSeconds)
+    {
+        if (ceiling <= floor) return floor;
+        if (startedAt is null) return floor;
+        var sec = Math.Max(0, (DateTimeOffset.UtcNow - startedAt.Value).TotalSeconds);
+        var t = 1.0 - Math.Exp(-sec / Math.Max(1.0, tauSeconds));
+        return (int)Math.Round(floor + (ceiling - floor) * t);
+    }
+
+    /// <summary>
+    /// Hide the "Next" banner when the current step already is the next action
+    /// (avoids "Next: import…" on the Import page).
+    /// </summary>
+    public static bool ShowNextStepBanner(AdaptationStatus? status, bool suppressGuidanceBanners, string step)
+    {
+        if (status is null) return false;
+        // Never show "Next: approve…" while a draft is still being written
+        if (suppressGuidanceBanners) return false;
+
+        var next = status.NextStep ?? "";
+        if (step is "import" or "book")
+        {
+            // On import: only after the pipeline is idle and they should leave Import
+            // (draft exists → continue to screenplay). Don't say "approve" mid-import.
+            if (next is "sign_screenplay" or "generate_clips" or "run_stage2" or "replan_stage2"
+                or "pin_characters")
+                return status.Screenplay.DraftExists;
+            return next is "draft_screenplay" or "run_stage1";
+        }
+        if (step == "screenplay")
+        {
+            // Hide when the action is already "edit/approve screenplay"
+            return next is not ("sign_screenplay" or "draft_screenplay" or "run_stage1");
+        }
+        if (step == "shots")
+        {
+            // Hide plain "build shot plan"; keep replan / go elsewhere.
+            // Hide "generate_clips" too — the page's own "Open Scenes" button already
+            // says this; it carries the hint as a hover tooltip instead.
+            return next is not ("run_stage2" or "pin_characters" or "generate_clips");
+        }
+        return true;
+    }
+
+    public virtual async ValueTask DisposeAsync()
+    {
+        _pollCts?.Cancel();
+        Hub.JobUpdated -= OnJobUpdated;
+        Hub.JobLog -= OnJobLog;
+        await Task.CompletedTask;
+    }
+}

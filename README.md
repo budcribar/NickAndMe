@@ -11,17 +11,17 @@ Needs:
 
 - .NET SDK (solution targets `net10.0`)
 - `XAI_API_KEY` for real Stage 1 / images / video / vision (optional fakes for UI soaks)
-- ffmpeg is **bundled** with the API on Windows (override with `FilmStudio:FfmpegPath` if needed)
+- ffmpeg is **bundled** with the API on Windows (override with `PageToMovie:FfmpegPath` if needed)
 
 ### 1) API / engine (`http://127.0.0.1:5088`)
 
 ```powershell
 cd host
-$env:FilmStudio__WorkspaceRoot = (Resolve-Path ..).Path
-$env:FilmStudio__UseFakes = "false"   # "true" for no xAI spend
+$env:PageToMovie__WorkspaceRoot = (Resolve-Path ..).Path
+$env:PageToMovie__UseFakes = "false"   # "true" for no xAI spend
 $env:XAI_API_KEY = "your-key"         # required when UseFakes=false
 $env:ASPNETCORE_URLS = "http://127.0.0.1:5088"
-dotnet run --project FilmStudio.Api
+dotnet run --project PageToMovie.Api
 ```
 
 Health: `GET http://127.0.0.1:5088/health`
@@ -32,7 +32,7 @@ Health: `GET http://127.0.0.1:5088/health`
 cd host
 $env:EngineApi__BaseUrl = "http://127.0.0.1:5088"
 $env:ASPNETCORE_URLS = "http://localhost:5079"
-dotnet run --project FilmStudio.Web
+dotnet run --project PageToMovie.Web
 ```
 
 Open the UI (admin learning, cast, scenes, review).  
@@ -40,7 +40,7 @@ You need **both** Api and Web. If only Web is running, API calls fail.
 
 ### Visual Studio
 
-Open `host/FilmStudio.slnx`, set **multiple startup projects**: Api + Web.
+Open `host/PageToMovie.slnx`, set **multiple startup projects**: Api + Web.
 
 More detail: **`host/README.md`**.
 
@@ -154,7 +154,7 @@ See `host/playwright/README.md`.
 
 ```powershell
 cd host
-dotnet test FilmStudio.Tests
+dotnet test PageToMovie.Tests
 ```
 
 ## Docs
@@ -168,6 +168,6 @@ dotnet test FilmStudio.Tests
 
 ## Config notes
 
-- Workspace root: `FilmStudio:WorkspaceRoot` (empty → auto-detect repo root from API).  
-- Fakes: `FilmStudio:UseFakes` / `FILMSTUDIO_USE_FAKES=true`.  
-- Auth (dev): admin bypass headers / appsettings under `FilmStudio:Auth`.  
+- Workspace root: `PageToMovie:WorkspaceRoot` (empty → auto-detect repo root from API).  
+- Fakes: `PageToMovie:UseFakes` / `PageToMovie_USE_FAKES=true`.  
+- Auth (dev): admin bypass headers / appsettings under `PageToMovie:Auth`.  

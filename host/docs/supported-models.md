@@ -2,7 +2,7 @@
 
 Users pick **model ids** in Configuration. The app never asks them to pick a “service” separately.
 
-`FilmStudio.Core.Models.SupportedModelCatalog` is the single source of truth for:
+`PageToMovie.Core.Models.SupportedModelCatalog` is the single source of truth for:
 
 | Field | Purpose |
 |--------|---------|

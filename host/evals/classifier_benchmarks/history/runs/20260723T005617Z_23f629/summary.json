@@ -19,7 +19,7 @@
     "note": "verify plate_rank after TaskRunners.cs fix",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "plate_rank",

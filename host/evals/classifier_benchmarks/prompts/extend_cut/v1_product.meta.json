@@ -2,5 +2,5 @@
   "id": "v1_product",
   "task": "extend_cut",
   "label": "Product ExtendCutClassifier prompt (shipped v1)",
-  "notes": "Matches FilmStudio.Engine ExtendCutClassifier.SystemPrompt."
+  "notes": "Matches PageToMovie.Engine ExtendCutClassifier.SystemPrompt."
 }

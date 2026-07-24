@@ -22,7 +22,7 @@
     "note": "post Strip() fix - full model matrix",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "ambient_sfx",
@@ -40,7 +40,7 @@
       "winner": "AI",
       "latencyMs": 37768,
       "aiParseHits": 30,
-      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "note": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
       "samples": [
         {
           "id": "s28_b17",
@@ -510,7 +510,7 @@
       "winner": "AI",
       "latencyMs": 17391,
       "aiParseHits": 30,
-      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "note": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
       "samples": [
         {
           "id": "s28_b17",
@@ -980,7 +980,7 @@
       "winner": "AI",
       "latencyMs": 6260,
       "aiParseHits": 30,
-      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "note": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
       "samples": [
         {
           "id": "s28_b17",
@@ -1450,7 +1450,7 @@
       "winner": "AI",
       "latencyMs": 23054,
       "aiParseHits": 30,
-      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "note": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
       "samples": [
         {
           "id": "s28_b17",

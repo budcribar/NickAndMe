@@ -1,0 +1,1442 @@
+@page "/review"
+@implements IAsyncDisposable
+@inject EngineApiClient Engine
+@inject JobHubClient Hub
+@inject ActiveProjectState ActiveProject
+@inject AdminSessionService Session
+@inject NavigationManager Nav
+@using PageToMovie.Core.Models
+
+<PageTitle>Review</PageTitle>
+
+<h1>Review</h1>
+
+@if (_gateChecked && !ActiveProject.CanReview)
+{
+    <p class="text-muted mb-3">
+        @(string.IsNullOrWhiteSpace(ActiveProject.ReviewBlockedReason)
+            ? "Finish the shot plan first."
+            : ActiveProject.ReviewBlockedReason)
+        <a href="adaptation/shots">Open shot plan →</a>
+    </p>
+}
+else
+{
+<p class="text-muted mb-1">
+    Mark clips pass/fail, approve scenes, rebuild scene videos, and rebuild the full movie draft.
+</p>
+<p class="small text-muted">
+    <strong>Assembly gate:</strong> auto-review <em>fail</em> and human <em>fail</em> clips are excluded from scene remux / WIP
+    until you Pass with an explicit override note (not just “pass”).
+    <strong>Rebuild scene</strong> combines eligible clips only.
+    <strong>Rebuild movie draft</strong> re-composites scenes that still have blocked clips, then stitches WIP.
+</p>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert alert-info">@_message</div>
+}
+
+@if (_artifactMapLoaded)
+{
+    <div class="alert @(_artifactReady ? "alert-success" : "alert-warning") py-2 small mb-3" data-testid="review-artifacts-status">
+        <strong>Manual final review map:</strong>
+        @if (_artifactReady)
+        {
+            <span>core artifacts present — open project folder + <code>ARTIFACTS.md</code> in Claude.</span>
+        }
+        else
+        {
+            <span>missing: @string.Join(", ", _artifactMissing)</span>
+        }
+        <span class="text-muted ms-1">(writes <code>ARTIFACTS.md</code>, <code>artifact_index.json</code>, <code>telemetry/</code>)</span>
+    </div>
+}
+
+<div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-4">
+        <label class="form-label">Project</label>
+        <select class="form-select" @bind="_projectId" @bind:after="LoadAsync" disabled="@_busy">
+            @foreach (var p in _projectIds)
+            {
+                <option value="@p">@p</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-8 d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-secondary" data-testid="review-reload" disabled="@_busy" @onclick="LoadAsync">Reload</button>
+        <button class="btn btn-outline-secondary" data-testid="review-artifacts-map"
+                disabled="@_busy"
+                title="Write ARTIFACTS.md + artifact_index.json + telemetry snapshots for manual Claude review of this project folder"
+                @onclick="RefreshArtifactMapAsync">
+            Refresh artifact map
+        </button>
+        <button class="btn btn-outline-dark" data-testid="review-auto-all"
+                disabled="@(_busy || JobRunning)"
+                title="AI auto-review every on-disk clip that lacks a draft; updates assets/review/index.json + durable frames"
+                @onclick="StartBatchAutoReviewAsync">
+            Auto-review all
+        </button>
+        <button class="btn btn-outline-primary" data-testid="review-rebuild-wip" disabled="@(_busy || JobRunning || !_wipCanBuild)" @onclick="RebuildWipAsync"
+                title="FFmpeg: refresh stale scene composites if needed, then stitch WIP">
+            Rebuild WIP movie
+        </button>
+        <button class="btn btn-success" data-testid="review-play-wip" disabled="@(_busy || JobRunning || (!_wipExists && !_wipCanBuild))"
+                @onclick="PlayWipAsync"
+                title="@WipPlayTitle">
+            @(_showWipPlayer && _wipExists && !_wipStale ? "Hide WIP player" : _wipStale || !_wipExists ? "▶ Play WIP (refresh)" : "▶ Play WIP")
+        </button>
+        @if (_youTubeStatus?.Connected == true)
+        {
+            <button class="btn btn-outline-danger" data-testid="review-upload-youtube" disabled="@(_busy || JobRunning || !_wipExists)"
+                    @onclick="OpenYouTubeUploadDialog"
+                    title="@(_wipExists ? "Upload the current WIP movie to YouTube" : "Rebuild/play WIP first")">
+                Upload to YouTube
+            </button>
+        }
+        else if (Session.IsAdmin)
+        {
+            <button class="btn btn-outline-secondary" data-testid="review-connect-youtube" disabled="@(_busy || _youTubeStatus?.Configured != true)"
+                    @onclick="ConnectYouTubeAsync"
+                    title="@(_youTubeStatus?.Configured == true ? "Connect a YouTube channel to enable uploads" : "Set PageToMovie:YouTube:ClientId/ClientSecret/RedirectUri first")">
+                Connect YouTube
+            </button>
+        }
+        @if (JobRunning)
+        {
+            <button class="btn btn-outline-danger" disabled="@_busy" @onclick="CancelAsync">Cancel job</button>
+        }
+    </div>
+</div>
+
+@if (_youTubeUpload is not null)
+{
+    <p class="small text-muted mb-3" data-testid="review-youtube-last-upload">
+        Last YouTube upload: <strong>@_youTubeUpload.Title</strong> (@_youTubeUpload.PrivacyStatus, @_youTubeUpload.UploadedAt.ToLocalTime().ToString("g")) —
+        <a href="@_youTubeUpload.Url" target="_blank" rel="noopener">@_youTubeUpload.Url</a>
+        @if (Session.IsAdmin)
+        {
+            <a href="#" class="ms-2" @onclick="DisconnectYouTubeAsync" @onclick:preventDefault="true">(disconnect channel)</a>
+        }
+    </p>
+}
+
+@if (_showYouTubeUploadDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true"
+         style="background:rgba(0,0,0,.45);" @onclick="CloseYouTubeUploadDialog">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title">Upload WIP to YouTube</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseYouTubeUploadDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Title</label>
+                        <input class="form-control form-control-sm" @bind="_youTubeTitle" maxlength="100" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Description</label>
+                        <textarea class="form-control form-control-sm" rows="3" @bind="_youTubeDescription"></textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Privacy</label>
+                        <select class="form-select form-select-sm" @bind="_youTubePrivacy">
+                            <option value="unlisted">Unlisted (link-only)</option>
+                            <option value="private">Private</option>
+                            <option value="public">Public</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" @onclick="CloseYouTubeUploadDialog">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-danger" data-testid="review-upload-youtube-confirm"
+                            disabled="@_busy" @onclick="StartYouTubeUploadAsync">
+                        Upload
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showWipPlayer && _wipExists)
+{
+    <div class="card mb-3 border-success">
+        <div class="card-header d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+            <span>
+                WIP movie <code class="small">@(_wipPath ?? "assets/movie_wip.mp4")</code>
+                @if (_wipStale)
+                {
+                    <span class="badge bg-warning text-dark ms-1">stale</span>
+                }
+                else
+                {
+                    <span class="badge bg-success ms-1">current</span>
+                }
+            </span>
+            @if (!string.IsNullOrEmpty(_wipUpdatedAt))
+            {
+                <span class="small text-muted">updated @_wipUpdatedAt · @FormatBytes(_wipBytes)</span>
+            }
+        </div>
+        <div class="card-body py-2">
+            @if (!string.IsNullOrEmpty(_wipReason) && _wipStale)
+            {
+                <p class="small text-warning mb-2">@_wipReason</p>
+            }
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:70vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.WipMovieUrl(_projectId))"
+                   @key="_wipVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                Full cut of scene composites. <strong>Play WIP</strong> refreshes automatically if out of date (does not re-gen clips).
+                <a href="@Engine.WipMovieUrl(_projectId)" target="_blank" rel="noopener">Open in new tab</a>
+            </p>
+        </div>
+    </div>
+}
+
+@if (_showScenePlayer && _playingScene is int playSn)
+{
+    <div class="card mb-3 border-primary">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span>
+                Scene composite
+                <code class="small">S@(playSn.ToString("D2"))</code>
+                · clips → one scene file
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="HideScenePlayer">Hide</button>
+        </div>
+        <div class="card-body py-2">
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:70vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.CompositeVideoUrl(_projectId, playSn))"
+                   @key="_sceneVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                If playback fails, run <strong>Rebuild scene</strong> first (needs clips on disk).
+                <a href="@Engine.CompositeVideoUrl(_projectId, playSn)" target="_blank" rel="noopener">Open in new tab</a>
+            </p>
+        </div>
+    </div>
+}
+
+@if (_showClipPlayer && _playingClipScene is int clipSn && _playingClipNum is int clipCn)
+{
+    <div class="card mb-3 border-info">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span>
+                Clip
+                <code class="small">S@(clipSn.ToString("D2"))C@(clipCn.ToString("D2"))</code>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="HideClipPlayer">Hide</button>
+        </div>
+        <div class="card-body py-2">
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:50vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.ClipVideoUrl(_projectId, clipSn, clipCn))"
+                   @key="_clipVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                <a href="@Engine.ClipVideoUrl(_projectId, clipSn, clipCn)" target="_blank" rel="noopener">Open in new tab</a>
+                · after regen, rebuild the scene composite if you want the updated cut
+            </p>
+        </div>
+    </div>
+}
+
+@if (_job is not null &&
+     (_job.Status is "running" or "done" or "error" or "cancelled") &&
+     (_job.Kind is "remux" or "scene" or "batch" or "book_prepare" or "book_import" or "stage1" or "stage2"))
+{
+    <div class="card mb-3 border-@(_job.Status == "running" ? "primary" : _job.Status == "error" ? "danger" : "secondary")">
+        <div class="card-body py-2">
+            <span class="badge bg-secondary">@_job.Status</span>
+            @if (_job.Kind is { Length: > 0 } k)
+            {
+                <span class="badge bg-info text-dark ms-1">@k</span>
+            }
+            @if (_job.Scene is int jsn)
+            {
+                <span class="ms-1">S@(jsn.ToString("D2"))</span>
+            }
+            @if (_job.Clip is int jcn)
+            {
+                <span>C@jcn</span>
+            }
+            <span class="ms-2 small">@_job.Message</span>
+            @if (_job.Total > 0 && string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase))
+            {
+                @if (KeyFormatting.EstimateTimeRemaining(_job.StartedAt, _job.Index, _job.Total) is { } eta)
+                {
+                    <span class="ms-2 small text-muted">@eta</span>
+                }
+                <div class="progress mt-2" style="height:6px">
+                    <div class="progress-bar" role="progressbar"
+                         style="width:@((_job.Index * 100.0 / Math.Max(1, _job.Total)).ToString("0.#"))%"></div>
+                </div>
+            }
+            @if (_job.Log.Count > 0)
+            {
+                <pre class="small mb-0 mt-2" style="max-height:160px;overflow:auto;">@string.Join("\n", _job.Log.TakeLast(30))</pre>
+            }
+        </div>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Scenes &amp; clips</span>
+                <span class="small text-muted fw-normal">Play / rebuild = scene composite · WIP is separate</span>
+            </div>
+            <div class="card-body p-0">
+                @if (_scenes.Count == 0)
+                {
+                    <p class="text-muted p-3 mb-0">No scenes — finish Adaptation first.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Scene</th>
+                                    <th>Clips</th>
+                                    <th>On disk</th>
+                                    <th>Composite</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in _scenes)
+                                {
+                                    var sn = s.SceneNumber;
+                                    <tr class="@(_selectedScene == sn ? "table-active" : "")">
+                                        <td>
+                                            <code>S@(sn.ToString("D2"))</code>
+                                            <div class="small text-muted">@(string.IsNullOrEmpty(s.Setting) ? "—" : s.Setting)</div>
+                                        </td>
+                                        <td>@s.ClipCount</td>
+                                        <td>@s.ClipsOnDisk</td>
+                                        <td>
+                                            @if (s.CompositeExists)
+                                            {
+                                                <span class="badge bg-success">ready</span>
+                                            }
+                                            else if (s.ClipsOnDisk > 0)
+                                            {
+                                                <span class="badge bg-warning text-dark">needs rebuild</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                                <button class="btn btn-sm btn-success"
+                                                        disabled="@(_busy || JobRunning || (s.ClipsOnDisk == 0 && !s.CompositeExists))"
+                                                        title="@(s.CompositeExists ? "Play scene (auto-remux if out of date)" : s.ClipsOnDisk > 0 ? "Remux clips then play" : "No clips on disk")"
+                                                        @onclick="() => PlaySceneAsync(sn)">
+                                                    ▶ Play
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        disabled="@(_busy || JobRunning || s.ClipsOnDisk == 0)"
+                                                        title="FFmpeg: concat this scene’s clips into scene composite (does not rebuild WIP)"
+                                                        @onclick="() => RebuildSceneAsync(sn)">
+                                                    Rebuild scene
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-success"
+                                                        disabled="@(_busy || JobRunning)"
+                                                        title="Mark approved and rebuild this scene’s composite"
+                                                        @onclick="() => ApproveAsync(sn)">
+                                                    Approve
+                                                </button>
+                                                <button class="btn btn-sm btn-link"
+                                                        @onclick="() => SelectSceneAsync(sn)">
+                                                    Clips
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (_selectedScene is int sel)
+        {
+            <div class="card mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span>S@(sel.ToString("D2")) clip review</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-success"
+                                disabled="@(_busy || JobRunning || (ClipCountOnDisk(sel) == 0 && !SceneHasComposite(sel)))"
+                                title="Play scene composite (auto-remux if missing/out of date)"
+                                @onclick="() => PlaySceneAsync(sel)">
+                            ▶ Play scene
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary"
+                                disabled="@(_busy || JobRunning || ClipCountOnDisk(sel) == 0)"
+                                title="Concat clips → scene composite only"
+                                @onclick="() => RebuildSceneAsync(sel)">
+                            Rebuild scene
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small">Note (required to Pass after auto-review fail)</label>
+                        <input class="form-control form-control-sm" @bind="_note" disabled="@_busy"
+                               placeholder="Override reason if auto-review failed…" />
+                    </div>
+                    <div class="d-flex flex-column gap-3">
+                        @for (var c = 1; c <= ClipCountFor(sel); c++)
+                        {
+                            var cn = c;
+                            var key = $"S{sel:D2}C{cn:D2}";
+                            var st = _reviews.TryGetValue(key, out var r) ? r : "—";
+                            var onDisk = ClipOnDisk(sel, cn);
+                            var autoBusy = IsAutoReviewRunning(sel, cn);
+                            var draft = GetLocalDraft(sel, cn);
+                            var editing = _editKey == key;
+                            <div class="border rounded p-2 small">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <code>C@(cn.ToString("D2"))</code>
+                                    · <span class="badge bg-light text-dark">@st</span>
+                                    @if (onDisk)
+                                    {
+                                        <span class="badge bg-success">disk</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">missing</span>
+                                    }
+                                    @if (draft is not null && !editing)
+                                    {
+                                        <span class="badge bg-info text-dark">AI: @draft.Suggestion</span>
+                                    }
+                                </div>
+                                <div class="btn-group btn-group-sm mt-1 flex-wrap">
+                                    <button class="btn btn-outline-dark" disabled="@(_busy || !onDisk)"
+                                            title="Play this clip"
+                                            @onclick="() => PlayClip(sel, cn)">▶</button>
+                                    <button class="btn btn-outline-primary"
+                                            data-testid="@($"review-auto-{sel}-{cn}")"
+                                            data-scene="@sel"
+                                            data-clip="@cn"
+                                            disabled="@(_busy || !onDisk || JobRunning || autoBusy)"
+                                            title="AI review: this clip + end of previous (does not change files)"
+                                            @onclick="() => StartAutoReviewAsync(sel, cn)">
+                                        @(autoBusy ? "Reviewing…" : draft is not null && !editing ? "Review again" : "Review")
+                                    </button>
+                                    @if (draft is not null && !editing && !autoBusy)
+                                    {
+                                        <button class="btn btn-primary"
+                                                data-testid="@($"review-apply-open-{sel}-{cn}")"
+                                                disabled="@_busy"
+                                                title="Show suggested edits to accept or change"
+                                                @onclick="() => OpenApplyPanel(sel, cn)">
+                                            Apply suggestions
+                                        </button>
+                                    }
+                                    @if (editing)
+                                    {
+                                        <button class="btn btn-warning"
+                                                data-testid="@($"review-apply-regen-{sel}-{cn}")"
+                                                disabled="@(_busy || JobRunning || !HasIncludedEdits())"
+                                                title="Save accepted edits and re-generate this clip"
+                                                @onclick="() => ApplyAndRegenAsync(sel, cn)">
+                                            Regen
+                                        </button>
+                                        <button class="btn btn-outline-secondary" disabled="@_busy"
+                                                @onclick="CloseApplyPanel">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-warning" data-testid="@($"review-regen-{sel}-{cn}")" disabled="@(_busy || JobRunning)"
+                                                title="Force re-generate this clip (same plan)"
+                                                @onclick="() => RegenClipAsync(sel, cn)">Regen</button>
+                                    }
+                                    <button class="btn btn-outline-success" data-testid="@($"review-pass-{sel}-{cn}")" disabled="@_busy"
+                                            @onclick="() => ReviewAsync(sel, cn, passStatus)">Pass</button>
+                                    <button class="btn btn-outline-danger" data-testid="@($"review-fail-{sel}-{cn}")" disabled="@_busy"
+                                            @onclick="() => ReviewAsync(sel, cn, failStatus)">Fail</button>
+                                </div>
+                                @if (autoBusy && _job is not null)
+                                {
+                                    var pct = _job.Status == "queued" || _job.Total <= 0
+                                        ? 8
+                                        : (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total));
+                                    if (_job.Status == "running" && _job.Index <= 0) pct = 0;
+                                    <div class="mt-2">
+                                        <div class="d-flex justify-content-between text-muted">
+                                            <span>@(_job.Message ?? "Reviewing…")</span>
+                                            @if (_job.Total == 100 && _job.Status == "running")
+                                            {
+                                                <span>@_job.Index%</span>
+                                            }
+                                        </div>
+                                        <div class="progress mt-1" style="height: 0.45rem;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 style="width: @(pct)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                                @if (draft is not null && !editing && !autoBusy)
+                                {
+                                    <div class="form-text mt-1">
+                                        @draft.Note
+                                        @if (draft.IncludedPreviousTail)
+                                        {
+                                            <span class="text-muted"> · continuity: @draft.Continuity</span>
+                                        }
+                                        @if (draft.Suggestions.Count > 0)
+                                        {
+                                            <span> · @draft.Suggestions.Count suggestion(s)</span>
+                                        }
+                                    </div>
+                                }
+                                @if (editing && _editRows is not null)
+                                {
+                                    <div class="mt-2 border-top pt-2">
+                                        @if (!string.IsNullOrEmpty(draft?.Note))
+                                        {
+                                            <div class="mb-2 text-muted">@draft!.Note</div>
+                                        }
+                                        @if (_editRows.Count == 0)
+                                        {
+                                            <p class="text-muted mb-1">No field changes suggested. You can Pass or Regen as-is.</p>
+                                        }
+                                        @foreach (var row in _editRows)
+                                        {
+                                            <div class="border rounded p-2 mb-2 bg-light">
+                                                <div class="form-check mb-1">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           id="@row.Id" @bind="row.Include" disabled="@_busy" />
+                                                    <label class="form-check-label" for="@row.Id">
+                                                        <strong>@row.Label</strong>
+                                                        <span class="text-muted">(@row.Layer@(string.IsNullOrEmpty(row.CharKey) ? "" : " · " + row.CharKey))</span>
+                                                    </label>
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(row.Rationale))
+                                                {
+                                                    <div class="text-muted mb-1">@row.Rationale</div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(row.CurrentValue))
+                                                {
+                                                    <div class="mb-1">
+                                                        <span class="text-muted">Current:</span>
+                                                        <div class="small" style="max-height:4rem;overflow:auto;white-space:pre-wrap;">@row.CurrentValue</div>
+                                                    </div>
+                                                }
+                                                <label class="form-label small mb-0">Suggested (editable)</label>
+                                                <textarea class="form-control form-control-sm" rows="3"
+                                                          @bind="row.Value" disabled="@(_busy || !row.Include)"></textarea>
+                                            </div>
+                                        }
+                                        <p class="form-text mb-0">
+                                            Check what to keep, edit text if needed, then <strong>Regen</strong> saves and re-generates this clip.
+                                        </p>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <p class="small text-muted mb-0 mt-3">
+                        <strong>Review</strong> drafts AI feedback (includes previous clip end when C2+).
+                        <strong>Apply suggestions</strong> shows edits; <strong>Regen</strong> writes them and re-gens.
+                        Then <strong>Rebuild scene</strong> / WIP as needed.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mt-3 border-secondary-subtle">
+    <div class="card-header py-2 bg-transparent">
+        <button type="button"
+                class="btn btn-link text-decoration-none text-body p-0 d-flex align-items-center gap-2 w-100 text-start"
+                @onclick="() => _showActivity = !_showActivity"
+                aria-expanded="@_showActivity">
+            <span class="small text-muted" style="width:1rem;display:inline-block;">@(_showActivity ? "▾" : "▸")</span>
+            <span>Activity / history</span>
+            <span class="badge bg-light text-dark border ms-1">@_entries.Count</span>
+            <span class="small text-muted ms-auto fw-normal">audit trail of pass / fail / approve</span>
+        </button>
+    </div>
+    @if (_showActivity)
+    {
+        <div class="card-body p-0 border-top">
+            @if (_entries.Count == 0)
+            {
+                <p class="text-muted p-3 mb-0">No entries yet.</p>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var e in _entries.Take(40))
+                    {
+                        <li class="list-group-item small">
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-secondary">@e.Type</span>
+                                <span class="text-muted">@e.Ts</span>
+                            </div>
+                            <div>
+                                @if (e.Scene is int sn)
+                                {
+                                    <code>S@(sn.ToString("D2"))</code>
+                                    @if (e.Clip is int cn)
+                                    {
+                                        <code class="ms-1">C@(cn.ToString("D2"))</code>
+                                    }
+                                }
+                                <span class="ms-1">@e.UserNote</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(e.SuggestedRule))
+                            {
+                                <div class="text-muted">@e.SuggestedRule</div>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>
+} @* end CanReview gate *@
+
+@code {
+    private bool _busy;
+    private bool _gateChecked;
+    private string? _error;
+    private string? _message;
+    private string _projectId = "";
+    private List<string> _projectIds = new();
+    private List<SceneSummary> _scenes = new();
+    private SceneDetail? _selectedDetail;
+    private bool _wipExists;
+    private bool _wipStale;
+    private bool _wipCanBuild;
+    private string? _wipReason;
+    private bool _showWipPlayer;
+    private bool _playWipAfterRemux;
+    private int? _playSceneAfterRemux;
+    private string? _wipPath;
+    private string? _wipUpdatedAt;
+    private long _wipBytes;
+    private long _wipVideoKey;
+    private YouTubeStatusDto? _youTubeStatus;
+    private YouTubeUploadInfo? _youTubeUpload;
+    private bool _showYouTubeUploadDialog;
+    private string _youTubeTitle = "";
+    private string _youTubeDescription = "";
+    private string _youTubePrivacy = "unlisted";
+
+    private string WipPlayTitle =>
+        !_wipCanBuild && !_wipExists
+            ? "No scene/clip videos to build WIP"
+            : _wipStale || !_wipExists
+                ? $"Refresh then play: {_wipReason ?? "out of date"}"
+                : "Play streamed movie_wip.mp4 (up to date)";
+    private bool _showScenePlayer;
+    private int? _playingScene;
+    private long _sceneVideoKey;
+    private bool _showClipPlayer;
+    private int? _playingClipScene;
+    private int? _playingClipNum;
+    private long _clipVideoKey;
+    private List<EditLogEntry> _entries = new();
+    private Dictionary<string, string> _reviews = new();
+    private int? _selectedScene;
+    private string _note = "";
+    private JobSnapshot? _job;
+    private bool _showActivity;
+    private const string passStatus = "pass";
+    private const string failStatus = "fail";
+
+    /// <summary>SxxCyy → draft from last auto-review.</summary>
+    private readonly Dictionary<string, ClipAutoReviewDraft> _drafts = new(StringComparer.OrdinalIgnoreCase);
+    private string? _editKey;
+    private List<EditRow>? _editRows;
+
+    private bool JobRunning =>
+        string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(_job?.Status, "queued", StringComparison.OrdinalIgnoreCase);
+
+    private sealed class EditRow
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public string Layer { get; set; } = "clip";
+        public string Field { get; set; } = "";
+        public string? CharKey { get; set; }
+        public string Label { get; set; } = "";
+        public string CurrentValue { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string? Rationale { get; set; }
+        public bool Include { get; set; } = true;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Hub.JobUpdated += OnJobUpdated;
+        Hub.JobLog += OnJobLog;
+        HandleYouTubeOAuthRedirect();
+        try
+        {
+            var projs = await Engine.GetProjectsAsync();
+            _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
+                          ?? new List<string>();
+            if (projs?.Active?.Id is { Length: > 0 } aid &&
+                _projectIds.Exists(id => string.Equals(id, aid, StringComparison.OrdinalIgnoreCase)))
+            {
+                _projectId = aid;
+                ActiveProject.Set(aid, projs.Active?.Label ?? projs.Active?.Title ?? aid);
+            }
+            else if (_projectIds.Count > 0)
+                _projectId = _projectIds[0];
+            else
+                _projectId = "";
+
+            await ActiveProject.RefreshReadinessAsync(Engine);
+            _gateChecked = true;
+            if (string.IsNullOrEmpty(_projectId) || !ActiveProject.CanReview)
+                return;
+
+            try { await Hub.StartAsync(); } catch { /* optional */ }
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _gateChecked = true;
+        }
+    }
+
+    private void OnJobUpdated(JobSnapshot snap)
+    {
+        _job = snap;
+        if (snap.Status is "done" or "partial" or "error" or "cancelled")
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await SoftLoadAsync();
+                if (snap.Status == "done" &&
+                    string.Equals(snap.Kind, "clip-auto-review", StringComparison.OrdinalIgnoreCase) &&
+                    snap.Scene is int rs && snap.Clip is int rc)
+                {
+                    try
+                    {
+                        var d = await Engine.GetClipAutoReviewDraftAsync(_projectId, rs, rc);
+                        if (d is not null)
+                            _drafts[$"S{rs:D2}C{rc:D2}"] = d;
+                        _message = d is null
+                            ? $"Review finished S{rs:D2}C{rc:D2}"
+                            : $"Review ready S{rs:D2}C{rc:D2}: {d.Suggestion} — Apply suggestions or Pass/Fail";
+                        _error = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        _error = ex.Message;
+                    }
+                }
+                else if (snap.Status == "done" &&
+                         string.Equals(snap.Kind, "clip-auto-review-batch", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        // Refresh per-clip drafts for selected scene after batch
+                        if (_selectedScene is int sel)
+                        {
+                            for (var c = 1; c <= ClipCountFor(sel); c++)
+                            {
+                                var d = await Engine.GetClipAutoReviewDraftAsync(_projectId, sel, c);
+                                if (d is not null)
+                                    _drafts[ClipKey(sel, c)] = d;
+                            }
+                        }
+                        _message = snap.Message ?? "Batch auto-review finished";
+                        _error = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        _error = ex.Message;
+                    }
+                }
+                else if (snap.Status == "error" &&
+                         (string.Equals(snap.Kind, "clip-auto-review", StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(snap.Kind, "clip-auto-review-batch", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _error = Session.IsAdmin
+                        ? (snap.Error ?? snap.Message ?? "Auto-review failed")
+                        : "Auto-review failed. Try again.";
+                    _message = null;
+                }
+                else if (snap.Status == "done" &&
+                    string.Equals(snap.Kind, "remux", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SoftLoadAsync();
+                    await RefreshWipMetaAsync();
+                    if (_playWipAfterRemux)
+                    {
+                        _playWipAfterRemux = false;
+                        if (_wipExists)
+                        {
+                            _showWipPlayer = true;
+                            _wipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            _message = _wipStale
+                                ? "WIP rebuilt but still marked stale — check clips"
+                                : "WIP ready — player below";
+                        }
+                    }
+                    else if (_playSceneAfterRemux is int playSn)
+                    {
+                        _playSceneAfterRemux = null;
+                        _playingScene = playSn;
+                        _showScenePlayer = true;
+                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        _message = $"Scene S{playSn:D2} ready — playing";
+                    }
+                    else if (snap.Scene is int sn && sn > 0)
+                    {
+                        _playingScene = sn;
+                        _showScenePlayer = true;
+                        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                        _message = $"Scene S{sn:D2} composite rebuilt — player below";
+                    }
+                }
+                else if (snap.Status == "done" &&
+                         string.Equals(snap.Kind, "scene", StringComparison.OrdinalIgnoreCase) &&
+                         snap.Scene is int genSn &&
+                         snap.Clip is int genCn)
+                {
+                    _message = $"Clip S{genSn:D2}C{genCn:D2} gen finished — play it, then Rebuild scene if needed";
+                    if (_selectedScene == genSn)
+                        await LoadSelectedDetailAsync(genSn);
+                }
+                else if (string.Equals(snap.Kind, "youtube_upload", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (snap.Status == "done")
+                    {
+                        await RefreshYouTubeStatusAsync();
+                        _message = snap.Message ?? "Uploaded to YouTube";
+                        _error = null;
+                    }
+                    else if (snap.Status == "error")
+                    {
+                        _error = snap.Error ?? snap.Message ?? "YouTube upload failed";
+                        _message = null;
+                    }
+                }
+                StateHasChanged();
+            });
+        }
+        else _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnJobLog(string line)
+    {
+        if (_job is not null)
+            _job.Message = line;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var scenes = await Engine.GetScenesAsync(_projectId);
+            _scenes = scenes?.Scenes ?? new();
+            var log = await Engine.GetEditLogAsync(_projectId);
+            _entries = log?.EditLog?.Entries ?? new();
+            var revs = await Engine.GetClipReviewsAsync(_projectId);
+            _reviews = revs?.Reviews ?? new();
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            await RefreshWipMetaAsync();
+            await RefreshYouTubeStatusAsync();
+            if (_selectedScene is int sn)
+                await LoadSelectedDetailAsync(sn);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SoftLoadAsync()
+    {
+        try
+        {
+            var log = await Engine.GetEditLogAsync(_projectId);
+            _entries = log?.EditLog?.Entries ?? new();
+            var revs = await Engine.GetClipReviewsAsync(_projectId);
+            _reviews = revs?.Reviews ?? new();
+            var scenes = await Engine.GetScenesAsync(_projectId);
+            _scenes = scenes?.Scenes ?? new();
+            await RefreshWipMetaAsync();
+            if (_selectedScene is int snSelected)
+                await TryLoadDraftsForSceneAsync(snSelected);
+            if (_selectedScene is int sn)
+                await LoadSelectedDetailAsync(sn);
+        }
+        catch { /* ignore */ }
+    }
+
+    private async Task TryLoadDraftsForSceneAsync(int scene)
+    {
+        var n = ClipCountFor(scene);
+        for (var c = 1; c <= n; c++)
+        {
+            try
+            {
+                var d = await Engine.GetClipAutoReviewDraftAsync(_projectId, scene, c);
+                if (d is not null)
+                    _drafts[ClipKey(scene, c)] = d;
+            }
+            catch { /* optional */ }
+        }
+    }
+
+    private async Task LoadSelectedDetailAsync(int sn)
+    {
+        try
+        {
+            var dto = await Engine.GetSceneDetailAsync(_projectId, sn);
+            _selectedDetail = dto?.Scene;
+        }
+        catch
+        {
+            _selectedDetail = null;
+        }
+    }
+
+    private async Task RefreshWipMetaAsync()
+    {
+        try
+        {
+            var meta = await Engine.GetWipMovieMetaAsync(_projectId);
+            _wipExists = meta?.Exists == true;
+            _wipStale = meta?.Stale == true || !_wipExists;
+            _wipCanBuild = meta?.CanBuild == true;
+            _wipReason = meta?.Reason;
+            _wipPath = meta?.Path;
+            _wipUpdatedAt = meta?.UpdatedAt;
+            _wipBytes = meta?.Bytes ?? 0;
+            if (!_wipExists)
+                _showWipPlayer = false;
+        }
+        catch
+        {
+            _wipExists = false;
+            _wipStale = true;
+            _wipCanBuild = false;
+        }
+    }
+
+    private async Task RefreshYouTubeStatusAsync()
+    {
+        try
+        {
+            _youTubeStatus = await Engine.GetYouTubeStatusAsync();
+            _youTubeUpload = await Engine.GetYouTubeUploadInfoAsync(_projectId);
+        }
+        catch { /* optional feature — ignore */ }
+    }
+
+    /// <summary>
+    /// One-step play: re-check freshness every click. If scenes out of date, added, or removed,
+    /// remux those scenes + rebuild WIP, then open the player. Does not re-gen clips.
+    /// </summary>
+    private async Task PlayWipAsync()
+    {
+        if (_showWipPlayer && _wipExists && !_wipStale)
+        {
+            // Still re-check — might have changed since last open
+            await RefreshWipMetaAsync();
+            if (_wipExists && !_wipStale)
+            {
+                _showWipPlayer = false;
+                return;
+            }
+        }
+
+        await RefreshWipMetaAsync();
+        if (_wipExists && !_wipStale)
+        {
+            _showWipPlayer = true;
+            _wipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _message = "Playing WIP (up to date)";
+            return;
+        }
+
+        if (!_wipCanBuild && !_wipExists)
+        {
+            _error = _wipReason ?? "Nothing on disk to build WIP";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            _playWipAfterRemux = true;
+            await Engine.StartRemuxAsync(_projectId, scene: null, rebuildWip: true, refreshStaleScenes: true);
+            _message = $"Auto-remux then play… {_wipReason}";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; _playWipAfterRemux = false; }
+        finally { _busy = false; }
+    }
+
+    private async Task PlaySceneAsync(int scene)
+    {
+        _showClipPlayer = false;
+        await RefreshWipMetaAsync();
+        var summary = _scenes.FirstOrDefault(s => s.SceneNumber == scene);
+        var needsRemux = summary is null
+                         || !summary.CompositeExists
+                         || (await Engine.GetWipMovieMetaAsync(_projectId))?.StaleScenes?.Contains(scene) == true;
+
+        if (needsRemux && summary is { ClipsOnDisk: > 0 } && !JobRunning)
+        {
+            _busy = true;
+            _error = null;
+            try
+            {
+                await EnsureHubAsync();
+                _playSceneAfterRemux = scene;
+                await Engine.StartRemuxAsync(_projectId, scene, rebuildWip: false, refreshStaleScenes: false);
+                _message = $"Rebuilding S{scene:D2} composite then play…";
+                var jobs = await Engine.GetJobAsync();
+                _job = jobs?.Job;
+            }
+            catch (Exception ex) { _error = ex.Message; _playSceneAfterRemux = null; }
+            finally { _busy = false; }
+            return;
+        }
+
+        if (summary is null || !summary.CompositeExists)
+        {
+            _error = $"No composite for S{scene:D2} — generate clips first";
+            return;
+        }
+
+        _playingScene = scene;
+        _showScenePlayer = true;
+        _sceneVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _message = $"Playing S{scene:D2} composite";
+    }
+
+    private void HideScenePlayer()
+    {
+        _showScenePlayer = false;
+        _playingScene = null;
+    }
+
+    private void PlayClip(int scene, int clip)
+    {
+        _playingClipScene = scene;
+        _playingClipNum = clip;
+        _showClipPlayer = true;
+        _clipVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _message = $"Playing S{scene:D2}C{clip:D2}";
+    }
+
+    private void HideClipPlayer()
+    {
+        _showClipPlayer = false;
+        _playingClipScene = null;
+        _playingClipNum = null;
+    }
+
+    private static string CacheBust(string url) => KeyFormatting.CacheBust(url);
+
+    private static string FormatBytes(long n) =>
+        n >= 1_000_000 ? $"{n / 1_000_000.0:0.#} MB" :
+        n >= 1_000 ? $"{n / 1_000.0:0.#} KB" : $"{n} B";
+
+    private async Task SelectSceneAsync(int scene)
+    {
+        _selectedScene = scene;
+        CloseApplyPanel();
+        await LoadSelectedDetailAsync(scene);
+        await TryLoadDraftsForSceneAsync(scene);
+    }
+
+    private int ClipCountFor(int scene) =>
+        _scenes.FirstOrDefault(s => s.SceneNumber == scene)?.ClipCount ?? 0;
+
+    private int ClipCountOnDisk(int scene) =>
+        _scenes.FirstOrDefault(s => s.SceneNumber == scene)?.ClipsOnDisk ?? 0;
+
+    private bool SceneHasComposite(int scene) =>
+        _scenes.FirstOrDefault(s => s.SceneNumber == scene)?.CompositeExists == true;
+
+    private bool ClipOnDisk(int scene, int clip)
+    {
+        if (_selectedDetail is { } d && d.SceneNumber == scene)
+        {
+            var c = d.Clips.FirstOrDefault(x => x.ClipNumber == clip);
+            if (c is not null) return c.OnDisk;
+        }
+        // Fall back: if scene has all clips on disk, assume yes
+        var s = _scenes.FirstOrDefault(x => x.SceneNumber == scene);
+        return s is not null && s.ClipsOnDisk >= s.ClipCount && s.ClipCount > 0;
+    }
+
+    private async Task ReviewAsync(int scene, int clip, string status)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.ReviewClipAsync(_projectId, scene, clip, status, _note);
+            _message = $"Marked S{scene:D2}C{clip:D2} {status}";
+            _note = "";
+            await SoftLoadAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static string ClipKey(int scene, int clip) => $"S{scene:D2}C{clip:D2}";
+
+    private bool IsAutoReviewRunning(int scene, int clip) =>
+        _job is not null &&
+        (_job.Status is "running" or "queued") &&
+        (
+            (string.Equals(_job.Kind, "clip-auto-review", StringComparison.OrdinalIgnoreCase) &&
+             _job.Scene == scene &&
+             _job.Clip == clip)
+            ||
+            (string.Equals(_job.Kind, "clip-auto-review-batch", StringComparison.OrdinalIgnoreCase) &&
+             (_job.Scene is null || _job.Scene == scene))
+        );
+
+    private ClipAutoReviewDraft? GetLocalDraft(int scene, int clip) =>
+        _drafts.TryGetValue(ClipKey(scene, clip), out var d) ? d : null;
+
+    private bool HasIncludedEdits() =>
+        _editRows is { Count: > 0 } && _editRows.Any(r => r.Include && !string.IsNullOrWhiteSpace(r.Value));
+
+    private async Task StartAutoReviewAsync(int scene, int clip)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        CloseApplyPanel();
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartClipAutoReviewAsync(_projectId, scene, clip);
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            _message = $"Reviewing S{scene:D2}C{clip:D2}…";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task StartBatchAutoReviewAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        CloseApplyPanel();
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartClipAutoReviewBatchAsync(_projectId, scene: null, onlyMissing: true);
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            _message = "Batch auto-review started (missing drafts only)…";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private bool _artifactMapLoaded;
+    private bool _artifactReady;
+    private List<string> _artifactMissing = new();
+
+    private async Task RefreshArtifactMapAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var r = await Engine.RebuildArtifactIndexAsync(_projectId);
+            _artifactMapLoaded = true;
+            _artifactReady = r.ReadyForManualFinalReview;
+            _artifactMissing = r.MissingRequired ?? new List<string>();
+            _message = r.ReadyForManualFinalReview
+                ? "Artifact map updated — open projects/" + _projectId + "/ARTIFACTS.md for Claude."
+                : "Artifact map updated — still missing: " + string.Join(", ", _artifactMissing);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private void OpenApplyPanel(int scene, int clip)
+    {
+        var draft = GetLocalDraft(scene, clip);
+        if (draft is null) return;
+        _editKey = ClipKey(scene, clip);
+        _editRows = draft.Suggestions.Select(s => new EditRow
+        {
+            Layer = s.Layer,
+            Field = s.Field,
+            CharKey = s.CharKey,
+            Label = string.IsNullOrWhiteSpace(s.Label) ? s.Field : s.Label,
+            CurrentValue = s.CurrentValue ?? "",
+            Value = s.SuggestedValue ?? "",
+            Rationale = s.Rationale,
+            Include = s.IncludeByDefault,
+        }).ToList();
+        // If no structured suggestions but fail, still allow empty panel + manual regen
+        if (_editRows.Count == 0 &&
+            string.Equals(draft.Suggestion, "fail", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(draft.Note))
+        {
+            _editRows.Add(new EditRow
+            {
+                Layer = "clip",
+                Field = "visual_prompt",
+                Label = "Clip note (add to visual prompt yourself or leave unchecked)",
+                CurrentValue = "",
+                Value = draft.Note,
+                Include = false,
+                Rationale = "AI did not propose a full field rewrite — edit or leave unchecked.",
+            });
+        }
+    }
+
+    private void CloseApplyPanel()
+    {
+        _editKey = null;
+        _editRows = null;
+    }
+
+    private async Task ApplyAndRegenAsync(int scene, int clip)
+    {
+        if (_editRows is null) return;
+        var items = _editRows
+            .Where(r => r.Include && !string.IsNullOrWhiteSpace(r.Value))
+            .Select(r => new ClipAutoReviewApplyItem
+            {
+                Layer = r.Layer,
+                Field = r.Field,
+                CharKey = r.CharKey,
+                Value = r.Value.Trim(),
+            })
+            .ToList();
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (items.Count > 0)
+            {
+                await Engine.ApplyClipAutoReviewAsync(_projectId, scene, clip, items);
+                _message = $"Saved {items.Count} change(s) — regenerating S{scene:D2}C{clip:D2}…";
+            }
+            else
+            {
+                _message = $"Regenerating S{scene:D2}C{clip:D2} (no field changes)…";
+            }
+
+            await EnsureHubAsync();
+            await Engine.StartSceneGenAsync(_projectId, scene, onlyMissing: false, clip: clip);
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            CloseApplyPanel();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ApproveAsync(int scene)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            // Approve logs + rebuild scene composite only (not full WIP)
+            await Engine.ApproveSceneAsync(_projectId, scene, _note, remux: true, rebuildWip: false);
+            _message = $"Approved S{scene:D2} — rebuilding scene composite (not WIP)";
+            await SoftLoadAsync();
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    /// <summary>FFmpeg concat clips → scene composite only. Does not rebuild WIP.</summary>
+    private async Task RebuildSceneAsync(int scene)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartRemuxAsync(_projectId, scene, rebuildWip: false);
+            _message = $"Rebuilding S{scene:D2} scene composite (clips → composite; WIP unchanged)";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    /// <summary>FFmpeg: refresh stale scene composites + stitch WIP.</summary>
+    private async Task RebuildWipAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            _playWipAfterRemux = true;
+            await Engine.StartRemuxAsync(_projectId, scene: null, rebuildWip: true, refreshStaleScenes: true);
+            _message = "Refreshing stale scenes + rebuilding WIP…";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; _playWipAfterRemux = false; }
+        finally { _busy = false; }
+    }
+
+    private async Task RegenClipAsync(int scene, int clip)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            // Force re-gen this clip only (onlyMissing: false)
+            await Engine.StartSceneGenAsync(_projectId, scene, onlyMissing: false, clip: clip);
+            _message = $"Regenerating S{scene:D2}C{clip:D2}…";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task CancelAsync()
+    {
+        try
+        {
+            await Engine.CancelJobAsync();
+            _message = "Cancel requested";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void HandleYouTubeOAuthRedirect()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (!query.TryGetValue("youtube", out var status))
+            return;
+        if (status == "connected")
+            _message = "YouTube channel connected";
+        else if (status == "error")
+            _error = query.TryGetValue("message", out var msg) ? msg.ToString() : "YouTube connect failed";
+        // Drop the one-shot query params so a page refresh doesn't re-show the toast.
+        Nav.NavigateTo(uri.GetLeftPart(UriPartial.Path), replace: true);
+    }
+
+    private void OpenYouTubeUploadDialog()
+    {
+        _youTubeTitle = string.IsNullOrWhiteSpace(_youTubeTitle) ? $"{_projectId} — WIP" : _youTubeTitle;
+        _showYouTubeUploadDialog = true;
+    }
+
+    private void CloseYouTubeUploadDialog() => _showYouTubeUploadDialog = false;
+
+    private async Task ConnectYouTubeAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var url = await Engine.GetYouTubeConnectUrlAsync();
+            Nav.NavigateTo(url, forceLoad: true);
+        }
+        catch (Exception ex) { _error = ex.Message; _busy = false; }
+    }
+
+    private async Task DisconnectYouTubeAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.DisconnectYouTubeAsync();
+            _message = "YouTube channel disconnected";
+            await RefreshYouTubeStatusAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task StartYouTubeUploadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await EnsureHubAsync();
+            await Engine.StartYouTubeUploadAsync(new StartYouTubeUploadRequest
+            {
+                ProjectId = _projectId,
+                Title = _youTubeTitle,
+                Description = _youTubeDescription,
+                PrivacyStatus = _youTubePrivacy,
+            });
+            _showYouTubeUploadDialog = false;
+            _message = "Uploading to YouTube…";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private Task EnsureHubAsync() => Hub.EnsureStartedAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.JobUpdated -= OnJobUpdated;
+        Hub.JobLog -= OnJobLog;
+        await Task.CompletedTask;
+    }
+}

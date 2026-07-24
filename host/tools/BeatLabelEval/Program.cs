@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using FilmStudio.Engine;
+using PageToMovie.Engine;
 
 // Beat-label eval: score HEURISTIC and AI against GROUND TRUTH (not each other).
 // Keep this tool + ground_truth/ + gt_score/ to compare models over time.
@@ -13,7 +13,7 @@ using FilmStudio.Engine;
 //   BeatLabelEval --score-gt --all [--ai-from v3]
 //   BeatLabelEval --label-ai --all --prompt v2 --fresh
 //
-// Product classifier: FilmStudio.Engine.SilentBeatActionClassifier (v2_pp = v2 chat + PostProcess).
+// Product classifier: PageToMovie.Engine.SilentBeatActionClassifier (v2_pp = v2 chat + PostProcess).
 
 var repo = FindRepoRoot();
 var evalRoot = Path.Combine(repo, "host", "evals", "beat_label_eval");
@@ -835,7 +835,7 @@ static string FindRepoRoot()
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
     while (dir is not null)
     {
-        if (File.Exists(Path.Combine(dir.FullName, "FilmStudio.sln")) ||
+        if (File.Exists(Path.Combine(dir.FullName, "PageToMovie.sln")) ||
             Directory.Exists(Path.Combine(dir.FullName, "projects")))
             return dir.FullName;
         // tools/BeatLabelEval → repo via host/

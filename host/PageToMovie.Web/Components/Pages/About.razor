@@ -1,0 +1,210 @@
+@page "/about"
+@inject EngineApiClient Engine
+@inject AdminSessionService Session
+@inject Microsoft.Extensions.Options.IOptions<EngineApiOptions> EngineOpts
+
+<PageTitle>About — Film Studio</PageTitle>
+
+<h1>About Film Studio</h1>
+<p class="text-muted">
+    Native C# film pipeline: Blazor UI, REST + SignalR API, Grok generation, FFmpeg remux.
+    No Python required for the product path under <code>host/</code>.
+</p>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-warning py-2">@_error</div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>API status</span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_busy">Refresh</button>
+            </div>
+            <div class="card-body small">
+                @if (_health is null && string.IsNullOrEmpty(_error))
+                {
+                    <p class="text-muted mb-0">Checking…</p>
+                }
+                else if (_health is not null)
+                {
+                    <div>Status: <strong class="text-success">OK</strong></div>
+                    <div>Service: <code>@_health.Service</code></div>
+                    <div>Workspace: <code class="text-break">@(_health.Workspace ?? "—")</code></div>
+                    <div>Active project: <strong>@(_health.ActiveProject ?? "—")</strong></div>
+                    <div>UseFakes: <strong>@(_health.UseFakes ? "ON" : "off")</strong></div>
+                    <div>xAI configured: <strong>@(_health.XaiConfigured ? "yes" : "no")</strong></div>
+                    <div>Caller: <code>@(_health.UserId ?? "—")</code>
+                        @if (_health.IsAdmin) { <span class="badge text-bg-secondary ms-1">admin</span> }
+                    </div>
+                    <div class="mt-2 text-muted">Engine API: <code>@Engine.ApiBaseUrl</code></div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Capacity (from API)</div>
+            <div class="card-body small">
+                @if (_capacity?.Capacity is { } c)
+                {
+                    <div>MaxVideoInFlight: <strong>@c.MaxVideoInFlight</strong></div>
+                    <div>MaxVideoInFlightPerUser: <strong>@c.MaxVideoInFlightPerUser</strong></div>
+                    <div>MaxFfmpegInFlight: <strong>@c.MaxFfmpegInFlight</strong></div>
+                    <div>MaxQueuePerUser: <strong>@c.MaxQueuePerUser</strong></div>
+                    <div class="mt-2">Running jobs: <strong>@_capacity.RunningCount</strong></div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Unavailable until API is up.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Architecture</div>
+    <div class="card-body">
+        <pre class="bg-light p-3 rounded mb-0 small" style="white-space:pre-wrap;">PageToMovie.Web (Blazor Server · :5079)
+    │  REST + SignalR
+    ▼
+PageToMovie.Api  (:5088)
+    │  Auth (JWT / X-User-Id) · JobHub · admin/ops
+    ▼
+PageToMovie.Engine
+    · Book prepare · Stage 1/2 · Characters · multi-ref video
+    · FFmpeg remux/WIP · locks · worker pools · metrics
+    · writes assets/video/scene_XX_clip_YY.mp4
+
+PageToMovie.Fakes     — fake Grok clients + MP4 fixtures (no xAI spend)
+PageToMovie.LoadSim   — concurrent VUs against LoadSimBuster sandbox
+PageToMovie.Tests     — unit tests</pre>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">App map</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                <tr>
+                    <th>Page</th>
+                    <th>Purpose</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var route in AppRoutes.All.Where(r => !r.AdminOnly || Session.IsAdmin))
+                {
+                    <tr><td><a href="@route.Href">@route.Label</a></td><td>@route.Purpose</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Multi-user (phases A–F)</div>
+    <div class="card-body small">
+        <ul class="mb-2">
+            <li><strong>Jobs</strong> — multi-job store; <code>GET /api/jobs?mine=1</code> (bare list → 400)</li>
+            <li><strong>Identity</strong> — <code>X-User-Id</code> / JWT; per-user API keys</li>
+            <li><strong>Locks</strong> — scene / WIP / stage / character exclusive locks</li>
+            <li><strong>Workers</strong> — API pool + FFmpeg pool with capacity caps</li>
+            <li><strong>Admin</strong> — login, live metrics, cancel job, force unlock, runtime config</li>
+            <li><strong>LoadSim</strong> — uses checked-in <code>projects/LoadSimBuster</code> (not real Buster)</li>
+        </ul>
+        <p class="mb-0 text-muted">
+            Docs: <code>host/docs/multi-user-100-plan.md</code>, <code>host/docs/loadsim-soak.md</code>, <code>host/README.md</code>
+        </p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Run (local)</div>
+    <div class="card-body">
+        <pre class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap;"># Terminal 1 — API
+cd host/PageToMovie.Api
+$env:XAI_API_KEY = "…"   # optional if UseFakes
+dotnet run                 # http://127.0.0.1:5088
+
+# Terminal 2 — Web (prefer http profile)
+cd host/PageToMovie.Web
+dotnet run --launch-profile http   # http://localhost:5079
+
+# LoadSim (optional)
+$env:PageToMovie_USE_FAKES = "true"
+dotnet run --project host/PageToMovie.LoadSim -- --users 25 --duration 90</pre>
+    </div>
+</div>
+
+<div class="small text-muted">
+    Session user: <code>@Session.UserId</code>
+    @if (Session.IsAdmin) { <span>· admin session</span> }
+    · Engine base: <code>@(EngineOpts.Value.BaseUrl)</code>
+</div>
+
+@code {
+    private bool _busy;
+    private string? _error;
+    private HealthInfo? _health;
+    private CapacityDto? _capacity;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.EnsureHealthyAsync();
+            // health endpoint returns anonymous shape — call via Http through a thin parse
+            using var http = new HttpClient { BaseAddress = new Uri(Engine.ApiBaseUrl.TrimEnd('/') + "/") };
+            http.DefaultRequestHeaders.TryAddWithoutValidation("X-User-Id", Session.UserId);
+            if (!string.IsNullOrWhiteSpace(Session.Token))
+                http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Session.Token);
+
+            var json = await http.GetStringAsync("health");
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var r = doc.RootElement;
+            _health = new HealthInfo
+            {
+                Service = r.TryGetProperty("service", out var s) ? s.GetString() : null,
+                Workspace = r.TryGetProperty("workspace", out var w) ? w.GetString() : null,
+                ActiveProject = r.TryGetProperty("activeProject", out var a) ? a.GetString() : null,
+                UseFakes = r.TryGetProperty("useFakes", out var f) && f.GetBoolean(),
+                XaiConfigured = r.TryGetProperty("xaiConfigured", out var x) && x.GetBoolean(),
+                UserId = r.TryGetProperty("userId", out var u) ? u.GetString() : null,
+                IsAdmin = r.TryGetProperty("isAdmin", out var ia) && ia.GetBoolean(),
+            };
+            _capacity = await Engine.GetCapacityAsync();
+        }
+        catch (Exception ex)
+        {
+            _health = null;
+            _capacity = null;
+            _error = $"API not reachable at {Engine.ApiBaseUrl}. Start PageToMovie.Api. ({ex.Message})";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class HealthInfo
+    {
+        public string? Service { get; set; }
+        public string? Workspace { get; set; }
+        public string? ActiveProject { get; set; }
+        public bool UseFakes { get; set; }
+        public bool XaiConfigured { get; set; }
+        public string? UserId { get; set; }
+        public bool IsAdmin { get; set; }
+    }
+}

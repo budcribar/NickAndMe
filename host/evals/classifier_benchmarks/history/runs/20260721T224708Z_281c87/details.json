@@ -19,7 +19,7 @@
     "note": "Bunnies gold corrected to page 3 only",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "plate_rank",
@@ -37,7 +37,7 @@
       "winner": "tie",
       "latencyMs": 12975,
       "aiParseHits": 2,
-      "note": "Matches FilmStudio.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames \u002B description.",
+      "note": "Matches PageToMovie.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames \u002B description.",
       "samples": [
         {
           "id": "Character_Buster",

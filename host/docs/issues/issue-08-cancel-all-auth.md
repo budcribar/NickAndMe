@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-8-cancel-all-auth` |
-| Related files | `host/FilmStudio.Api/Program.cs`; `host/FilmStudio.Engine/FilmJobService.cs` |
+| Related files | `host/PageToMovie.Api/Program.cs`; `host/PageToMovie.Engine/FilmJobService.cs` |
 
 ## Problem
 

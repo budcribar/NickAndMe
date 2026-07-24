@@ -20,7 +20,7 @@
     "note": "gold verified; v2 picture-book prompt \u002B better baseline",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "plate_rank",
@@ -38,7 +38,7 @@
       "winner": "baseline",
       "latencyMs": 15220,
       "aiParseHits": 2,
-      "note": "Matches FilmStudio.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames \u002B description.",
+      "note": "Matches PageToMovie.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames \u002B description.",
       "samples": []
     },
     {

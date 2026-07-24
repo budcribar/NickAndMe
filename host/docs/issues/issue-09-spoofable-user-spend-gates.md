@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | open |
 | Branch | `fix/issue-9-spoofable-user-spend-gates` |
-| Related files | host/FilmStudio.Api/Auth/UserContext.cs; Program.cs job start / project mutators |
+| Related files | host/PageToMovie.Api/Auth/UserContext.cs; Program.cs job start / project mutators |
 
 ## Problem
 
@@ -17,4 +17,4 @@ For multi-user: require JWT or a shared secret for job starts; optional per-user
 
 ## Notes
 
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.
+Tracked from the PageToMovie.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.

@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-12-capacity-resize-semaphore` |
-| Related files | `host/FilmStudio.Engine/WorkerPools.cs` |
+| Related files | `host/PageToMovie.Engine/WorkerPools.cs` |
 
 ## Problem
 

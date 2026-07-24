@@ -5,7 +5,7 @@
 | Severity | nit |
 | Status | **fixed** |
 | Branch | `fix/issue-16-api-help-projectid-buster` |
-| Related files | `host/FilmStudio.Api/Program.cs` |
+| Related files | `host/PageToMovie.Api/Program.cs` |
 
 ## Problem
 

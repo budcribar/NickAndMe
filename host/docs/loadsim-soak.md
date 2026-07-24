@@ -4,7 +4,7 @@
 
 - API with **fakes** for any gen-heavy run (avoids xAI spend).
 - Prefer **Release** for latency numbers (Debug is much slower under 100 VUs).
-- Built solution: `dotnet build host/FilmStudio.slnx -c Release`
+- Built solution: `dotnet build host/PageToMovie.slnx -c Release`
 - **Sandbox project:** uses checked-in `projects/LoadSimBuster` (isolated copy of Buster).
   Gen/remux/review only touch that folder. Real `Buster` / `NickAndMe` refused unless `--allowRealProject`.
   Optional rebuild from Buster: `--prepareSandbox --refreshSandbox`.
@@ -42,19 +42,19 @@ Terminal 1:
 
 ```powershell
 cd host
-$env:FILMSTUDIO_USE_FAKES = "true"
-$env:FilmStudio__Capacity__MaxVideoInFlight = "4"
-$env:FilmStudio__Capacity__MaxVideoInFlightPerUser = "1"
-$env:FilmStudio__Capacity__MaxFfmpegInFlight = "2"
-$env:FilmStudio__Fakes__VideoDelayMs = "50"
-dotnet run --project FilmStudio.Api
+$env:PageToMovie_USE_FAKES = "true"
+$env:PageToMovie__Capacity__MaxVideoInFlight = "4"
+$env:PageToMovie__Capacity__MaxVideoInFlightPerUser = "1"
+$env:PageToMovie__Capacity__MaxFfmpegInFlight = "2"
+$env:PageToMovie__Fakes__VideoDelayMs = "50"
+dotnet run --project PageToMovie.Api
 ```
 
 Terminal 2:
 
 ```powershell
 cd host
-dotnet run --project FilmStudio.LoadSim -- `
+dotnet run --project PageToMovie.LoadSim -- `
   --baseUrl http://127.0.0.1:5088 `
   --users 25 `
   --duration 90 `
@@ -97,14 +97,14 @@ Exit code **0** = gates pass. Results JSON is written to `--out`.
 ```powershell
 # Terminal 1
 # Default multi-user caps: 4 video / 1 per user / 2 ffmpeg (raise only if browse p95 stays healthy)
-$env:FILMSTUDIO_USE_FAKES = "true"
-$env:FilmStudio__Capacity__MaxVideoInFlight = "4"
-$env:FilmStudio__Capacity__MaxVideoInFlightPerUser = "1"
-$env:FilmStudio__Capacity__MaxFfmpegInFlight = "2"
-dotnet run --project FilmStudio.Api
+$env:PageToMovie_USE_FAKES = "true"
+$env:PageToMovie__Capacity__MaxVideoInFlight = "4"
+$env:PageToMovie__Capacity__MaxVideoInFlightPerUser = "1"
+$env:PageToMovie__Capacity__MaxFfmpegInFlight = "2"
+dotnet run --project PageToMovie.Api
 
 # Terminal 2
-dotnet run --project FilmStudio.LoadSim -- `
+dotnet run --project PageToMovie.LoadSim -- `
   --users 100 `
   --duration 600 `
   --scenario mixed `

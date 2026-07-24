@@ -20,10 +20,10 @@ Start API with fakes:
 
 ```powershell
 cd host
-$env:FilmStudio__UseFakes = "true"
-$env:FILMSTUDIO_USE_FAKES = "true"
-$env:FilmStudio__WorkspaceRoot = (Resolve-Path ..).Path
-dotnet run --project FilmStudio.Api --launch-profile "http (fakes)"
+$env:PageToMovie__UseFakes = "true"
+$env:PageToMovie_USE_FAKES = "true"
+$env:PageToMovie__WorkspaceRoot = (Resolve-Path ..).Path
+dotnet run --project PageToMovie.Api --launch-profile "http (fakes)"
 ```
 
 Web (other terminal):
@@ -31,7 +31,7 @@ Web (other terminal):
 ```powershell
 cd host
 $env:EngineApi__BaseUrl = "http://127.0.0.1:5088"
-dotnet run --project FilmStudio.Web --launch-profile http
+dotnet run --project PageToMovie.Web --launch-profile http
 ```
 
 Run pilot:

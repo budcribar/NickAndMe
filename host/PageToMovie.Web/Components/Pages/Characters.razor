@@ -1,0 +1,1633 @@
+@page "/characters"
+@implements IAsyncDisposable
+@inject EngineApiClient Engine
+@inject JobHubClient Hub
+@inject AdminSessionService Session
+@inject ActiveProjectState ActiveProject
+@using PageToMovie.Core.Models
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Characters</PageTitle>
+
+<h1>Characters</h1>
+
+@if (_gateChecked && !ActiveProject.CanCharacters)
+{
+    <p class="text-muted mb-3">
+        @(string.IsNullOrWhiteSpace(ActiveProject.CharactersBlockedReason)
+            ? "Approve the screenplay first."
+            : ActiveProject.CharactersBlockedReason)
+        <a href="adaptation/screenplay">Open screenplay →</a>
+    </p>
+}
+else
+{
+<p class="text-muted mb-1">
+    Set each cast member’s look before generating clips.
+</p>
+<p class="small text-muted mb-3">
+    <a href="adaptation/screenplay">← Screenplay</a>
+    ·
+    <a href="adaptation/shots">Shot plan</a>
+    @if (ActiveProject.CanScenes)
+    {
+        <text> · </text>
+        <a href="scenes">Scenes →</a>
+    }
+    else
+    {
+        <span class="text-muted" title="@ActiveProject.ScenesBlockedReason"> · Scenes</span>
+    }
+</p>
+
+@* Setup actions only when needed — hide once cast exists / book pictures are matched *@
+@if (NeedsCastBuild)
+{
+    <div class="mb-3">
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                data-testid="characters-extract-cast"
+                disabled="@(_busy || JobRunning || _extractingCast)"
+                title="One step: names + looks from screenplay and book (when present)"
+                @onclick="ExtractCastAsync">
+            @(_extractingCast ? "Building cast…" : "Build cast")
+        </button>
+        <span class="small text-muted ms-2">Screenplay + book → names, voices, and portrait-ready looks</span>
+    </div>
+}
+else if (NeedsFindCharacters)
+{
+    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 mb-3">
+        <div>
+            <strong>Match book pictures to the cast</strong>
+        </div>
+        @if (!PlateSortRunning)
+        {
+            <button type="button" class="btn btn-warning"
+                    data-testid="characters-find-plates"
+                    disabled="@(_busy || JobRunning)"
+                    @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
+                Find characters
+            </button>
+        }
+    </div>
+}
+else if (Session.IsAdmin && HasCast && !JobRunning && !_extractingCast)
+{
+    @* Advanced re-run only for admin — operators are not offered redo of finished setup *@
+    <details class="mb-2">
+        <summary class="small text-muted" style="cursor:pointer">Setup again (admin)</summary>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    data-testid="characters-extract-cast"
+                    disabled="@_busy"
+                    title="Rebuild names and looks from screenplay + book in one step"
+                    @onclick="ExtractCastAsync">
+                Rebuild cast
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    disabled="@_busy"
+                    @onclick="() => StartSortCharacterPlatesAsync(useGrok: true)">
+                Find characters again
+            </button>
+        </div>
+    </details>
+}
+
+@if (!string.IsNullOrEmpty(_error) && !JobRunning)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@* One outcome surface: success flash OR next-step CTA — not both saying “ready” *@
+@if (!string.IsNullOrEmpty(_message) && !_extractingCast && !JobRunning && !IsCastComplete)
+{
+    <div class="alert alert-success">@_message</div>
+}
+else if (IsCastComplete && !JobRunning && !_extractingCast)
+{
+    <div class="alert alert-info py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        @if (ActiveProject.CanScenes)
+        {
+            <span class="small text-muted">Next</span>
+            <a class="btn btn-sm btn-primary" data-testid="characters-to-scenes" href="scenes">Open Scenes →</a>
+        }
+        else
+        {
+            <span class="small text-muted">Next</span>
+            <a class="btn btn-sm btn-primary" data-testid="characters-to-shots" href="adaptation/shots">Build shot plan →</a>
+        }
+        <div data-testid="characters-status"
+             data-cast-complete="@(IsCastComplete ? "true" : "false")"
+             data-has-cast="@(HasCast ? "true" : "false")"
+             class="visually-hidden"
+             aria-hidden="true"></div>
+    </div>
+}
+
+@* In-progress: progress only (errors land in the single alert above when the job ends) *@
+@if (_extractingCast)
+{
+    <div class="card mb-3 border-primary">
+        <div class="card-body py-2">
+            <div class="small">Building cast…</div>
+            <div class="progress mt-2" style="height: 0.5rem;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 100%" aria-label="Building cast"></div>
+            </div>
+        </div>
+    </div>
+}
+else if (_job is not null &&
+     (_job.Kind is "character" or "character-plates" or "voice-preview") &&
+     (_job.Status is "running" or "queued"))
+{
+    <div class="card mb-3 border-primary" @key="_job.JobId">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small">@FriendlyCharacterJobStatus(_job)</span>
+                @if (_job.Total > 0 && _job.Status == "running")
+                {
+                    <span class="small text-muted">
+                        @if (string.Equals(_job.Kind, "voice-preview", StringComparison.OrdinalIgnoreCase) && _job.Total == 100)
+                        {
+                            @($"{_job.Index}%")
+                        }
+                        else
+                        {
+                            @($"{_job.Index} / {_job.Total}")
+                        }
+                    </span>
+                }
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto" disabled="@_busy" @onclick="CancelAsync">
+                    Cancel
+                </button>
+            </div>
+            @{
+                // Index 0 → empty bar (not min 8%). Remount via @key so CSS width resets on new JobId.
+                var pct = _job.Status == "queued" || _job.Total <= 0
+                    ? 8
+                    : (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total));
+                if (_job.Status == "running" && _job.Index <= 0)
+                    pct = 0;
+            }
+            <div class="progress mt-2" style="height: 0.5rem;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: @(pct)%"
+                     aria-valuenow="@pct"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
+            </div>
+            @if (!string.IsNullOrEmpty(_job.Message) &&
+                 string.Equals(_job.Kind, "voice-preview", StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="form-text mt-1">@_job.Message</div>
+            }
+            @if (Session.IsAdmin && _job.Log.Count > 0)
+            {
+                <details class="mt-2">
+                    <summary class="small text-muted" style="cursor:pointer">Details (admin)</summary>
+                    <pre class="small mb-0 mt-1" style="max-height: 160px; overflow: auto;">@string.Join("\n", _job.Log.TakeLast(24))</pre>
+                </details>
+            }
+        </div>
+    </div>
+}
+
+@if (_chars is null)
+{
+    <p class="text-muted">Loading…</p>
+}
+else if (_chars.Count == 0)
+{
+    <div class="alert alert-warning">
+        No cast yet. Approve the screenplay, then build the cast.
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-3">
+            <div class="list-group">
+                @foreach (var c in _chars)
+                {
+                    var active = c.Key == _selectedKey;
+                    var thumb = ListThumbUrl(c);
+                    var hasVoice = HasVoiceProfile(c);
+                    <button type="button"
+                            class="list-group-item list-group-item-action char-list-item @(active ? "active" : "")"
+                            disabled="@CastListLocked"
+                            title="@(CastListLocked ? "Wait until the current action finishes" : null)"
+                            @onclick="() => Select(c.Key)">
+                        @if (c.VoiceOnly)
+                        {
+                            <span class="char-list-thumb @(hasVoice ? "char-list-thumb--voice" : "char-list-thumb--voice-missing")"
+                                  title="@(hasVoice ? "Voice" : "No voice profile")"
+                                  aria-hidden="true">
+                                <span class="char-list-thumb__icon">♪</span>
+                            </span>
+                        }
+                        else if (thumb is { Length: > 0 })
+                        {
+                            <img src="@thumb" alt="" class="char-list-thumb" />
+                        }
+                        else
+                        {
+                            <span class="char-list-thumb char-list-thumb--empty" title="No picture" aria-hidden="true">
+                                <span class="char-list-thumb__icon">?</span>
+                            </span>
+                        }
+                        <span class="char-list-name text-truncate">@c.DisplayName</span>
+                        @if (!c.VoiceOnly && !hasVoice)
+                        {
+                            <span class="char-list-voice-miss" title="No voice profile" aria-label="No voice profile">♪</span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="col-md-9">
+            @if (_selected is null)
+            {
+                <p class="text-muted">Click a character on the left to set a preferred look and choose how to generate.</p>
+            }
+            else if (_selected.VoiceOnly)
+            {
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><code>@_selected.Key</code> — @_selected.DisplayName</span>
+                        <span class="badge bg-secondary">voice-only (no image)</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">
+                            <strong>Voice style</strong> — used when this character speaks (for example narrator voice-over).
+                        </p>
+                        @RenderVoiceEditor()
+                    </div>
+                </div>
+            }
+            else
+            {
+                @* Name + actions only — lock status already on the left list badges *@
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    @if (PreferredImageUrl is { Length: > 0 } prefUrl)
+                    {
+                        <img src="@prefUrl" alt="" class="char-id-strip__thumb rounded border" />
+                    }
+                    <div class="fw-semibold">@_selected.DisplayName</div>
+                    <div class="ms-auto d-flex flex-wrap gap-1">
+                        @if (_mode != Mode.PickSource)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="BackToSource">← Edit</button>
+                        }
+                        @if (_selected.Locked)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-warning" disabled="@_busy"
+                                    @onclick="UnlockAsync">Unlock</button>
+                        }
+                    </div>
+                </div>
+
+                <div class="card mb-2 @(_mode == Mode.PickSource ? "border-primary" : "")">
+                    <button type="button"
+                            class="card-header py-1 px-2 d-flex justify-content-between align-items-center gap-2 char-panel-toggle border-0 bg-transparent w-100 text-start"
+                            @onclick="() => _panelPictureOpen = !_panelPictureOpen">
+                        <span><strong>Picture</strong></span>
+                        <span class="small text-muted">@(_panelPictureOpen ? "▲" : "▼")</span>
+                    </button>
+                    @if (_panelPictureOpen)
+                    {
+                        <div class="card-body py-2">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-semibold mb-0">Description</label>
+                                    <textarea class="form-control form-control-sm" rows="2"
+                                              @bind="_editDescription" @bind:event="oninput"
+                                              disabled="@(_busy || JobRunning)"
+                                              placeholder="How they look"></textarea>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold mb-0">Visual lock</label>
+                                    <textarea class="form-control form-control-sm" rows="2"
+                                              @bind="_editVisualLock" @bind:event="oninput"
+                                              disabled="@(_busy || JobRunning)"
+                                              placeholder="Coat, markings, proportions"></textarea>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-sm btn-primary"
+                                        disabled="@(_busy || JobRunning)"
+                                        @onclick="SaveLookAsync">
+                                    Save look
+                                </button>
+                                @if (_savingLook)
+                                {
+                                    <div class="mt-2">
+                                        <div class="small text-muted mb-1">Saving look…</div>
+                                        <div class="progress" style="height: 0.5rem;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                 role="progressbar" style="width: 100%"
+                                                 aria-label="Saving look"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (_mode == Mode.PickSource)
+                            {
+                                <hr class="my-3" />
+                                <div class="small fw-semibold mb-2">Reference pictures</div>
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    @if (_selected.HasPreferred)
+                                    {
+                                        var prefOn = SeedRank("p") > 0;
+                                        <div class="char-seed-tile-wrap">
+                                            <button type="button"
+                                                    class="char-seed-tile @(prefOn ? "char-seed-tile--on char-seed-tile--send" : "")"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => ToggleSeedKey("p"))">
+                                                @if (prefOn)
+                                                {
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank("p")</span>
+                                                }
+                                                @if (PreferredImageUrl is { Length: > 0 } pu)
+                                                {
+                                                    <img src="@pu" alt="Preferred" />
+                                                }
+                                                <span class="char-seed-tile__label">Preferred</span>
+                                            </button>
+                                            <button type="button" class="char-seed-hide" title="Delete"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => RequestDeleteImage("preferred", 0))">×</button>
+                                        </div>
+                                    }
+                                    @foreach (var v in _selected.Variants.Where(x => x.Exists))
+                                    {
+                                        var idx = v.Index ?? 0;
+                                        var key = $"v{idx}";
+                                        var on = SeedRank(key) > 0;
+                                        var vsrc = !string.IsNullOrEmpty(v.Url)
+                                            ? CacheBust(v.Url!)
+                                            : CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, idx));
+                                        <div class="char-seed-tile-wrap">
+                                            <button type="button"
+                                                    class="char-seed-tile @(on ? "char-seed-tile--on char-seed-tile--send" : "")"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => ToggleSeedKey(key))">
+                                                @if (on)
+                                                {
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank(key)</span>
+                                                }
+                                                <img src="@vsrc" alt="V@(idx)" />
+                                                <span class="char-seed-tile__label">Option @idx</span>
+                                            </button>
+                                            <button type="button" class="char-seed-hide" title="Delete"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => RequestDeleteImage("variant", idx))">×</button>
+                                        </div>
+                                    }
+                                    @foreach (var b in _selected.BookRefs.Where(x => x.Exists))
+                                    {
+                                        var bi = b.Index ?? 0;
+                                        var key = $"b{bi}";
+                                        var on = SeedRank(key) > 0;
+                                        var src = !string.IsNullOrEmpty(b.Url)
+                                            ? CacheBust(b.Url!)
+                                            : CacheBust(Engine.CharacterBookRefUrl(_projectId, _selected.Key, bi));
+                                        <div class="char-seed-tile-wrap">
+                                            <button type="button"
+                                                    class="char-seed-tile @(on ? "char-seed-tile--on char-seed-tile--send" : "")"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => ToggleSeedKey(key))">
+                                                @if (on)
+                                                {
+                                                    <span class="char-seed-tile__rank char-seed-tile__rank--send">@SeedRank(key)</span>
+                                                }
+                                                <img src="@src" alt="Book" />
+                                                <span class="char-seed-tile__label">Book</span>
+                                            </button>
+                                            <button type="button" class="char-seed-hide" title="Delete"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => RequestDeleteImage("bookref", bi))">×</button>
+                                        </div>
+                                    }
+                                    @if (!_selected.HasPreferred &&
+                                         !_selected.Variants.Any(v => v.Exists) &&
+                                         !_selected.BookRefs.Any(b => b.Exists))
+                                    {
+                                        <span class="small text-muted">No pictures yet.</span>
+                                    }
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="button" class="btn btn-primary"
+                                            disabled="@(_busy || JobRunning || string.IsNullOrWhiteSpace(_editDescription) && SelectedSeedCount == 0)"
+                                            @onclick="StartRegenerateAsync">
+                                        Generate
+                                    </button>
+                                    <label class="btn btn-outline-primary btn-sm mb-0 @(_busy || JobRunning ? "disabled" : "")">
+                                        Upload…
+                                        <InputFile OnChange="OnUploadRefAsync"
+                                                   accept=".png,.jpg,.jpeg,.webp,.gif"
+                                                   class="d-none"
+                                                   disabled="@(_busy || JobRunning)" />
+                                    </label>
+                                </div>
+                            }
+                            else if (_mode == Mode.WaitingGenerate)
+                            {
+                                <div class="alert alert-info mb-0">Generating portraits…</div>
+                            }
+                            else if (_mode == Mode.Compare && _allCandidates.Count > 0)
+                            {
+                                <div class="char-pick">
+                                    <div class="small fw-semibold mb-2">Pick the best look</div>
+                                    <div class="char-pick__grid">
+                                        @foreach (var c in _allCandidates)
+                                        {
+                                            <button type="button"
+                                                    class="char-pick__card"
+                                                    disabled="@(_busy || JobRunning)"
+                                                    @onclick="@(() => LockCandidateAsync(c))">
+                                                <img src="@c.Url" alt="@c.Label" />
+                                                <span>@c.Label</span>
+                                            </button>
+                                        }
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
+                                            disabled="@(_busy || JobRunning)"
+                                            @onclick="BackToSource">
+                                        ← Back
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (_mode == Mode.PickSource || _panelVoiceOpen)
+                {
+                    <div class="card mb-2">
+                        <button type="button"
+                                class="card-header py-1 px-2 d-flex justify-content-between align-items-center gap-2 char-panel-toggle border-0 bg-transparent w-100 text-start"
+                                @onclick="() => _panelVoiceOpen = !_panelVoiceOpen">
+                            <span><strong>Voice</strong></span>
+                            <span class="small text-muted">@(_panelVoiceOpen ? "▲" : "▼")</span>
+                        </button>
+                        @if (_panelVoiceOpen)
+                        {
+                            <div class="card-body py-2">
+                                @RenderVoiceEditor()
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_deleteConfirm is not null)
+                {
+                    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2 py-2">
+                        <span class="small">Delete this picture?</span>
+                        <button type="button" class="btn btn-sm btn-danger" disabled="@_busy" @onclick="ConfirmDeleteImageAsync">Delete</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="CancelDeleteImage">Cancel</button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+} @* end CanCharacters gate *@
+
+@code {
+    private enum Mode { PickSource, WaitingGenerate, Compare }
+
+    private sealed class Candidate
+    {
+        public string Kind { get; init; } = ""; // book | variant | locked | preferred
+        public int Index { get; init; }
+        public string Label { get; init; } = "";
+        public string Url { get; init; } = "";
+    }
+
+    private sealed class PendingDelete
+    {
+        public string Kind { get; init; } = "";
+        public int Index { get; init; }
+    }
+
+    private string? PreferredImageUrl
+    {
+        get
+        {
+            if (_selected is null || !_selected.HasPreferred) return null;
+            return ListThumbUrl(_selected);
+        }
+    }
+
+    /// <summary>List thumbnail: preferred/lock/variant1, else first book pic, else null (empty placeholder).</summary>
+    private string? ListThumbUrl(CharacterSummary c)
+    {
+        if (c.VoiceOnly) return null;
+        if (c.Locked)
+            return CacheBust(Engine.CharacterRefUrl(_projectId, c.Key));
+        if (c.HasPreferred)
+        {
+            if (c.Variants.Any(v => v.Index == 1 && v.Exists))
+                return CacheBust(Engine.CharacterVariantUrl(_projectId, c.Key, 1));
+            if (c.PreferredUrl is { Length: > 0 } u)
+                return CacheBust(Engine.AbsolutizeMediaUrl(u) ?? u);
+            if (c.RefUrl is { Length: > 0 } r)
+                return CacheBust(Engine.AbsolutizeMediaUrl(r) ?? r);
+        }
+        var book = c.BookRefs.FirstOrDefault(b => b.Exists);
+        if (book is not null)
+        {
+            if (!string.IsNullOrEmpty(book.Url))
+                return CacheBust(Engine.AbsolutizeMediaUrl(book.Url) ?? book.Url);
+            if (book.Index is int bi)
+                return CacheBust(Engine.CharacterBookRefUrl(_projectId, c.Key, bi));
+        }
+        return null;
+    }
+
+    private static bool HasVoiceProfile(CharacterSummary c) =>
+        !string.IsNullOrWhiteSpace(c.VoiceProfile);
+
+    private string PreferredImageLabel =>
+        _selected is null ? ""
+        : _selected.HasPreferred
+            ? $"Preferred · {_selected.PreferredLabel}"
+            : "No preferred image";
+
+    private bool _busy;
+    private bool _gateChecked;
+    private string? _error;
+    private string? _message;
+    private string _projectId = "";
+    private List<string> _projectIds = new();
+    private List<CharacterSummary>? _chars;
+    private CharacterPlatesState? _plates;
+    private string? _selectedKey;
+    private CharacterSummary? _selected;
+    private JobSnapshot? _job;
+    private long _imgBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private Mode _mode = Mode.PickSource;
+    private List<Candidate> _allCandidates = new();
+    private PendingDelete? _deleteConfirm;
+
+    private int ApiMaxSeedRefs => Math.Max(1, _imageSeedLimits?.MaxReferenceImages ?? 3);
+    private ImageSeedLimits? _imageSeedLimits;
+    private readonly List<string> _seedOrder = new(); // "p", "v1", "b0"… click order = priority
+    private string _editDescription = "";
+    private string _editVisualLock = "";
+    /// <summary>Last loaded/saved look text — skip scrub API when editors match.</summary>
+    private string _savedLookDescription = "";
+    private string _savedLookVisualLock = "";
+    private bool _savingLook;
+    private string _editVoiceLabel = "";
+    private string _editVoiceProfile = "";
+    private bool _panelPictureOpen = true;
+    private bool _panelVoiceOpen;
+    private bool _voicePreviewBusy;
+    private string? _voicePreviewUrl;
+    private string? _voicePreviewError;
+    private string? _voicePreviewHint;
+    private bool _voicePreviewStale;
+    private long _voiceAudioBust;
+
+    private int SelectedSeedCount => _seedOrder.Count;
+
+    private bool VoiceJobRunning =>
+        _job is not null &&
+        string.Equals(_job.Kind, "voice-preview", StringComparison.OrdinalIgnoreCase) &&
+        (_job.Status is "running" or "queued") &&
+        string.Equals(_job.CharKey, _selectedKey, StringComparison.OrdinalIgnoreCase);
+
+    private RenderFragment RenderVoiceEditor() => __builder =>
+    {
+        <div class="mb-2">
+            <label class="form-label small mb-0">Voice label</label>
+            <input class="form-control form-control-sm"
+                   value="@_editVoiceLabel"
+                   @oninput="OnVoiceLabelInput"
+                   disabled="@(_busy || _voicePreviewBusy || VoiceJobRunning)"
+                   placeholder="e.g. Daddy" />
+        </div>
+        <div class="mb-2">
+            <label class="form-label small mb-0">Voice profile</label>
+            <textarea class="form-control form-control-sm" rows="4"
+                      value="@_editVoiceProfile"
+                      @oninput="OnVoiceProfileInput"
+                      disabled="@(_busy || _voicePreviewBusy || VoiceJobRunning)"
+                      placeholder="Adult male; low soft presence — used in film video prompts (voice style)"></textarea>
+            <div class="form-text">
+                Play uses the same film path as clips: short video with this description + dialogue, then audio only.
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn btn-sm btn-primary"
+                    disabled="@(_busy || VoiceJobRunning)" @onclick="SaveVoiceAsync">
+                Save voice
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    disabled="@(_busy || _voicePreviewBusy || VoiceJobRunning)"
+                    title="Play cached sample, or generate via film video if missing"
+                    @onclick="() => PlayVoicePreviewAsync(force: false)">
+                ▶ Play
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    disabled="@(_busy || _voicePreviewBusy || VoiceJobRunning)"
+                    title="Always regenerate after editing the profile"
+                    @onclick="() => PlayVoicePreviewAsync(force: true)">
+                Regenerate
+            </button>
+        </div>
+        @if (VoiceJobRunning && _job is not null)
+        {
+            var vpct = _job.Status == "queued" || _job.Total <= 0
+                ? 8
+                : (int)Math.Round(100.0 * Math.Clamp(_job.Index, 0, _job.Total) / Math.Max(1, _job.Total));
+            if (_job.Status == "running" && _job.Index <= 0)
+                vpct = 0;
+            <div class="mt-2">
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>@(_job.Message ?? "Generating voice…")</span>
+                    @if (_job.Status == "running" && _job.Total == 100)
+                    {
+                        <span>@_job.Index%</span>
+                    }
+                </div>
+                <div class="progress mt-1" style="height: 0.5rem;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         style="width: @(vpct)%"
+                         aria-valuenow="@vpct"
+                         aria-valuemin="0"
+                         aria-valuemax="100"></div>
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_voicePreviewHint))
+        {
+            <div class="form-text mt-1">@_voicePreviewHint</div>
+        }
+        @if (_voicePreviewStale && !VoiceJobRunning)
+        {
+            <div class="form-text text-warning mt-1">Profile changed — Regenerate to hear the new voice.</div>
+        }
+        @if (!string.IsNullOrEmpty(_voicePreviewError))
+        {
+            <div class="alert alert-danger py-1 small mt-2 mb-0">@_voicePreviewError</div>
+        }
+        @if (!string.IsNullOrEmpty(_voicePreviewUrl) && !VoiceJobRunning)
+        {
+            <audio class="mt-2 w-100" controls autoplay src="@_voicePreviewUrl" @key="_voicePreviewUrl"></audio>
+        }
+    };
+
+    private bool _extractingCast;
+
+    private bool JobRunning =>
+        string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase);
+
+    private bool PlateSortRunning =>
+        JobRunning &&
+        string.Equals(_job?.Kind, "character-plates", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasCast => _chars is { Count: > 0 };
+
+    /// <summary>Every cast member has look (if needed) + voice — next is shot plan or scenes.</summary>
+    private bool IsCastComplete =>
+        _chars is { Count: > 0 } &&
+        _chars.All(c =>
+            HasVoiceProfile(c) &&
+            (c.VoiceOnly || c.HasPreferred || c.Locked));
+
+    /// <summary>Show primary Build cast only when there is no cast yet.</summary>
+    private bool NeedsCastBuild =>
+        _chars is not null && _chars.Count == 0 && !_extractingCast;
+
+    /// <summary>Show Find characters only when cast exists but book pictures are not matched.</summary>
+    private bool NeedsFindCharacters =>
+        HasCast &&
+        _plates is not null &&
+        !_plates.SortedByCharacter &&
+        !PlateSortRunning;
+
+    /// <summary>
+    /// Single user step: closed cast + book-aware looks (description / visual_lock) for portraits.
+    /// </summary>
+    private async Task ExtractCastAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_projectId) || _extractingCast) return;
+        _extractingCast = true;
+        _busy = true;
+        _error = null;
+        _message = null; // progress card owns in-progress UI (not the green success alert)
+        StateHasChanged();
+        try
+        {
+            var result = await Engine.ExtractCastFromScreenplayAsync(_projectId, force: true);
+            if (result is null || result.Ok != true)
+            {
+                _error = result?.Error ?? "Could not build cast.";
+                _message = null;
+            }
+            else
+            {
+                _message = result.Message
+                    ?? $"Cast ready · {result.CharacterCount} character(s) — review looks, then lock portraits";
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _message = null;
+        }
+        finally
+        {
+            _extractingCast = false;
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Hub.JobUpdated += OnJobUpdated;
+        Hub.JobLog += OnJobLog;
+        try
+        {
+            try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
+
+            var projs = await Engine.GetProjectsAsync();
+            _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
+                          ?? new List<string>();
+            if (projs?.Active?.Id is { Length: > 0 } aid &&
+                _projectIds.Exists(id => string.Equals(id, aid, StringComparison.OrdinalIgnoreCase)))
+            {
+                _projectId = aid;
+                ActiveProject.Set(aid, projs.Active?.Label ?? projs.Active?.Title ?? aid);
+            }
+            else if (_projectIds.Count > 0)
+                _projectId = _projectIds[0];
+            else
+                _projectId = "";
+
+            await ActiveProject.RefreshReadinessAsync(Engine);
+            _gateChecked = true;
+            if (string.IsNullOrEmpty(_projectId) || !ActiveProject.CanCharacters)
+                return;
+
+            try { await Hub.StartAsync(); } catch { /* optional */ }
+
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _gateChecked = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Optional: could wire JS keyboard; L/R handled via buttons for now
+        await Task.CompletedTask;
+    }
+
+    private static string FriendlyCharacterJobStatus(JobSnapshot job)
+    {
+        var kind = job.Kind ?? "";
+        if (string.Equals(kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+            return job.Total > 0
+                ? $"Matching book pictures… ({job.Index} of {job.Total})"
+                : "Matching book pictures…";
+        if (string.Equals(kind, "character", StringComparison.OrdinalIgnoreCase))
+            return "Creating portrait…";
+        if (string.Equals(kind, "voice-preview", StringComparison.OrdinalIgnoreCase))
+            return "Generating voice sample…";
+        return "Working…";
+    }
+
+    private void OnJobUpdated(JobSnapshot snap)
+    {
+        // New job id → always take the snapshot (Index may be 0)
+        // Same job → update as usual
+        _job = snap;
+        if ((snap.Status is "done" or "error" or "cancelled") &&
+            string.Equals(snap.Kind, "voice-preview", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = InvokeAsync(async () =>
+            {
+                _voicePreviewBusy = false;
+                if (snap.Status == "done" &&
+                    string.Equals(snap.CharKey, _selectedKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _error = null;
+                    _voicePreviewError = null;
+                    _voiceAudioBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    _voicePreviewUrl = Engine.CharacterVoiceAudioUrl(
+                        _projectId, snap.CharKey!, _voiceAudioBust);
+                    _voicePreviewStale = false;
+                    _voicePreviewHint = "Film voice sample (audio only).";
+                    _message = null;
+                }
+                else if (snap.Status == "error")
+                {
+                    _message = null;
+                    _voicePreviewError = Session.IsAdmin
+                        ? (snap.Error ?? snap.Message ?? "Voice sample failed.")
+                        : "Could not generate voice sample. Try again.";
+                }
+                else if (snap.Status == "cancelled")
+                {
+                    _voicePreviewError = null;
+                    _voicePreviewHint = "Voice sample cancelled.";
+                }
+                StateHasChanged();
+                await Task.CompletedTask;
+            });
+        }
+        else if ((snap.Status is "done" or "error" or "cancelled") &&
+            string.Equals(snap.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await SoftReloadAsync();
+                if (snap.Status == "done")
+                {
+                    _error = null;
+                    _message = "Book pictures matched.";
+                }
+                else if (snap.Status == "error")
+                {
+                    _message = null;
+                    _error = Session.IsAdmin
+                        ? (snap.Error ?? snap.Message ?? "Could not match book pictures.")
+                        : "Could not match book pictures. Try again.";
+                }
+                else if (snap.Status == "cancelled")
+                {
+                    _error = null;
+                    _message = "Matching cancelled.";
+                }
+                StateHasChanged();
+            });
+        }
+        else if ((snap.Status is "done" or "error" or "cancelled") &&
+            string.Equals(snap.Kind, "character", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = InvokeAsync(async () =>
+            {
+                // Leave "Generating…" as soon as the job finishes (even if files need a moment)
+                if (snap.Status is "done" or "error" or "cancelled")
+                {
+                    if (_mode == Mode.WaitingGenerate)
+                        _mode = Mode.PickSource;
+                }
+
+                await SoftReloadAsync();
+                if (snap.Status == "done" &&
+                    string.Equals(snap.CharKey, _selectedKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _error = null;
+                    _message = null;
+                    // Brief delay so variant files are visible after write/flush
+                    await Task.Delay(150);
+                    await SoftReloadAsync();
+                    BeginCompareFromVariants();
+                }
+                else if (snap.Status == "error")
+                {
+                    _message = null;
+                    _error = Session.IsAdmin
+                        ? (snap.Error ?? snap.Message ?? "Portrait generation failed.")
+                        : "Portrait generation failed. Try again.";
+                    _mode = Mode.PickSource;
+                }
+                else if (snap.Status == "cancelled")
+                {
+                    _mode = Mode.PickSource;
+                }
+                StateHasChanged();
+            });
+        }
+        else
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnJobLog(string line)
+    {
+        if (_job is not null)
+        {
+            _job.Message = line;
+            if (_job.Log.Count == 0 || _job.Log[^1] != line)
+            {
+                _job.Log.Add(line);
+                if (_job.Log.Count > 80)
+                    _job.Log = _job.Log.TakeLast(80).ToList();
+            }
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnProjectChangedAsync()
+    {
+        ResetCompare();
+        _mode = Mode.PickSource;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var dto = await Engine.GetCharactersAsync(_projectId);
+            _chars = dto?.Characters ?? new List<CharacterSummary>();
+            _plates = dto?.CharacterPlates;
+            _imageSeedLimits = dto?.ImageSeedLimits;
+            _imgBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            // Do not auto-open a character — user clicks the list to choose source.
+            if (_selectedKey is not null && _chars.Any(c => c.Key == _selectedKey))
+                Select(_selectedKey, resetMode: false);
+            else
+            {
+                _selectedKey = null;
+                _selected = null;
+                ResetCompare();
+                _mode = Mode.PickSource;
+            }
+
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _chars = null;
+            _plates = null;
+            _imageSeedLimits = null;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task SoftReloadAsync()
+    {
+        try
+        {
+            var dto = await Engine.GetCharactersAsync(_projectId);
+            _chars = dto?.Characters ?? new List<CharacterSummary>();
+            _plates = dto?.CharacterPlates;
+            _imageSeedLimits = dto?.ImageSeedLimits;
+            _imgBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (_selectedKey is not null)
+                Select(_selectedKey, resetMode: false);
+        }
+        catch { /* ignore */ }
+    }
+
+    /// <summary>
+    /// Block cast-list switches while save/generate/etc. runs so async completion
+    /// cannot paste one character's look into another's editors.
+    /// </summary>
+    private bool CastListLocked => _busy || _savingLook || JobRunning || _extractingCast;
+
+    private void Select(string key, bool resetMode = true)
+    {
+        var switched = !string.Equals(_selectedKey, key, StringComparison.OrdinalIgnoreCase);
+        // SoftReload re-selects the same key while _busy — allow that.
+        // Operator switching to a different cast member mid-flight is ignored.
+        if (switched && CastListLocked)
+            return;
+
+        _selectedKey = key;
+        _selected = _chars?.FirstOrDefault(c => c.Key == key);
+        if (_selected is not null)
+        {
+            _editDescription = _selected.Description ?? "";
+            _editVisualLock = _selected.VisualLock ?? "";
+            _savedLookDescription = _editDescription;
+            _savedLookVisualLock = _editVisualLock;
+            _editVoiceLabel = _selected.VoiceLabel ?? "";
+            _editVoiceProfile = _selected.VoiceProfile ?? "";
+            _voicePreviewUrl = null;
+            _voicePreviewError = null;
+            _voicePreviewHint = null;
+            _voicePreviewStale = false;
+            _ = InvokeAsync(() => TryLoadCachedVoiceAsync());
+        }
+        if (switched)
+        {
+            _deleteConfirm = null;
+            ApplyPanelsForSelected();
+        }
+        if (resetMode)
+        {
+            ResetCompare();
+            _mode = Mode.PickSource;
+            _error = null;
+            _message = null;
+            ResetSeedSelection();
+            // After a full select (list click), open the panel that still needs work
+            ApplyPanelsForSelected();
+        }
+    }
+
+    /// <summary>
+    /// Expand the panel that still needs work: missing picture → Picture;
+    /// picture done but no voice → Voice; both done → Picture (browse).
+    /// </summary>
+    private void ApplyPanelsForSelected()
+    {
+        if (_selected is null)
+        {
+            _panelPictureOpen = true;
+            _panelVoiceOpen = false;
+            return;
+        }
+
+        if (_selected.VoiceOnly)
+        {
+            _panelPictureOpen = false;
+            _panelVoiceOpen = true;
+            return;
+        }
+
+        var hasPic = _selected.HasPreferred || _selected.Locked;
+        var hasVoice = HasVoiceProfile(_selected);
+
+        if (hasPic && !hasVoice)
+        {
+            _panelPictureOpen = false;
+            _panelVoiceOpen = true;
+        }
+        else
+        {
+            // Missing look, or both complete — focus picture
+            _panelPictureOpen = true;
+            _panelVoiceOpen = false;
+        }
+    }
+
+    private void ResetSeedSelection()
+    {
+        _seedOrder.Clear();
+        if (_selected is null) return;
+        // Default select: preferred, then recent generate options, then book pics (cap by API)
+        if (_selected.HasPreferred)
+            _seedOrder.Add("p");
+        foreach (var v in _selected.Variants.Where(x => x.Exists).OrderBy(x => x.Index))
+        {
+            if (_seedOrder.Count >= ApiMaxSeedRefs) break;
+            var key = $"v{v.Index ?? 0}";
+            if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                _seedOrder.Add(key);
+        }
+        foreach (var b in _selected.BookRefs.Where(x => x.Exists))
+        {
+            if (_seedOrder.Count >= ApiMaxSeedRefs) break;
+            if (b.Index is int i)
+            {
+                var key = $"b{i}";
+                if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                    _seedOrder.Add(key);
+            }
+        }
+    }
+
+    private int SeedRank(string key)
+    {
+        var i = _seedOrder.FindIndex(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+        return i < 0 ? 0 : i + 1;
+    }
+
+    private void ToggleSeedKey(string key)
+    {
+        var i = _seedOrder.FindIndex(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+        if (i >= 0)
+            _seedOrder.RemoveAt(i);
+        else
+            _seedOrder.Add(key);
+    }
+
+    private void RequestDeleteImage(string kind, int index)
+    {
+        _deleteConfirm = new PendingDelete { Kind = kind, Index = index };
+        _error = null;
+        _message = null;
+    }
+
+    private void CancelDeleteImage() => _deleteConfirm = null;
+
+    private async Task ConfirmDeleteImageAsync()
+    {
+        if (_selected is null || _deleteConfirm is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.DeleteCharacterImageAsync(
+                _projectId, _selected.Key, _deleteConfirm.Kind, _deleteConfirm.Index);
+            _deleteConfirm = null;
+            await SoftReloadAsync();
+            ResetSeedSelection();
+            _message = "Picture deleted.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static bool IsWeakBookPlate(string? fileName)
+    {
+        var n = (fileName ?? "").ToLowerInvariant();
+        return n.Contains("sampled") || n.Contains("text_page") || n.Contains("ocr");
+    }
+
+    private static string BookPlateKindLabel(string? fileName)
+    {
+        var n = (fileName ?? "").ToLowerInvariant();
+        if (n.Contains("cover")) return "cover";
+        if (n.Contains("sparse")) return "art";
+        if (n.Contains("sampled")) return "text?";
+        if (n.Contains("embedded")) return "embed";
+        if (n.Contains("bookref")) return "page";
+        return "page";
+    }
+
+    private void BackToSource()
+    {
+        ResetCompare();
+        _mode = Mode.PickSource;
+    }
+
+    private void ResetCompare()
+    {
+        _allCandidates = new();
+    }
+
+    private async Task StartRegenerateAsync()
+    {
+        if (_selected is null) return;
+        if (SelectedSeedCount == 0 && string.IsNullOrWhiteSpace(_editDescription))
+        {
+            _error = "Select a picture or enter a description.";
+            return;
+        }
+
+        var maxSend = ApiMaxSeedRefs;
+        var sendOrder = _seedOrder.Take(maxSend).ToList();
+        var includePref = sendOrder.Any(k => k is "p");
+        var variants = new List<int>();
+        var books = new List<int>();
+        foreach (var k in sendOrder)
+        {
+            if (k.Length >= 2 && k[0] == 'v' && int.TryParse(k[1..], out var vi))
+                variants.Add(vi);
+            if (k.Length >= 2 && k[0] == 'b' && int.TryParse(k[1..], out var bi))
+                books.Add(bi);
+        }
+
+        // Always 3 options so the pick grid is useful on first and later generates
+        // (engine otherwise uses 1 when the character is already locked).
+        await StartGenerateCoreAsync(new StartCharacterVariantsRequest
+        {
+            ProjectId = _projectId,
+            CharKey = _selected.Key,
+            Count = 3,
+            SeedMode = SelectedSeedCount == 0 ? "none" : "explicit",
+            IncludePreferred = includePref,
+            IncludeLockedRef = includePref,
+            BookRefIndices = books,
+            VariantIndices = variants,
+            SeedOrderKeys = sendOrder,
+            MaxRefs = maxSend,
+            DescriptionOverride = _editDescription,
+            VisualLockOverride = _editVisualLock,
+            PersistDescription = true,
+        });
+    }
+
+    private async Task StartSortCharacterPlatesAsync(bool useGrok = true)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
+            await Engine.StartSortCharacterPlatesAsync(_projectId, useGrok: useGrok, maxImages: 32);
+            // Progress card owns in-progress UI (one Cancel there) — no green status banner
+            _message = null;
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task StartGenerateCoreAsync(StartCharacterVariantsRequest req)
+    {
+        if (_selected is null) return;
+        _busy = true;
+        _error = null;
+        _message = null;
+        // Reset progress UI immediately so a prior 3/3 bar never carries over
+        var total = req.Count > 0 ? req.Count : 3;
+        _job = new JobSnapshot
+        {
+            Status = "queued",
+            Kind = "character",
+            ProjectId = _projectId,
+            CharKey = req.CharKey,
+            Message = "Starting…",
+            Index = 0,
+            Total = total,
+            Log = new List<string>(),
+            JobId = Guid.NewGuid().ToString("N"), // temporary until server job id arrives
+        };
+        _mode = Mode.WaitingGenerate;
+        StateHasChanged();
+        try
+        {
+            try { await Hub.StartAsync(); } catch (Exception hex) { _error = $"SignalR: {hex.Message}"; }
+            await Engine.StartCharacterVariantsAsync(req);
+            var jobs = await Engine.GetJobAsync();
+            if (jobs?.Job is { } j &&
+                (string.Equals(j.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Never adopt a finished job's Index/Total for the new run
+                if (j.Index > 0 && string.Equals(j.Status, "queued", StringComparison.OrdinalIgnoreCase))
+                    j.Index = 0;
+                _job = j;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _mode = Mode.PickSource;
+            _job = null;
+        }
+        finally { _busy = false; }
+    }
+
+    private void BeginCompareFromVariants()
+    {
+        if (_selected is null)
+        {
+            _mode = Mode.PickSource;
+            return;
+        }
+
+        var vars = _selected.Variants.Where(v => v.Exists).OrderBy(v => v.Index).ToList();
+        if (vars.Count == 0)
+        {
+            _mode = Mode.PickSource;
+            _error = "Generate finished but no pictures found.";
+            return;
+        }
+
+        _allCandidates = vars.Select(v => new Candidate
+        {
+            Kind = "variant",
+            Index = v.Index ?? 1,
+            Label = $"Option {v.Index}",
+            // Bust cache so second generate doesn't show stale first-round images
+            Url = CacheBust(Engine.CharacterVariantUrl(_projectId, _selected.Key, v.Index ?? 1)),
+        }).ToList();
+
+        _mode = Mode.Compare;
+        _panelPictureOpen = true;
+        _panelVoiceOpen = false;
+        _message = null;
+    }
+
+    private async Task LockCandidateAsync(Candidate c)
+    {
+        if (_selected is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (c.Kind == "variant")
+                await Engine.LockCharacterVariantAsync(_projectId, _selected.Key, c.Index);
+            else if (c.Kind == "book")
+                await Engine.LockCharacterBookRefAsync(_projectId, _selected.Key, c.Index);
+            _message = $"Locked look for {_selected.DisplayName}";
+            await LoadAsync();
+            await RefreshNavReadinessAsync();
+            ResetCompare();
+            _mode = Mode.PickSource;
+            ApplyPanelsForSelected();
+            // Include preferred + remaining generated options as seeds for next regen
+            ResetSeedSelection();
+            if (_selected is not null)
+            {
+                foreach (var v in _selected.Variants.Where(x => x.Exists))
+                {
+                    var key = $"v{v.Index ?? 0}";
+                    if (!_seedOrder.Contains(key, StringComparer.OrdinalIgnoreCase))
+                        _seedOrder.Add(key);
+                }
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveLookAsync()
+    {
+        if (_selected is null) return;
+
+        // Snapshot identity + text at click — never re-read _selected after await for the POST.
+        var charKey = _selected.Key;
+        var displayName = _selected.DisplayName;
+
+        // No text change → no API (skip Grok scrub + disk write)
+        var desc = _editDescription ?? "";
+        var vis = _editVisualLock ?? "";
+        if (string.Equals(desc, _savedLookDescription, StringComparison.Ordinal) &&
+            string.Equals(vis, _savedLookVisualLock, StringComparison.Ordinal))
+        {
+            _error = null;
+            _message = "No look changes.";
+            return;
+        }
+
+        _busy = true;
+        _savingLook = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var result = await Engine.UpdateCharacterLookAsync(
+                _projectId,
+                charKey,
+                description: desc,
+                visualLock: vis,
+                scrubWithAi: true);
+
+            // Only rebind editors if the operator is still on this character
+            var stillOnChar = string.Equals(_selectedKey, charKey, StringComparison.OrdinalIgnoreCase);
+            if (stillOnChar)
+            {
+                if (!string.IsNullOrWhiteSpace(result.Description))
+                    _editDescription = result.Description!;
+                if (result.VisualLock is not null)
+                    _editVisualLock = result.VisualLock;
+            }
+
+            _message = $"Saved look for {displayName}";
+
+            await SoftReloadAsync();
+            if (stillOnChar &&
+                string.Equals(_selectedKey, charKey, StringComparison.OrdinalIgnoreCase) &&
+                _selected is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(result.Description))
+                    _editDescription = result.Description!;
+                else
+                    _editDescription = _selected.Description ?? "";
+                if (result.VisualLock is not null)
+                    _editVisualLock = result.VisualLock;
+                else
+                    _editVisualLock = _selected.VisualLock ?? "";
+                _savedLookDescription = _editDescription;
+                _savedLookVisualLock = _editVisualLock;
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; _message = null; }
+        finally
+        {
+            _busy = false;
+            _savingLook = false;
+        }
+    }
+
+    private async Task SaveVoiceAsync()
+    {
+        if (_selected is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.UpdateCharacterVoiceAsync(
+                _projectId,
+                _selected.Key,
+                voiceProfile: _editVoiceProfile,
+                voiceLabel: _editVoiceLabel);
+            _message = $"Saved voice for {_selected.DisplayName}";
+            await SoftReloadAsync();
+            // re-bind edit fields after reload
+            if (_selected is not null)
+            {
+                _editVoiceLabel = _selected.VoiceLabel ?? "";
+                _editVoiceProfile = _selected.VoiceProfile ?? "";
+            }
+            // Nav tooltips / Scenes gate depend on cast + shot-plan readiness
+            try { await ActiveProject.RefreshReadinessAsync(Engine); } catch { /* nav */ }
+            // Next-step CTA handles “cast complete” — don’t stack another “ready” message
+            if (IsCastComplete)
+                _message = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private void OnVoiceLabelInput(ChangeEventArgs e)
+    {
+        _editVoiceLabel = e.Value?.ToString() ?? "";
+        MarkVoiceStaleIfPlaying();
+    }
+
+    private void OnVoiceProfileInput(ChangeEventArgs e)
+    {
+        _editVoiceProfile = e.Value?.ToString() ?? "";
+        MarkVoiceStaleIfPlaying();
+    }
+
+    private void MarkVoiceStaleIfPlaying()
+    {
+        if (!string.IsNullOrEmpty(_voicePreviewUrl))
+            _voicePreviewStale = true;
+    }
+
+    private async Task TryLoadCachedVoiceAsync()
+    {
+        if (_selected is null) return;
+        try
+        {
+            var st = await Engine.GetVoicePreviewStatusAsync(
+                _projectId,
+                _selected.Key,
+                voiceProfile: _editVoiceProfile,
+                voiceLabel: _editVoiceLabel);
+            if (st is { Exists: true, Matches: true })
+            {
+                _voiceAudioBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                _voicePreviewUrl = Engine.CharacterVoiceAudioUrl(
+                    _projectId, _selected.Key, _voiceAudioBust);
+                _voicePreviewStale = false;
+                _voicePreviewHint = "Cached film voice sample.";
+            }
+            else if (st is { Exists: true, Matches: false })
+            {
+                _voicePreviewStale = true;
+                _voicePreviewHint = "Saved sample is out of date — Regenerate after edits.";
+            }
+            StateHasChanged();
+        }
+        catch { /* optional */ }
+    }
+
+    /// <param name="force">true = always regenerate (after editing profile).</param>
+    private async Task PlayVoicePreviewAsync(bool force)
+    {
+        if (_selected is null) return;
+        _voicePreviewError = null;
+        _voicePreviewHint = null;
+        StateHasChanged();
+
+        try
+        {
+            if (!force)
+            {
+                var st = await Engine.GetVoicePreviewStatusAsync(
+                    _projectId,
+                    _selected.Key,
+                    voiceProfile: _editVoiceProfile,
+                    voiceLabel: _editVoiceLabel);
+                if (st is { Exists: true, Matches: true })
+                {
+                    _voiceAudioBust = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    _voicePreviewUrl = Engine.CharacterVoiceAudioUrl(
+                        _projectId, _selected.Key, _voiceAudioBust);
+                    _voicePreviewStale = false;
+                    _voicePreviewHint = "Cached film voice sample.";
+                    return;
+                }
+            }
+
+            _voicePreviewBusy = true;
+            _voicePreviewUrl = null;
+            _voicePreviewHint = force
+                ? "Regenerating film voice sample…"
+                : "Generating film voice sample (short video → audio)…";
+            StateHasChanged();
+
+            await Engine.StartVoicePreviewAsync(new StartVoicePreviewRequest
+            {
+                ProjectId = _projectId,
+                CharKey = _selected.Key,
+                VoiceProfile = _editVoiceProfile,
+                VoiceLabel = _editVoiceLabel,
+                DisplayName = _selected.DisplayName,
+                // force: always regen; cache miss also generates (service skips only matching cache)
+                Force = force,
+            });
+            // Job progress via SignalR; keep busy until done handler clears it
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex)
+        {
+            _voicePreviewError = ex.Message;
+            _voicePreviewBusy = false;
+        }
+    }
+
+    private async Task RefreshNavReadinessAsync()
+    {
+        try { await ActiveProject.RefreshReadinessAsync(Engine); }
+        catch { /* nav gates */ }
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (_selected is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Engine.UnlockCharacterAsync(_projectId, _selected.Key);
+            _message = $"Unlocked {_selected.DisplayName}";
+            await LoadAsync();
+            ResetCompare();
+            _mode = Mode.PickSource;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task OnUploadRefAsync(InputFileChangeEventArgs e)
+    {
+        if (_selected is null || _selected.VoiceOnly) return;
+        var file = e.File;
+        if (file is null) return;
+
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            const long max = 25 * 1024 * 1024;
+            await using var stream = file.OpenReadStream(max);
+            await Engine.UploadCharacterRefAsync(_projectId, _selected.Key, stream, file.Name);
+            _message = $"Locked preferred look for {_selected.DisplayName} from your upload.";
+            await LoadAsync();
+            ResetCompare();
+            _mode = Mode.PickSource;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Engine.CancelJobAsync();
+            _message = "Cancel requested";
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            if (_mode == Mode.WaitingGenerate)
+                _mode = Mode.PickSource;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private string CacheBust(string url) =>
+        url + (url.Contains('?') ? "&" : "?") + "v=" + _imgBust;
+
+    private static string Trunc(string? s, int n)
+    {
+        if (string.IsNullOrEmpty(s)) return "—";
+        return s.Length <= n ? s : s[..(n - 1)] + "…";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.JobUpdated -= OnJobUpdated;
+        Hub.JobLog -= OnJobLog;
+        await Task.CompletedTask;
+    }
+}

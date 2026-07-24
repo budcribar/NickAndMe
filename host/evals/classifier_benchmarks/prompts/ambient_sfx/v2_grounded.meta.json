@@ -2,5 +2,5 @@
   "id": "v2_grounded",
   "task": "ambient_sfx",
   "label": "v2 grounded + empty-safe (anti over-tag) — SHIPPED",
-  "notes": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review + score variance analysis."
+  "notes": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review + score variance analysis."
 }

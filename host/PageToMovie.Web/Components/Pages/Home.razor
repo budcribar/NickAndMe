@@ -1,0 +1,494 @@
+@page "/"
+@implements IAsyncDisposable
+@inject EngineApiClient Engine
+@inject JobHubClient Hub
+@inject NavigationManager Nav
+@inject ActiveProjectState ActiveProject
+@inject AdminSessionService Session
+@using PageToMovie.Core.Models
+
+<PageTitle>Film Studio</PageTitle>
+
+<h1>Film Studio</h1>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert alert-info">@_message</div>
+}
+
+@if (_healthOk == false)
+{
+    <div class="alert alert-warning">
+        Server not reachable. Start the Film Studio API, then reload this page.
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Projects</span>
+                <button class="btn btn-primary btn-sm"
+                        data-testid="home-new-project"
+                        disabled="@_busy"
+                        @onclick="() => _showNew = !_showNew">
+                    @(_showNew ? "Cancel" : "New project")
+                </button>
+            </div>
+            <div class="card-body">
+                @if (_showNew)
+                {
+                    <div class="border rounded p-2 mb-3 bg-light">
+                        <label class="form-label small mb-1">Name</label>
+                        <input class="form-control form-control-sm mb-2"
+                               data-testid="home-new-project-name"
+                               value="@_newName"
+                               @oninput="OnNewNameInput"
+                               @onkeydown="OnNewNameKeyDown"
+                               disabled="@_busy"
+                               placeholder="e.g. My Short Film"
+                               maxlength="80"
+                               autofocus />
+                        <button class="btn btn-success btn-sm"
+                                data-testid="home-create-project"
+                                disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))"
+                                @onclick="CreateProjectAsync">
+                            Create
+                        </button>
+                    </div>
+                }
+
+                @if (_projects is null)
+                {
+                    <p class="text-muted mb-0">Loading…</p>
+                }
+                else if (_projects.Projects.Count == 0)
+                {
+                    <p class="text-muted mb-0">No projects yet. Create one to get started.</p>
+                }
+                else
+                {
+                    <div class="list-group project-list">
+                        @foreach (var p in _projects.Projects)
+                        {
+                            var id = p.Id ?? "";
+                            var active = string.Equals(id, _projects.Active?.Id, StringComparison.OrdinalIgnoreCase);
+                            <div class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-0 px-0 @(active ? "active" : null)">
+                                <button type="button"
+                                        class="btn border-0 bg-transparent flex-grow-1 text-start py-2 px-3 project-list__pick @(active ? "text-white" : null)"
+                                        data-testid="@($"home-project-{id}")"
+                                        data-project-id="@id"
+                                        data-project-active="@(active ? "true" : "false")"
+                                        disabled="@_busy"
+                                        @onclick="() => SelectProjectAsync(id)">
+                                    <strong>@(p.Label ?? p.Title ?? id)</strong>
+                                </button>
+                                @if (active)
+                                {
+                                    <a class="btn btn-sm btn-light flex-shrink-0" data-testid="home-open-adaptation" href="adaptation">Open</a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger me-2 flex-shrink-0 @(active ? "border-light text-white" : null)"
+                                            disabled="@_busy"
+                                            @onclick="() => BeginDeleteAsync(id, p.Label ?? p.Title ?? id)">
+                                        Delete
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_deleteId is not null)
+                {
+                    <div class="border border-danger rounded p-2 mt-3 bg-light">
+                        <p class="small mb-2">
+                            Delete <strong>@_deleteLabel</strong>? This removes the project folder and all its files.
+                        </p>
+                        <label class="form-label small mb-1">Type the project name to confirm</label>
+                        <input class="form-control form-control-sm mb-2"
+                               value="@_deleteConfirm"
+                               @oninput="OnDeleteConfirmInput"
+                               disabled="@_busy"
+                               placeholder="@_deleteLabel"
+                               autocomplete="off" />
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button"
+                                    class="btn btn-danger btn-sm"
+                                    disabled="@(_busy || !CanConfirmDelete)"
+                                    @onclick="ConfirmDeleteAsync">
+                                Delete permanently
+                            </button>
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    disabled="@_busy"
+                                    @onclick="CancelDelete">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>My jobs</span>
+                <span class="badge text-bg-secondary">@_myJobs.Count</span>
+            </div>
+            <div class="card-body">
+                @if (_myJobs.Count == 0 && _job is null)
+                {
+                    <p class="text-muted mb-0">No recent jobs. Generation and adaptation work will show up here.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var j in _myJobs.Take(8))
+                        {
+                            <li class="list-group-item px-0 py-2 small">
+                                <span class="badge bg-secondary">@FriendlyStatus(j.Status)</span>
+                                <span>@FriendlyKind(j.Kind)</span>
+                                @if (j.Total > 0) { <span class="text-muted">@j.Index/@j.Total</span> }
+                                <div class="text-muted">@FriendlyJobLine(j)</div>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (_job is not null)
+                {
+                    var jobLine = FriendlyJobLine(_job);
+                    var showError = string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase)
+                                    && !string.IsNullOrWhiteSpace(_job.Error);
+                    <p class="mb-1">
+                        <strong>Current:</strong>
+                        <span class="badge bg-secondary">@FriendlyStatus(_job.Status)</span>
+                        @if (_job.Total > 0)
+                        {
+                            <span class="ms-1">@_job.Index / @_job.Total</span>
+                        }
+                    </p>
+                    @if (showError)
+                    {
+                        <div class="alert alert-danger py-1 small mb-2">
+                            @(Session.IsAdmin
+                                ? (_job.Error ?? jobLine)
+                                : FriendlyOperatorError(_job))
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(jobLine))
+                    {
+                        <p class="small mb-2">@jobLine</p>
+                    }
+                    @if (Session.IsAdmin && _job.Log.Count > 0)
+                    {
+                        <details class="mb-2" open="@JobLogHasVideoPayload(_job)">
+                            <summary class="small text-muted" style="cursor:pointer">
+                                Details (admin)
+                                @if (JobLogHasVideoPayload(_job))
+                                {
+                                    <span class="badge text-bg-dark ms-1">video API</span>
+                                }
+                            </summary>
+                            <pre class="small mb-0 mt-1" style="max-height: 420px; overflow: auto; white-space: pre-wrap;">@string.Join("\n", _job.Log.TakeLast(400))</pre>
+                            <p class="form-text mb-0 mt-1">
+                                Full prompts also under <code>projects/…/assets/video/prompts/SxxCyy.txt</code>
+                            </p>
+                        </details>
+                    }
+                    @if (string.Equals(_job.Status, "running", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(_job.Status, "queued", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <button class="btn btn-outline-danger btn-sm mt-2" disabled="@_busy" @onclick="CancelAsync">
+                            Cancel
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool? _healthOk;
+    private bool _busy;
+    private string? _error;
+    private string? _message;
+    private ProjectsDto? _projects;
+    private JobSnapshot? _job;
+    private List<JobSnapshot> _myJobs = new();
+    private bool _showNew;
+    private string _newName = "";
+    private string? _deleteId;
+    private string _deleteLabel = "";
+    private string _deleteConfirm = "";
+
+    private bool CanConfirmDelete =>
+        _deleteId is not null &&
+        (string.Equals(_deleteConfirm.Trim(), _deleteId, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(_deleteConfirm.Trim(), _deleteLabel.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Hub.JobUpdated += OnJobUpdated;
+        Hub.JobLog += OnJobLog;
+        try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
+        await LoadAsync();
+        try
+        {
+            await Hub.StartAsync();
+        }
+        catch
+        {
+            // SignalR optional for browse
+        }
+    }
+
+    private void OnJobUpdated(JobSnapshot snap)
+    {
+        _job = snap;
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                var mine = await Engine.GetJobsAsync(mine: true);
+                _myJobs = mine?.Jobs?
+                    .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+                    .Take(12)
+                    .ToList()
+                    ?? new List<JobSnapshot>();
+            }
+            catch { /* ignore */ }
+            StateHasChanged();
+        });
+    }
+
+    private void OnJobLog(string line)
+    {
+        if (_job is not null)
+        {
+            _job.Message = line;
+            // Keep rolling admin log so video API prompts appear live on Home
+            _job.Log ??= new List<string>();
+            _job.Log.Add(line);
+            if (_job.Log.Count > 2000)
+                _job.Log.RemoveRange(0, _job.Log.Count - 1500);
+        }
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static bool JobLogHasVideoPayload(JobSnapshot j) =>
+        j.Log.Any(l =>
+            l.Contains("PROMPT BEGIN", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("[Grok] Submit", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("video-extend", StringComparison.OrdinalIgnoreCase) ||
+            l.Contains("reference-to-video", StringComparison.OrdinalIgnoreCase));
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            try
+            {
+                await Engine.EnsureHealthyAsync();
+                _healthOk = true;
+            }
+            catch
+            {
+                _healthOk = false;
+                _projects = null;
+                return;
+            }
+
+            _projects = await Engine.GetProjectsAsync();
+            await ActiveProject.RefreshFromApiAsync(Engine);
+
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+            try
+            {
+                var mine = await Engine.GetJobsAsync(mine: true);
+                _myJobs = mine?.Jobs?
+                    .OrderByDescending(j => j.StartedAt ?? j.QueuedAt)
+                    .Take(12)
+                    .ToList()
+                    ?? new List<JobSnapshot>();
+            }
+            catch { _myJobs = new List<JobSnapshot>(); }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnNewNameInput(ChangeEventArgs e)
+    {
+        _newName = e.Value?.ToString() ?? "";
+    }
+
+    private async Task OnNewNameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_busy && !string.IsNullOrWhiteSpace(_newName))
+            await CreateProjectAsync();
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName)) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var name = _newName.Trim();
+            var result = await Engine.CreateProjectAsync(name);
+            _projects = result ?? await Engine.GetProjectsAsync();
+            var created = _projects?.Active;
+            if (created?.Id is { Length: > 0 } cid)
+            {
+                ActiveProject.Set(cid, created.Label ?? created.Title ?? cid);
+                await ActiveProject.RefreshReadinessAsync(Engine);
+            }
+            else
+                await ActiveProject.RefreshFromApiAsync(Engine);
+            _message = $"Created “{name}”";
+            _newName = "";
+            _showNew = false;
+            Nav.NavigateTo("adaptation");
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SelectProjectAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return;
+        if (string.Equals(id, _projects?.Active?.Id, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _busy = true;
+        _error = null;
+        _message = null;
+        _deleteId = null;
+        _deleteConfirm = "";
+        try
+        {
+            await Engine.ActivateProjectAsync(id);
+            _projects = await Engine.GetProjectsAsync();
+            var a = _projects?.Active;
+            ActiveProject.Set(id, a?.Label ?? a?.Title ?? id);
+            await ActiveProject.RefreshReadinessAsync(Engine);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private Task BeginDeleteAsync(string id, string label)
+    {
+        _deleteId = id;
+        _deleteLabel = label;
+        _deleteConfirm = "";
+        _error = null;
+        _message = null;
+        return Task.CompletedTask;
+    }
+
+    private void OnDeleteConfirmInput(ChangeEventArgs e) =>
+        _deleteConfirm = e.Value?.ToString() ?? "";
+
+    private void CancelDelete()
+    {
+        _deleteId = null;
+        _deleteLabel = "";
+        _deleteConfirm = "";
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_deleteId is null || !CanConfirmDelete) return;
+        var id = _deleteId;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Engine.DeleteProjectAsync(id);
+            _projects = result ?? await Engine.GetProjectsAsync();
+            await ActiveProject.RefreshFromApiAsync(Engine);
+            _message = $"Deleted “{_deleteLabel}”";
+            CancelDelete();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task CancelAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Engine.CancelJobAsync();
+            _message = "Cancel requested";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static string FriendlyStatus(string? status) =>
+        string.IsNullOrWhiteSpace(status) ? "…" : status!;
+
+    private static string FriendlyKind(string? kind) => kind switch
+    {
+        "character" => "Portrait",
+        "character-plates" => "Book pictures",
+        "stage1" => "Screenplay",
+        "stage2" => "Shot plan",
+        "video" or "clip" => "Clip",
+        _ => string.IsNullOrWhiteSpace(kind) ? "Job" : kind!,
+    };
+
+    /// <summary>Short operator line — no paths, seed lists, or API jargon.</summary>
+    private static string FriendlyJobLine(JobSnapshot j)
+    {
+        if (string.Equals(j.Status, "error", StringComparison.OrdinalIgnoreCase))
+            return FriendlyOperatorError(j);
+        if (string.Equals(j.Status, "cancelled", StringComparison.OrdinalIgnoreCase))
+            return "Cancelled.";
+        if (string.Equals(j.Status, "done", StringComparison.OrdinalIgnoreCase))
+            return "Done.";
+        // Running / queued: prefer a short outcome phrase over raw Message (which may be technical)
+        if (string.Equals(j.Kind, "character", StringComparison.OrdinalIgnoreCase))
+            return "Creating portrait…";
+        if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+            return "Matching book pictures…";
+        var msg = j.Message ?? "";
+        if (msg.Length > 120) msg = msg[..117] + "…";
+        return msg;
+    }
+
+    private static string FriendlyOperatorError(JobSnapshot j)
+    {
+        if (string.Equals(j.Kind, "character", StringComparison.OrdinalIgnoreCase))
+            return "Portrait generation failed. Try again.";
+        if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
+            return "Could not match book pictures. Try again.";
+        return "Something went wrong. Try again.";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.JobUpdated -= OnJobUpdated;
+        Hub.JobLog -= OnJobLog;
+        await Hub.DisposeAsync();
+    }
+}

@@ -1,0 +1,553 @@
+@page "/admin/learning"
+@inject EngineApiClient Api
+@inject AdminSessionService Session
+@inject NavigationManager Nav
+@using PageToMovie.Core.Models
+
+<PageTitle>Admin — Learning</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-0">Learning</h1>
+            <div class="text-muted small">
+                Review events · prompt packs · project rules (admin)
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="/admin">Dashboard</a>
+            <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="RefreshAsync">Refresh</button>
+        </div>
+    </div>
+
+    @if (!Session.IsAdmin)
+    {
+        <div class="alert alert-warning">
+            Admin session required. <a href="/admin/login">Sign in</a>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert alert-info py-2">@_message</div>
+        }
+
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <label class="form-label small">Filter project</label>
+                <input class="form-control form-control-sm" @bind="_projectFilter" placeholder="optional project id" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-sm btn-primary" disabled="@_busy" @onclick="RefreshAsync">Apply</button>
+            </div>
+        </div>
+
+        @if (_insights is not null)
+        {
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Events</div><strong>@_insights.EventCount</strong></div></div>
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Human fail</div><strong>@_insights.HumanFail</strong></div></div>
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Human pass</div><strong>@_insights.HumanPass</strong></div></div>
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Auto-review</div><strong>@_insights.AutoReview</strong></div></div>
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Apply</div><strong>@_insights.ApplyCount</strong></div></div>
+                <div class="col-6 col-md-2"><div class="card card-body py-2 small"><div class="text-muted">Regen</div><strong>@_insights.RegenCount</strong></div></div>
+            </div>
+
+            @if (_insights.FailByCategory.Count > 0)
+            {
+                <div class="card mb-3">
+                    <div class="card-header py-2">Fails by category</div>
+                    <div class="card-body py-2 small">
+                        @foreach (var kv in _insights.FailByCategory.OrderByDescending(x => x.Value))
+                        {
+                            <span class="badge bg-secondary me-1 mb-1">@kv.Key · @kv.Value</span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <span>Recent events</span>
+            </div>
+            <div class="card-body p-0">
+                @if (_events.Count == 0)
+                {
+                    <p class="text-muted p-3 mb-0 small">No learning events yet. Use Review → Fail / Auto Review to generate data.</p>
+                }
+                else
+                {
+                    <div class="table-responsive" style="max-height: 280px; overflow: auto;">
+                        <table class="table table-sm table-striped mb-0 small">
+                            <thead><tr>
+                                <th>When</th><th>Type</th><th>Project</th><th>Clip</th><th>Cat</th><th>Note</th>
+                            </tr></thead>
+                            <tbody>
+                            @foreach (var e in _events)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@e.Ts.ToLocalTime().ToString("g")</td>
+                                    <td><code>@e.Type</code></td>
+                                    <td>@e.ProjectId</td>
+                                    <td>
+                                        @if (e.Scene is int sn)
+                                        {
+                                            <code>S@(sn.ToString("D2"))C@((e.Clip ?? 0).ToString("D2"))</code>
+                                        }
+                                    </td>
+                                    <td>@(e.Category ?? "—")</td>
+                                    <td style="max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@e.Note">@e.Note</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">Prompt packs</div>
+            <div class="card-body small">
+                @if (_manifest is null)
+                {
+                    <p class="text-muted mb-0">No packs loaded.</p>
+                }
+                else
+                {
+                    <p class="text-muted">
+                        Active gen: <code>@_manifest.ActiveGenPackId</code>
+                        · Active auto-review: <code>@_manifest.ActiveAutoReviewPackId</code>
+                    </p>
+                    <ul class="list-group list-group-flush mb-2">
+                        @foreach (var p in _manifest.Packs)
+                        {
+                            <li class="list-group-item d-flex flex-wrap align-items-center gap-2 px-0">
+                                <code>@p.Id</code>
+                                <span class="badge bg-light text-dark">@p.Kind</span>
+                                @if (p.Active)
+                                {
+                                    <span class="badge bg-success">active</span>
+                                }
+                                <span class="text-muted">@p.Notes</span>
+                                <button class="btn btn-sm btn-outline-primary ms-auto"
+                                        disabled="@(_busy || p.Active)"
+                                        @onclick="() => ActivatePackAsync(p.Id)">
+                                    Activate
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                    <div class="border rounded p-2">
+                        <div class="fw-semibold mb-1">Create pack version</div>
+                        <div class="row g-2">
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" @bind="_newPackKind">
+                                    <option value="gen">gen</option>
+                                    <option value="auto_review">auto_review</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input class="form-control form-control-sm" @bind="_newPackVersion" placeholder="v2" />
+                            </div>
+                            <div class="col-md-8">
+                                <textarea class="form-control form-control-sm" rows="3" @bind="_newPackBody"
+                                          placeholder="Pack body text (house rules)…"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="CreatePackAsync">
+                                    Save new pack
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span>Proposed rules checklist</span>
+                @if (_checklist is not null)
+                {
+                    <span class="badge bg-secondary">
+                        @DoneCount / @_checklist.Items.Count done
+                        · @PendingVisibleCount open
+                    </span>
+                }
+            </div>
+            <div class="card-body small">
+                <p class="text-muted mb-2">
+                    Numbered proposals. Check off as you review; <strong>accepted / done</strong> items hide until you show them.
+                    <strong>Propose</strong> merges new bullets by theme (not only exact text), keeps reviewed items,
+                    and retains prior done rows the new propose did not restate. Approving a project rule also marks matching checklist items done.
+                </p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <input type="number" class="form-control form-control-sm" style="max-width:6rem" @bind="_proposeN" min="5" max="200" />
+                    <button class="btn btn-sm btn-primary" data-testid="learning-propose" disabled="@_busy" @onclick="ProposeAsync">Propose from last N fails</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-testid="learning-checklist-reload" disabled="@_busy" @onclick="LoadChecklistAsync">Reload checklist</button>
+                    @if (DoneCount > 0)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                data-testid="learning-checklist-toggle-done"
+                                disabled="@_busy"
+                                @onclick="() => _showDoneItems = !_showDoneItems">
+                            @(_showDoneItems ? "Hide done" : $"Show done ({DoneCount})")
+                        </button>
+                    }
+                </div>
+
+                @if (_checklist is null || _checklist.Items.Count == 0)
+                {
+                    <p class="text-muted mb-0">No checklist yet.</p>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush border rounded mb-2">
+                        @{
+                            var index = 0;
+                        }
+                        @foreach (var item in _checklist.Items)
+                        {
+                            index++;
+                            var isDone = IsChecklistDone(item);
+                            if (isDone && !_showDoneItems)
+                                continue;
+
+                            <div class="list-group-item px-2 py-2 @(isDone ? "opacity-75" : "")"
+                                 data-testid="@($"learning-proposal-{item.Id}")">
+                                <div class="d-flex gap-2 align-items-start">
+                                    <span class="badge bg-dark flex-shrink-0 mt-1" style="min-width:1.75rem;">@index</span>
+                                    <div class="flex-grow-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   id="@($"prop-{item.Id}")"
+                                                   data-testid="@($"learning-proposal-check-{item.Id}")"
+                                                   checked="@item.Reviewed"
+                                                   disabled="@_busy"
+                                                   @onchange="e => ToggleProposalAsync(item, (bool)(e.Value ?? false))" />
+                                            <label class="form-check-label" for="@($"prop-{item.Id}")">
+                                                @if (isDone)
+                                                {
+                                                    <span class="badge bg-success me-1">done</span>
+                                                }
+                                                else if (item.Reviewed)
+                                                {
+                                                    <span class="badge bg-info text-dark me-1">reviewed</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning text-dark me-1">pending</span>
+                                                }
+                                                @item.Text
+                                            </label>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-1 ms-4 align-items-center">
+                                            <select class="form-select form-select-sm"
+                                                    style="max-width:10rem"
+                                                    disabled="@_busy"
+                                                    value="@(item.Disposition ?? "")"
+                                                    @onchange="e => SetDispositionAsync(item, e.Value?.ToString())">
+                                                <option value="">disposition…</option>
+                                                <option value="accepted">accepted / done</option>
+                                                <option value="partial">partial</option>
+                                                <option value="rejected">rejected / skip</option>
+                                                <option value="deferred">deferred</option>
+                                            </select>
+                                            @if (item.ReviewedAt is DateTimeOffset ra)
+                                            {
+                                                <span class="text-muted">@ra.ToLocalTime().ToString("g")</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (DoneCount > 0 && !_showDoneItems)
+                    {
+                        <p class="text-muted mb-0">
+                            @DoneCount done item(s) hidden.
+                            <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => _showDoneItems = true">Show done</button>
+                        </p>
+                    }
+                    @if (PendingVisibleCount == 0 && DoneCount > 0 && !_showDoneItems)
+                    {
+                        <p class="text-success mb-0 mt-1">All open items complete.</p>
+                    }
+                }
+
+                @if (!string.IsNullOrEmpty(_proposal))
+                {
+                    <details class="mt-2">
+                        <summary class="text-muted" style="cursor:pointer">Raw propose output</summary>
+                        <pre class="small bg-light p-2 rounded mb-0 mt-1" style="white-space:pre-wrap;">@_proposal</pre>
+                    </details>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">Project rules</div>
+            <div class="card-body small">
+                <div class="d-flex flex-wrap gap-2 mb-2 align-items-end">
+                    <div>
+                        <label class="form-label small mb-0">Project</label>
+                        <input class="form-control form-control-sm" data-testid="learning-rules-project" @bind="_rulesProject" placeholder="project id" />
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" data-testid="learning-rules-load" disabled="@_busy" @onclick="LoadRulesAsync">Load</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-testid="learning-rules-suggest" disabled="@(_busy || string.IsNullOrWhiteSpace(_rulesProject))"
+                            @onclick="SuggestRulesAsync">Suggest from fails</button>
+                </div>
+                @if (_rules is not null)
+                {
+                    <div class="mb-2">
+                        <div class="fw-semibold">Active</div>
+                        @if (_rules.Active.Count == 0)
+                        {
+                            <span class="text-muted">None</span>
+                        }
+                        else
+                        {
+                            <ul class="mb-0">
+                                @foreach (var r in _rules.Active)
+                                {
+                                    <li><code>@r.Category</code> — @r.Text</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div>
+                        <div class="fw-semibold">Pending</div>
+                        @if (_rules.Pending.Count == 0)
+                        {
+                            <span class="text-muted">None — run Suggest when enough fails exist</span>
+                        }
+                        else
+                        {
+                            @foreach (var s in _rules.Pending)
+                            {
+                                <div class="border rounded p-2 mb-2">
+                                    <div><code>@s.Category</code> · @s.FailCount fails</div>
+                                    <div class="mb-1">@s.Text</div>
+                                    <div class="text-muted mb-1">@s.Rationale</div>
+                                    <button class="btn btn-sm btn-success me-1" data-testid="@($"learning-approve-{s.Id}")" data-rule-id="@s.Id" disabled="@_busy"
+                                            @onclick="() => ApproveRuleAsync(s.Id)">Approve</button>
+                                    <button class="btn btn-sm btn-outline-danger" data-testid="@($"learning-reject-{s.Id}")" data-rule-id="@s.Id" disabled="@_busy"
+                                            @onclick="() => RejectRuleAsync(s.Id)">Reject</button>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _busy;
+    private string? _error;
+    private string? _message;
+    private string _projectFilter = "";
+    private LearningInsightsDto? _insights;
+    private List<ReviewLearningEvent> _events = new();
+    private PromptPackManifest? _manifest;
+    private string _newPackKind = "gen";
+    private string _newPackVersion = "v2";
+    private string _newPackBody = "";
+    private int _proposeN = 50;
+    private string? _proposal;
+    private ProposalChecklistDocument? _checklist;
+    /// <summary>When false, hide items with disposition accepted (done).</summary>
+    private bool _showDoneItems;
+    private string _rulesProject = "";
+    private ProjectRulesDocument? _rules;
+
+    /// <summary>Accepted/done or rejected/skip — hidden unless Show done.</summary>
+    private static bool IsChecklistDone(ProposalChecklistItem item) =>
+        string.Equals(item.Disposition, "accepted", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(item.Disposition, "rejected", StringComparison.OrdinalIgnoreCase);
+
+    private int DoneCount =>
+        _checklist?.Items.Count(IsChecklistDone) ?? 0;
+
+    private int PendingVisibleCount =>
+        _checklist?.Items.Count(i => !IsChecklistDone(i)) ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { await Session.EnsureHydratedAsync(); } catch { /* */ }
+        if (!Session.IsAdmin) return;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var pid = string.IsNullOrWhiteSpace(_projectFilter) ? null : _projectFilter.Trim();
+            _insights = await Api.GetLearningInsightsAsync(pid);
+            _events = (await Api.GetLearningEventsAsync(pid, take: 80)).ToList();
+            _manifest = await Api.GetLearningPacksAsync();
+            _checklist = await Api.GetProposalChecklistAsync();
+            if (!string.IsNullOrWhiteSpace(_rulesProject))
+                _rules = await Api.GetProjectRulesAsync(_rulesProject.Trim());
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task LoadChecklistAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _checklist = await Api.GetProposalChecklistAsync();
+            _message = _checklist is null
+                ? "No checklist"
+                : $"Checklist · {_checklist.Items.Count(i => i.Reviewed)}/{_checklist.Items.Count} reviewed";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ToggleProposalAsync(ProposalChecklistItem item, bool reviewed)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _checklist = await Api.ToggleProposalChecklistItemAsync(
+                item.Id, reviewed, item.Disposition, item.Note);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SetDispositionAsync(ProposalChecklistItem item, string? disposition)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            // Mark reviewed when choosing a disposition
+            var reviewed = item.Reviewed || !string.IsNullOrWhiteSpace(disposition);
+            _checklist = await Api.ToggleProposalChecklistItemAsync(
+                item.Id, reviewed, disposition, item.Note);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ActivatePackAsync(string id)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Api.ActivateLearningPackAsync(id);
+            _message = $"Activated {id}";
+            _manifest = await Api.GetLearningPacksAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task CreatePackAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Api.CreateLearningPackAsync(_newPackKind, _newPackVersion, _newPackBody);
+            _message = "Pack created";
+            _manifest = await Api.GetLearningPacksAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ProposeAsync()
+    {
+        _busy = true;
+        _error = null;
+        _proposal = null;
+        try
+        {
+            var r = await Api.ProposeLearningRulesAsync(new ProposeLearningRulesRequest
+            {
+                LastNFails = _proposeN,
+                ProjectId = string.IsNullOrWhiteSpace(_projectFilter) ? null : _projectFilter.Trim(),
+            });
+            if (r is null || !r.Ok)
+                _error = r?.Error ?? "Propose failed";
+            else
+            {
+                _proposal = r.Proposal + $"\n\n({r.FailEventsUsed} fails · cats: {string.Join(", ", r.Categories)})";
+                // Server ingests bullets into checklist; reload to show checkboxes
+                _checklist = await Api.GetProposalChecklistAsync();
+                _message = "Proposal ingested into checklist — check off as you review";
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task LoadRulesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_rulesProject)) return;
+        _busy = true;
+        _error = null;
+        try { _rules = await Api.GetProjectRulesAsync(_rulesProject.Trim()); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SuggestRulesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_rulesProject)) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            _rules = await Api.SuggestProjectRulesAsync(_rulesProject.Trim());
+            _message = "Suggestions updated from fail events";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ApproveRuleAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(_rulesProject)) return;
+        _busy = true;
+        try
+        {
+            _rules = await Api.ApproveProjectRuleAsync(_rulesProject.Trim(), id);
+            _message = "Rule approved — injected into gen/auto-review for this project";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task RejectRuleAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(_rulesProject)) return;
+        _busy = true;
+        try { _rules = await Api.RejectProjectRuleAsync(_rulesProject.Trim(), id); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

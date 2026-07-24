@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-14-species-scrubber-human-bias` |
-| Related files | `host/FilmStudio.Engine/CharacterVisualTextScrubber.cs`; `CharacterDesignService.cs` |
+| Related files | `host/PageToMovie.Engine/CharacterVisualTextScrubber.cs`; `CharacterDesignService.cs` |
 
 ## Problem
 

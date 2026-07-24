@@ -5,11 +5,11 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-13-default-jwt-key` |
-| Related files | `host/FilmStudio.Core/Options/FilmStudioOptions.cs`; `host/FilmStudio.Api/Program.cs`; `AdminAuthService.cs` |
+| Related files | `host/PageToMovie.Core/Options/PageToMovieOptions.cs`; `host/PageToMovie.Api/Program.cs`; `AdminAuthService.cs` |
 
 ## Problem
 
-Default JWT signing key was a committed dev constant (`FilmStudio-Dev-Only-Change-Me-32chars!!`). Production without `FILMSTUDIO_JWT_KEY` accepted forged admin tokens if the key was known.
+Default JWT signing key was a committed dev constant (`PageToMovie-Dev-Only-Change-Me-32chars!!`). Production without `PageToMovie_JWT_KEY` accepted forged admin tokens if the key was known.
 
 ## Fix implemented
 

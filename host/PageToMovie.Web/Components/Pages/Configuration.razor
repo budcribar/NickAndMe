@@ -1,0 +1,520 @@
+@page "/configuration"
+@using System.Text.Json
+@using PageToMovie.Core.Models
+@inject EngineApiClient Engine
+@inject IConfiguration AppConfig
+@inject ActiveProjectState ActiveProject
+@inject ThemeState Theme
+@inject IJSRuntime Js
+
+<PageTitle>Configuration</PageTitle>
+
+<h1>Configuration</h1>
+<p class="text-muted">
+    Settings for this project.
+</p>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert alert-success">@_message</div>
+}
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <label class="form-label">Project</label>
+        <select class="form-select" @bind="_projectId" @bind:after="LoadAsync"
+                disabled="@(_busy || _projectIds.Count == 0)">
+            @if (_projectIds.Count == 0)
+            {
+                <option value="">No projects</option>
+            }
+            @foreach (var p in _projectIds)
+            {
+                <option value="@p">@p</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end gap-2">
+        <button class="btn btn-outline-secondary" disabled="@(_busy || string.IsNullOrEmpty(_projectId))" @onclick="LoadAsync">Reload</button>
+        <button class="btn btn-primary" disabled="@(_busy || _cfg is null || string.IsNullOrEmpty(_projectId))" @onclick="SaveAsync">Save</button>
+    </div>
+</div>
+
+@if (_projectIds.Count == 0)
+{
+    <p class="text-muted">No projects yet. Create one on <a href="/">Home</a>.</p>
+}
+else if (_cfg is null)
+{
+    <p class="text-muted">Choose a project to edit settings.</p>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-header">Appearance</div>
+        <div class="card-body row g-2">
+            <div class="col-md-4">
+                <label class="form-label">Theme</label>
+                <select class="form-select" data-testid="config-theme" @bind="_uiTheme" @bind:after="PreviewThemeAsync" disabled="@_busy">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="system">Use system</option>
+                </select>
+                <div class="form-text">
+                    Saved with this project's settings. Previews immediately; click Save to persist.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Models</div>
+        <div class="card-body row g-2">
+            <div class="col-12">
+                <p class="small text-muted mb-2">
+                    Pick a model only. The app maps it to the right API endpoint and which key is required
+                    (from the supported-model list). New backends = add to that list (or open a GitHub feature request first).
+                </p>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Video model</label>
+                <select class="form-select" @bind="_modelName" disabled="@_busy">
+                    @foreach (var m in _videoModels)
+                    {
+                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                    }
+                    @if (_videoModels.All(m => !string.Equals(m.Id, _modelName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option value="@_modelName">@_modelName (not in list)</option>
+                    }
+                </select>
+                @if (ModelHint(_modelName, "video") is { } vh)
+                {
+                    <div class="form-text">@vh</div>
+                }
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Portrait model</label>
+                <select class="form-select" @bind="_imageModel" disabled="@_busy">
+                    @foreach (var m in _imageModels)
+                    {
+                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                    }
+                    @if (_imageModels.All(m => !string.Equals(m.Id, _imageModel, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option value="@_imageModel">@_imageModel (not in list)</option>
+                    }
+                </select>
+                @if (ModelHint(_imageModel, "image") is { } ih)
+                {
+                    <div class="form-text">@ih</div>
+                }
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Planning model</label>
+                <select class="form-select" @bind="_planningModel" disabled="@_busy">
+                    @foreach (var m in _chatModels)
+                    {
+                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                    }
+                    @if (_chatModels.All(m => !string.Equals(m.Id, _planningModel, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option value="@_planningModel">@_planningModel (not in list)</option>
+                    }
+                </select>
+                @if (ModelHint(_planningModel, "chat") is { } ph)
+                {
+                    <div class="form-text">@ph</div>
+                }
+                <div class="form-text">Screenplay / shot-plan / cast-scrub reasoning.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Quality model</label>
+                <select class="form-select" @bind="_qualityModel" disabled="@_busy">
+                    @foreach (var m in _chatModels)
+                    {
+                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                    }
+                    @if (_chatModels.All(m => !string.Equals(m.Id, _qualityModel, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <option value="@_qualityModel">@_qualityModel (not in list)</option>
+                    }
+                </select>
+                @if (ModelHint(_qualityModel, "chat") is { } qh)
+                {
+                    <div class="form-text">@qh</div>
+                }
+                <div class="form-text">Clip / frame review scoring (vision-capable models preferred).</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Aspect ratio</label>
+                <select class="form-select" @bind="_aspect" disabled="@_busy">
+                    <option value="16:9">16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="1:1">1:1</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Resolution</label>
+                <select class="form-select" @bind="_resolution" disabled="@_busy">
+                    <option value="480p">480p</option>
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Duration (seconds)</label>
+                <input type="number" class="form-control" min="1" max="15" @bind="_durationSeconds" disabled="@_busy" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Pipeline behaviour</div>
+        <div class="card-body row g-2">
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="useDur" @bind="_useDurationDefaults" disabled="@_busy" />
+                <label class="form-check-label" for="useDur">use_duration_defaults</label>
+            </div>
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="smart" @bind="_smartContinuation" disabled="@_busy" />
+                <label class="form-check-label" for="smart">smart_continuation</label>
+            </div>
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="merge" @bind="_mergeAfterClip" disabled="@_busy" />
+                <label class="form-check-label" for="merge">merge_scene_after_each_clip</label>
+            </div>
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="qaRetry" @bind="_qaRetry" disabled="@_busy" />
+                <label class="form-check-label" for="qaRetry">qa_retry_on_fail</label>
+            </div>
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="regenSilent" @bind="_regenSilent" disabled="@_busy" />
+                <label class="form-check-label" for="regenSilent">regenerate_silent_clips</label>
+            </div>
+            <div class="col-md-4 form-check">
+                <input class="form-check-input" type="checkbox" id="rebuildWip" @bind="_rebuildWip" disabled="@_busy" />
+                <label class="form-check-label" for="rebuildWip">rebuild_wip_movie_after_scene</label>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">qa_max_retries</label>
+                <input type="number" class="form-control" min="0" max="5" @bind="_qaMaxRetries" disabled="@_busy" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">qa_frame_count</label>
+                <input type="number" class="form-control" min="1" max="8" @bind="_qaFrameCount" disabled="@_busy" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">composite_audio_gain_db</label>
+                <input type="number" step="0.5" class="form-control" @bind="_audioGain" disabled="@_busy" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Movie draft path</label>
+                <input class="form-control" @bind="_wipPath" disabled="@_busy" />
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Cost estimates (USD planning)</div>
+        <div class="card-body row g-2">
+            <div class="col-md-3">
+                <label class="form-label">$/sec 480p</label>
+                <input type="number" step="0.01" class="form-control" @bind="_rate480" disabled="@_busy" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">$/sec 720p</label>
+                <input type="number" step="0.01" class="form-control" @bind="_rate720" disabled="@_busy" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">$/sec 1080p</label>
+                <input type="number" step="0.01" class="form-control" @bind="_rate1080" disabled="@_busy" />
+            </div>
+        </div>
+        <div class="card-footer small text-muted">Estimates only — not invoices.</div>
+    </div>
+}
+
+@code {
+    private bool _busy;
+    private string? _error;
+    private string? _message;
+    private string _projectId = "";
+    private List<string> _projectIds = new();
+    private Dictionary<string, JsonElement>? _cfg;
+
+    private string _uiTheme = "dark";
+    private string _blueprintFile = "blueprint.clips.grok.json";
+    private string _modelName = "grok-imagine-video";
+    private string _imageModel = "grok-imagine-image-quality";
+    private string _planningModel = "grok-4.5";
+    private string _qualityModel = "grok-4.5";
+    private string _aspect = "16:9";
+    private string _resolution = "480p";
+    private int _durationSeconds = 8;
+    private bool _useDurationDefaults = true;
+    private bool _smartContinuation = true;
+    private bool _mergeAfterClip = true;
+    private bool _qaRetry = true;
+    private bool _regenSilent = true;
+    private bool _rebuildWip = true;
+    private int _qaMaxRetries = 2;
+    private int _qaFrameCount = 4;
+    private double _audioGain = 6;
+    private string _wipPath = "assets/movie_wip.mp4";
+    private double _rate480 = 0.05;
+    private double _rate720 = 0.07;
+    private double _rate1080 = 0.25;
+
+    private List<SupportedModelDto> _allModels = new();
+    private List<SupportedModelDto> _videoModels = new();
+    private List<SupportedModelDto> _imageModels = new();
+    private List<SupportedModelDto> _chatModels = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var projs = await Engine.GetProjectsAsync();
+            _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
+                          ?? new List<string>();
+            if (projs?.Active?.Id is { Length: > 0 } aid &&
+                _projectIds.Exists(id => string.Equals(id, aid, StringComparison.OrdinalIgnoreCase)))
+                _projectId = aid;
+            else if (_projectIds.Count > 0)
+                _projectId = _projectIds[0];
+            else
+                _projectId = "";
+
+            await LoadCatalogAsync();
+            if (!string.IsNullOrEmpty(_projectId))
+                await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task LoadCatalogAsync()
+    {
+        try
+        {
+            var list = await Engine.GetSupportedModelsAsync();
+            _allModels = list.ToList();
+            _videoModels = _allModels.Where(m => m.Capability == "video").ToList();
+            _imageModels = _allModels.Where(m => m.Capability == "image").ToList();
+            _chatModels = _allModels.Where(m => m.Capability is "chat" or "vision").GroupBy(m => m.Id)
+                .Select(g => g.First()).ToList();
+            if (_videoModels.Count == 0)
+                _videoModels.Add(new SupportedModelDto { Id = "grok-imagine-video", DisplayName = "Grok Imagine Video" });
+            if (_imageModels.Count == 0)
+                _imageModels.Add(new SupportedModelDto { Id = "grok-imagine-image-quality", DisplayName = "Grok Imagine Image" });
+            if (_chatModels.Count == 0)
+                _chatModels.Add(new SupportedModelDto { Id = "grok-4.5", DisplayName = "Grok 4.5" });
+        }
+        catch
+        {
+            _videoModels = [new SupportedModelDto { Id = "grok-imagine-video", DisplayName = "Grok Imagine Video" }];
+            _imageModels = [new SupportedModelDto { Id = "grok-imagine-image-quality", DisplayName = "Grok Imagine Image" }];
+            _chatModels = [new SupportedModelDto { Id = "grok-4.5", DisplayName = "Grok 4.5" }];
+        }
+    }
+
+    private string? ModelHint(string modelId, string capability)
+    {
+        var m = _allModels.FirstOrDefault(x =>
+            string.Equals(x.Id, modelId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Capability, capability, StringComparison.OrdinalIgnoreCase))
+            ?? _allModels.FirstOrDefault(x =>
+                string.Equals(x.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        if (m is null) return null;
+        var keys = m.RequiredEnvKeys is { Count: > 0 }
+            ? string.Join(", ", m.RequiredEnvKeys)
+            : "—";
+        var ep = string.IsNullOrEmpty(m.EndpointPath) ? "" : $" · {m.EndpointPath}";
+        var baseHint = $"{m.Provider}{ep} · key: {keys}";
+        // Surface catalog limitations (e.g. Veo: no clip continue / no locked plates).
+        if (!string.IsNullOrWhiteSpace(m.Notes))
+            return $"{baseHint} — {m.Notes}";
+        return baseHint;
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_projectId))
+            {
+                _cfg = null;
+                return;
+            }
+
+            var dto = await Engine.GetConfigAsync(_projectId);
+            _cfg = dto?.Config;
+            if (_cfg is null) return;
+            _uiTheme = ThemeState.Normalize(GetStr("ui_theme", _uiTheme));
+            _blueprintFile = GetStr("blueprint_file", _blueprintFile);
+            _modelName = GetStr("model_name", _modelName);
+            _imageModel = GetStr("image_model_name", _imageModel);
+            _planningModel = GetStr("planning_model_name", _planningModel);
+            _qualityModel = GetStr("quality_model_name", _qualityModel);
+            _aspect = GetStr("aspect_ratio", _aspect);
+            _resolution = GetStr("resolution", _resolution);
+            _durationSeconds = GetInt("duration_seconds", _durationSeconds);
+            _useDurationDefaults = GetBool("use_duration_defaults", _useDurationDefaults);
+            _smartContinuation = GetBool("smart_continuation", _smartContinuation);
+            _mergeAfterClip = GetBool("merge_scene_after_each_clip", _mergeAfterClip);
+            _qaRetry = GetBool("qa_retry_on_fail", _qaRetry);
+            _regenSilent = GetBool("regenerate_silent_clips", _regenSilent);
+            _rebuildWip = GetBool("rebuild_wip_movie_after_scene", _rebuildWip);
+            _qaMaxRetries = GetInt("qa_max_retries", _qaMaxRetries);
+            _qaFrameCount = GetInt("qa_frame_count", _qaFrameCount);
+            _audioGain = GetDouble("composite_audio_gain_db", _audioGain);
+            _wipPath = GetStr("wip_movie_path", _wipPath);
+            if (_cfg.TryGetValue("cost_estimates", out var ce) &&
+                ce.ValueKind == JsonValueKind.Object &&
+                ce.TryGetProperty("video_output_per_sec", out var vop) &&
+                vop.ValueKind == JsonValueKind.Object)
+            {
+                if (vop.TryGetProperty("480p", out var a) && a.TryGetDouble(out var d1)) _rate480 = d1;
+                if (vop.TryGetProperty("720p", out var b) && b.TryGetDouble(out var d2)) _rate720 = d2;
+                if (vop.TryGetProperty("1080p", out var c) && c.TryGetDouble(out var d3)) _rate1080 = d3;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _cfg = null;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_projectId))
+            {
+                _error = "Choose a project first.";
+                return;
+            }
+
+            // Provider fields derived from model catalog (cost reports).
+            var videoProvider = SupportedModelCatalog.ProviderIdFor(_modelName, ModelCapability.Video);
+            var imageProvider = SupportedModelCatalog.ProviderIdFor(_imageModel, ModelCapability.Image);
+            var planningProvider = SupportedModelCatalog.ProviderIdFor(_planningModel, ModelCapability.Chat);
+            var qualityProvider = SupportedModelCatalog.ProviderIdFor(_qualityModel, ModelCapability.Chat);
+
+            var updates = new Dictionary<string, object?>
+            {
+                ["ui_theme"] = _uiTheme,
+                ["blueprint_file"] = _blueprintFile,
+                ["video_provider"] = videoProvider,
+                ["character_design_provider"] = imageProvider,
+                ["image_provider"] = imageProvider,
+                ["planning_provider"] = planningProvider,
+                ["quality_provider"] = qualityProvider,
+                ["model_name"] = _modelName,
+                ["image_model_name"] = _imageModel,
+                ["planning_model_name"] = _planningModel,
+                ["quality_model_name"] = _qualityModel,
+                ["aspect_ratio"] = _aspect,
+                ["resolution"] = _resolution,
+                ["duration_seconds"] = _durationSeconds,
+                ["use_duration_defaults"] = _useDurationDefaults,
+                ["smart_continuation"] = _smartContinuation,
+                ["merge_scene_after_each_clip"] = _mergeAfterClip,
+                ["qa_retry_on_fail"] = _qaRetry,
+                ["regenerate_silent_clips"] = _regenSilent,
+                ["rebuild_wip_movie_after_scene"] = _rebuildWip,
+                ["qa_max_retries"] = _qaMaxRetries,
+                ["qa_frame_count"] = _qaFrameCount,
+                ["composite_audio_gain_db"] = _audioGain,
+                ["wip_movie_path"] = _wipPath,
+                ["cost_estimates"] = new Dictionary<string, object?>
+                {
+                    ["currency"] = "USD",
+                    ["video_output_per_sec"] = new Dictionary<string, object?>
+                    {
+                        ["480p"] = _rate480,
+                        ["720p"] = _rate720,
+                        ["1080p"] = _rate1080,
+                    },
+                    ["notes"] = "Estimates only — not invoices.",
+                },
+            };
+            // Preserve nested cost fields if present
+            if (_cfg is not null &&
+                _cfg.TryGetValue("cost_estimates", out var oldCe) &&
+                oldCe.ValueKind == JsonValueKind.Object)
+            {
+                var ce = new Dictionary<string, object?>();
+                foreach (var p in oldCe.EnumerateObject())
+                {
+                    if (p.Name == "video_output_per_sec") continue;
+                    ce[p.Name] = p.Value.Deserialize<object>();
+                }
+                ce["video_output_per_sec"] = new Dictionary<string, object?>
+                {
+                    ["480p"] = _rate480,
+                    ["720p"] = _rate720,
+                    ["1080p"] = _rate1080,
+                };
+                updates["cost_estimates"] = ce;
+            }
+
+            await Engine.SaveConfigAsync(_projectId, updates);
+            _message = $"Settings saved for {_projectId}";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Live-apply the theme pick to this browser tab so it's visible before Save.
+    /// Only touches the DOM when editing the currently-active project — previewing a theme
+    /// for some other project you happen to have selected here shouldn't repaint the whole app.</summary>
+    private async Task PreviewThemeAsync()
+    {
+        if (!string.Equals(_projectId, ActiveProject.ProjectId, StringComparison.OrdinalIgnoreCase))
+            return;
+        Theme.Set(_uiTheme);
+        try { await Js.InvokeVoidAsync("fsTheme.apply", _uiTheme); }
+        catch { /* ignore */ }
+    }
+
+    private string GetStr(string key, string fallback) =>
+        _cfg is not null && _cfg.TryGetValue(key, out var el) && el.ValueKind == JsonValueKind.String
+            ? el.GetString() ?? fallback
+            : fallback;
+
+    private int GetInt(string key, int fallback) =>
+        _cfg is not null && _cfg.TryGetValue(key, out var el) && el.TryGetInt32(out var v)
+            ? v
+            : fallback;
+
+    private double GetDouble(string key, double fallback) =>
+        _cfg is not null && _cfg.TryGetValue(key, out var el) && el.TryGetDouble(out var v)
+            ? v
+            : fallback;
+
+    private bool GetBool(string key, bool fallback) =>
+        _cfg is not null && _cfg.TryGetValue(key, out var el) &&
+        (el.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            ? el.GetBoolean()
+            : fallback;
+}

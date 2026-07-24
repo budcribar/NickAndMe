@@ -17,7 +17,7 @@
     "temperature": 0,
     "note": "full suite ambient\u002Bspecies"
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "ambient_sfx",
@@ -34,7 +34,7 @@
       "winner": "tie",
       "latencyMs": 29964,
       "aiParseHits": 30,
-      "note": "Matches FilmStudio.Engine AmbientSfxClassifier.SystemPrompt as of 2026-07-21.",
+      "note": "Matches PageToMovie.Engine AmbientSfxClassifier.SystemPrompt as of 2026-07-21.",
       "samples": [
         {
           "id": "s28_b17",

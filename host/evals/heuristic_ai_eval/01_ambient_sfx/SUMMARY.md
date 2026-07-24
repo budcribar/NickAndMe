@@ -6,7 +6,7 @@
 - Class: `AmbientSfxClassifier`
 - Prompt: v1, temp 0
 - Wired: Stage2 enrichment (before clip plan)
-- Config: `FilmStudio__ClassifyAmbientSfxWithChat` (default true)
+- Config: `PageToMovie__ClassifyAmbientSfxWithChat` (default true)
 - Policy: AI → retry → keep heuristic ambient/sfx on beat + audio dict
 
 ## Baseline

@@ -22,7 +22,7 @@
     "note": "Grok-only benchmark run",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "ambient_sfx",
@@ -40,7 +40,7 @@
       "winner": "AI",
       "latencyMs": 37526,
       "aiParseHits": 30,
-      "note": "Shipped in FilmStudio.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
+      "note": "Shipped in PageToMovie.Engine AmbientSfxClassifier (PromptVersion=v2_grounded). Tightens empty cases (speech/parentheticals), no invented beds, layer rules from blind review \u002B score variance analysis.",
       "samples": [
         {
           "id": "s28_b17",
@@ -1294,7 +1294,7 @@
       "winner": "AI",
       "latencyMs": 41011,
       "aiParseHits": 20,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",
@@ -1614,7 +1614,7 @@
       "winner": "AI",
       "latencyMs": 311340,
       "aiParseHits": 147,
-      "note": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
+      "note": "Matches PageToMovie.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
       "samples": [
         {
           "id": "AlicesAdventures::s1_b1",
@@ -4219,7 +4219,7 @@
       "winner": "error",
       "latencyMs": 0,
       "aiParseHits": 0,
-      "note": "Missing gold: C:\\Users\\budcr\\source\\repos\\FilmStudio\\host\\evals\\classifier_benchmarks\\gold\\The_Jungle_Book\\plate_rank.json",
+      "note": "Missing gold: C:\\Users\\budcr\\source\\repos\\PageToMovie\\host\\evals\\classifier_benchmarks\\gold\\The_Jungle_Book\\plate_rank.json",
       "samples": []
     }
   ]

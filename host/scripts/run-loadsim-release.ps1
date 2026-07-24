@@ -11,29 +11,29 @@ param(
 
 $ErrorActionPreference = "Stop"
 $HostDir = Split-Path $PSScriptRoot -Parent
-if (-not (Test-Path (Join-Path $HostDir "FilmStudio.Api"))) {
+if (-not (Test-Path (Join-Path $HostDir "PageToMovie.Api"))) {
     $HostDir = Join-Path (Split-Path $PSScriptRoot -Parent) "host"
 }
 
 Write-Host "Building Release…" -ForegroundColor Cyan
 Push-Location $HostDir
 try {
-    dotnet build FilmStudio.Api/FilmStudio.Api.csproj -c Release -v q
-    dotnet build FilmStudio.LoadSim/FilmStudio.LoadSim.csproj -c Release -v q
+    dotnet build PageToMovie.Api/PageToMovie.Api.csproj -c Release -v q
+    dotnet build PageToMovie.LoadSim/PageToMovie.LoadSim.csproj -c Release -v q
 
-    $env:FILMSTUDIO_USE_FAKES = "true"
-    $env:FilmStudio__UseFakes = "true"
+    $env:PageToMovie_USE_FAKES = "true"
+    $env:PageToMovie__UseFakes = "true"
     # Single-host compromise: 4 video / 1 per user / 2 ffmpeg (8+ starves browse under mixed load)
-    $env:FilmStudio__Capacity__MaxVideoInFlight = "4"
-    $env:FilmStudio__Capacity__MaxVideoInFlightPerUser = "1"
-    $env:FilmStudio__Capacity__MaxFfmpegInFlight = "2"
-    $env:FilmStudio__Fakes__VideoDelayMs = "50"
+    $env:PageToMovie__Capacity__MaxVideoInFlight = "4"
+    $env:PageToMovie__Capacity__MaxVideoInFlightPerUser = "1"
+    $env:PageToMovie__Capacity__MaxFfmpegInFlight = "2"
+    $env:PageToMovie__Fakes__VideoDelayMs = "50"
     $env:ASPNETCORE_ENVIRONMENT = "Development"
     $env:ASPNETCORE_URLS = $BaseUrl
 
     Write-Host "Starting Api (Release, fakes)…" -ForegroundColor Cyan
     $api = Start-Process -FilePath "dotnet" `
-        -ArgumentList @("run", "--project", "FilmStudio.Api", "-c", "Release", "--no-build", "--no-launch-profile") `
+        -ArgumentList @("run", "--project", "PageToMovie.Api", "-c", "Release", "--no-build", "--no-launch-profile") `
         -PassThru -WindowStyle Normal
 
     Write-Host "Waiting for $BaseUrl/health …"
@@ -53,7 +53,7 @@ try {
 
     Write-Host "Starting LoadSim (Release)…" -ForegroundColor Cyan
     $args = @(
-        "run", "--project", "FilmStudio.LoadSim", "-c", "Release", "--no-build", "--",
+        "run", "--project", "PageToMovie.LoadSim", "-c", "Release", "--no-build", "--",
         "--baseUrl", $BaseUrl,
         "--users", "$Users",
         "--duration", "$Duration",

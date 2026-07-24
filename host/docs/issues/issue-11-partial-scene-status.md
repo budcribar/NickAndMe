@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | **fixed** |
 | Branch | `fix/issue-11-partial-scene-status` |
-| Related files | `host/FilmStudio.Engine/FilmJobService.cs`; `host/FilmStudio.Web/Components/Pages/Scenes.razor` |
+| Related files | `host/PageToMovie.Engine/FilmJobService.cs`; `host/PageToMovie.Web/Components/Pages/Scenes.razor` |
 
 ## Problem
 

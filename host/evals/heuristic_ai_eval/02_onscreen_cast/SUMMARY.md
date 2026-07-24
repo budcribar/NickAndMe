@@ -5,7 +5,7 @@
 ## Product
 - Class: `OnScreenCastClassifier`
 - Writes `characters_on_screen` on beats; Stage2 `ClipCastTokens` prefers that list
-- Config: `FilmStudio__ClassifyOnScreenCastWithChat`
+- Config: `PageToMovie__ClassifyOnScreenCastWithChat`
 
 ## Baseline
 `ClipVideoPromptBuilder.InferKeysFromProse` substring match.

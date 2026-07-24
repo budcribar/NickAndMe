@@ -2,5 +2,5 @@
   "id": "v2_product",
   "task": "silent_beat_action",
   "label": "Product SilentBeatActionClassifier (v2) — SHIPPED",
-  "notes": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book."
+  "notes": "Matches PageToMovie.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book."
 }

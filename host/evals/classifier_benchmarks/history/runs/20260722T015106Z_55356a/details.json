@@ -20,7 +20,7 @@
     "note": "cheap-model probe",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "silent_beat_action",
@@ -38,7 +38,7 @@
       "winner": "AI",
       "latencyMs": 62693,
       "aiParseHits": 147,
-      "note": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
+      "note": "Matches PageToMovie.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
       "samples": [
         {
           "id": "AlicesAdventures::s1_b1",
@@ -2263,7 +2263,7 @@
       "winner": "AI",
       "latencyMs": 163581,
       "aiParseHits": 147,
-      "note": "Matches FilmStudio.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
+      "note": "Matches PageToMovie.Engine SilentBeatActionClassifier.SystemPromptV2 / PromptVersion=v2. Gold: beat_label_eval ground_truth multi-book.; chat_calls=5; books=multi",
       "samples": [
         {
           "id": "AlicesAdventures::s1_b1",

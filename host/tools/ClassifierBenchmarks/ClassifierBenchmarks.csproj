@@ -7,6 +7,6 @@
     <RootNamespace>ClassifierBenchmarks</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\FilmStudio.Engine\FilmStudio.Engine.csproj" />
+    <ProjectReference Include="..\..\PageToMovie.Engine\PageToMovie.Engine.csproj" />
   </ItemGroup>
 </Project>

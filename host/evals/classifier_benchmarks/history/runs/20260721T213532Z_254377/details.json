@@ -20,7 +20,7 @@
     "note": "curated cast gold; v1 vs v2_grounded",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "onscreen_cast",
@@ -38,7 +38,7 @@
       "winner": "AI",
       "latencyMs": 28558,
       "aiParseHits": 20,
-      "note": "Matches FilmStudio.Engine OnScreenCastClassifier.SystemPrompt.",
+      "note": "Matches PageToMovie.Engine OnScreenCastClassifier.SystemPrompt.",
       "samples": [
         {
           "id": "s53_b15",

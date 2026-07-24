@@ -19,7 +19,7 @@
     "note": "add off-screen speaker gold case (Narrator VO over den scene)",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "onscreen_cast",
@@ -37,7 +37,7 @@
       "winner": "AI",
       "latencyMs": 26367,
       "aiParseHits": 21,
-      "note": "Shipped in FilmStudio.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
+      "note": "Shipped in PageToMovie.Engine OnScreenCastClassifier (PromptVersion=v2_grounded). Anti prop/substring; dialogue\u2260on-screen; groups/nicknames.",
       "samples": [
         {
           "id": "s53_b15",

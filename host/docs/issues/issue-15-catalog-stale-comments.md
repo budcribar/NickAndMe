@@ -5,7 +5,7 @@
 | Severity | nit |
 | Status | **fixed** |
 | Branch | `fix/issue-15-catalog-stale-comments` |
-| Related files | `host/FilmStudio.Core/Models/SupportedModelCatalog.cs` |
+| Related files | `host/PageToMovie.Core/Models/SupportedModelCatalog.cs` |
 
 ## Problem
 

@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Microsoft.AspNetCore.OpenApi pulled vulnerable Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc).
+       We don't use MapOpenApi/Swagger yet, so omit it. When re-adding OpenAPI later, pin
+       Microsoft.OpenApi >= 2.7.5 (or 3.5.4+) as a direct PackageReference. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\PageToMovie.Engine\PageToMovie.Engine.csproj" />
+    <ProjectReference Include="..\PageToMovie.Core\PageToMovie.Core.csproj" />
+    <ProjectReference Include="..\PageToMovie.Fakes\PageToMovie.Fakes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Admin JWT login (Phase B) -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Copy fake video fixtures next to API output for FakeGrokVideoClient -->
+  <Target Name="CopyFakeFixtures" AfterTargets="Build">
+    <ItemGroup>
+      <_FakeFixtures Include="..\PageToMovie.Fakes\Fixtures\**\*.*" Condition="Exists('..\PageToMovie.Fakes\Fixtures')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_FakeFixtures)"
+          DestinationFolder="$(OutDir)Fixtures\%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_FakeFixtures)' != ''" />
+  </Target>
+
+  <!--
+    Soenneker ships ffmpeg.exe but content files are not transitive via ProjectReference.
+    Copy into Api output after build (host process BaseDirectory).
+  -->
+  <Target Name="CopyBundledFfmpeg" AfterTargets="Build">
+    <PropertyGroup>
+      <_FfmpegSrc Condition="Exists('$(USERPROFILE)\.nuget\packages\soenneker.libraries.ffmpeg\3.0.658\content\Resources\ffmpeg.exe')">$(USERPROFILE)\.nuget\packages\soenneker.libraries.ffmpeg\3.0.658\content\Resources\ffmpeg.exe</_FfmpegSrc>
+      <_FfmpegSrc Condition="'$(_FfmpegSrc)' == '' and Exists('..\PageToMovie.Engine\bin\$(Configuration)\$(TargetFramework)\Resources\ffmpeg.exe')">..\PageToMovie.Engine\bin\$(Configuration)\$(TargetFramework)\Resources\ffmpeg.exe</_FfmpegSrc>
+    </PropertyGroup>
+    <MakeDir Directories="$(OutDir)Resources" Condition="'$(_FfmpegSrc)' != ''" />
+    <Copy SourceFiles="$(_FfmpegSrc)"
+          DestinationFiles="$(OutDir)Resources\ffmpeg.exe"
+          SkipUnchangedFiles="true"
+          Condition="'$(_FfmpegSrc)' != '' and Exists('$(_FfmpegSrc)')" />
+    <Message Importance="high"
+             Text="Bundled ffmpeg → $(OutDir)Resources\ffmpeg.exe"
+             Condition="Exists('$(OutDir)Resources\ffmpeg.exe')" />
+  </Target>
+
+  <Target Name="CopyBundledFfmpegOnPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_FfmpegSrc Condition="Exists('$(USERPROFILE)\.nuget\packages\soenneker.libraries.ffmpeg\3.0.658\content\Resources\ffmpeg.exe')">$(USERPROFILE)\.nuget\packages\soenneker.libraries.ffmpeg\3.0.658\content\Resources\ffmpeg.exe</_FfmpegSrc>
+    </PropertyGroup>
+    <MakeDir Directories="$(PublishDir)Resources" Condition="'$(_FfmpegSrc)' != ''" />
+    <Copy SourceFiles="$(_FfmpegSrc)"
+          DestinationFiles="$(PublishDir)Resources\ffmpeg.exe"
+          SkipUnchangedFiles="true"
+          Condition="'$(_FfmpegSrc)' != '' and Exists('$(_FfmpegSrc)')" />
+  </Target>
+
+</Project>

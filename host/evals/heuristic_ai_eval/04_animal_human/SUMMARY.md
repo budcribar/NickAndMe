@@ -5,7 +5,7 @@
 ## Product
 - Class: `SpeciesKindClassifier`
 - Writes `species_kind` on character seeds (animal|human|other)
-- Config: `FilmStudio__ClassifySpeciesKindWithChat`
+- Config: `PageToMovie__ClassifySpeciesKindWithChat`
 
 ## Baseline
 `CharacterVisualTextScrubber.IsPrimarilyAnimalCharacter` / `IsHumanAdultCharacter`.

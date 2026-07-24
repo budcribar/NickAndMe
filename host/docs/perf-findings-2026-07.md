@@ -19,7 +19,7 @@
 ### Canonical soak artifact
 
 - `host/loadsim-async-mixed-100x10m.json`  
-  (copy of LoadSim output: `FilmStudio.LoadSim/bin/Release/net10.0/loadsim-results.json`)
+  (copy of LoadSim output: `PageToMovie.LoadSim/bin/Release/net10.0/loadsim-results.json`)
 
 | Field | Value |
 |-------|--------|
@@ -45,11 +45,11 @@ Other useful baselines:
 ## What we shipped (summary)
 
 1. **Capacity caps** — multi-user fairness (browse not starved by gen).
-2. **Read caches** — `ProjectReadCache` (projects list TTL, blueprint path/doc/bytes, dir index), `SceneListCache` (scene list single-flight + TTL). Toggle: `FilmStudio:EnableReadCaches`.
+2. **Read caches** — `ProjectReadCache` (projects list TTL, blueprint path/doc/bytes, dir index), `SceneListCache` (scene list single-flight + TTL). Toggle: `PageToMovie:EnableReadCaches`.
 3. **Async I/O multipass** — browse/API/jobs prefer `*Async`; see `async-io-pass-plan.md`.
 4. **GetAwaiter cleanup** — removed sync-over-async wrappers from caches and ProjectStore hot APIs; residual character/WIP helpers use **true-sync** `File.*` privates.
-5. **HTTP metrics middleware** — made hot path cheap (1s ring buckets; window math only on admin `Snapshot`). File: `FilmStudio.Api/Services/HttpRequestMetrics.cs`.
-6. **Optional ThreadPool pre-warm** — `FilmStudio:ThreadPool:MinWorkerThreads` (default **0**). A/B at 64 did **not** help; leave off.
+5. **HTTP metrics middleware** — made hot path cheap (1s ring buckets; window math only on admin `Snapshot`). File: `PageToMovie.Api/Services/HttpRequestMetrics.cs`.
+6. **Optional ThreadPool pre-warm** — `PageToMovie:ThreadPool:MinWorkerThreads` (default **0**). A/B at 64 did **not** help; leave off.
 
 ---
 
@@ -85,7 +85,7 @@ Dominant under mixed soak (illustrative order of magnitude from session):
 
 | System | Where aggregated | Purpose |
 |--------|------------------|---------|
-| LoadSim **actions** (browse p95, per-action table, gates, results JSON) | **Client** (`FilmStudio.LoadSim` / `MetricsCollector`) | Authoritative soak numbers |
+| LoadSim **actions** (browse p95, per-action table, gates, results JSON) | **Client** (`PageToMovie.LoadSim` / `MetricsCollector`) | Authoritative soak numbers |
 | Live admin LoadSim charts | Client → `POST /api/loadsim/progress` → `LoadSimLiveStore` | Display only |
 | Green **HTTP traffic** banner | **Server** `HttpRequestMetrics` | Coarse path-prefix RPS last 5s/30s |
 

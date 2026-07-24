@@ -20,7 +20,7 @@
     "note": "curated extend gold; v1 vs v2",
     "temperature": 0
   },
-  "repoRoot": "C:\\Users\\budcr\\source\\repos\\FilmStudio",
+  "repoRoot": "C:\\Users\\budcr\\source\\repos\\PageToMovie",
   "results": [
     {
       "task": "extend_cut",
@@ -38,7 +38,7 @@
       "winner": "AI",
       "latencyMs": 35182,
       "aiParseHits": 24,
-      "note": "Matches FilmStudio.Engine ExtendCutClassifier.SystemPrompt.",
+      "note": "Matches PageToMovie.Engine ExtendCutClassifier.SystemPrompt.",
       "samples": [
         {
           "id": "s28_b11",

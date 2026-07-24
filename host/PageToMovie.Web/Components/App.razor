@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <script src="js/theme.js"></script>
+    <ResourcePreloader />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["PageToMovie.Web.styles.css"]" />
+    <link rel="stylesheet" href="lib/codemirror/codemirror.min.css" />
+    <link rel="stylesheet" href="css/fountain-editor.css" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet @rendermode="InteractiveServerNoPrerender" />
+</head>
+
+<body>
+    @* One Interactive Server circuit for the whole app (prerender off) so scoped
+       AdminSessionService survives /admin/login → /admin navigation. *@
+    <Routes @rendermode="InteractiveServerNoPrerender" />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="js/admin-charts.js"></script>
+    <script src="lib/codemirror/codemirror.min.js"></script>
+    <script src="js/fountain/fountain-syntax.js"></script>
+    <script src="js/fountain/fountain-preview.js"></script>
+    <script src="js/fountain/fountain-editor.js"></script>
+</body>
+
+</html>
+
+@code {
+    private static readonly IComponentRenderMode InteractiveServerNoPrerender =
+        new InteractiveServerRenderMode(prerender: false);
+}

@@ -5,7 +5,7 @@
 | Severity | suggestion |
 | Status | fixed |
 | Branch | `fix/issue-10-global-active-project-race` |
-| Related files | host/FilmStudio.Engine/ProjectStore.cs (ActivateAsync); FilmJobService ActivateAsync call sites |
+| Related files | host/PageToMovie.Engine/ProjectStore.cs (ActivateAsync); FilmJobService ActivateAsync call sites |
 
 ## Problem
 
@@ -32,8 +32,8 @@ Stop mutating global active project from background jobs; keep activate as a UI-
   background task no longer re-reads the global active project a second time at execution,
   which could previously return a different (raced) value than what was used for locks/
   metadata at enqueue time.
-- Covered by `FilmStudio.Tests/Api/ProjectActivationRaceTests.cs`.
+- Covered by `PageToMovie.Tests/Api/ProjectActivationRaceTests.cs`.
 
 ## Notes
 
-Tracked from the FilmStudio.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.
+Tracked from the PageToMovie.Api / Core / Engine code review (2026-07). This branch documents the problem only; implementation is follow-up work on this branch.

@@ -16,4 +16,4 @@ Source materials for Film Studio (import / prepare / adapt).
 
 Plain-text classics mostly from GITenberg / Project Gutenberg.  
 Fountain **adaptations** used by unit tests remain under  
-`host/FilmStudio.Tests/Fixtures/BookToFountainPackage/fountain_adaptations/`.
+`host/PageToMovie.Tests/Fixtures/BookToFountainPackage/fountain_adaptations/`.

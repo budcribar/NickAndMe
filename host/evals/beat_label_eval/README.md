@@ -12,10 +12,10 @@ Offline harness + gold labels for duration budgeting classes:
 - **When:** Stage 2 shot plan (`Stage2PlannerService`)
 - **Policy:** AI preferred → retry on flake → **baseline** `InferActionClass` fallback only if no valid label
 - **Config:**
-  - `FilmStudio__ClassifySilentBeatsWithChat` (default true)
-  - `FilmStudio__SilentBeatClassifyModel` (default `grok-4.5`)
-  - `FilmStudio__SilentBeatClassifyTemperature` (default `0`)
-  - `FilmStudio__SilentBeatClassifyMaxAttempts` (default `3`)
+  - `PageToMovie__ClassifySilentBeatsWithChat` (default true)
+  - `PageToMovie__SilentBeatClassifyModel` (default `grok-4.5`)
+  - `PageToMovie__SilentBeatClassifyTemperature` (default `0`)
+  - `PageToMovie__SilentBeatClassifyMaxAttempts` (default `3`)
 
 Blueprint records meta under `stage2_meta.silent_beat_classify` (prompt version, model, counts).
 

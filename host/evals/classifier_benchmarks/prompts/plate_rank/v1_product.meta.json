@@ -2,5 +2,5 @@
   "id": "v1_product",
   "task": "plate_rank",
   "label": "Product PlateRankClassifier prompt (shipped v1)",
-  "notes": "Matches FilmStudio.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames + description."
+  "notes": "Matches PageToMovie.Engine PlateRankClassifier.SystemPrompt. Text-only ranking of basenames + description."
 }
