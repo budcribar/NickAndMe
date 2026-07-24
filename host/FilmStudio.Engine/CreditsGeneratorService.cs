@@ -147,6 +147,11 @@ public class CreditsGeneratorService
         var textFilePath = Path.Combine(videoDir, "_credits_text.txt");
         await File.WriteAllTextAsync(textFilePath, textContent, ct).ConfigureAwait(false);
 
+        if (File.Exists(creditsMoviePath) && new FileInfo(creditsMoviePath).Length < 1024)
+        {
+            try { File.Delete(creditsMoviePath); } catch { }
+        }
+
         // If credits.mp4 already exists and is newer than text file, reuse it
         if (File.Exists(creditsMoviePath) &&
             new FileInfo(creditsMoviePath).Length >= 1024 &&
@@ -159,7 +164,9 @@ public class CreditsGeneratorService
 
         // Format path for FFmpeg filter graph (forward slashes and escaped colon)
         var filterPath = textFilePath.Replace('\\', '/').Replace(":", "\\:");
-        var filter = $"drawtext=textfile='{filterPath}':fontcolor=white:fontsize=18:line_spacing=10:x=(w-text_w)/2:y=(h-text_h)/2";
+        var fontPath = ResolveSystemFontPath();
+        var fontOpt = fontPath is not null ? $"fontfile='{fontPath.Replace('\\', '/').Replace(":", "\\:")}':" : "";
+        var filter = $"drawtext={fontOpt}textfile='{filterPath}':fontcolor=white:fontsize=18:line_spacing=10:x=(w-text_w)/2:y=(h-text_h)/2";
 
         var process = new System.Diagnostics.Process
         {
@@ -193,6 +200,32 @@ public class CreditsGeneratorService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to render credits.mp4 for project {ProjectId}", projectId);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds a valid system font for FFmpeg drawtext rendering across Windows, Linux, and macOS.
+    /// </summary>
+    public static string? ResolveSystemFontPath()
+    {
+        var fontsFolder = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
+        var candidates = new[]
+        {
+            Path.Combine(fontsFolder, "arial.ttf"),
+            Path.Combine(fontsFolder, "segoeui.ttf"),
+            Path.Combine(fontsFolder, "tahoma.ttf"),
+            Path.Combine(fontsFolder, "calibri.ttf"),
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        };
+
+        foreach (var font in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(font) && File.Exists(font))
+                return font;
         }
 
         return null;
