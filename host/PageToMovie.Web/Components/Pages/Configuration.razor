@@ -210,44 +210,56 @@ else
     </div>
 
     <div class="card mb-3">
-        <div class="card-header">Pipeline behaviour</div>
-        <div class="card-body row g-2">
-            <div class="col-md-4 form-check">
-                <input class="form-check-input" type="checkbox" id="useDur" @bind="_useDurationDefaults" disabled="@_busy" />
-                <label class="form-check-label" for="useDur">use_duration_defaults</label>
-            </div>
-            <div class="col-md-4 form-check">
+        <div class="card-header">Pipeline Behavior</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6 form-check">
                 <input class="form-check-input" type="checkbox" id="smart" @bind="_smartContinuation" disabled="@_busy" />
-                <label class="form-check-label" for="smart">smart_continuation</label>
+                <label class="form-check-label fw-semibold" for="smart">Smart Continuation</label>
+                <div class="form-text">Seamlessly extend visual prompts across consecutive clips in a scene.</div>
             </div>
-            <div class="col-md-4 form-check">
-                <input class="form-check-input" type="checkbox" id="merge" @bind="_mergeAfterClip" disabled="@_busy" />
-                <label class="form-check-label" for="merge">merge_scene_after_each_clip</label>
-            </div>
-            <div class="col-md-4 form-check">
+            <div class="col-md-6 form-check">
                 <input class="form-check-input" type="checkbox" id="qaRetry" @bind="_qaRetry" disabled="@_busy" />
-                <label class="form-check-label" for="qaRetry">qa_retry_on_fail</label>
+                <label class="form-check-label fw-semibold" for="qaRetry">Quality Gate Retry</label>
+                <div class="form-text">Automatically retry video clip generation if quality checks fail.</div>
             </div>
-            <div class="col-md-4 form-check">
+            <div class="col-md-6 form-check">
                 <input class="form-check-input" type="checkbox" id="regenSilent" @bind="_regenSilent" disabled="@_busy" />
-                <label class="form-check-label" for="regenSilent">regenerate_silent_clips</label>
+                <label class="form-check-label fw-semibold" for="regenSilent">Regenerate Silent Beats</label>
+                <div class="form-text">Re-synthesize audio for silent action beats during scene updates.</div>
             </div>
-            <div class="col-md-4 form-check">
-                <input class="form-check-input" type="checkbox" id="rebuildWip" @bind="_rebuildWip" disabled="@_busy" />
-                <label class="form-check-label" for="rebuildWip">rebuild_wip_movie_after_scene</label>
+            <div class="col-md-6 form-check">
+                <input class="form-check-input" type="checkbox" id="useDur" @bind="_useDurationDefaults" disabled="@_busy" />
+                <label class="form-check-label fw-semibold" for="useDur">Use Default Clip Durations</label>
+                <div class="form-text">Fall back to standard duration budgeting when shot plan timing is unspecified.</div>
             </div>
-            <div class="col-md-4">
-                <label class="form-label">qa_max_retries</label>
-                <input type="number" class="form-control" min="0" max="5" @bind="_qaMaxRetries" disabled="@_busy" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">qa_frame_count</label>
-                <input type="number" class="form-control" min="1" max="8" @bind="_qaFrameCount" disabled="@_busy" />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">composite_audio_gain_db</label>
-                <input type="number" step="0.5" class="form-control" @bind="_audioGain" disabled="@_busy" />
-            </div>
+        </div>
+
+        <div class="card-footer">
+            <details class="small">
+                <summary class="text-muted role-button py-1 fw-semibold" style="cursor: pointer;">⚙️ Advanced Remux & QA Tuning</summary>
+                <div class="row g-2 mt-2 pt-2 border-top">
+                    <div class="col-md-6 form-check">
+                        <input class="form-check-input" type="checkbox" id="merge" @bind="_mergeAfterClip" disabled="@_busy" />
+                        <label class="form-check-label" for="merge">Auto-merge scene after each clip</label>
+                    </div>
+                    <div class="col-md-6 form-check">
+                        <input class="form-check-input" type="checkbox" id="rebuildWip" @bind="_rebuildWip" disabled="@_busy" />
+                        <label class="form-check-label" for="rebuildWip">Auto-rebuild WIP movie after scene</label>
+                    </div>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label">QA Max Retries</label>
+                        <input type="number" class="form-control form-control-sm" min="0" max="5" @bind="_qaMaxRetries" disabled="@_busy" />
+                    </div>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label">QA Sample Frames</label>
+                        <input type="number" class="form-control form-control-sm" min="1" max="8" @bind="_qaFrameCount" disabled="@_busy" />
+                    </div>
+                    <div class="col-md-4 mt-3">
+                        <label class="form-label">Composite Audio Gain (dB)</label>
+                        <input type="number" step="0.5" class="form-control form-control-sm" @bind="_audioGain" disabled="@_busy" />
+                    </div>
+                </div>
+            </details>
         </div>
     </div>
 
