@@ -17,9 +17,9 @@ eggs/
 # Python package layouts — do not ignore Blazor client libs under wwwroot/lib
 /lib/
 lib64/
-# Allow committed static client libraries for Film Studio Web
-!host/FilmStudio.Web/wwwroot/lib/
-!host/FilmStudio.Web/wwwroot/lib/**
+# Allow committed static client libraries for PageToMovie Web
+!host/PageToMovie.Web/wwwroot/lib/
+!host/PageToMovie.Web/wwwroot/lib/**
 parts/
 sdist/
 var/
