@@ -16,6 +16,12 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 var processStartedUtc = DateTimeOffset.UtcNow;
 
+var railwayPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(railwayPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{railwayPort}");
+}
+
 builder.Services.Configure<PageToMovieOptions>(
     builder.Configuration.GetSection(PageToMovieOptions.SectionName));
 
