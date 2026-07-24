@@ -31,6 +31,7 @@ public sealed class PageToMovieApiFactory : WebApplicationFactory<PageToMovie.Ap
                 ["PageToMovie:UseFakes"] = "true",
                 ["PageToMovie:EnableReadCaches"] = "true",
                 ["PageToMovie:Auth:AllowDevBypass"] = "true",
+                ["PageToMovie:Auth:RequireLogin"] = "false",
                 ["PageToMovie:Auth:AdminUsername"] = "admin",
                 ["PageToMovie:Auth:AdminPassword"] = "admin",
                 ["PageToMovie:Auth:DefaultUserId"] = "test-user",
@@ -43,6 +44,8 @@ public sealed class PageToMovieApiFactory : WebApplicationFactory<PageToMovie.Ap
                 o.WorkspaceRoot = _workspace;
                 o.UseFakes = true;
                 o.EnableReadCaches = true;
+                o.Auth ??= new AuthOptions();
+                o.Auth.RequireLogin = false;
             });
         });
     }

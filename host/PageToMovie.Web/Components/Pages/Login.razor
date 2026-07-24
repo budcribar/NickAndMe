@@ -326,7 +326,23 @@
             _status = "Redirecting…";
             StateHasChanged();
 
-            Nav.NavigateTo("/", forceLoad: true);
+            var dest = "/";
+            try
+            {
+                var uri = Nav.ToAbsoluteUri(Nav.Uri);
+                if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query)
+                        .TryGetValue("returnUrl", out var ret) &&
+                    !string.IsNullOrWhiteSpace(ret))
+                {
+                    var path = Uri.UnescapeDataString(ret.ToString());
+                    // Only allow same-app relative paths
+                    if (path.StartsWith('/') && !path.StartsWith("//", StringComparison.Ordinal))
+                        dest = path;
+                }
+            }
+            catch { /* home */ }
+
+            Nav.NavigateTo(dest, forceLoad: true);
         }
         catch (HttpRequestException ex)
         {

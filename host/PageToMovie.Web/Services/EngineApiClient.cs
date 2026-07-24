@@ -38,9 +38,11 @@ public sealed class EngineApiClient
             _http.DefaultRequestHeaders.Remove("Authorization");
             _http.DefaultRequestHeaders.Remove(AuthHeaders.UserId);
             if (_session is null) return;
-            if (!string.IsNullOrWhiteSpace(_session.Token))
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _session.Token.Trim());
+            // Only send identity when signed in — anonymous must not spoof X-User-Id=local for gated APIs.
+            if (string.IsNullOrWhiteSpace(_session.Token))
+                return;
+            _http.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", _session.Token.Trim());
             var uid = string.IsNullOrWhiteSpace(_session.UserId) ? "local" : _session.UserId.Trim();
             _http.DefaultRequestHeaders.TryAddWithoutValidation(AuthHeaders.UserId, uid);
         }
@@ -94,6 +96,22 @@ public sealed class EngineApiClient
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
         {
             Content = JsonContent.Create(new LoginRequest { Username = username, Password = password }, options: JsonOpts),
+        };
+        using var resp = await _http.SendAsync(req, ct);
+        var body = await resp.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts, ct);
+        if (body is null)
+            return new LoginResponse { Ok = false, Error = "Empty response" };
+        if (!resp.IsSuccessStatusCode && body.Ok)
+            body.Ok = false;
+        return body;
+    }
+
+    /// <summary>Operator override via PageToMovie_LOGIN_OVERRIDE (Railway-friendly).</summary>
+    public async Task<LoginResponse?> LoginWithOperatorOverrideAsync(string secret, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/operator-override")
+        {
+            Content = JsonContent.Create(new OperatorOverrideRequest { Secret = secret }, options: JsonOpts),
         };
         using var resp = await _http.SendAsync(req, ct);
         var body = await resp.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts, ct);

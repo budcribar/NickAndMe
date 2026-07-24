@@ -1,6 +1,7 @@
 /* Master Executive Theme — Film Studio Studio UI (dark default, light variant via [data-theme]) */
 :root,
 :root[data-theme="dark"] {
+    color-scheme: dark;
     --fs-bg-main: #0c0e12;
     --fs-bg-card: #151922;
     --fs-bg-card-hover: #1c212d;
@@ -9,7 +10,9 @@
     --fs-border-color: rgba(255, 255, 255, 0.08);
     --fs-border-hover: rgba(99, 102, 241, 0.4);
     --fs-text-primary: #f1f5f9;
-    --fs-text-muted: #94a3b8;
+    /* Muted must stay ≥ ~4.5:1 on card (#151922) — #94a3b8 is borderline; prefer brighter. */
+    --fs-text-muted: #b6c2d1;
+    --fs-text-subtle: #9aa8ba;
     --fs-accent-indigo: #6366f1;
     --fs-accent-indigo-hover: #4f46e5;
     --fs-accent-amber: #e2b342;
@@ -55,6 +58,7 @@
 }
 
 :root[data-theme="light"] {
+    color-scheme: light;
     --fs-bg-main: #f5f6f8;
     --fs-bg-card: #ffffff;
     --fs-bg-card-hover: #f4f5f8;
@@ -63,7 +67,8 @@
     --fs-border-color: rgba(15, 23, 42, 0.12);
     --fs-border-hover: rgba(79, 70, 229, 0.4);
     --fs-text-primary: #191c24;
-    --fs-text-muted: #5b6472;
+    --fs-text-muted: #4b5565;
+    --fs-text-subtle: #64748b;
     --fs-accent-indigo: #4f46e5;
     --fs-accent-indigo-hover: #4338ca;
     --fs-accent-amber: #b45309;
@@ -172,13 +177,52 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
    only reads correctly on a light background. Force theme text color explicitly. */
 label,
 .form-label,
-.form-check-label {
+.form-check-label,
+.col-form-label,
+.card-title,
+.card-subtitle,
+.modal-body,
+.dropdown-item,
+.accordion-button,
+.accordion-body,
+.page-link,
+.breadcrumb-item,
+.breadcrumb-item.active {
     color: var(--fs-text-primary);
 }
 
-.form-text,
-.text-muted {
+.card-subtitle {
     color: var(--fs-text-muted) !important;
+}
+
+/* Muted / secondary helpers — cover every Bootstrap utility we use in messages */
+.form-text,
+.text-muted,
+.text-secondary,
+.text-body-secondary,
+.text-black-50,
+.text-white-50,
+.form-control::placeholder,
+.form-select::placeholder,
+.form-control::-webkit-input-placeholder,
+.form-floating > label {
+    color: var(--fs-text-muted) !important;
+}
+
+/* Bootstrap “secondary body” / opacity utilities that wash out on dark cards */
+.text-body {
+    color: var(--fs-text-primary) !important;
+}
+
+.text-body-tertiary {
+    color: var(--fs-text-subtle) !important;
+}
+
+/* Inline messages under controls (status lines, progress captions) */
+.card-body > p,
+.card-body .small:not(.text-muted):not(.form-text),
+.alert .small {
+    color: inherit;
 }
 
 /* Button Refinements */
@@ -246,6 +290,65 @@ label,
 
 .form-control::placeholder {
     color: var(--fs-text-muted);
+}
+
+/*
+ * File inputs (InputFile / type=file): Chromium paints the filename with OS colors that
+ * often clash with dark theme (light-on-light or washed-out gray). Force both the field
+ * and the ::file-selector-button into theme tokens so "Choose File" + filename stay readable.
+ */
+input[type="file"].form-control,
+.form-control[type="file"],
+input[type="file"] {
+    color: var(--fs-text-primary);
+    background-color: var(--fs-bg-input);
+    border: 1px solid var(--fs-border-color);
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] input[type="file"].form-control,
+:root[data-theme="light"] .form-control[type="file"],
+:root[data-theme="light"] input[type="file"] {
+    color-scheme: light;
+}
+
+input[type="file"]::file-selector-button {
+    margin-inline-end: 0.85rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--fs-border-color);
+    border-radius: 6px;
+    background: var(--fs-overlay-mid);
+    color: var(--fs-text-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: var(--fs-accent-indigo);
+    border-color: var(--fs-accent-indigo);
+    color: #fff;
+}
+
+/* Disabled file control */
+input[type="file"]:disabled,
+input[type="file"]:disabled::file-selector-button {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Optional companion label used next to InputFile (shows full filename in theme colors) */
+.fs-file-chosen {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.875rem;
+    color: var(--fs-text-primary);
+    word-break: break-all;
+}
+
+.fs-file-chosen .fs-file-chosen-label {
+    color: var(--fs-text-muted);
+    margin-right: 0.35rem;
 }
 
 /* Tables — Bootstrap defaults to a solid white row background, which breaks
@@ -351,7 +454,11 @@ code {
     color: var(--fs-code-color);
 }
 
-/* Alerts styling */
+/* Alerts — force text + nested links/code/strong for readable messages */
+.alert {
+    color: var(--fs-text-primary);
+}
+
 .alert-info {
     background-color: var(--fs-alert-info-bg);
     border: 1px solid var(--fs-alert-info-border);
@@ -382,12 +489,222 @@ code {
     color: var(--fs-alert-success-text);
 }
 
-.alert strong {
-    color: inherit;
+.alert strong,
+.alert b,
+.alert a,
+.alert .alert-link,
+.alert code,
+.alert .text-muted,
+.alert .form-text,
+.alert .small {
+    color: inherit !important;
+}
+
+.alert a,
+.alert .alert-link {
+    text-decoration: underline;
+    font-weight: 600;
 }
 
 .text-warning {
     color: var(--fs-accent-amber) !important;
+}
+
+.text-danger {
+    color: var(--fs-alert-danger-text) !important;
+}
+
+.text-success {
+    color: var(--fs-alert-success-text) !important;
+}
+
+.text-info {
+    color: var(--fs-alert-info-text) !important;
+}
+
+/* Badges — Bootstrap gray badges are unreadable on dark UI */
+.badge.bg-secondary,
+.badge.text-bg-secondary {
+    background-color: #3d4659 !important;
+    color: #f1f5f9 !important;
+}
+
+.badge.bg-light,
+.badge.text-bg-light {
+    background-color: var(--fs-overlay-mid) !important;
+    color: var(--fs-text-primary) !important;
+    border: 1px solid var(--fs-border-color);
+}
+
+.badge.bg-dark,
+.badge.text-bg-dark {
+    background-color: #0b0d12 !important;
+    color: #f1f5f9 !important;
+}
+
+.badge.bg-warning,
+.badge.text-bg-warning {
+    color: #1a1408 !important;
+}
+
+:root[data-theme="light"] .badge.bg-secondary,
+:root[data-theme="light"] .badge.text-bg-secondary {
+    background-color: #5b6472 !important;
+    color: #fff !important;
+}
+
+/* Progress bars + status captions beside them */
+.progress {
+    background-color: var(--fs-overlay-mid);
+    border: 1px solid var(--fs-border-color);
+}
+
+.progress-bar {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Disabled inputs still need readable labels/values */
+.form-control:disabled,
+.form-select:disabled,
+.form-control[readonly] {
+    background-color: var(--fs-overlay-soft);
+    color: var(--fs-text-muted);
+    opacity: 1;
+}
+
+/* Autofill (Chrome) often forces white bg + black text that then gets inverted weirdly */
+input.form-control:-webkit-autofill,
+input.form-control:-webkit-autofill:hover,
+input.form-control:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--fs-text-primary);
+    caret-color: var(--fs-text-primary);
+    box-shadow: 0 0 0 1000px var(--fs-bg-input) inset;
+    transition: background-color 99999s ease-out;
+}
+
+/* Dropdowns / select menus */
+.dropdown-menu {
+    background-color: var(--fs-bg-card);
+    border: 1px solid var(--fs-border-color);
+    color: var(--fs-text-primary);
+}
+
+.dropdown-item {
+    color: var(--fs-text-primary);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: var(--fs-bg-card-hover);
+    color: var(--fs-text-primary);
+}
+
+.dropdown-item.disabled,
+.dropdown-item:disabled {
+    color: var(--fs-text-muted);
+}
+
+.dropdown-divider {
+    border-top-color: var(--fs-border-color);
+}
+
+/* Accordion */
+.accordion-item {
+    background-color: var(--fs-bg-card);
+    border-color: var(--fs-border-color);
+    color: var(--fs-text-primary);
+}
+
+.accordion-button {
+    background-color: var(--fs-bg-card);
+    color: var(--fs-text-primary);
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--fs-bg-card-hover);
+    color: var(--fs-text-primary);
+    box-shadow: none;
+}
+
+.accordion-button::after {
+    filter: invert(0.85);
+}
+
+:root[data-theme="light"] .accordion-button::after {
+    filter: none;
+}
+
+.accordion-body {
+    background-color: var(--fs-bg-card);
+    color: var(--fs-text-primary);
+}
+
+/* Details / summary (job logs, advanced sections) */
+details > summary {
+    color: var(--fs-text-muted);
+    cursor: pointer;
+}
+
+details > summary:hover {
+    color: var(--fs-text-primary);
+}
+
+details[open] > summary {
+    color: var(--fs-text-primary);
+}
+
+/* Input groups (key save buttons, etc.) */
+.input-group-text {
+    background-color: var(--fs-overlay-mid);
+    border-color: var(--fs-border-color);
+    color: var(--fs-text-primary);
+}
+
+/* Form checks */
+.form-check-input {
+    background-color: var(--fs-bg-input);
+    border-color: var(--fs-border-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--fs-accent-indigo);
+    border-color: var(--fs-accent-indigo);
+}
+
+/* Select options (Windows/Chrome often force white dropdown) */
+.form-select option {
+    background-color: var(--fs-bg-card);
+    color: var(--fs-text-primary);
+}
+
+/* Pagination */
+.page-link {
+    background-color: var(--fs-bg-card);
+    border-color: var(--fs-border-color);
+    color: var(--fs-text-primary);
+}
+
+.page-link:hover {
+    background-color: var(--fs-bg-card-hover);
+    color: var(--fs-text-primary);
+}
+
+.page-item.active .page-link {
+    background-color: var(--fs-accent-indigo);
+    border-color: var(--fs-accent-indigo);
+    color: #fff;
+}
+
+.page-item.disabled .page-link {
+    background-color: var(--fs-bg-card);
+    color: var(--fs-text-muted);
+}
+
+/* HR / borders used as separators in message stacks */
+hr {
+    border-color: var(--fs-border-color);
+    opacity: 1;
 }
 
 /* Nav Pills (Step navigation) */
@@ -504,8 +821,21 @@ a:hover, .btn-link:hover {
     color: var(--fs-link-hover);
 }
 
-.text-muted {
+.text-muted,
+.text-secondary,
+.text-body-secondary {
     color: var(--fs-text-muted) !important;
+}
+
+/* Nav menu footer / sidebar muted rows (scoped layout still inherits) */
+.sidebar .text-muted,
+.sidebar .nav-link {
+    color: var(--fs-text-muted);
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: var(--fs-text-primary);
 }
 
 .content {

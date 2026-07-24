@@ -28,16 +28,19 @@ public sealed class GrokVisionClient : IVisionClient
 
     private readonly HttpClient _http;
     private readonly ProjectTelemetryService _telemetry;
+    private readonly IUserApiKeyProvider? _keyProvider;
     private readonly ILogger<GrokVisionClient> _log;
 
     public GrokVisionClient(
         HttpClient http,
         IOptions<PageToMovieOptions> opts,
         ProjectTelemetryService telemetry,
-        ILogger<GrokVisionClient> log)
+        ILogger<GrokVisionClient> log,
+        IUserApiKeyProvider? keyProvider = null)
     {
         _http = http;
         _telemetry = telemetry;
+        _keyProvider = keyProvider;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -429,8 +432,10 @@ public sealed class GrokVisionClient : IVisionClient
         return $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
     }
 
-    private static string? ResolveApiKey() =>
-        ApiKeyScope.Current ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
+    private string? ResolveApiKey() =>
+        ApiKeyScope.Current
+        ?? _keyProvider?.GetKey(null, "grok")
+        ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
 
     private async Task<HttpResponseMessage> SendJsonAsync(
         HttpMethod method, string uri, object payload, CancellationToken ct)

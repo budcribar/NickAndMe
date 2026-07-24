@@ -40,19 +40,30 @@
                 <span>Projects</span>
                 <button class="btn btn-primary btn-sm"
                         data-testid="home-new-project"
-                        disabled="@_busy"
+                        disabled="@(_busy || !Session.IsLoggedIn)"
+                        title="@(Session.IsLoggedIn ? "Create a project" : "Sign in to create projects")"
                         @onclick="() => _showNew = !_showNew">
                     @(_showNew ? "Cancel" : "New project")
                 </button>
             </div>
             <div class="card-body">
-                @if (_showNew)
+                @if (!Session.IsLoggedIn)
+                {
+                    <div class="alert alert-warning py-2 small mb-3">
+                        <strong>Sign in required.</strong>
+                        <a href="login?returnUrl=/" class="alert-link">Sign in or create an account</a>
+                        to create projects and save your Grok API key.
+                    </div>
+                }
+                @if (_showNew && Session.IsLoggedIn)
                 {
                     <div class="border rounded p-3 mb-3 bg-light">
                         @if (ActiveProject.Status is not null && !ActiveProject.Status.XaiConfigured)
                         {
                             <div class="alert alert-warning py-1 px-2 small mb-2">
-                                ⚠️ <strong>Notice:</strong> No AI API key is connected yet. You can create projects, but <a href="configuration" class="alert-link">Connect service →</a> is required before adapting books into screenplays.
+                                ⚠️ <strong>Notice:</strong> No AI API key yet.
+                                <a href="configuration" class="alert-link">Add your Grok key →</a>
+                                before book import / OCR.
                             </div>
                         }
                         <label class="form-label small mb-1">Name</label>
@@ -187,12 +198,19 @@
                             <span class="ms-1">@_job.Index / @_job.Total</span>
                         }
                     </p>
-                    @if (showError)
+                    @if (showError || string.Equals(_job.Status, "error", StringComparison.OrdinalIgnoreCase))
                     {
-                        <div class="alert alert-danger py-1 small mb-2">
-                            @(Session.IsAdmin
-                                ? (_job.Error ?? jobLine)
-                                : FriendlyOperatorError(_job))
+                        <div class="alert alert-danger py-2 small mb-2">
+                            <div class="fw-semibold mb-1">@FriendlyKind(_job.Kind) failed</div>
+                            <div>@FriendlyOperatorError(_job)</div>
+                            @if (Session.IsAdmin &&
+                                 !string.IsNullOrWhiteSpace(_job.Error) &&
+                                 !string.Equals(_job.Error.Trim(), FriendlyOperatorError(_job), StringComparison.Ordinal))
+                            {
+                                <div class="text-muted mt-1" style="word-break: break-word;">
+                                    <code class="small">@_job.Error</code>
+                                </div>
+                            }
                         </div>
                     }
                     else if (!string.IsNullOrWhiteSpace(jobLine))
@@ -361,6 +379,12 @@
     private async Task CreateProjectAsync()
     {
         if (string.IsNullOrWhiteSpace(_newName)) return;
+        if (!Session.IsLoggedIn)
+        {
+            _error = "Sign in required to create a project.";
+            Nav.NavigateTo("/login?returnUrl=/");
+            return;
+        }
         _busy = true;
         _error = null;
         try
@@ -478,7 +502,7 @@
         _ => string.IsNullOrWhiteSpace(kind) ? "Job" : kind!,
     };
 
-    /// <summary>Short operator line — no paths, seed lists, or API jargon.</summary>
+    /// <summary>Short operator line — prefer real error text when the job failed.</summary>
     private static string FriendlyJobLine(JobSnapshot j)
     {
         if (string.Equals(j.Status, "error", StringComparison.OrdinalIgnoreCase))
@@ -492,18 +516,123 @@
             return "Creating portrait…";
         if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
             return "Matching book pictures…";
+        if (string.Equals(j.Kind, "book_import", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(j.Kind, "book_prepare", StringComparison.OrdinalIgnoreCase))
+        {
+            var running = j.Message ?? "Importing book…";
+            return TrimOneLine(running, 160);
+        }
         var msg = j.Message ?? "";
-        if (msg.Length > 120) msg = msg[..117] + "…";
-        return msg;
+        return TrimOneLine(msg, 120);
     }
 
+    /// <summary>
+    /// Operator-facing error. Prefer the job's Error/Message (what failed) with light cleanup,
+    /// instead of a useless generic "Something went wrong."
+    /// </summary>
     private static string FriendlyOperatorError(JobSnapshot j)
     {
+        var raw = FirstNonEmpty(j.Error, j.Message);
+        if (!string.IsNullOrWhiteSpace(raw))
+        {
+            var cleaned = SanitizeOperatorError(raw);
+            if (!string.IsNullOrWhiteSpace(cleaned))
+                return cleaned;
+        }
+
+        // Fallbacks only when the job carried no useful text
         if (string.Equals(j.Kind, "character", StringComparison.OrdinalIgnoreCase))
-            return "Portrait generation failed. Try again.";
+            return "Portrait generation failed. Check your image API key and try again.";
         if (string.Equals(j.Kind, "character-plates", StringComparison.OrdinalIgnoreCase))
-            return "Could not match book pictures. Try again.";
-        return "Something went wrong. Try again.";
+            return "Could not match book pictures. Ensure the book was prepared and a vision-capable key is set.";
+        if (string.Equals(j.Kind, "book_import", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(j.Kind, "book_prepare", StringComparison.OrdinalIgnoreCase))
+            return "Book import failed. Check API key (Grok for picture-book OCR), PDF upload, and job details.";
+        if (string.Equals(j.Kind, "stage1", StringComparison.OrdinalIgnoreCase))
+            return "Screenplay draft failed. Check the planning model key and book text.";
+        if (string.Equals(j.Kind, "stage2", StringComparison.OrdinalIgnoreCase))
+            return "Shot plan failed. Check the planning model key and screenplay.";
+        return "Job failed. Open the project and check Configuration keys / job details.";
+    }
+
+    private static string? FirstNonEmpty(params string?[] parts)
+    {
+        foreach (var p in parts)
+        {
+            if (!string.IsNullOrWhiteSpace(p))
+                return p.Trim();
+        }
+        return null;
+    }
+
+    /// <summary>Strip stack/path noise; keep the actionable sentence.</summary>
+    private static string SanitizeOperatorError(string raw)
+    {
+        var s = raw.Replace("\r\n", "\n").Trim();
+        // First line only (stacks often follow)
+        var nl = s.IndexOf('\n');
+        if (nl > 0) s = s[..nl].Trim();
+
+        // Drop leading "System.X: " type prefixes
+        if (s.StartsWith("System.", StringComparison.Ordinal))
+        {
+            var colon = s.IndexOf(": ", StringComparison.Ordinal);
+            if (colon > 0 && colon < 80)
+                s = s[(colon + 2)..].Trim();
+        }
+
+        // Known high-value rewrites (clearer than raw API blobs)
+        if (s.Contains("XAI_API_KEY", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("API key missing", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Connect your AI", StringComparison.OrdinalIgnoreCase))
+            return "No AI API key. Open Configuration and add your xAI / Grok key (required for picture-book OCR and screenplay).";
+
+        if (s.Contains("No page images", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Could not extract or render page images", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Page render failed", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("libpdfium", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("libSkiaSharp", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("DllNotFoundException", StringComparison.OrdinalIgnoreCase))
+            return "Could not render PDF pages for OCR (picture books need page images). " +
+                   "On Railway, the server needs PDF render libraries; redeploy after the Docker font/Skia fix. Detail: " +
+                   TrimOneLine(s, 180);
+
+        if (s.Contains("No PDF and no book_full", StringComparison.OrdinalIgnoreCase))
+            return "No book file found on the server. Re-upload the PDF, then import again.";
+
+        if (s.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            return "Book import timed out (OCR + screenplay can take several minutes). Try again; for long books use a smaller PDF or check the job log.";
+
+        if (s.Contains("could not be decrypted", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("encryption keys changed", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("DataProtector", StringComparison.OrdinalIgnoreCase))
+            return "Saved Grok key cannot be decrypted after redeploy. Re-open Configuration and save the key again. Mount a Railway Volume at /data so keys persist.";
+
+        if (s.Contains("HTTP 401", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Incorrect API key", StringComparison.OrdinalIgnoreCase))
+            return "xAI rejected the API key (401). Re-save a valid Grok key in Configuration, or set XAI_API_KEY on the Railway service.";
+
+        if (s.Contains("HTTP 429", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+            return "xAI rate limit hit. Wait a minute and try import again.";
+
+        if (s.Contains("Could not build a usable screenplay", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Book adapt", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("chunk", StringComparison.OrdinalIgnoreCase) && s.Contains("failed", StringComparison.OrdinalIgnoreCase))
+            return "Screenplay generation failed after book text was ready. " + TrimOneLine(s, 200);
+
+        return TrimOneLine(s, 280);
+    }
+
+    private static string TrimOneLine(string s, int max)
+    {
+        s = s.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        while (s.Contains("  ", StringComparison.Ordinal))
+            s = s.Replace("  ", " ", StringComparison.Ordinal);
+        if (s.Length > max) return s[..(max - 1)] + "…";
+        return s;
     }
 
     public async ValueTask DisposeAsync()

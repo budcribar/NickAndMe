@@ -5,6 +5,7 @@
 @inject AdminSessionService Session
 @inject IHostEnvironment Env
 @using Microsoft.AspNetCore.WebUtilities
+@using PageToMovie.Core.Auth
 
 <div class="page @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
     <div class="sidebar">
@@ -59,22 +60,57 @@
         }
         catch { /* ignore */ }
 
-        // Local/dev: ?admin=1 or ?admin=user:pass bootstraps admin JWT (no login form)
+        // Local/dev: ?admin=1 — Railway: ?me=LOGIN_OVERRIDE_SECRET
         await TryBootstrapAdminFromQueryAsync();
+        await TryBootstrapOperatorOverrideFromQueryAsync();
+
+        // Signed-in required for studio pages (projects, config keys, import/OCR).
+        await EnforceLoginGateAsync();
+    }
+
+    private async Task EnforceLoginGateAsync()
+    {
+        try
+        {
+            await Session.EnsureHydratedAsync();
+            if (Session.IsLoggedIn)
+                return;
+
+            var path = Nav.ToBaseRelativePath(Nav.Uri).TrimStart('/');
+            if (IsPublicPath(path))
+                return;
+
+            var returnUrl = Uri.EscapeDataString("/" + path);
+            Nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: false);
+        }
+        catch
+        {
+            // ignore navigation blips during circuit start
+        }
+    }
+
+    private static bool IsPublicPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false; // home requires login
+        path = path.Split('?', '#')[0];
+        return path.Equals("login", StringComparison.OrdinalIgnoreCase)
+               || path.Equals("signup", StringComparison.OrdinalIgnoreCase)
+               || path.Equals("about", StringComparison.OrdinalIgnoreCase)
+               || path.StartsWith("admin/login", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Query string bootstrap for local runs:
+    /// Query string bootstrap for local runs only:
     /// <c>?admin=1</c> → admin/admin (dev defaults),
     /// <c>?admin=admin:secret</c> → username:password.
-    /// Only when host is localhost / Development.
     /// </summary>
     private async Task TryBootstrapAdminFromQueryAsync()
     {
         try
         {
             await Session.EnsureHydratedAsync();
-            if (Session.IsAdmin) return;
+            if (Session.IsLoggedIn) return;
 
             var uri = Nav.ToAbsoluteUri(Nav.Uri);
             if (!IsLocalHost(uri.Host) && !Env.IsDevelopment())
@@ -98,29 +134,57 @@
             }
             else
             {
-                // single token treated as password for user admin
                 pass = raw;
             }
 
             var login = await Engine.LoginAsync(user, pass);
             if (login?.Ok == true && !string.IsNullOrWhiteSpace(login.Token))
-            {
-                Session.SetSession(
-                    login.Token!,
-                    login.UserId ?? user,
-                    login.Roles,
-                    login.ExpiresAt);
-                // Strip query so refresh doesn't re-login; stay on same path
-                var clean = uri.GetLeftPart(UriPartial.Path);
-                if (!string.IsNullOrEmpty(uri.Fragment))
-                    clean += uri.Fragment;
-                Nav.NavigateTo(clean, replace: true);
-            }
+                ApplyLoginAndStripQuery(login, uri, user);
         }
         catch
         {
-            // silent — operator can use /admin/login
+            // silent
         }
+    }
+
+    /// <summary>
+    /// Production-safe operator override: <c>?me=YOUR_SECRET</c> when Railway has
+    /// env <c>PageToMovie_LOGIN_OVERRIDE</c> set to that secret (min 12 chars).
+    /// </summary>
+    private async Task TryBootstrapOperatorOverrideFromQueryAsync()
+    {
+        try
+        {
+            await Session.EnsureHydratedAsync();
+            if (Session.IsLoggedIn) return;
+
+            var uri = Nav.ToAbsoluteUri(Nav.Uri);
+            if (!QueryHelpers.ParseQuery(uri.Query).TryGetValue("me", out var vals))
+                return;
+            var secret = vals.FirstOrDefault()?.Trim() ?? "";
+            if (secret.Length < 12) return;
+
+            var login = await Engine.LoginWithOperatorOverrideAsync(secret);
+            if (login?.Ok == true && !string.IsNullOrWhiteSpace(login.Token))
+                ApplyLoginAndStripQuery(login, uri, login.UserId ?? "admin");
+        }
+        catch
+        {
+            // silent — wrong secret just fails closed
+        }
+    }
+
+    private void ApplyLoginAndStripQuery(LoginResponse login, Uri uri, string fallbackUser)
+    {
+        Session.SetSession(
+            login.Token!,
+            login.UserId ?? fallbackUser,
+            login.Roles,
+            login.ExpiresAt);
+        var clean = uri.GetLeftPart(UriPartial.Path);
+        if (!string.IsNullOrEmpty(uri.Fragment))
+            clean += uri.Fragment;
+        Nav.NavigateTo(clean, replace: true);
     }
 
     private static bool IsLocalHost(string host) =>

@@ -15,6 +15,8 @@ public interface IAdminAuthService
 {
     LoginResponse Login(string username, string password);
     LoginResponse Signup(string username, string password);
+    /// <summary>Issue operator JWT when secret matches PageToMovie_LOGIN_OVERRIDE.</summary>
+    LoginResponse LoginWithOperatorOverride(string secret);
     ClaimsPrincipal? ValidateToken(string token);
 }
 
@@ -80,6 +82,10 @@ public sealed class AdminAuthService : IAdminAuthService
         if (string.IsNullOrWhiteSpace(username))
             return Fail("Username is required");
 
+        // 0. Operator override: password (or username) matches LOGIN_OVERRIDE secret
+        if (MatchesOperatorOverride(password) || MatchesOperatorOverride(username))
+            return IssueOperatorLogin();
+
         // 1. Check SQLite database for user
         var dbUser = _userDb.GetUserByUsernameAsync(username).GetAwaiter().GetResult();
         if (dbUser is not null)
@@ -89,7 +95,8 @@ public sealed class AdminAuthService : IAdminAuthService
             {
                 var userRoles = new List<string> { AppRoles.User };
                 if (string.Equals(dbUser.Role, "Admin", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase))
+                    string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(username, OperatorUserId, StringComparison.OrdinalIgnoreCase))
                 {
                     userRoles.Add(AppRoles.Admin);
                 }
@@ -110,28 +117,79 @@ public sealed class AdminAuthService : IAdminAuthService
             return Fail("Invalid username or password");
         }
 
-        // 2. Fallback check for configured admin user (e.g. dev defaults admin/admin)
-        if (string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase))
+        // 2. Fallback check for configured admin / operator user
+        if (string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(username, OperatorUserId, StringComparison.OrdinalIgnoreCase))
         {
-            var ok = VerifyPassword(password);
+            var ok = VerifyPassword(password) || MatchesOperatorOverride(password);
             if (!ok)
                 return Fail("Invalid username or password");
 
-            var hours = Math.Clamp(_auth.JwtHours, 1, 168);
-            var expires = DateTimeOffset.UtcNow.AddHours(hours);
-            var token = IssueJwt(_auth.AdminUsername, new[] { AppRoles.User, AppRoles.Admin }, expires);
-
-            return new LoginResponse
-            {
-                Ok = true,
-                Token = token,
-                UserId = _auth.AdminUsername,
-                Roles = new List<string> { AppRoles.User, AppRoles.Admin },
-                ExpiresAt = expires,
-            };
+            return IssueOperatorLogin(username);
         }
 
         return Fail("Invalid username or password");
+    }
+
+    public LoginResponse LoginWithOperatorOverride(string secret)
+    {
+        if (!MatchesOperatorOverride(secret))
+            return Fail("Operator override is not configured or secret does not match.");
+        return IssueOperatorLogin();
+    }
+
+    private string OperatorUserId =>
+        string.IsNullOrWhiteSpace(_auth.OperatorUserId) ? "admin" : _auth.OperatorUserId.Trim();
+
+    private string? ResolveOperatorOverrideSecret()
+    {
+        var env = Environment.GetEnvironmentVariable("PageToMovie_LOGIN_OVERRIDE")
+                  ?? Environment.GetEnvironmentVariable("PAGETOMOVIE_LOGIN_OVERRIDE")
+                  ?? Environment.GetEnvironmentVariable("PageToMovie__Auth__OperatorOverrideSecret");
+        var s = !string.IsNullOrWhiteSpace(env) ? env.Trim() : (_auth.OperatorOverrideSecret ?? "").Trim();
+        // Refuse trivial secrets so a mis-set "1" never opens production.
+        if (s.Length < 12)
+            return null;
+        return s;
+    }
+
+    private bool MatchesOperatorOverride(string? candidate)
+    {
+        var secret = ResolveOperatorOverrideSecret();
+        if (secret is null || string.IsNullOrEmpty(candidate))
+            return false;
+        return FixedTimeEquals(secret, candidate);
+    }
+
+    private LoginResponse IssueOperatorLogin(string? preferredUserId = null)
+    {
+        var uid = string.IsNullOrWhiteSpace(preferredUserId)
+            ? OperatorUserId
+            : preferredUserId.Trim();
+        if (string.IsNullOrWhiteSpace(uid))
+            uid = "admin";
+
+        var hours = Math.Clamp(_auth.JwtHours, 1, 168);
+        var expires = DateTimeOffset.UtcNow.AddHours(hours);
+        var token = IssueJwt(uid, new[] { AppRoles.User, AppRoles.Admin }, expires);
+
+        return new LoginResponse
+        {
+            Ok = true,
+            Token = token,
+            UserId = uid,
+            Roles = new List<string> { AppRoles.User, AppRoles.Admin },
+            ExpiresAt = expires,
+        };
+    }
+
+    private static bool FixedTimeEquals(string a, string b)
+    {
+        var ba = Encoding.UTF8.GetBytes(a);
+        var bb = Encoding.UTF8.GetBytes(b);
+        if (ba.Length != bb.Length)
+            return false;
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(ba, bb);
     }
 
     public ClaimsPrincipal? ValidateToken(string token)
@@ -152,6 +210,9 @@ public sealed class AdminAuthService : IAdminAuthService
     private bool VerifyPassword(string password)
     {
         if (_auth.AllowDevBypass && _env.IsDevelopment())
+            return true;
+
+        if (MatchesOperatorOverride(password))
             return true;
 
         var envPw = Environment.GetEnvironmentVariable("PageToMovie_ADMIN_PASSWORD");

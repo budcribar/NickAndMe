@@ -276,6 +276,18 @@ builder.Services.AddCors(o =>
             .SetIsOriginAllowed(_ => true));
 });
 
+// Large picture-book PDFs (e.g. Buster ~12MB+) — Blazor allows 80MB client-side; match server form limit.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 100 * 1024 * 1024;
+    o.ValueLengthLimit = int.MaxValue;
+    o.MultipartHeadersLengthLimit = 64 * 1024;
+});
+builder.WebHost.ConfigureKestrel(o =>
+{
+    o.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
+});
+
 var app = builder.Build();
 
 app.UseStaticFiles();
@@ -356,16 +368,51 @@ app.MapPost("/api/auth/login", (LoginRequest body, IAdminAuthService auth, Login
 app.MapPost("/api/auth/logout", () =>
     Results.Ok(new { ok = true, message = "Client should discard JWT" }));
 
-app.MapGet("/api/auth/me", (IUserContext user, IUserApiKeyProvider keys) =>
+/// <summary>
+/// Operator override: POST { "secret": "…" } matching PageToMovie_LOGIN_OVERRIDE.
+/// Used by <c>?me=SECRET</c> bootstrap on Railway (not localhost-only).
+/// </summary>
+app.MapPost("/api/auth/operator-override", (OperatorOverrideRequest? body, IAdminAuthService auth, LoginRateLimiter limiter, HttpContext http) =>
+{
+    var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var key = $"override|{ip}";
+    if (limiter.IsBlocked(key, out var retryAfter))
+    {
+        return Results.Json(
+            new LoginResponse { Ok = false, Error = $"Too many requests. Retry in {retryAfter}s." },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    var result = auth.LoginWithOperatorOverride(body?.Secret ?? "");
+    if (!result.Ok)
+    {
+        limiter.RecordFailure(key);
+        return Results.Json(result, statusCode: StatusCodes.Status401Unauthorized);
+    }
+    limiter.RecordSuccess(key);
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/auth/me", (IUserContext user, IUserApiKeyProvider keys, UserDatabaseService userDb) =>
 {
     var roles = user.Roles.ToList();
+    var personal = false;
+    try
+    {
+        personal = !string.IsNullOrWhiteSpace(
+            userDb.GetDecryptedXaiApiKeyAsync(user.UserId).GetAwaiter().GetResult());
+    }
+    catch { /* ignore */ }
+
     return Results.Ok(new MeResponse
     {
         Ok = true,
         UserId = user.UserId,
         Roles = roles,
         IsAdmin = user.IsAdmin,
-        HasApiKey = keys.HasKey(user.UserId) || !string.IsNullOrWhiteSpace(user.RequestApiKey),
+        IsAuthenticated = user.IsAuthenticated,
+        // Personal key only when signed in; otherwise false even if server env has XAI_API_KEY.
+        HasApiKey = user.IsAuthenticated && (personal || !string.IsNullOrWhiteSpace(user.RequestApiKey)),
     });
 });
 
@@ -935,8 +982,15 @@ app.MapPost("/api/projects/{id}/activate", async (string id, ProjectStore store,
 });
 
 /// <summary>Create a new project folder under projects/ and make it active.</summary>
-app.MapPost("/api/projects", async (CreateProjectRequest? body, ProjectStore store, CancellationToken ct) =>
+app.MapPost("/api/projects", async (
+    CreateProjectRequest? body,
+    ProjectStore store,
+    IUserContext user,
+    IOptions<PageToMovieOptions> opts,
+    CancellationToken ct) =>
 {
+    if (AuthGate.RequireLogin(user, opts) is { } denied)
+        return denied;
     try
     {
         var name = body?.Name ?? body?.Id ?? body?.Title ?? "";
@@ -958,8 +1012,15 @@ app.MapPost("/api/projects", async (CreateProjectRequest? body, ProjectStore sto
 });
 
 /// <summary>Delete a project folder under projects/.</summary>
-app.MapDelete("/api/projects/{id}", async (string id, ProjectStore store, CancellationToken ct) =>
+app.MapDelete("/api/projects/{id}", async (
+    string id,
+    ProjectStore store,
+    IUserContext user,
+    IOptions<PageToMovieOptions> opts,
+    CancellationToken ct) =>
 {
+    if (AuthGate.RequireLogin(user, opts) is { } denied)
+        return denied;
     try
     {
         await store.DeleteProjectAsync(id, ct);
@@ -1205,8 +1266,16 @@ app.MapGet("/api/projects/{id}/config", async (string id, ProjectStore store, Ca
     }
 });
 
-app.MapPut("/api/projects/{id}/config", async (string id, HttpRequest req, ProjectStore store, CancellationToken ct) =>
+app.MapPut("/api/projects/{id}/config", async (
+    string id,
+    HttpRequest req,
+    ProjectStore store,
+    IUserContext user,
+    IOptions<PageToMovieOptions> opts,
+    CancellationToken ct) =>
 {
+    if (AuthGate.RequireLogin(user, opts) is { } denied)
+        return denied;
     try
     {
         using var doc = await JsonDocument.ParseAsync(req.Body, cancellationToken: ct);
@@ -1771,8 +1840,15 @@ app.MapGet("/api/projects/{id}/adaptation", (string id, ProjectStore store) =>
     }
 });
 
-app.MapPost("/api/jobs/book-prepare", async (StartBookPrepareRequest body, FilmJobService jobService) =>
+app.MapPost("/api/jobs/book-prepare", async (
+    StartBookPrepareRequest body,
+    FilmJobService jobService,
+    IUserContext user,
+    UserDatabaseService userDb,
+    IOptions<PageToMovieOptions> opts) =>
 {
+    if (AuthGate.RequirePersonalGrokKey(user, userDb, opts, useFakes) is { } denied)
+        return denied;
     try
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
@@ -1792,8 +1868,15 @@ app.MapPost("/api/jobs/book-prepare", async (StartBookPrepareRequest body, FilmJ
 });
 
 /// <summary>Prepare (optional) + book→Fountain draft as one background job.</summary>
-app.MapPost("/api/jobs/book-import", async (StartBookImportRequest body, FilmJobService jobService) =>
+app.MapPost("/api/jobs/book-import", async (
+    StartBookImportRequest body,
+    FilmJobService jobService,
+    IUserContext user,
+    UserDatabaseService userDb,
+    IOptions<PageToMovieOptions> opts) =>
 {
+    if (AuthGate.RequirePersonalGrokKey(user, userDb, opts, useFakes) is { } denied)
+        return denied;
     try
     {
         if (string.IsNullOrWhiteSpace(body.ProjectId))
@@ -1814,8 +1897,15 @@ app.MapPost("/api/jobs/book-import", async (StartBookImportRequest body, FilmJob
     }
 });
 
-app.MapPost("/api/projects/{id}/adaptation/upload", async (string id, HttpRequest req, ProjectStore store) =>
+app.MapPost("/api/projects/{id}/adaptation/upload", async (
+    string id,
+    HttpRequest req,
+    ProjectStore store,
+    IUserContext user,
+    IOptions<PageToMovieOptions> opts) =>
 {
+    if (AuthGate.RequireLogin(user, opts) is { } denied)
+        return denied;
     try
     {
         if (!req.HasFormContentType)
@@ -2062,8 +2152,13 @@ app.MapPost("/api/projects/{id}/screenplay/from-book", async (
     string id,
     ProjectStore store,
     PageToMovie.Engine.Abstractions.IChatClient chat,
+    IUserContext user,
+    UserDatabaseService userDb,
+    IOptions<PageToMovieOptions> opts,
     CancellationToken ct) =>
 {
+    if (AuthGate.RequirePersonalGrokKey(user, userDb, opts, useFakes) is { } denied)
+        return denied;
     try
     {
         var result = await ScreenplayService.CreateDraftFromBookAsync(store, id, chat, ct: ct);
@@ -2783,8 +2878,14 @@ app.MapGet("/api/projects/{id}/movie/wip/meta", (string id, ProjectStore store) 
     }
 });
 
-app.MapGet("/api/user/settings", async (IUserContext userCtx, UserDatabaseService userDb, CancellationToken ct) =>
+app.MapGet("/api/user/settings", async (
+    IUserContext userCtx,
+    UserDatabaseService userDb,
+    IOptions<PageToMovieOptions> opts,
+    CancellationToken ct) =>
 {
+    if (AuthGate.RequireLogin(userCtx, opts) is { } denied)
+        return denied;
     try
     {
         var settings = await userDb.GetUserSettingsDtoAsync(userCtx.UserId, ct);
@@ -2796,8 +2897,15 @@ app.MapGet("/api/user/settings", async (IUserContext userCtx, UserDatabaseServic
     }
 });
 
-app.MapPost("/api/user/settings", async (UpdateUserSettingsRequest req, IUserContext userCtx, UserDatabaseService userDb, CancellationToken ct) =>
+app.MapPost("/api/user/settings", async (
+    UpdateUserSettingsRequest req,
+    IUserContext userCtx,
+    UserDatabaseService userDb,
+    IOptions<PageToMovieOptions> opts,
+    CancellationToken ct) =>
 {
+    if (AuthGate.RequireLogin(userCtx, opts) is { } denied)
+        return denied;
     try
     {
         // Null fields leave existing keys; empty string clears that provider's personal key.
@@ -2817,12 +2925,6 @@ app.MapPost("/api/user/settings", async (UpdateUserSettingsRequest req, IUserCon
         return Results.BadRequest(new { ok = false, error = ex.Message });
     }
 });
-
-app.UseStaticFiles();
-app.UseAntiforgery();
-
-app.MapRazorComponents<PageToMovie.Web.Components.App>()
-    .AddInteractiveServerRenderMode();
 
 app.Run();
 

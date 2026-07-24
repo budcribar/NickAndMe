@@ -2298,9 +2298,19 @@ public sealed class ProjectStore
         // Fountain re-sign that changed Stage 1 makes an existing shot plan stale
         if (screenplay.DraftExists && screenplay.Dirty && stage2.Stage2Ready)
             stage2.Stage2Stale = true;
-        var xai = !string.IsNullOrWhiteSpace(ApiKeyScope.Current) ||
-                  (_keyProvider is not null && _keyProvider.HasKey(null)) ||
-                  !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"));
+        // Prefer ambient scope (request middleware / job), then any configured Grok key
+        // (personal DB or process env). HasKey(null) only sees process env — use empty user
+        // fallbacks via GetKey with common local id when scope is empty.
+        var xai = !string.IsNullOrWhiteSpace(ApiKeyScope.Current)
+                  || !string.IsNullOrWhiteSpace(ApiKeyScope.CurrentGemini)
+                  || !string.IsNullOrWhiteSpace(ApiKeyScope.CurrentAnthropic)
+                  || (_keyProvider is not null && (
+                      _keyProvider.HasKey(null)
+                      || _keyProvider.HasKey("local")
+                      || _keyProvider.HasKey("grok")))
+                  || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"))
+                  || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GEMINI_API_KEY"))
+                  || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY"));
 
         var cfg = GetConfigSync(projectId);
         var planningModel = cfg.TryGetValue("planning_model_name", out var pmEl) &&

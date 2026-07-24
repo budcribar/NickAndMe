@@ -71,6 +71,10 @@ public sealed class HttpUserContext : IUserContext
     public bool IsAdmin =>
         Roles.Any(r => string.Equals(r, AppRoles.Admin, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Validated JWT only — X-User-Id alone does not count as signed in.</summary>
+    public bool IsAuthenticated =>
+        _http.HttpContext?.User?.Identity?.IsAuthenticated == true;
+
     public string? RequestApiKey
     {
         get

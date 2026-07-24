@@ -18,6 +18,12 @@ public sealed class LoginRequest
     public string Password { get; set; } = "";
 }
 
+/// <summary>Body for POST /api/auth/operator-override.</summary>
+public sealed class OperatorOverrideRequest
+{
+    public string? Secret { get; set; }
+}
+
 public sealed class LoginResponse
 {
     public bool Ok { get; set; }
@@ -34,5 +40,7 @@ public sealed class MeResponse
     public string? UserId { get; set; }
     public List<string> Roles { get; set; } = new();
     public bool IsAdmin { get; set; }
+    /// <summary>True when the signed-in user has a personal Grok key saved.</summary>
     public bool HasApiKey { get; set; }
+    public bool IsAuthenticated { get; set; }
 }

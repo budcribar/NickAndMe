@@ -885,11 +885,21 @@ public sealed class FilmJobService
 
         try
         {
+            // Ambient job scope is pushed before this runs — log which key source is active.
+            var keyHint = !string.IsNullOrWhiteSpace(ApiKeyScope.Current)
+                ? "personal/scope"
+                : !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"))
+                    ? "server XAI_API_KEY env"
+                    : "none";
+            await AppendLogAsync($"AI key source for import: {keyHint}").ConfigureAwait(false);
+
             if (!_chat.IsConfigured)
             {
                 await FinishAsync("error",
-                    "API key missing. Please connect your AI service key in Configuration before starting import.",
-                    "API key missing. Please connect your AI service key in Configuration before starting import.").ConfigureAwait(false);
+                    "API key missing. A Grok key is set in Configuration only if it decrypts for this user. " +
+                    "Re-save the key after each redeploy unless Railway has a Volume at /data. " +
+                    "Or set server env XAI_API_KEY.",
+                    "API key missing. Re-save Grok key in Configuration (needs Volume at /data) or set XAI_API_KEY env.").ConfigureAwait(false);
                 return;
             }
 

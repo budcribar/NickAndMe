@@ -236,7 +236,15 @@ public class UserDatabaseService
 
         var encrypted = GetEncryptedFromEntity(user, providerId);
         if (string.IsNullOrWhiteSpace(encrypted)) return null;
-        return DecryptApiKey(encrypted);
+        try
+        {
+            return DecryptApiKey(encrypted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GetDecryptedProviderApiKeyAsync failed for {UserId}/{Provider}", userId, providerId);
+            return null;
+        }
     }
 
     public async Task<UserSettingsDto> GetUserSettingsDtoAsync(string userId, CancellationToken ct = default)
@@ -334,8 +342,19 @@ public class UserDatabaseService
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
-    private string? DecryptOptional(string? encrypted) =>
-        string.IsNullOrWhiteSpace(encrypted) ? null : DecryptApiKey(encrypted);
+    private string? DecryptOptional(string? encrypted)
+    {
+        if (string.IsNullOrWhiteSpace(encrypted)) return null;
+        try
+        {
+            return DecryptApiKey(encrypted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DecryptOptional failed — treating personal key as missing");
+            return null;
+        }
+    }
 
     private static bool EnvPresent(string name) =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name));
@@ -443,19 +462,30 @@ public class UserDatabaseService
             return Encoding.UTF8.GetString(Convert.FromBase64String(raw));
         }
 
-        if (_protector != null)
+        if (_protector is null)
         {
-            try
-            {
-                return _protector.Unprotect(cipherText);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to decrypt API key with DataProtector");
-            }
+            // No protector: only accept plain: payloads (dev). Never return opaque ciphertext as a key.
+            throw new InvalidOperationException(
+                "Cannot decrypt personal API key (DataProtection not configured). Re-save the key in Configuration.");
         }
 
-        return cipherText;
+        try
+        {
+            return _protector.Unprotect(cipherText);
+        }
+        catch (Exception ex)
+        {
+            // Common on Railway after redeploy without a Volume on /data: DP keys rotate and
+            // stored ciphertexts become unreadable. Returning ciphertext as the API key caused
+            // "Key Active" in UI with 401s on xAI. Treat as missing instead.
+            _logger.LogWarning(ex,
+                "Failed to decrypt API key with DataProtector — re-save the key in Configuration " +
+                "(and mount a Railway Volume at /data so keys survive restarts)");
+            throw new InvalidOperationException(
+                "Personal API key could not be decrypted (encryption keys changed after redeploy). " +
+                "Open Configuration, re-save your xAI / Grok key. Mount a Railway Volume at /data " +
+                "so the key and data-protection store persist.", ex);
+        }
     }
 
     public static string HashPassword(string password)

@@ -6,6 +6,8 @@
 @inject ActiveProjectState ActiveProject
 @inject ThemeState Theme
 @inject IJSRuntime Js
+@inject AdminSessionService Session
+@inject NavigationManager Nav
 
 <PageTitle>Configuration</PageTitle>
 
@@ -373,22 +375,55 @@ else
     </div>
 
     <div class="card mb-3">
-        <div class="card-header">Cost estimates (USD planning)</div>
-        <div class="card-body row g-2">
-            <div class="col-md-3">
-                <label class="form-label">$/sec 480p</label>
-                <input type="number" step="0.01" class="form-control" @bind="_rate480" disabled="@_busy" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">$/sec 720p</label>
-                <input type="number" step="0.01" class="form-control" @bind="_rate720" disabled="@_busy" />
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">$/sec 1080p</label>
-                <input type="number" step="0.01" class="form-control" @bind="_rate1080" disabled="@_busy" />
+        <div class="card-header">Cost estimates (vendor list rates)</div>
+        <div class="card-body">
+            <p class="small text-muted mb-3">
+                Planning rates come from the <strong>selected models</strong> above (supported-model catalog),
+                not free-form dollars. Change the video or portrait model to update these.
+                Ledger “actuals” use the same list rates — not provider invoices.
+            </p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-1">Video · @VendorLabel(_modelName, "video")</div>
+                    <div class="small text-muted mb-2"><code>@_modelName</code></div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="form-control-plaintext border rounded px-2 py-1">
+                                <span class="small text-muted">480p</span><br />
+                                <strong>@UsdRate(CatalogVideoRate("480p"))</strong><span class="small">/sec</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-control-plaintext border rounded px-2 py-1">
+                                <span class="small text-muted">720p</span><br />
+                                <strong>@UsdRate(CatalogVideoRate("720p"))</strong><span class="small">/sec</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-control-plaintext border rounded px-2 py-1">
+                                <span class="small text-muted">1080p</span><br />
+                                <strong>@UsdRate(CatalogVideoRate("1080p"))</strong><span class="small">/sec</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-1">Image · @VendorLabel(_imageModel, "image")</div>
+                    <div class="small text-muted mb-2"><code>@_imageModel</code></div>
+                    <div class="form-control-plaintext border rounded px-2 py-1">
+                        <span class="small text-muted">Per image</span><br />
+                        <strong>@UsdRate(CatalogImageRate())</strong>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        Planning / quality chat models also have per-token catalog rates used in telemetry;
+                        video spend dominates most film budgets.
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="card-footer small text-muted">Estimates only — not invoices.</div>
+        <div class="card-footer small text-muted">
+            Source: model catalog list prices for the active vendor. Not invoices.
+        </div>
     </div>
 }
 
@@ -419,9 +454,6 @@ else
     private int _qaFrameCount = 4;
     private double _audioGain = 6;
     private string _wipPath = "assets/movie_wip.mp4";
-    private double _rate480 = 0.05;
-    private double _rate720 = 0.07;
-    private double _rate1080 = 0.25;
 
     private List<SupportedModelDto> _allModels = new();
     private List<SupportedModelDto> _videoModels = new();
@@ -432,6 +464,14 @@ else
     {
         try
         {
+            try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
+            if (!Session.IsLoggedIn)
+            {
+                _error = "Sign in required to view or save API keys.";
+                Nav.NavigateTo("/login?returnUrl=/configuration");
+                return;
+            }
+
             var projs = await Engine.GetProjectsAsync();
             _projectIds = projs?.Projects.Select(p => p.Id ?? "").Where(s => s.Length > 0).ToList()
                           ?? new List<string>();
@@ -560,6 +600,59 @@ else
         var prov = string.IsNullOrWhiteSpace(m.ProviderId) ? m.Provider : m.ProviderId;
         return $"{m.DisplayName} · {prov} ({m.Id})";
     }
+
+    private string VendorLabel(string modelId, string capability)
+    {
+        var m = _allModels.FirstOrDefault(x =>
+            string.Equals(x.Id, modelId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.Capability, capability, StringComparison.OrdinalIgnoreCase))
+            ?? _allModels.FirstOrDefault(x =>
+                string.Equals(x.Id, modelId, StringComparison.OrdinalIgnoreCase));
+        if (m is null)
+        {
+            var cap = capability.Equals("video", StringComparison.OrdinalIgnoreCase)
+                ? ModelCapability.Video
+                : capability.Equals("image", StringComparison.OrdinalIgnoreCase)
+                    ? ModelCapability.Image
+                    : ModelCapability.Chat;
+            return SupportedModelCatalog.ProviderIdFor(modelId, cap);
+        }
+        return string.IsNullOrWhiteSpace(m.ProviderId) ? m.Provider : m.ProviderId!;
+    }
+
+    private double CatalogVideoRate(string resolution)
+    {
+        var entry = SupportedModelCatalog.ResolveOrDefault(_modelName, ModelCapability.Video);
+        var table = entry.VideoCostPerSecondByResolution;
+        if (table is not null && table.TryGetValue(resolution, out var exact))
+            return exact;
+        // Same nearest-tier fill as CostReportService for missing res (e.g. Veo has no 480p).
+        if (table is { Count: > 0 })
+        {
+            foreach (var prefer in new[] { "720p", "1080p", "480p" })
+            {
+                if (table.TryGetValue(prefer, out var v))
+                    return v;
+            }
+            return table.Values.Min();
+        }
+        return resolution switch
+        {
+            "480p" => 0.05,
+            "1080p" => 0.25,
+            _ => 0.07,
+        };
+    }
+
+    private double CatalogImageRate()
+    {
+        var entry = SupportedModelCatalog.Find(_imageModel, ModelCapability.Image)
+                    ?? SupportedModelCatalog.ResolveOrDefault(_imageModel, ModelCapability.Image);
+        return entry.ImageCostPerImage ?? 0.05;
+    }
+
+    private static string UsdRate(double v) =>
+        v < 0.01 ? $"${v:0.####}" : $"${v:0.##}";
 
     private async Task SaveProviderKeyAsync(string providerId)
     {
@@ -691,15 +784,6 @@ else
             _qaFrameCount = GetInt("qa_frame_count", _qaFrameCount);
             _audioGain = GetDouble("composite_audio_gain_db", _audioGain);
             _wipPath = GetStr("wip_movie_path", _wipPath);
-            if (_cfg.TryGetValue("cost_estimates", out var ce) &&
-                ce.ValueKind == JsonValueKind.Object &&
-                ce.TryGetProperty("video_output_per_sec", out var vop) &&
-                vop.ValueKind == JsonValueKind.Object)
-            {
-                if (vop.TryGetProperty("480p", out var a) && a.TryGetDouble(out var d1)) _rate480 = d1;
-                if (vop.TryGetProperty("720p", out var b) && b.TryGetDouble(out var d2)) _rate720 = d2;
-                if (vop.TryGetProperty("1080p", out var c) && c.TryGetDouble(out var d3)) _rate1080 = d3;
-            }
         }
         catch (Exception ex)
         {
@@ -770,39 +854,56 @@ else
             ["qa_frame_count"] = _qaFrameCount,
             ["composite_audio_gain_db"] = _audioGain,
             ["wip_movie_path"] = _wipPath,
-            ["cost_estimates"] = new Dictionary<string, object?>
-            {
-                ["currency"] = "USD",
-                ["video_output_per_sec"] = new Dictionary<string, object?>
-                {
-                    ["480p"] = _rate480,
-                    ["720p"] = _rate720,
-                    ["1080p"] = _rate1080,
-                },
-                ["notes"] = "Estimates only — not invoices.",
-            },
+            // Snapshot vendor rates for transparency; runtime CostReportService always re-derives
+            // from model_name / image_model_name via SupportedModelCatalog.
+            ["cost_estimates"] = BuildVendorCostEstimatesSnapshot(),
         };
 
+        await Engine.SaveConfigAsync(_projectId, updates);
+    }
+
+    private Dictionary<string, object?> BuildVendorCostEstimatesSnapshot()
+    {
+        var video = SupportedModelCatalog.ResolveOrDefault(_modelName, ModelCapability.Video);
+        var image = SupportedModelCatalog.Find(_imageModel, ModelCapability.Image)
+                    ?? SupportedModelCatalog.ResolveOrDefault(_imageModel, ModelCapability.Image);
+        var table = new Dictionary<string, object?>
+        {
+            ["480p"] = CatalogVideoRate("480p"),
+            ["720p"] = CatalogVideoRate("720p"),
+            ["1080p"] = CatalogVideoRate("1080p"),
+        };
+
+        // Preserve planning knobs (retries, etc.) if present; drop manual rate tables.
+        double assumeRetries = 0;
+        bool assumeRef = true;
         if (_cfg is not null &&
             _cfg.TryGetValue("cost_estimates", out var oldCe) &&
             oldCe.ValueKind == JsonValueKind.Object)
         {
-            var ce = new Dictionary<string, object?>();
-            foreach (var p in oldCe.EnumerateObject())
-            {
-                if (p.Name == "video_output_per_sec") continue;
-                ce[p.Name] = p.Value.Deserialize<object>();
-            }
-            ce["video_output_per_sec"] = new Dictionary<string, object?>
-            {
-                ["480p"] = _rate480,
-                ["720p"] = _rate720,
-                ["1080p"] = _rate1080,
-            };
-            updates["cost_estimates"] = ce;
+            if (oldCe.TryGetProperty("assume_avg_retries", out var ar) && ar.TryGetDouble(out var r))
+                assumeRetries = r;
+            if (oldCe.TryGetProperty("assume_ref_image_per_clip", out var rf) &&
+                rf.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                assumeRef = rf.GetBoolean();
         }
 
-        await Engine.SaveConfigAsync(_projectId, updates);
+        return new Dictionary<string, object?>
+        {
+            ["currency"] = "USD",
+            ["source"] = "model_catalog",
+            ["video_model"] = video.Id,
+            ["video_provider"] = video.ProviderId,
+            ["image_model"] = image.Id,
+            ["image_provider"] = image.ProviderId,
+            ["video_output_per_sec"] = table,
+            ["image_output_quality"] = image.ImageCostPerImage ?? 0.05,
+            ["assume_avg_retries"] = assumeRetries,
+            ["assume_ref_image_per_clip"] = assumeRef,
+            ["notes"] =
+                "List rates from SupportedModelCatalog for the selected models. Not invoices. " +
+                "Runtime always re-reads catalog from model_name / image_model_name.",
+        };
     }
 
     /// <summary>Live-apply the theme pick to this browser tab so it's visible before Save.

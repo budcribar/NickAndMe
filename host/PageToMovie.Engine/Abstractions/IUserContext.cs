@@ -6,6 +6,8 @@ public interface IUserContext
     string UserId { get; }
     bool IsAdmin { get; }
     IReadOnlyList<string> Roles { get; }
+    /// <summary>True when the request has a validated JWT (not merely X-User-Id spoof).</summary>
+    bool IsAuthenticated { get; }
     /// <summary>Optional per-request API key override (X-Api-Key header) — treated as xAI/Grok.</summary>
     string? RequestApiKey { get; }
 }

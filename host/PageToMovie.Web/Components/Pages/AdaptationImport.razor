@@ -29,6 +29,12 @@
                                accept=".fountain,.spmd,.pdf,.txt"
                                data-testid="import-file-input"
                                disabled="@(_importing || Busy || JobRunning)" />
+                    @if (!string.IsNullOrWhiteSpace(_chosenFileName))
+                    {
+                        <div class="fs-file-chosen" data-testid="import-file-name">
+                            <span class="fs-file-chosen-label">Selected:</span>@_chosenFileName
+                        </div>
+                    }
                     <div class="form-text mt-2">
                         Supports screenplay (.fountain), PDF, or book text (.txt)
                     </div>
@@ -102,6 +108,7 @@
     private bool _importing;
     private string _importStatus = "";
     private int? _importPct;
+    private string? _chosenFileName;
 
     private bool CanContinueToScreenplay =>
         Status is not null &&
@@ -112,21 +119,39 @@
     {
         await base.OnInitializedAsync();
         try { await Session.EnsureHydratedAsync(); } catch { /* optional */ }
+        if (!Session.IsLoggedIn)
+        {
+            Error = "Sign in required to import books.";
+            Nav.NavigateTo("/login?returnUrl=/adaptation/import");
+        }
     }
 
     private async Task OnSourceSelectedAsync(InputFileChangeEventArgs e)
     {
         var file = e.File;
         if (file is null || _importing) return;
+        if (!Session.IsLoggedIn)
+        {
+            Error = "Sign in required to import books.";
+            Nav.NavigateTo("/login?returnUrl=/adaptation/import");
+            return;
+        }
+        _chosenFileName = file.Name;
         await ImportFileAsync(file);
     }
 
     private async Task ImportFileAsync(IBrowserFile file)
     {
+        if (!Session.IsLoggedIn)
+        {
+            Error = "Sign in required to import books.";
+            return;
+        }
         _importing = true;
         Busy = true;
         Error = null;
         Message = null; // clear stale “Book ready” / Next guidance during pipeline
+        _chosenFileName = file.Name;
         _importPct = 8;
         _importStatus = $"Reading {file.Name}…";
         StateHasChanged();
@@ -282,10 +307,26 @@
 
     private static string FriendlyError(string? raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return "Something went wrong.";
-        // Keep short operator text; drop stack-ish noise
-        var s = raw.Trim();
-        if (s.Length > 200) s = s[..200] + "…";
+        if (string.IsNullOrWhiteSpace(raw))
+            return "Book import failed. Check Configuration for an xAI/Grok API key and re-upload the PDF.";
+        var s = raw.Replace("\r\n", "\n").Trim();
+        var nl = s.IndexOf('\n');
+        if (nl > 0) s = s[..nl].Trim();
+        if (s.StartsWith("System.", StringComparison.Ordinal))
+        {
+            var colon = s.IndexOf(": ", StringComparison.Ordinal);
+            if (colon > 0 && colon < 80)
+                s = s[(colon + 2)..].Trim();
+        }
+        if (s.Contains("XAI_API_KEY", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("API key missing", StringComparison.OrdinalIgnoreCase))
+            return "No AI API key. Open Configuration and add your xAI / Grok key (picture books need Grok vision OCR).";
+        if (s.Contains("No page images", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Could not extract or render page images", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("libpdfium", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("DllNotFoundException", StringComparison.OrdinalIgnoreCase))
+            return "Could not render PDF pages for OCR. " + (s.Length > 220 ? s[..220] + "…" : s);
+        if (s.Length > 280) s = s[..280] + "…";
         return s;
     }
 

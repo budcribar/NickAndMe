@@ -79,7 +79,7 @@ public sealed class BookPrepareService
             {
                 onProgress?.Invoke("Rendering page images (PDFtoImage) for vision plates…");
 #pragma warning disable CA1416 // PDFtoImage is desktop/mobile OS only (Windows/Linux/macOS)
-                var rendered = RenderPdfPages(pdf, imgDir, source, pageCount, analysis);
+                var (rendered, renderError) = RenderPdfPages(pdf, imgDir, source, pageCount, analysis);
 #pragma warning restore CA1416
                 if (rendered.Count > 0)
                 {
@@ -88,6 +88,27 @@ public sealed class BookPrepareService
                     result.ImagesExtracted = imageRows.Count;
                     onProgress?.Invoke($"Rendered {rendered.Count} page plate(s)");
                 }
+                else if (!string.IsNullOrWhiteSpace(renderError))
+                {
+                    _log.LogWarning("PDF page render produced 0 images: {Error}", renderError);
+                    onProgress?.Invoke($"Page render failed: {renderError}");
+                    result.Notes.Add($"PDF page render failed: {renderError}");
+                }
+                else
+                {
+                    onProgress?.Invoke("Page render produced 0 images (no error detail).");
+                }
+            }
+
+            // Picture books without plates cannot OCR — fail loudly instead of a vague later error.
+            var looksPicture = analysis.BookKind == "picture_book" || analysis.TextDensity == "sparse";
+            if (looksPicture && imageRows.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Could not extract or render page images from this PDF (needed for picture-book OCR). " +
+                    "On Linux/Docker install fontconfig + freetype and ensure libpdfium/libSkiaSharp native " +
+                    "assets are in the publish output (runtimes/*/native). " +
+                    "Local: confirm PDFtoImage works; Railway: check deploy logs for DllNotFoundException.");
             }
 
             if (imageRows.Count > 0)
@@ -429,11 +450,12 @@ public sealed class BookPrepareService
     /// <summary>
     /// Render PDF pages to PNG via PDFtoImage (PDFium). Used when embeds are missing
     /// so Grok vision has plates to OCR.
+    /// Returns rows plus a human-readable error when rendering fails (e.g. missing libpdfium on Linux).
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     [System.Runtime.Versioning.SupportedOSPlatform("macos")]
-    private static List<Dictionary<string, object?>> RenderPdfPages(
+    private static (List<Dictionary<string, object?>> Rows, string? Error) RenderPdfPages(
         string pdfPath,
         string imgDir,
         string sourceDir,
@@ -478,17 +500,29 @@ public sealed class BookPrepareService
                         ["relevance"] = index == 1 ? "cover" : "rendered_page",
                     });
                 }
-                catch
+                catch (Exception pageEx)
                 {
                     try { bitmap.Dispose(); } catch { /* ignore */ }
+                    // Keep going; return partial results + first page error if nothing rendered.
+                    if (rows.Count == 0)
+                        return (rows, $"Page {index} encode failed: {pageEx.GetType().Name}: {pageEx.Message}");
                 }
             }
+
+            if (rows.Count == 0 && index == 0)
+                return (rows, "PDFtoImage returned no page bitmaps (empty or unreadable PDF).");
         }
-        catch (Exception)
+        catch (DllNotFoundException ex)
         {
-            // non-fatal — vision may still use existing embeds
+            return (rows,
+                $"Native library missing for PDF render ({ex.Message}). " +
+                "Install fontconfig/freetype and ensure runtimes/*/native/libpdfium + libSkiaSharp ship in the image.");
         }
-        return rows;
+        catch (Exception ex)
+        {
+            return (rows, $"{ex.GetType().Name}: {ex.Message}");
+        }
+        return (rows, null);
     }
 
     private static async Task WriteManifestAsync(

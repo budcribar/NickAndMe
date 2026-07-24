@@ -7,7 +7,9 @@ namespace PageToMovie.Engine;
 
 /// <summary>
 /// Cost ledger (pipeline_state.cost_ledger) + planning estimates from blueprint + list rates.
-/// Cost estimates + ledger aggregation (list-rate estimates, not xAI invoices).
+/// Rates come from <see cref="SupportedModelCatalog"/> for the project's selected video/image
+/// models (vendor list prices), not free-form config dollars. Ledger events are still estimates,
+/// not provider invoices.
 /// </summary>
 public sealed class CostReportService
 {
@@ -174,8 +176,8 @@ public sealed class CostReportService
                 .Take(Math.Clamp(recentLimit, 1, 200))
                 .ToList(),
             Notes =
-                "Estimates = planning (current rates × scope). " +
-                "Actual = cost_ledger at list rates when each job completed (not xAI invoice). " +
+                "Estimates = planning (vendor list rates for the selected video/image models × scope). " +
+                "Actual = cost_ledger at catalog list rates when each job completed (not a provider invoice). " +
                 "Backfill historical clips if actual looks low.",
         };
     }
@@ -186,7 +188,7 @@ public sealed class CostReportService
         CancellationToken ct = default)
     {
         var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
-        var rates = RatesFromConfig(cfg);
+        var defaultRates = RatesFromConfig(cfg);
         var ledger = await GetCostLedgerRawAsync(projectId, ct).ConfigureAwait(false);
         var seen = new HashSet<(int, int)>();
         foreach (var e in ledger)
@@ -202,8 +204,9 @@ public sealed class CostReportService
         var clipJobs = await LoadClipJobsAsync(projectId, ct).ConfigureAwait(false);
         var defaultRes = GetStr(cfg, "resolution", "480p");
         var defaultModel = GetStr(cfg, "model_name", "grok-imagine-video");
+        var imageModel = GetStr(cfg, "image_model_name", "grok-imagine-image-quality");
         var defaultDur = GetDouble(cfg, "duration_seconds", 8);
-        var assumeRef = GetBool(rates, "assume_ref_image_per_clip", true);
+        var assumeRef = GetBool(defaultRates, "assume_ref_image_per_clip", true);
 
         var added = 0;
         var skipped = 0;
@@ -242,6 +245,7 @@ public sealed class CostReportService
 
                 var isExtend = string.Equals(
                     clip.Continuation, "extend_previous", StringComparison.OrdinalIgnoreCase);
+                var rates = RatesFromModels(model, imageModel, cfg);
                 var priced = PriceVideo(duration, res, rates, assumeRef, isExtend, attempts: 1);
 
                 var evt = new Dictionary<string, object?>
@@ -250,6 +254,7 @@ public sealed class CostReportService
                     ["scene"] = scene.SceneNumber,
                     ["clip"] = clip.ClipNumber,
                     ["model"] = model,
+                    ["provider"] = rates.TryGetValue("video_provider", out var vp) ? vp : null,
                     ["request_id"] = job is not null && job.TryGetValue("request_id", out var rid)
                         ? rid.GetString() ?? ""
                         : "",
@@ -303,7 +308,11 @@ public sealed class CostReportService
         CancellationToken ct = default)
     {
         var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
-        var rates = RatesFromConfig(cfg);
+        // Price this event with the model that actually ran (vendor catalog), not a stale config table.
+        var rates = RatesFromModels(
+            videoModelId: model,
+            imageModelId: GetStr(cfg, "image_model_name", "grok-imagine-image-quality"),
+            cfgOverrides: cfg);
         var priced = PriceVideo(durationSec, resolution, rates, hasRefImage, isExtend, 1);
         var evt = new Dictionary<string, object?>
         {
@@ -311,6 +320,7 @@ public sealed class CostReportService
             ["scene"] = scene,
             ["clip"] = clip,
             ["model"] = model,
+            ["provider"] = rates.TryGetValue("video_provider", out var vp) ? vp : null,
             ["request_id"] = requestId ?? "",
             ["has_ref_image"] = hasRefImage,
             ["is_extend"] = isExtend,
@@ -359,13 +369,11 @@ public sealed class CostReportService
         string? character = null,
         CancellationToken ct = default)
     {
-        var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
-        var rates = RatesFromConfig(cfg);
         var n = Math.Max(0, nImages);
-        var unit = GetDouble(
-            rates,
-            quality ? "image_output_quality" : "image_output_standard",
-            quality ? 0.05 : 0.02);
+        var entry = SupportedModelCatalog.Find(model, ModelCapability.Image)
+                    ?? SupportedModelCatalog.ResolveOrDefault(model, ModelCapability.Image);
+        var unit = entry.ImageCostPerImage
+                   ?? (quality ? 0.05 : 0.02);
         var usd = Math.Round(unit * n, 4);
         await AppendCostEventAsync(projectId, new Dictionary<string, object?>
         {
@@ -377,6 +385,7 @@ public sealed class CostReportService
             ["usd"] = usd,
             ["currency"] = "USD",
             ["source"] = "list_rate",
+            ["provider"] = entry.ProviderId,
         }, save: true, ct).ConfigureAwait(false);
     }
 
@@ -891,40 +900,83 @@ public sealed class CostReportService
         return map;
     }
 
+    /// <summary>
+    /// Build planning/ledger rates from the project's selected models (vendor catalog),
+    /// then apply non-rate planning assumptions from <c>cost_estimates</c> (retries, etc.).
+    /// Manual $/sec overrides in config are ignored so estimates stay vendor-accurate.
+    /// </summary>
     private static Dictionary<string, object?> RatesFromConfig(Dictionary<string, JsonElement> cfg)
     {
+        var videoModelId = GetStr(cfg, "model_name", "grok-imagine-video");
+        var imageModelId = GetStr(cfg, "image_model_name", "grok-imagine-image-quality");
+        return RatesFromModels(videoModelId, imageModelId, cfg);
+    }
+
+    /// <summary>
+    /// Vendor list rates for a video + image model pair from <see cref="SupportedModelCatalog"/>.
+    /// </summary>
+    internal static Dictionary<string, object?> RatesFromModels(
+        string? videoModelId,
+        string? imageModelId,
+        Dictionary<string, JsonElement>? cfgOverrides = null)
+    {
+        var video = SupportedModelCatalog.ResolveOrDefault(
+            videoModelId, ModelCapability.Video, fallbackId: "grok-imagine-video");
+        var imagePrimary = SupportedModelCatalog.Find(imageModelId, ModelCapability.Image)
+            ?? SupportedModelCatalog.ResolveOrDefault(
+                imageModelId, ModelCapability.Image, fallbackId: "grok-imagine-image-quality");
+        // Prefer a cheaper "standard" sibling in the same family when the project uses a quality image model.
+        var imageStandard = SupportedModelCatalog.ForCapability(ModelCapability.Image)
+            .Where(e => e.Provider == imagePrimary.Provider
+                        && e.ImageCostPerImage is not null
+                        && !string.Equals(e.Id, imagePrimary.Id, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e.ImageCostPerImage)
+            .FirstOrDefault()
+            ?? imagePrimary;
+
+        var videoTable = BuildVideoRateTable(video);
+        var qualityUnit = imagePrimary.ImageCostPerImage ?? 0.05;
+        var standardUnit = imageStandard.ImageCostPerImage ?? imagePrimary.ImageCostPerImage ?? 0.02;
+
         var rates = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             ["currency"] = "USD",
-            ["video_output_per_sec"] = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["480p"] = 0.05,
-                ["720p"] = 0.07,
-                ["1080p"] = 0.25,
-            },
+            ["source"] = "model_catalog",
+            ["video_model"] = video.Id,
+            ["video_provider"] = video.ProviderId,
+            ["image_model"] = imagePrimary.Id,
+            ["image_provider"] = imagePrimary.ProviderId,
+            ["video_output_per_sec"] = videoTable,
+            // Reference / extend add-ons — not published per-vendor in the catalog yet; keep small Grok-era defaults.
             ["video_input_image"] = 0.002,
             ["video_input_per_sec"] = 0.01,
-            ["image_output_quality"] = 0.05,
-            ["image_output_standard"] = 0.02,
+            ["image_output_quality"] = qualityUnit,
+            ["image_output_standard"] = standardUnit,
             ["assume_ref_image_per_clip"] = true,
             ["assume_extend_fraction"] = 0.0,
             ["assume_avg_retries"] = 0.0,
         };
 
-        if (cfg.TryGetValue("cost_estimates", out var ce) && ce.ValueKind == JsonValueKind.Object)
+        // Planning knobs only — do not let old manual $/sec tables override vendor rates.
+        if (cfgOverrides is not null &&
+            cfgOverrides.TryGetValue("cost_estimates", out var ce) &&
+            ce.ValueKind == JsonValueKind.Object)
         {
             foreach (var p in ce.EnumerateObject())
             {
-                if (p.NameEquals("video_output_per_sec") && p.Value.ValueKind == JsonValueKind.Object)
-                {
-                    var table = (Dictionary<string, double>)rates["video_output_per_sec"]!;
-                    foreach (var r in p.Value.EnumerateObject())
-                    {
-                        if (r.Value.TryGetDouble(out var v))
-                            table[r.Name] = v;
-                    }
-                }
-                else if (p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetDouble(out var d))
+                if (p.NameEquals("video_output_per_sec") ||
+                    p.NameEquals("image_output_quality") ||
+                    p.NameEquals("image_output_standard") ||
+                    p.NameEquals("source") ||
+                    p.NameEquals("video_model") ||
+                    p.NameEquals("video_provider") ||
+                    p.NameEquals("image_model") ||
+                    p.NameEquals("image_provider") ||
+                    p.NameEquals("currency") ||
+                    p.NameEquals("notes"))
+                    continue;
+
+                if (p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetDouble(out var d))
                     rates[p.Name] = d;
                 else if (p.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
                     rates[p.Name] = p.Value.GetBoolean();
@@ -936,6 +988,54 @@ public sealed class CostReportService
         return rates;
     }
 
+    /// <summary>
+    /// Per-resolution $/sec from the video catalog entry; fill missing 480p/720p/1080p from nearest vendor tier.
+    /// </summary>
+    internal static Dictionary<string, double> BuildVideoRateTable(SupportedModelEntry video)
+    {
+        var table = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (video.VideoCostPerSecondByResolution is { Count: > 0 } src)
+        {
+            foreach (var kv in src)
+            {
+                if (!string.IsNullOrWhiteSpace(kv.Key) && kv.Value >= 0)
+                    table[kv.Key.Trim()] = kv.Value;
+            }
+        }
+
+        FillMissingRes(table, "720p", "1080p", "480p");
+        FillMissingRes(table, "480p", "720p", "1080p");
+        FillMissingRes(table, "1080p", "720p", "480p");
+
+        // Absolute last resort (Grok-era defaults) if catalog has no video pricing at all.
+        if (table.Count == 0)
+        {
+            table["480p"] = 0.05;
+            table["720p"] = 0.07;
+            table["1080p"] = 0.25;
+        }
+
+        return table;
+    }
+
+    private static void FillMissingRes(
+        Dictionary<string, double> table,
+        string res,
+        params string[] prefer)
+    {
+        if (table.ContainsKey(res)) return;
+        foreach (var p in prefer)
+        {
+            if (table.TryGetValue(p, out var v))
+            {
+                table[res] = v;
+                return;
+            }
+        }
+        if (table.Count > 0)
+            table[res] = table.Values.Min();
+    }
+
     private static double OutputRate(string resolution, Dictionary<string, object?> rates)
     {
         var res = (resolution ?? "720p").ToLowerInvariant().Trim();
@@ -944,6 +1044,7 @@ public sealed class CostReportService
         {
             if (table.TryGetValue(res, out var r)) return r;
             if (table.TryGetValue("720p", out var d)) return d;
+            if (table.Count > 0) return table.Values.First();
         }
         return 0.07;
     }

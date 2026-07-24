@@ -6,8 +6,9 @@
 
 <h1>Cost</h1>
 <p class="text-muted">
-    <strong>Actual</strong> = tracked spend for this project.
-    <strong>Estimates</strong> = rates × your current plan size. Neither is your cloud bill.
+    <strong>Actual</strong> = tracked spend at vendor list rates for the models used.
+    <strong>Estimates</strong> = catalog rates for the project’s selected video/image models × plan size.
+    Neither is your cloud invoice.
 </p>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -111,10 +112,11 @@ else
         <div class="card-header">Estimates (planning)</div>
         <div class="card-body">
             <p class="small text-muted">
-                Provider/model: <strong>@(_report.VideoProvider)</strong> /
+                Vendor rates for <strong>@(_report.VideoProvider)</strong> /
                 <code>@(_report.ModelName)</code>
                 · Draft @Usd(_report.OutputRateDraft)/sec · Hero @Usd(_report.OutputRateHero)/sec
                 · retries @_report.AssumeAvgRetries.ToString("0.##")
+                (from model catalog; change models in Configuration)
             </p>
             <div class="row g-3 text-center mb-3">
                 <div class="col-6 col-md-3">

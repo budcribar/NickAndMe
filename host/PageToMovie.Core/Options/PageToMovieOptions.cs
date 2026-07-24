@@ -235,6 +235,27 @@ public sealed class AuthOptions
     /// <summary>Development only: accept any password for admin username.</summary>
     public bool AllowDevBypass { get; set; }
 
+    /// <summary>
+    /// When true (default), project create/delete, API-key settings, and OCR/import jobs
+    /// require a valid JWT (signed-in user). Set false only for automated tests / loadsim.
+    /// Spoofing via <c>X-User-Id</c> alone is not enough when this is enabled.
+    /// </summary>
+    public bool RequireLogin { get; set; } = true;
+
+    /// <summary>
+    /// Operator login override secret (or env <c>PageToMovie_LOGIN_OVERRIDE</c>).
+    /// When set (min 12 chars), you can:
+    /// <list type="bullet">
+    /// <item>Sign in as <see cref="OperatorUserId"/> with this secret as the password</item>
+    /// <item>Visit any page with <c>?me=SECRET</c> to auto-login (works on Railway)</item>
+    /// </list>
+    /// Leave empty to disable. Prefer a long random string in Railway Variables.
+    /// </summary>
+    public string OperatorOverrideSecret { get; set; } = "";
+
+    /// <summary>User id issued by the operator override (default admin, full studio access).</summary>
+    public string OperatorUserId { get; set; } = "admin";
+
     /// <summary>True when the effective key is missing or still the committed dev default.</summary>
     public static bool IsInsecureDefaultJwtSigningKey(string? key) =>
         string.IsNullOrWhiteSpace(key) ||

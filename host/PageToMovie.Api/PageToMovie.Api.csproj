@@ -5,10 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
-    <!-- Ensure Microsoft.AspNetCore.App.Internal.Assets (blazor.web.js) is restored/published.
-         Without this, Linux/Docker (and some RID/cross) publishes omit _framework/* and
-         @Assets["_framework/blazor.web.js"] falls back to a 404 path. -->
-    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+    <!-- Framework static assets (blazor.web.js) come from PageToMovie.Web
+         (RequiresAspNetWebAssets=true there). Do not enable here — both true →
+         DiscoverPrecompressedAssets duplicate-key failure on publish. -->
+    <RequiresAspNetWebAssets>false</RequiresAspNetWebAssets>
   </PropertyGroup>
 
   <!-- Microsoft.AspNetCore.OpenApi pulled vulnerable Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc).

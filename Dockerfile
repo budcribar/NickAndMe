@@ -3,6 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy project files and restore dependencies
+# PageToMovie.Web.csproj sets RequiresAspNetWebAssets=true so restore pulls
+# Microsoft.AspNetCore.App.Internal.Assets (blazor.web.js). Api keeps that false
+# so publish does not double-register the same framework files.
 COPY host/PageToMovie.Core/PageToMovie.Core.csproj host/PageToMovie.Core/
 COPY host/PageToMovie.Engine/PageToMovie.Engine.csproj host/PageToMovie.Engine/
 COPY host/PageToMovie.Fakes/PageToMovie.Fakes.csproj host/PageToMovie.Fakes/
@@ -10,29 +13,43 @@ COPY host/PageToMovie.Web/PageToMovie.Web.csproj host/PageToMovie.Web/
 COPY host/PageToMovie.Api/PageToMovie.Api.csproj host/PageToMovie.Api/
 RUN dotnet restore host/PageToMovie.Api/PageToMovie.Api.csproj
 
-# Force Railway Docker cache invalidation for new deployment
-ARG CACHEBUSTER=20260724183000
+# Force Railway Docker cache invalidation when asset packaging changes
+ARG CACHEBUSTER=20260724200000
 RUN echo "Invalidating build cache: ${CACHEBUSTER}"
 
 # Copy remaining source code
 COPY host/ host/
 
-# Publish Api (which automatically bundles PageToMovie.Web static assets into /app/publish/wwwroot).
-# RequiresAspNetWebAssets is set on the csproj so blazor.web.js is included (Linux/Docker often
-# skips Microsoft.AspNetCore.App.Internal.Assets unless that property is true).
+# Re-restore after full source copy so Linux restore graph matches final csproj props
+# (avoids stale --no-restore when only .cs files changed but package needs differ).
+RUN dotnet restore host/PageToMovie.Api/PageToMovie.Api.csproj
+
+# Publish Api host; Web static web assets (including _framework/blazor.web.js) flow in
+# via ProjectReference. Fail the image build if framework JS is missing — blank UI on Railway.
 RUN dotnet publish host/PageToMovie.Api/PageToMovie.Api.csproj -c Release --no-restore -o /app/publish /p:UseAppHost=false \
     && test -f /app/publish/wwwroot/_framework/blazor.web.js \
-    || (echo "ERROR: blazor.web.js missing from publish output — framework static assets not packaged" && ls -laR /app/publish/wwwroot 2>/dev/null; exit 1)
+    && test -f /app/publish/PageToMovie.Api.staticwebassets.endpoints.json \
+    || (echo "ERROR: blazor.web.js or staticwebassets endpoints missing from publish — check RequiresAspNetWebAssets on PageToMovie.Web" \
+        && ls -la /app/publish 2>/dev/null; ls -laR /app/publish/wwwroot 2>/dev/null; exit 1)
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# Install ffmpeg and font dependencies for Linux container
+# ffmpeg for remux; fontconfig/freetype/png/jpeg for SkiaSharp + PDFtoImage (Pdfium)
+# page renders used by picture-book OCR (Buster etc.). Missing these → silent 0 page images
+# → "No page images for vision" / failed book import on Railway.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     fonts-dejavu-core \
     fontconfig \
+    libfontconfig1 \
+    libfreetype6 \
+    libpng16-16 \
+    libjpeg62-turbo \
+    libharfbuzz0b \
+    libexpat1 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish .
