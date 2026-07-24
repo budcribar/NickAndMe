@@ -1,0 +1,104 @@
+{
+  "builtAtUtc": "2026-07-23T23:02:33.2798823Z",
+  "scene": 6,
+  "count": 7,
+  "clips": [
+    {
+      "name": "scene_06_clip_01.mp4",
+      "scene": 6,
+      "clip": 1,
+      "bytes": 724067,
+      "mtimeUtc": "2026-07-23T22:28:26.7343183Z"
+    },
+    {
+      "name": "scene_06_clip_02.mp4",
+      "scene": 6,
+      "clip": 2,
+      "bytes": 892117,
+      "mtimeUtc": "2026-07-23T22:28:26.7443229Z"
+    },
+    {
+      "name": "scene_06_clip_03.mp4",
+      "scene": 6,
+      "clip": 3,
+      "bytes": 916044,
+      "mtimeUtc": "2026-07-23T22:28:26.7545611Z"
+    },
+    {
+      "name": "scene_06_clip_04.mp4",
+      "scene": 6,
+      "clip": 4,
+      "bytes": 983891,
+      "mtimeUtc": "2026-07-23T22:28:26.7645587Z"
+    },
+    {
+      "name": "scene_06_clip_05.mp4",
+      "scene": 6,
+      "clip": 5,
+      "bytes": 495030,
+      "mtimeUtc": "2026-07-23T22:28:26.7705496Z"
+    },
+    {
+      "name": "scene_06_clip_06.mp4",
+      "scene": 6,
+      "clip": 6,
+      "bytes": 877559,
+      "mtimeUtc": "2026-07-23T22:28:26.7806057Z"
+    },
+    {
+      "name": "scene_06_clip_07.mp4",
+      "scene": 6,
+      "clip": 7,
+      "bytes": 515243,
+      "mtimeUtc": "2026-07-23T22:28:26.7866045Z"
+    }
+  ],
+  "included": [
+    {
+      "name": "scene_06_clip_01.mp4",
+      "scene": 6,
+      "clip": 1,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_02.mp4",
+      "scene": 6,
+      "clip": 2,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_03.mp4",
+      "scene": 6,
+      "clip": 3,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_04.mp4",
+      "scene": 6,
+      "clip": 4,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_05.mp4",
+      "scene": 6,
+      "clip": 5,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_06.mp4",
+      "scene": 6,
+      "clip": 6,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_06_clip_07.mp4",
+      "scene": 6,
+      "clip": 7,
+      "reason": "eligible"
+    }
+  ],
+  "excluded": [],
+  "strict": true,
+  "assemblyGate": true,
+  "totalDurationSeconds": 41.53
+}

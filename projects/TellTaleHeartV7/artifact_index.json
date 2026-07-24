@@ -1,6 +1,6 @@
 {
   "projectId": "TellTaleHeartV7",
-  "builtAtUtc": "2026-07-23T18:53:43.500518+00:00",
+  "builtAtUtc": "2026-07-23T23:23:12.9550543+00:00",
   "schemaVersion": "1",
   "purpose": "Map of project-local artifacts for manual whole-project review (e.g. point Claude/Codex at this folder). Zip export deferred; data lives here.",
   "readyForManualFinalReview": false,
@@ -68,7 +68,7 @@
       "path": "pipeline_state.json",
       "role": "Clip reviews, auto-review state, cost_ledger",
       "exists": true,
-      "bytes": 57304,
+      "bytes": 140518,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -92,7 +92,7 @@
       "path": "blueprint.clips.grok.json",
       "role": "Stage 2 shot plan / clips",
       "exists": true,
-      "bytes": 504336,
+      "bytes": 508333,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -100,7 +100,7 @@
       "path": "assets/movie_wip.mp4",
       "role": "Full cut (WIP)",
       "exists": true,
-      "bytes": 21554490,
+      "bytes": 98786888,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -108,7 +108,7 @@
       "path": "assets/movie_wip.mp4.sources.json",
       "role": "WIP concat sources \u002B assembly note",
       "exists": true,
-      "bytes": 2274,
+      "bytes": 6473,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -124,16 +124,16 @@
       "path": "assets/video",
       "role": "Clips \u002B scene composites \u002B duration sidecars",
       "exists": true,
-      "bytes": 82114930,
-      "fileCount": 216,
+      "bytes": 266628610,
+      "fileCount": 779,
       "requiredForManualReview": true
     },
     {
       "path": "assets/video/prompts",
       "role": "Full prompt .txt \u002B .meta.json per clip",
       "exists": true,
-      "bytes": 382494,
-      "fileCount": 82,
+      "bytes": 1593570,
+      "fileCount": 340,
       "requiredForManualReview": true
     },
     {
@@ -180,7 +180,7 @@
       "path": "telemetry/cost_ledger.json",
       "role": "Cost events snapshot (from pipeline_state)",
       "exists": true,
-      "bytes": 49574,
+      "bytes": 104731,
       "fileCount": null,
       "requiredForManualReview": true
     },
@@ -196,7 +196,7 @@
       "path": "telemetry/api_calls.jsonl",
       "role": "Live API call log (full prompts)",
       "exists": true,
-      "bytes": 3759412,
+      "bytes": 4324387,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -204,7 +204,7 @@
       "path": "telemetry/ffmpeg.jsonl",
       "role": "Condensed ffmpeg ops",
       "exists": true,
-      "bytes": 33100,
+      "bytes": 65365,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -212,7 +212,7 @@
       "path": "ARTIFACTS.md",
       "role": "Human map of this project for Claude/manual review",
       "exists": true,
-      "bytes": 3921,
+      "bytes": 4194,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -220,7 +220,7 @@
       "path": "artifact_index.json",
       "role": "Machine-readable artifact presence map",
       "exists": true,
-      "bytes": 7082,
+      "bytes": 7797,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -236,7 +236,7 @@
       "path": "assets/video/scene_02.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 1357,
+      "bytes": 1358,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -244,7 +244,7 @@
       "path": "assets/video/scene_03.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 1925,
+      "bytes": 1926,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -252,7 +252,7 @@
       "path": "assets/video/scene_04.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 1927,
+      "bytes": 1928,
       "fileCount": null,
       "requiredForManualReview": false
     },
@@ -260,16 +260,112 @@
       "path": "assets/video/scene_05.mp4.sources.json",
       "role": "Scene remux include/exclude manifest",
       "exists": true,
-      "bytes": 2780,
+      "bytes": 2781,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_06.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 2209,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_07.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1356,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_08.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1925,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_09.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 6501,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_10.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 794,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_11.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 10004,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_12.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1080,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_13.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 2800,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_14.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1652,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_15.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 796,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_16.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 9436,
+      "fileCount": null,
+      "requiredForManualReview": false
+    },
+    {
+      "path": "assets/video/scene_17.mp4.sources.json",
+      "role": "Scene remux include/exclude manifest",
+      "exists": true,
+      "bytes": 1080,
       "fileCount": null,
       "requiredForManualReview": false
     }
   ],
   "stats": {
-    "clipMp4Count": 41,
-    "sceneCompositeCount": 5,
-    "promptTxtCount": 41,
-    "promptMetaCount": 41,
+    "clipMp4Count": 170,
+    "sceneCompositeCount": 17,
+    "promptTxtCount": 170,
+    "promptMetaCount": 170,
     "autoReviewDraftCount": 0,
     "hasReviewIndex": false,
     "reviewFrameCount": 0,

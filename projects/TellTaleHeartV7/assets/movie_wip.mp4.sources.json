@@ -1,6 +1,6 @@
 {
-  "builtAtUtc": "2026-07-23T18:53:43.1788628Z",
-  "count": 5,
+  "builtAtUtc": "2026-07-23T23:23:12.1945336Z",
+  "count": 17,
   "sources": [
     {
       "name": "scene_01.mp4",
@@ -13,28 +13,112 @@
       "name": "scene_02.mp4",
       "scene": 2,
       "bytes": 2084692,
-      "mtimeUtc": "2026-07-23T18:53:22.5732883Z",
+      "mtimeUtc": "2026-07-23T22:28:26.4447851Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_03.mp4",
       "scene": 3,
       "bytes": 3279721,
-      "mtimeUtc": "2026-07-23T18:53:24.9915760Z",
+      "mtimeUtc": "2026-07-23T22:28:26.4718485Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_04.mp4",
       "scene": 4,
       "bytes": 4045107,
-      "mtimeUtc": "2026-07-23T18:53:27.7904883Z",
+      "mtimeUtc": "2026-07-23T22:28:26.5435311Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_05.mp4",
       "scene": 5,
       "bytes": 5942523,
-      "mtimeUtc": "2026-07-23T18:53:31.9184061Z",
+      "mtimeUtc": "2026-07-23T22:28:26.6430677Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_06.mp4",
+      "scene": 6,
+      "bytes": 4239698,
+      "mtimeUtc": "2026-07-23T23:02:33.0711600Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_07.mp4",
+      "scene": 7,
+      "bytes": 1754978,
+      "mtimeUtc": "2026-07-23T23:02:35.9730199Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_08.mp4",
+      "scene": 8,
+      "bytes": 3731328,
+      "mtimeUtc": "2026-07-23T23:02:40.6785676Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_09.mp4",
+      "scene": 9,
+      "bytes": 11559315,
+      "mtimeUtc": "2026-07-23T23:02:56.8246088Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_10.mp4",
+      "scene": 10,
+      "bytes": 1397342,
+      "mtimeUtc": "2026-07-23T23:02:59.4136321Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_11.mp4",
+      "scene": 11,
+      "bytes": 21813824,
+      "mtimeUtc": "2026-07-23T23:03:30.6559006Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_12.mp4",
+      "scene": 12,
+      "bytes": 1524975,
+      "mtimeUtc": "2026-07-23T23:03:34.6027955Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_13.mp4",
+      "scene": 13,
+      "bytes": 6371180,
+      "mtimeUtc": "2026-07-23T23:03:42.2154766Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_14.mp4",
+      "scene": 14,
+      "bytes": 2146288,
+      "mtimeUtc": "2026-07-23T23:03:46.5812805Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_15.mp4",
+      "scene": 15,
+      "bytes": 1983556,
+      "mtimeUtc": "2026-07-23T23:03:49.3793609Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_16.mp4",
+      "scene": 16,
+      "bytes": 23439332,
+      "mtimeUtc": "2026-07-23T23:04:15.1643777Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_17.mp4",
+      "scene": 17,
+      "bytes": 1104628,
+      "mtimeUtc": "2026-07-23T23:04:18.3829427Z",
       "kind": "scene_composite"
     }
   ],
@@ -50,28 +134,112 @@
       "name": "scene_02.mp4",
       "scene": 2,
       "bytes": 2084692,
-      "mtimeUtc": "2026-07-23T18:53:22.5732883Z",
+      "mtimeUtc": "2026-07-23T22:28:26.4447851Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_03.mp4",
       "scene": 3,
       "bytes": 3279721,
-      "mtimeUtc": "2026-07-23T18:53:24.9915760Z",
+      "mtimeUtc": "2026-07-23T22:28:26.4718485Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_04.mp4",
       "scene": 4,
       "bytes": 4045107,
-      "mtimeUtc": "2026-07-23T18:53:27.7904883Z",
+      "mtimeUtc": "2026-07-23T22:28:26.5435311Z",
       "kind": "scene_composite"
     },
     {
       "name": "scene_05.mp4",
       "scene": 5,
       "bytes": 5942523,
-      "mtimeUtc": "2026-07-23T18:53:31.9184061Z",
+      "mtimeUtc": "2026-07-23T22:28:26.6430677Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_06.mp4",
+      "scene": 6,
+      "bytes": 4239698,
+      "mtimeUtc": "2026-07-23T23:02:33.0711600Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_07.mp4",
+      "scene": 7,
+      "bytes": 1754978,
+      "mtimeUtc": "2026-07-23T23:02:35.9730199Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_08.mp4",
+      "scene": 8,
+      "bytes": 3731328,
+      "mtimeUtc": "2026-07-23T23:02:40.6785676Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_09.mp4",
+      "scene": 9,
+      "bytes": 11559315,
+      "mtimeUtc": "2026-07-23T23:02:56.8246088Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_10.mp4",
+      "scene": 10,
+      "bytes": 1397342,
+      "mtimeUtc": "2026-07-23T23:02:59.4136321Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_11.mp4",
+      "scene": 11,
+      "bytes": 21813824,
+      "mtimeUtc": "2026-07-23T23:03:30.6559006Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_12.mp4",
+      "scene": 12,
+      "bytes": 1524975,
+      "mtimeUtc": "2026-07-23T23:03:34.6027955Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_13.mp4",
+      "scene": 13,
+      "bytes": 6371180,
+      "mtimeUtc": "2026-07-23T23:03:42.2154766Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_14.mp4",
+      "scene": 14,
+      "bytes": 2146288,
+      "mtimeUtc": "2026-07-23T23:03:46.5812805Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_15.mp4",
+      "scene": 15,
+      "bytes": 1983556,
+      "mtimeUtc": "2026-07-23T23:03:49.3793609Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_16.mp4",
+      "scene": 16,
+      "bytes": 23439332,
+      "mtimeUtc": "2026-07-23T23:04:15.1643777Z",
+      "kind": "scene_composite"
+    },
+    {
+      "name": "scene_17.mp4",
+      "scene": 17,
+      "bytes": 1104628,
+      "mtimeUtc": "2026-07-23T23:04:18.3829427Z",
       "kind": "scene_composite"
     }
   ],
@@ -95,7 +263,7 @@
     16,
     17
   ],
-  "blueprintMtimeUtc": "2026-07-23T18:36:40.9822478Z",
+  "blueprintMtimeUtc": "2026-07-23T22:55:20.1685807Z",
   "assemblyGate": true,
   "note": "WIP concatenates scene composites. Clip include/exclude decisions live on each scene_XX.mp4.sources.json (assembly gate applied at remux)."
 }

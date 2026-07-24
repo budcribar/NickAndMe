@@ -1,9 +1,0 @@
-{
-  "id": "TellTaleHeartV7",
-  "title": "TellTaleHeartV7",
-  "blueprint_file": "blueprint.clips.grok.json",
-  "scenes_file": "scenes.json",
-  "config_file": "pipeline_config.json",
-  "state_file": "pipeline_state.json",
-  "description": ""
-}

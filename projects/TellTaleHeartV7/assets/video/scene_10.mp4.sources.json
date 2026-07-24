@@ -1,0 +1,39 @@
+{
+  "builtAtUtc": "2026-07-23T23:02:59.4962620Z",
+  "scene": 10,
+  "count": 2,
+  "clips": [
+    {
+      "name": "scene_10_clip_01.mp4",
+      "scene": 10,
+      "clip": 1,
+      "bytes": 820781,
+      "mtimeUtc": "2026-07-23T22:28:27.0169584Z"
+    },
+    {
+      "name": "scene_10_clip_02.mp4",
+      "scene": 10,
+      "clip": 2,
+      "bytes": 844153,
+      "mtimeUtc": "2026-07-23T22:28:27.0245048Z"
+    }
+  ],
+  "included": [
+    {
+      "name": "scene_10_clip_01.mp4",
+      "scene": 10,
+      "clip": 1,
+      "reason": "eligible"
+    },
+    {
+      "name": "scene_10_clip_02.mp4",
+      "scene": 10,
+      "clip": 2,
+      "reason": "eligible"
+    }
+  ],
+  "excluded": [],
+  "strict": true,
+  "assemblyGate": true,
+  "totalDurationSeconds": 13.88
+}

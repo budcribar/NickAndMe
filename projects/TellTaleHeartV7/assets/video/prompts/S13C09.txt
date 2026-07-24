@@ -1,0 +1,29 @@
+# S13C09  mode=video-extend chars=1 onScreen=1 refs=0 startFrame=no promptLen=3958 prevVideo=_prev_extend_s13c09.mp4 · learning-addenda · pre-budget 6590→3958
+# projectId: TellTaleHeartV7
+# mode: video-extend
+# castCount: 1
+# onScreen: Character_The_Narrator
+# refs: 
+# refsAttachedToApi: False
+# startFrame: (none)
+# characters: Character_The_Narrator
+
+STYLE LOCK: Period gothic live-action, mid-19th-century interiors; candlelight and deep shadows; desaturated cool-gray palette; naturalistic skin and fabric texture; no illustration or stylized animation
+
+CHARACTER VARIABLES (use these identities consistently; do not redesign faces or wardrobe):
+- Character_The_Narrator [The Narrator]: Lean man of middle years (about 40–50), pale sallow skin, hollow cheeks, dark disordered medium-length hair, bright intense dark eyes, thin tense mouth; plain dark wool waistcoat over white shirtsleeves, dark trousers; period clothing. Visual lock: Same lean pale face, dark disordered hair, and bright intense dark eyes in every scene; always plain dark waistcoat and shirtsleeves as default; never elderly, never white-haired, never the filmed blue eye. Voice: Male, middle years; medium-high tense pitch; precise, controlled pace that sharpens into fevered urgency; intimate confessional energy, same voice on-camera and in V.O.
+
+CAST COUNT: exactly 1 distinct on-screen character identity(ies) only — Character_The_Narrator. Do not invent extra people, duplicate faces, or crowd extras not listed.
+
+AUDIO: ambient/Foley only — distant bell, door knock. No dialogue.
+
+PREVIOUS CLIP (already provided as video input — continue from its last frame):
+INT. OLD MAN'S BEDCHAMBER - NIGHT. Candle. A tub. THE NARRATOR works in silence-working in methodical silence: head, arms, legs. No flourish; method. He lifts three planks from the flooring, deposits the contents between the scantlings, replaces the boards. Smooths the seams. Inspects: no stain. The tub has caught all. He almost laughs. OFF-CAMERA VOICEOVER Character_The_Narrator says "I had been too wary for that. A tub had caught all-ha! Ha!". Character_The_Narrator still wears white shirtsleeves rolled up, dark trousers, barefoot Camera directive: Close-up on Narrator's face almost laughing, 100mm macro, subtle drift capturing wary triumph and the tub below. Performance: Acting intensity 8/10: Manic wide grin with crinkled eyes, bursting into ha-ha laugh Optics: f/1.4 shallow depth of field, creamy soft bokeh Color grading: Kodak Vision3 500T 5219, deep charcoal shadows, warm amber candle highlights, muted crimson
+
+CONTINUITY: This is a seamless EXTENSION of the provided previous video. Pick up from its last frame. Same character identity, wardrobe, lighting, and location. Natural progressive motion only — do not invent a new establishing shot or redesign faces/outfits. IDENTITY: Match locked plate descriptions in CHARACTER VARIABLES exactly — do not drift to illustration, anime, cartoon, or a different face/wardrobe. On-screen: Character_The_Narrator.
+
+THIS CLIP:
+Silent beat — no dialogue in this clip. Do not show any on-screen character speaking or mouthing words; keep mouths closed/neutral. End cleanly when the primary physical action finishes.
+INT. OLD MAN'S BEDCHAMBER - NIGHT. The Narrator A distant bell: four o'clock. Still dark. A knocking at the street door. Character_The_Narrator still wears white shirtsleeves rolled up, dark trousers, barefoot Camera directive: Wide dark chamber shot, 24mm anamorphic, slow tilt from floor to street door as distant bell and knocking sound. Performance: Acting intensity 5/10: Abrupt freeze, eyes flick to door as smile fades to alert Optics: f/4 moderate depth of field Color grading: Kodak Vision3 500T 5219, deep charcoal shadows, warm amber candle highlights, muted crimson / 480p, 24fps
+
+NEGATIVE: no legible text, no watermarks, no logos, no extra limbs, blur/obscure environmental signage or screens, no name tags, no name badges, no embroidered names, no lower thirds, no personal names on clothing or props, no extra unmentioned hats or jackets, no modern wristwatches, no electric light bulbs, no plastic, no zippers, no modern cars, no printed logos, no denim, no asphalt, no modern hair gel, no sneakers, no fluorescent lights, no smartphones, no synthetic fabrics.
