@@ -23,6 +23,7 @@ public sealed class AdminSessionService
     public DateTimeOffset? ExpiresAt { get; private set; }
 
     public bool IsAuthenticated => !string.IsNullOrWhiteSpace(Token);
+    public bool IsLoggedIn => IsAuthenticated;
     public bool IsAdmin =>
         Roles.Any(r => string.Equals(r, "admin", StringComparison.OrdinalIgnoreCase));
 

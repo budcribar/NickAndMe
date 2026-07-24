@@ -3,6 +3,7 @@
 @inject EngineApiClient Engine
 @inject ThemeState Theme
 @inject IJSRuntime Js
+@inject NavigationManager Nav
 @implements IDisposable
 
 @* Mobile hamburger (desktop collapse is on MainLayout) *@
@@ -87,12 +88,28 @@
                 </NavLink>
             </div>
         }
+
+        @if (Session.IsLoggedIn)
+        {
+            <div class="nav-item px-3 mt-3 pt-3 border-top border-secondary border-opacity-25">
+                @if (!Collapsed)
+                {
+                    <div class="d-flex align-items-center justify-content-between text-muted small px-1 mb-2">
+                        <span class="text-truncate" title="@Session.UserId">👤 @Session.UserId</span>
+                    </div>
+                }
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" @onclick="LogoutAsync" title="Sign out">
+                    <span class="bi bi-box-arrow-right" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="ms-1">Sign Out</span> }
+                </button>
+            </div>
+        }
         else
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/admin/login" title="Admin login">
-                    <span class="bi bi-shield-lock-nav-menu" aria-hidden="true"></span>
-                    @if (!Collapsed) { <span class="nav-label">Admin login</span> }
+                <NavLink class="nav-link" href="/login" title="Sign In / Register">
+                    <span class="bi bi-person-circle" aria-hidden="true"></span>
+                    @if (!Collapsed) { <span class="nav-label">Sign In / Register</span> }
                 </NavLink>
             </div>
         }
@@ -176,6 +193,13 @@
         Theme.Set(pref);
         try { await Js.InvokeVoidAsync("fsTheme.apply", pref); }
         catch { /* prerender / no JS yet */ }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Engine.LogoutAsync();
+        Session.Clear();
+        Nav.NavigateTo("/login", forceLoad: true);
     }
 
     public void Dispose()

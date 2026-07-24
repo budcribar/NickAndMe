@@ -74,6 +74,21 @@ public sealed class EngineApiClient
         return await resp.Content.ReadFromJsonAsync<T>(JsonOpts, ct);
     }
 
+    public async Task<LoginResponse?> SignupAsync(string username, string password, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/signup")
+        {
+            Content = JsonContent.Create(new LoginRequest { Username = username, Password = password }, options: JsonOpts),
+        };
+        using var resp = await _http.SendAsync(req, ct);
+        var body = await resp.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts, ct);
+        if (body is null)
+            return new LoginResponse { Ok = false, Error = "Empty response" };
+        if (!resp.IsSuccessStatusCode && body.Ok)
+            body.Ok = false;
+        return body;
+    }
+
     public async Task<LoginResponse?> LoginAsync(string username, string password, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")

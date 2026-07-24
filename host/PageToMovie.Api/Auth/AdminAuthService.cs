@@ -2,7 +2,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using PageToMovie.Core.Auth;
+using PageToMovie.Core.Models;
 using PageToMovie.Core.Options;
+using PageToMovie.Engine;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +14,7 @@ namespace PageToMovie.Api.Auth;
 public interface IAdminAuthService
 {
     LoginResponse Login(string username, string password);
+    LoginResponse Signup(string username, string password);
     ClaimsPrincipal? ValidateToken(string token);
 }
 
@@ -19,13 +22,54 @@ public sealed class AdminAuthService : IAdminAuthService
 {
     private readonly AuthOptions _auth;
     private readonly IHostEnvironment _env;
+    private readonly UserDatabaseService _userDb;
     private readonly PasswordHasher<object> _hasher = new();
     private readonly object _hashTarget = new();
 
-    public AdminAuthService(IOptions<PageToMovieOptions> opts, IHostEnvironment env)
+    public AdminAuthService(IOptions<PageToMovieOptions> opts, IHostEnvironment env, UserDatabaseService userDb)
     {
         _auth = opts.Value.Auth ?? new AuthOptions();
         _env = env;
+        _userDb = userDb;
+    }
+
+    public LoginResponse Signup(string username, string password)
+    {
+        username = (username ?? "").Trim();
+        password = (password ?? "").Trim();
+
+        if (username.Length < 3)
+            return Fail("Username must be at least 3 characters long");
+        if (password.Length < 4)
+            return Fail("Password must be at least 4 characters long");
+
+        var existing = _userDb.GetUserByUsernameAsync(username).GetAwaiter().GetResult();
+        if (existing is not null)
+            return Fail("Username is already taken");
+
+        var user = new UserEntity
+        {
+            UserId = username.ToLowerInvariant(),
+            Username = username,
+            PasswordHash = UserDatabaseService.HashPassword(password),
+            Role = AppRoles.User,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _userDb.InsertUserAsync(user).GetAwaiter().GetResult();
+
+        var hours = Math.Clamp(_auth.JwtHours, 1, 168);
+        var expires = DateTimeOffset.UtcNow.AddHours(hours);
+        var token = IssueJwt(user.Username, new[] { AppRoles.User }, expires);
+
+        return new LoginResponse
+        {
+            Ok = true,
+            Token = token,
+            UserId = user.Username,
+            Roles = new List<string> { AppRoles.User },
+            ExpiresAt = expires,
+        };
     }
 
     public LoginResponse Login(string username, string password)
@@ -33,25 +77,61 @@ public sealed class AdminAuthService : IAdminAuthService
         username = (username ?? "").Trim();
         password ??= "";
 
-        if (!string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase))
-            return Fail("Invalid username or password");
+        if (string.IsNullOrWhiteSpace(username))
+            return Fail("Username is required");
 
-        var ok = VerifyPassword(password);
-        if (!ok)
-            return Fail("Invalid username or password");
-
-        var hours = Math.Clamp(_auth.JwtHours, 1, 168);
-        var expires = DateTimeOffset.UtcNow.AddHours(hours);
-        var token = IssueJwt(_auth.AdminUsername, new[] { AppRoles.User, AppRoles.Admin }, expires);
-
-        return new LoginResponse
+        // 1. Check SQLite database for user
+        var dbUser = _userDb.GetUserByUsernameAsync(username).GetAwaiter().GetResult();
+        if (dbUser is not null)
         {
-            Ok = true,
-            Token = token,
-            UserId = _auth.AdminUsername,
-            Roles = new List<string> { AppRoles.User, AppRoles.Admin },
-            ExpiresAt = expires,
-        };
+            var hash = UserDatabaseService.HashPassword(password);
+            if (dbUser.PasswordHash == hash)
+            {
+                var userRoles = new List<string> { AppRoles.User };
+                if (string.Equals(dbUser.Role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase))
+                {
+                    userRoles.Add(AppRoles.Admin);
+                }
+
+                var userHours = Math.Clamp(_auth.JwtHours, 1, 168);
+                var userExpires = DateTimeOffset.UtcNow.AddHours(userHours);
+                var userToken = IssueJwt(dbUser.Username, userRoles, userExpires);
+
+                return new LoginResponse
+                {
+                    Ok = true,
+                    Token = userToken,
+                    UserId = dbUser.Username,
+                    Roles = userRoles,
+                    ExpiresAt = userExpires,
+                };
+            }
+            return Fail("Invalid username or password");
+        }
+
+        // 2. Fallback check for configured admin user (e.g. dev defaults admin/admin)
+        if (string.Equals(username, _auth.AdminUsername, StringComparison.OrdinalIgnoreCase))
+        {
+            var ok = VerifyPassword(password);
+            if (!ok)
+                return Fail("Invalid username or password");
+
+            var hours = Math.Clamp(_auth.JwtHours, 1, 168);
+            var expires = DateTimeOffset.UtcNow.AddHours(hours);
+            var token = IssueJwt(_auth.AdminUsername, new[] { AppRoles.User, AppRoles.Admin }, expires);
+
+            return new LoginResponse
+            {
+                Ok = true,
+                Token = token,
+                UserId = _auth.AdminUsername,
+                Roles = new List<string> { AppRoles.User, AppRoles.Admin },
+                ExpiresAt = expires,
+            };
+        }
+
+        return Fail("Invalid username or password");
     }
 
     public ClaimsPrincipal? ValidateToken(string token)

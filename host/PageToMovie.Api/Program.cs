@@ -298,6 +298,26 @@ app.UseMiddleware<JwtHeaderMiddleware>();
 app.MapHub<JobHub>("/hubs/jobs");
 
 // ── Auth (Phase B + D rate limit) ───────────────────────────────────────────
+app.MapPost("/api/auth/signup", (LoginRequest body, IAdminAuthService auth, LoginRateLimiter limiter, HttpContext http) =>
+{
+    var key = $"{body.Username ?? ""}|{http.Connection.RemoteIpAddress}";
+    if (limiter.IsBlocked(key, out var retryAfter))
+    {
+        return Results.Json(
+            new LoginResponse { Ok = false, Error = $"Too many requests. Retry in {retryAfter}s." },
+            statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    var result = auth.Signup(body.Username ?? "", body.Password ?? "");
+    if (!result.Ok)
+    {
+        limiter.RecordFailure(key);
+        return Results.Json(result, statusCode: StatusCodes.Status400BadRequest);
+    }
+    limiter.RecordSuccess(key);
+    return Results.Ok(result);
+});
+
 app.MapPost("/api/auth/login", (LoginRequest body, IAdminAuthService auth, LoginRateLimiter limiter, HttpContext http) =>
 {
     var key = $"{body.Username ?? ""}|{http.Connection.RemoteIpAddress}";
