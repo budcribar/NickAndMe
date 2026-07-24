@@ -694,6 +694,36 @@ public sealed class EngineApiClient
         }
     }
 
+    /// <summary>Absolute stream URL for the most recently built multi-scene preview (range requests enabled).</summary>
+    public string PreviewMovieUrl(string projectId)
+    {
+        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/movie/preview";
+    }
+
+    /// <summary>Stitch an explicit, ordered (possibly non-contiguous) scene selection into a temporary preview.</summary>
+    public async Task StartPreviewAsync(
+        string projectId,
+        IReadOnlyList<int> orderedScenes,
+        bool refreshStaleScenes = true,
+        CancellationToken ct = default)
+    {
+        using var resp = await _http.PostAsJsonAsync(
+            "/api/jobs/preview",
+            new StartPreviewRequest
+            {
+                ProjectId = projectId,
+                Scenes = orderedScenes.ToList(),
+                RefreshStaleScenes = refreshStaleScenes,
+            },
+            JsonOpts,
+            ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(TryError(err) ?? resp.ReasonPhrase);
+        }
+    }
+
     public async Task StartClipAutoReviewAsync(
         string projectId,
         int scene,

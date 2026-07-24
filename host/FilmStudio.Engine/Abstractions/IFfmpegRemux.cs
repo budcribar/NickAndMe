@@ -17,4 +17,12 @@ public interface IFfmpegRemux
         string projectId,
         Action<string>? onProgress = null,
         CancellationToken ct = default);
+
+    Task<string?> RebuildPreviewAsync(
+        string projectId,
+        IReadOnlyList<int> orderedSceneNumbers,
+        Action<string>? onProgress = null,
+        CancellationToken ct = default);
+
+    bool IsSceneCompositeStale(string projectId, int sceneNum);
 }

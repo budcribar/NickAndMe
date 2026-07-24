@@ -755,6 +755,22 @@ public sealed class StartRemuxRequest
     public string? IgnoreAssemblyGateReason { get; set; }
 }
 
+/// <summary>
+/// Build a temporary multi-scene preview (assets/movie_preview.mp4) by stitching an explicit,
+/// caller-ordered scene list — can skip scenes (e.g. 1,2,4) so a user can audition whether
+/// cutting a scene improves pacing before deleting it for real.
+/// </summary>
+public sealed class StartPreviewRequest
+{
+    public string ProjectId { get; set; } = "";
+    /// <summary>Scene numbers in playback order; duplicates/order preserved as given.</summary>
+    public List<int> Scenes { get; set; } = new();
+    /// <summary>When true, remux any selected scene whose composite is missing/stale before stitching.</summary>
+    public bool RefreshStaleScenes { get; set; } = true;
+    public bool IgnoreAssemblyGate { get; set; }
+    public string? IgnoreAssemblyGateReason { get; set; }
+}
+
 public sealed class StartYouTubeUploadRequest
 {
     public string ProjectId { get; set; } = "";

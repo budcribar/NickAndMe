@@ -49,18 +49,10 @@ else
 }
 
 <div class="d-flex gap-2 flex-wrap align-items-center mb-3">
-    <button class="btn btn-outline-secondary" data-testid="scenes-filters-toggle"
+    <button class="btn btn-outline-secondary" data-testid="scenes-select-toggle"
             disabled="@_busy" @onclick="() => _showFilters = !_showFilters">
-        Filters
-        @if (HasActiveFilters)
-        {
-            <span class="badge rounded-pill bg-primary ms-1">@ActiveFilterCount</span>
-        }
+        Select
     </button>
-    @if (HasActiveFilters)
-    {
-        <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="ClearFilters">Clear filters</button>
-    }
     @if (_selectedScene is int)
     {
         <button class="btn btn-outline-primary" disabled="@_busy" @onclick="BackToListAsync">← All scenes</button>
@@ -69,11 +61,11 @@ else
 
 @if (_showFilters)
 {
-    <div class="row mb-3 g-2 align-items-end p-2 border rounded" data-testid="scenes-filters-panel">
+    <div class="row mb-3 g-2 align-items-end p-2 border rounded" data-testid="scenes-select-panel">
         <div class="col-md-3">
             <label class="form-label">Character</label>
-            <select class="form-select" @bind="_filterCharacter" disabled="@_busy">
-                <option value="">All characters</option>
+            <select class="form-select" @bind="_pickCharacter" @bind:after="SelectByCharacter" disabled="@_busy">
+                <option value="">Select by character…</option>
                 @foreach (var c in CharacterOptions)
                 {
                     <option value="@c">@ShortChar(c)</option>
@@ -82,8 +74,8 @@ else
         </div>
         <div class="col-md-3">
             <label class="form-label">Location</label>
-            <select class="form-select" @bind="_filterLocation" disabled="@_busy">
-                <option value="">All locations</option>
+            <select class="form-select" @bind="_pickLocation" @bind:after="SelectByLocation" disabled="@_busy">
+                <option value="">Select by location…</option>
                 @foreach (var loc in LocationOptions)
                 {
                     <option value="@loc">@ShortLoc(loc)</option>
@@ -92,7 +84,16 @@ else
         </div>
         <div class="col-md-4">
             <label class="form-label">Setting text</label>
-            <input class="form-control" @bind="_filter" @bind:event="oninput" disabled="@_busy" placeholder="e.g. pajamas" />
+            <div class="input-group">
+                <input class="form-control" @bind="_pickSetting" @bind:event="oninput" disabled="@_busy" placeholder="e.g. pajamas" />
+                <button class="btn btn-outline-secondary" type="button" disabled="@(_busy || string.IsNullOrWhiteSpace(_pickSetting))"
+                        @onclick="SelectBySetting">
+                    Select matching
+                </button>
+            </div>
+        </div>
+        <div class="col-12">
+            <span class="small text-muted">Picking a character or location selects every scene it appears in — it doesn't hide the rest.</span>
         </div>
     </div>
 }
@@ -125,6 +126,40 @@ else if (_showScenePlayer && _playingScene is int busySn && IsSceneGenBusy(busyS
         <div class="card-body py-2 small text-muted">
             Scene composite hidden while generating <code>S@(busySn.ToString("D2"))</code>.
             <button type="button" class="btn btn-link btn-sm p-0 align-baseline ms-1" @onclick="HideScenePlayer">Dismiss</button>
+        </div>
+    </div>
+}
+
+@if (_showPreviewPlayer && !IsPreviewBusy)
+{
+    <div class="card mb-3 border-primary" data-testid="scenes-preview-player">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span>
+                Preview — @_previewScenes.Count scene@(_previewScenes.Count == 1 ? "" : "s"):
+                <code class="small">@string.Join(", ", _previewScenes.Select(s => $"S{s:D2}"))</code>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => _showPreviewPlayer = false">Hide</button>
+        </div>
+        <div class="card-body py-2">
+            <video controls playsinline autoplay
+                   style="width:100%;max-height:70vh;background:#000;border-radius:0.35rem;"
+                   src="@CacheBust(Engine.PreviewMovieUrl(_projectId))"
+                   @key="_previewVideoKey"
+                   onloadeddata="this.play().catch(function(){})">
+                Your browser does not support HTML5 video.
+            </video>
+            <p class="small text-muted mb-0 mt-2">
+                Temporary — not saved anywhere. Change the selection and click <strong>Play selected</strong> again
+                to audition a different cut (e.g. drop a scene to see how it flows without it).
+            </p>
+        </div>
+    </div>
+}
+else if (_showPreviewPlayer && IsPreviewBusy)
+{
+    <div class="card mb-3 border-secondary">
+        <div class="card-body py-2 small text-muted">
+            Preview hidden while combining selected scenes…
         </div>
     </div>
 }
@@ -217,11 +252,7 @@ else if (Session.IsAdmin && _job is not null &&
                     <div>
                         <div class="batch-panel__heading">Batch generate</div>
                         <div class="batch-panel__sub">
-                            @FilteredScenes.Count scene@(FilteredScenes.Count == 1 ? "" : "s") shown
-                            @if (HasActiveFilters)
-                            {
-                                <span> of @_scenes.Count</span>
-                            }
+                            @_scenes.Count scene@(_scenes.Count == 1 ? "" : "s")
                             · @_scenes.Sum(s => s.ClipsOnDisk)/@_scenes.Sum(s => s.ClipCount) clips on disk
                             @if (IncompleteCount > 0)
                             {
@@ -254,7 +285,7 @@ else if (Session.IsAdmin && _job is not null &&
                                 class="batch-chip @(SelectionMode == "incomplete" ? "batch-chip--on" : "")"
                                 disabled="@(_busy || IncompleteCount == 0)"
                                 @onclick="SelectIncomplete"
-                                title="Scenes with missing clips in the current filter">
+                                title="Scenes with missing clips">
                             Incomplete
                             @if (IncompleteCount > 0)
                             {
@@ -263,11 +294,11 @@ else if (Session.IsAdmin && _job is not null &&
                         </button>
                         <button type="button"
                                 class="batch-chip @(SelectionMode == "all" ? "batch-chip--on" : "")"
-                                disabled="@(_busy || FilteredScenes.Count == 0)"
+                                disabled="@(_busy || VisibleScenes.Count == 0)"
                                 @onclick="SelectAll"
-                                title="All scenes in the current filter">
-                            All shown
-                            <span class="batch-chip__count">@FilteredScenes.Count</span>
+                                title="All scenes">
+                            All
+                            <span class="batch-chip__count">@VisibleScenes.Count</span>
                         </button>
                         <button type="button"
                                 class="batch-chip batch-chip--muted @(_selected.Count == 0 ? "batch-chip--disabled" : "")"
@@ -304,6 +335,15 @@ else if (Session.IsAdmin && _job is not null &&
                             <span class="small text-muted" title="This project already has clips at @_resolutionLock — generating at a different resolution would mix them.">🔒</span>
                         }
                     </div>
+
+                    <button type="button"
+                            data-testid="scenes-play-selected"
+                            class="btn btn-outline-primary"
+                            disabled="@(_busy || _selected.Count == 0 || JobRunning)"
+                            title="Stitch the selected scenes together in order (auto-remuxes any that are stale)"
+                            @onclick="PlaySelectedAsync">
+                        ▶ Play selected@(_selected.Count > 0 ? $" ({_selected.Count})" : "")
+                    </button>
 
                     <button type="button"
                             data-testid="scenes-generate-batch"
@@ -344,7 +384,6 @@ else if (Session.IsAdmin && _job is not null &&
             </div>
 
             <div class="batch-panel__foot">
-                Selection respects character, location, and setting filters.
                 Video gen is blocked until <strong>every</strong> character has an approved voice and (for on-screen roles) a locked image — approve them under Characters first so you do not waste API spend.
             </div>
         </div>
@@ -358,7 +397,7 @@ else if (Session.IsAdmin && _job is not null &&
                                    data-testid="scenes-select-all"
                                    title="Select all shown scenes"
                                    checked="@AllShownScenesSelected"
-                                   disabled="@(_busy || FilteredScenes.Count == 0)"
+                                   disabled="@(_busy || VisibleScenes.Count == 0)"
                                    @onchange="e => ToggleSelectAllShown((bool)(e.Value ?? false))" />
                         </th>
                         <th style="width:4rem;">#</th>
@@ -370,7 +409,7 @@ else if (Session.IsAdmin && _job is not null &&
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var s in FilteredScenes)
+                    @foreach (var s in VisibleScenes)
                     {
                         var sn = s.SceneNumber;
                         var isSel = _selected.Contains(sn);
@@ -1034,9 +1073,9 @@ else
     private string? _message;
     private string _projectId = "";
     private List<string> _projectIds = new();
-    private string _filter = "";
-    private string _filterCharacter = "";
-    private string _filterLocation = "";
+    private string _pickSetting = "";
+    private string _pickCharacter = "";
+    private string _pickLocation = "";
     private bool _showFilters;
     private bool _onlyMissing = true;
     /// <summary>Video gen resolution (defaults from Configuration).</summary>
@@ -1084,6 +1123,10 @@ else
     private long _sceneVideoKey;
     private long _inlineCompositeKey;
     private long _clipVideoKey;
+    /// <summary>"Play selected" — multi-scene (possibly non-contiguous) stitched preview.</summary>
+    private bool _showPreviewPlayer;
+    private long _previewVideoKey;
+    private List<int> _previewScenes = new();
 
     private bool JobRunning =>
         string.Equals(_job?.Status, "running", StringComparison.OrdinalIgnoreCase) ||
@@ -1292,17 +1335,7 @@ else
     private string SelectionMode => _selectionMode;
 
     private int IncompleteCount =>
-        FilteredScenes.Count(s => s.ClipsOnDisk < s.ClipCount);
-
-    private bool HasActiveFilters =>
-        !string.IsNullOrWhiteSpace(_filter) ||
-        !string.IsNullOrWhiteSpace(_filterCharacter) ||
-        !string.IsNullOrWhiteSpace(_filterLocation);
-
-    private int ActiveFilterCount =>
-        (string.IsNullOrWhiteSpace(_filter) ? 0 : 1) +
-        (string.IsNullOrWhiteSpace(_filterCharacter) ? 0 : 1) +
-        (string.IsNullOrWhiteSpace(_filterLocation) ? 0 : 1);
+        VisibleScenes.Count(s => s.ClipsOnDisk < s.ClipCount);
 
     private List<string> CharacterOptions =>
         _scenes is null
@@ -1330,44 +1363,56 @@ else
                 .OrderBy(ShortLoc, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-    private List<SceneSummary> FilteredScenes
+    /// <summary>All scenes — character/location/setting pickers select matching scenes instead of hiding the rest.</summary>
+    private List<SceneSummary> VisibleScenes => _scenes ?? new List<SceneSummary>();
+
+    private void SelectByCharacter()
     {
-        get
+        if (_scenes is null || string.IsNullOrWhiteSpace(_pickCharacter))
+            return;
+        var match = _pickCharacter;
+        foreach (var s in _scenes.Where(s =>
+            s.CharactersOnScreen.Any(c => string.Equals(c, match, StringComparison.OrdinalIgnoreCase))))
         {
-            if (_scenes is null)
-                return new List<SceneSummary>();
-
-            IEnumerable<SceneSummary> q = _scenes;
-            if (!string.IsNullOrWhiteSpace(_filter))
-            {
-                q = q.Where(s =>
-                    (s.Setting ?? "").Contains(_filter, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (!string.IsNullOrWhiteSpace(_filterCharacter))
-            {
-                q = q.Where(s =>
-                    s.CharactersOnScreen.Any(c =>
-                        string.Equals(c, _filterCharacter, StringComparison.OrdinalIgnoreCase)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(_filterLocation))
-            {
-                q = q.Where(s =>
-                    string.Equals(s.PrimaryLocationId, _filterLocation, StringComparison.OrdinalIgnoreCase) ||
-                    s.LocationIds.Any(l =>
-                        string.Equals(l, _filterLocation, StringComparison.OrdinalIgnoreCase)));
-            }
-
-            return q.ToList();
+            _selected.Add(s.SceneNumber);
         }
+        _selectionMode = "";
+        _pickCharacter = "";
     }
 
-    private void ClearFilters()
+    private void SelectByLocation()
     {
-        _filter = "";
-        _filterCharacter = "";
-        _filterLocation = "";
+        if (_scenes is null || string.IsNullOrWhiteSpace(_pickLocation))
+            return;
+        var match = _pickLocation;
+        foreach (var s in _scenes.Where(s =>
+            string.Equals(s.PrimaryLocationId, match, StringComparison.OrdinalIgnoreCase) ||
+            s.LocationIds.Any(l => string.Equals(l, match, StringComparison.OrdinalIgnoreCase))))
+        {
+            _selected.Add(s.SceneNumber);
+        }
+        _selectionMode = "";
+        _pickLocation = "";
+    }
+
+    private void SelectBySetting()
+    {
+        if (_scenes is null || string.IsNullOrWhiteSpace(_pickSetting))
+            return;
+        var text = _pickSetting;
+        foreach (var s in _scenes.Where(s =>
+            (s.Setting ?? "").Contains(text, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selected.Add(s.SceneNumber);
+        }
+        _selectionMode = "";
+    }
+
+    private void ResetPickers()
+    {
+        _pickSetting = "";
+        _pickCharacter = "";
+        _pickLocation = "";
     }
 
     protected override async Task OnInitializedAsync()
@@ -1478,6 +1523,14 @@ else
                     }
                 }
                 else if (snap.Status == "done" &&
+                         string.Equals(snap.Kind, "preview", StringComparison.OrdinalIgnoreCase))
+                {
+                    _previewVideoKey = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    _showPreviewPlayer = true;
+                    _message = $"Preview ready — {_previewScenes.Count} scene(s): " +
+                                string.Join(", ", _previewScenes.Select(s => $"S{s:D2}"));
+                }
+                else if (snap.Status == "done" &&
                          string.Equals(snap.Kind, "scene", StringComparison.OrdinalIgnoreCase) &&
                          snap.Clip is int cn &&
                          snap.Scene is int gsn)
@@ -1586,7 +1639,7 @@ else
         _selectedClip = null;
         _clip = null;
         _selected.Clear();
-        ClearFilters();
+        ResetPickers();
         await LoadGenResolutionFromConfigAsync();
         await ReloadListAsync();
     }
@@ -1894,6 +1947,45 @@ else
         _playingScene = null;
     }
 
+    private bool IsPreviewBusy
+    {
+        get
+        {
+            static bool Active(string? status) =>
+                string.Equals(status, "running", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(status, "queued", StringComparison.OrdinalIgnoreCase);
+            static bool IsPreview(string? kind) =>
+                string.Equals(kind, "preview", StringComparison.OrdinalIgnoreCase);
+
+            if (_job is not null && IsPreview(_job.Kind) && Active(_job.Status))
+                return true;
+            return _myJobs.Any(j => IsPreview(j.Kind) && Active(j.Status));
+        }
+    }
+
+    /// <summary>Stitch the current selection (in ascending scene order, gaps allowed) into a temporary preview.</summary>
+    private async Task PlaySelectedAsync()
+    {
+        if (_selected.Count == 0 || JobRunning)
+            return;
+        _busy = true;
+        _error = null;
+        _message = null;
+        _progressFloor = 0;
+        _progressFloorJobId = null;
+        try
+        {
+            await EnsureHubAsync();
+            _previewScenes = _selected.OrderBy(x => x).ToList();
+            _showPreviewPlayer = true;
+            await Engine.StartPreviewAsync(_projectId, _previewScenes);
+            var jobs = await Engine.GetJobAsync();
+            _job = jobs?.Job;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
     /// <summary>FFmpeg concat clips → scene composite only (not WIP). Progress only — no auto-play.</summary>
     private async Task RebuildSceneAsync(int sn)
     {
@@ -2053,7 +2145,7 @@ else
 
     private void SelectIncomplete()
     {
-        _selected = FilteredScenes
+        _selected = VisibleScenes
             .Where(s => s.ClipsOnDisk < s.ClipCount)
             .Select(s => s.SceneNumber)
             .ToHashSet();
@@ -2062,7 +2154,7 @@ else
 
     private void SelectAll()
     {
-        _selected = FilteredScenes.Select(s => s.SceneNumber).ToHashSet();
+        _selected = VisibleScenes.Select(s => s.SceneNumber).ToHashSet();
         _selectionMode = "all";
     }
 
@@ -2073,7 +2165,7 @@ else
     }
 
     private bool AllShownScenesSelected =>
-        FilteredScenes.Count > 0 && FilteredScenes.All(s => _selected.Contains(s.SceneNumber));
+        VisibleScenes.Count > 0 && VisibleScenes.All(s => _selected.Contains(s.SceneNumber));
 
     private void ToggleSelectAllShown(bool on)
     {

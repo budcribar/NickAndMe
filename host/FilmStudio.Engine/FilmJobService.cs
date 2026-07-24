@@ -1962,6 +1962,162 @@ public sealed class FilmJobService
         }
     }
 
+    /// <summary>
+    /// Stitch an explicit, caller-ordered (possibly non-contiguous) scene selection into a
+    /// temporary preview movie so a user can audition cuts before committing to them.
+    /// </summary>
+    public Task<JobSnapshot> StartPreviewAsync(StartPreviewRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.ProjectId))
+            throw new InvalidOperationException("projectId required");
+        if (req.Scenes is null || req.Scenes.Count == 0)
+            throw new InvalidOperationException("At least one scene is required for a preview.");
+
+        var locks = req.Scenes.Distinct()
+            .Select(sn => LockKeys.Scene(req.ProjectId, sn))
+            .Append(LockKeys.Wip(req.ProjectId))
+            .ToList();
+
+        return StartBackgroundJobAsync(
+            ct => RunPreviewAsync(req, ct),
+            new JobEnqueueMeta
+            {
+                Kind = "preview",
+                ProjectId = req.ProjectId,
+                Message = "Queued preview…",
+            },
+            lockResources: locks,
+            lockReason: "preview",
+            useLocalPool: true);
+    }
+
+    private async Task RunPreviewAsync(StartPreviewRequest req, CancellationToken ct)
+    {
+        var projectId = req.ProjectId;
+        await _projects.RequireProjectAsync(projectId, ct);
+
+        Snapshot = new JobSnapshot
+        {
+            Status = "running",
+            Kind = "preview",
+            ProjectId = projectId,
+            Message = "Building preview…",
+            Index = 0,
+            Total = 100,
+            StartedAt = DateTimeOffset.UtcNow,
+            Log = new List<string>(),
+        };
+        RegisterActiveJob();
+        await PublishAsync();
+
+        try
+        {
+            if (!_remux.IsAvailable())
+                throw new InvalidOperationException(
+                    "ffmpeg not found. Install ffmpeg and ensure it is on PATH (or set FilmStudio:FfmpegPath).");
+
+            var ignoreGate = req.IgnoreAssemblyGate;
+            if (ignoreGate && !EditLogService.IsValidAutoFailOverrideNote(req.IgnoreAssemblyGateReason))
+            {
+                throw new InvalidOperationException(
+                    "ignoreAssemblyGate requires IgnoreAssemblyGateReason " +
+                    $"(≥{EditLogService.MinAutoFailOverrideNoteLength} chars, not just pass/ok).");
+            }
+
+            var phaseBase = 0;
+            var phaseSpan = 100;
+            Task OnLine(string line) => OnRemuxProgressAsync(line, () => (phaseBase, phaseSpan));
+
+            var ordered = req.Scenes.ToList();
+            var toRemux = req.RefreshStaleScenes
+                ? ordered.Distinct()
+                    .Where(sn => _remux.IsSceneCompositeStale(projectId, sn) ||
+                                 _projects.ResolveCompositePath(projectId, sn) is null)
+                    .OrderBy(sn => sn)
+                    .ToList()
+                : new List<int>();
+
+            if (toRemux.Count > 0)
+            {
+                await AppendLogAsync($"Remuxing {toRemux.Count} stale/missing scene composite(s) before preview…");
+                var sceneBudget = 70;
+                var i = 0;
+                var remuxErrors = new List<string>();
+                foreach (var sn in toRemux)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    i++;
+                    phaseBase = (int)Math.Round((i - 1) * (double)sceneBudget / toRemux.Count);
+                    phaseSpan = Math.Max(1, (int)Math.Round((double)sceneBudget / toRemux.Count));
+                    await UpdateAsync(s =>
+                    {
+                        s.Scene = sn;
+                        s.Total = 100;
+                        s.Index = Math.Max(s.Index, phaseBase);
+                        s.Message = $"Combining scene {i} of {toRemux.Count}…";
+                    });
+                    try
+                    {
+                        await _remux.RemuxSceneAsync(projectId, sn,
+                            line => { _ = OnLine(line); }, ct,
+                            ignoreAssemblyGate: ignoreGate);
+                        _projects.InvalidateSceneListCache(projectId);
+                        await UpdateAsync(s =>
+                        {
+                            s.Total = 100;
+                            s.Index = Math.Max(s.Index, phaseBase + phaseSpan);
+                        });
+                        await AppendLogAsync($"Remuxed S{sn:D2}");
+                    }
+                    catch (Exception ex)
+                    {
+                        remuxErrors.Add($"S{sn:D2}: {ex.Message}");
+                        _log.LogWarning(ex, "Preview: remux S{Scene} failed", sn);
+                        await AppendLogAsync($"S{sn:D2} remux failed: {ex.Message}");
+                    }
+                }
+
+                if (remuxErrors.Count > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Scene remux incomplete ({toRemux.Count - remuxErrors.Count}/{toRemux.Count} ok) — " +
+                        string.Join("; ", remuxErrors) + " (preview not built)");
+                }
+
+                phaseBase = 70;
+                phaseSpan = 30;
+            }
+            else
+            {
+                phaseBase = 0;
+                phaseSpan = 100;
+            }
+
+            await UpdateAsync(s =>
+            {
+                s.Scene = null;
+                s.Total = 100;
+                s.Index = Math.Max(s.Index, phaseBase);
+                s.Message = "Combining selected scenes into preview…";
+            });
+            await _remux.RebuildPreviewAsync(projectId, ordered, line => { _ = OnLine(line); }, ct);
+
+            var doneMsg = toRemux.Count > 0
+                ? $"Preview built ({ordered.Count} scene(s), {toRemux.Count} remuxed first)"
+                : $"Preview built ({ordered.Count} scene(s))";
+            await FinishAsync("done", doneMsg);
+        }
+        catch (OperationCanceledException)
+        {
+            await FinishAsync("cancelled", "Cancelled by user");
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Preview build failed");
+            await FinishAsync("error", ex.Message, ex.Message);
+        }
+    }
+
     /// <summary>Upload the WIP movie to YouTube (resumable upload, youtube.upload scope).</summary>
     public Task<JobSnapshot> StartYouTubeUploadAsync(StartYouTubeUploadRequest req)
     {

@@ -490,6 +490,62 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
     }
 
     /// <summary>
+    /// Concat an explicit, caller-ordered (possibly non-contiguous) set of scene composites
+    /// into a temporary preview movie (assets/movie_preview.mp4) — lets a user audition
+    /// "what if I cut scene 3" without touching the real WIP. Every requested scene must
+    /// already have an on-disk composite; the job layer remuxes stale ones first.
+    /// </summary>
+    public async Task<string?> RebuildPreviewAsync(
+        string projectId,
+        IReadOnlyList<int> orderedSceneNumbers,
+        Action<string>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        EnsureAvailable(onProgress);
+        using var _telScope = _telemetry.UseProject(projectId);
+
+        if (orderedSceneNumbers.Count == 0)
+            throw new InvalidOperationException("No scenes selected for preview.");
+
+        var projectDir = _projects.GetProjectDir(projectId);
+        var videoDir = Path.Combine(projectDir, "assets", "video");
+        var previewPath = Path.Combine(projectDir, "assets", "movie_preview.mp4");
+        Directory.CreateDirectory(Path.GetDirectoryName(previewPath)!);
+
+        var sceneFiles = new List<string>();
+        var missing = new List<int>();
+        foreach (var sn in orderedSceneNumbers)
+        {
+            var path = _projects.ResolveCompositePath(projectId, sn);
+            if (path is null)
+                missing.Add(sn);
+            else
+                sceneFiles.Add(path);
+        }
+
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                "Missing scene composite(s) for preview: " +
+                string.Join(", ", missing.Select(m => $"S{m:D2}")) +
+                " — remux those scenes first.");
+
+        onProgress?.Invoke($"Preview: stitching {sceneFiles.Count} scene(s) via {Path.GetFileName(FfmpegPath)}…");
+        var totalSec = await EstimateTotalDurationAsync(sceneFiles, onProgress, ct);
+        if (totalSec is > 0)
+            onProgress?.Invoke($"Estimated total duration ~{FormatHms(totalSec.Value)}");
+
+        var (exit, log) = await ConcatVideosAsync(
+            sceneFiles, previewPath, projectDir, videoDir, totalSec, onProgress,
+            label: "Preview", ct).ConfigureAwait(false);
+
+        if (exit != 0 || !File.Exists(previewPath))
+            throw new InvalidOperationException($"FFmpeg preview build failed: {TrimLog(log)}");
+
+        onProgress?.Invoke($"Preview → {previewPath} ({sceneFiles.Count} scene(s))");
+        return previewPath;
+    }
+
+    /// <summary>
     /// Concat clips/scenes. Prefer short audio crossfade on multi-input joins (reduces dead air at cuts).
     /// Falls back to concat demuxer copy, then plain re-encode.
     /// </summary>

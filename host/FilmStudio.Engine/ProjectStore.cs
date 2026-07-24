@@ -2214,6 +2214,16 @@ public sealed class ProjectStore
         return File.Exists(full) && new FileInfo(full).Length >= 1024 ? full : null;
     }
 
+    /// <summary>
+    /// Multi-scene stitched preview built by <see cref="FfmpegRemuxService.RebuildPreviewAsync"/>
+    /// (assets/movie_preview.mp4). Null if missing/empty.
+    /// </summary>
+    public string? ResolvePreviewMoviePath(string projectId)
+    {
+        var path = Path.Combine(GetProjectDir(projectId), "assets", "movie_preview.mp4");
+        return File.Exists(path) && new FileInfo(path).Length >= 1024 ? path : null;
+    }
+
     /// <summary>Last successful YouTube upload for a project, or null if never uploaded.</summary>
     public async Task<YouTubeUploadInfo?> GetYouTubeUploadInfoAsync(string projectId, CancellationToken ct = default)
     {

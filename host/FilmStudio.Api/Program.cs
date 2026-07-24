@@ -2122,6 +2122,29 @@ app.MapPost("/api/jobs/remux", async (StartRemuxRequest body, FilmJobService job
     }
 });
 
+/// <summary>Stitch an explicit, ordered (possibly non-contiguous) scene selection into a temporary preview movie.</summary>
+app.MapPost("/api/jobs/preview", async (StartPreviewRequest body, FilmJobService jobService) =>
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(body.ProjectId))
+            return Results.BadRequest(new { ok = false, error = "projectId required" });
+        if (body.Scenes is null || body.Scenes.Count == 0)
+            return Results.BadRequest(new { ok = false, error = "scenes required" });
+        var job = await jobService.StartPreviewAsync(body);
+        return Results.Accepted($"/api/jobs/{job.JobId}", new
+        {
+            ok = true,
+            message = "Queued preview",
+            job,
+        });
+    }
+    catch (Exception ex)
+    {
+        return JobStartError(ex, jobService);
+    }
+});
+
 app.MapPost("/api/jobs/youtube-upload", async (StartYouTubeUploadRequest body, FilmJobService jobService) =>
 {
     try
@@ -2591,6 +2614,22 @@ app.MapGet("/api/projects/{id}/movie/wip", (string id, ProjectStore store) =>
         var path = store.ResolveWipMoviePath(id);
         if (path is null)
             return Results.NotFound(new { ok = false, error = "WIP movie not found — rebuild WIP first" });
+        return Results.File(path, "video/mp4", enableRangeProcessing: true);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+/// <summary>Stream the most recently built multi-scene preview (assets/movie_preview.mp4).</summary>
+app.MapGet("/api/projects/{id}/movie/preview", (string id, ProjectStore store) =>
+{
+    try
+    {
+        var path = store.ResolvePreviewMoviePath(id);
+        if (path is null)
+            return Results.NotFound(new { ok = false, error = "No preview built yet — select scenes and play." });
         return Results.File(path, "video/mp4", enableRangeProcessing: true);
     }
     catch (Exception ex)
