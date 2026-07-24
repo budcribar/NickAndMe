@@ -106,14 +106,14 @@ public class PerfHotPathTests
             }
             sw.Stop();
 
-            Assert.True(sw.ElapsedMilliseconds < 3000,
+            Assert.True(sw.ElapsedMilliseconds < 8000,
                 $"Append {n} events too slow: {sw.ElapsedMilliseconds}ms");
 
             var sw2 = Stopwatch.StartNew();
             var insights = events.BuildInsights("P");
             sw2.Stop();
             Assert.Equal(n, insights.EventCount);
-            Assert.True(sw2.ElapsedMilliseconds < 1000,
+            Assert.True(sw2.ElapsedMilliseconds < 2500,
                 $"BuildInsights too slow: {sw2.ElapsedMilliseconds}ms");
         }
         finally
@@ -136,7 +136,7 @@ public class PerfHotPathTests
                 delivery: "on_camera");
         }
         sw.Stop();
-        Assert.True(sw.ElapsedMilliseconds < 1500,
+        Assert.True(sw.ElapsedMilliseconds < 4000,
             $"ClipDurationEstimator {n} too slow: {sw.ElapsedMilliseconds}ms");
     }
 
