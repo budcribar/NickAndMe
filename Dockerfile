@@ -46,9 +46,9 @@ ENV PAGETOMOVIE_JWT_KEY="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1
 ENV PageToMovie__Auth__JwtSigningKey="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
 ENV PageToMovie__WorkspaceRoot="/data"
 
-# Create persistent storage volume directory
+# Persistent storage path for projects/DB/keys. On Railway, mount a Volume at /data
+# (Dockerfile VOLUME is not supported — configure the mount in Railway, not here).
 RUN mkdir -p /data
-VOLUME ["/data"]
 
 EXPOSE 5088
 
