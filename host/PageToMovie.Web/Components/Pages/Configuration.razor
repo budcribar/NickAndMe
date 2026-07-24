@@ -76,11 +76,26 @@ else
                     <input type="password" class="form-control" placeholder="xai-..." @bind="_inputXaiApiKey" disabled="@_busy" />
                 </div>
                 <div class="col-md-4">
-                    <button class="btn btn-outline-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_inputXaiApiKey))" @onclick="SaveUserApiKeyAsync">
-                        Save API Key
+                    <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_inputXaiApiKey))" @onclick="SaveUserApiKeyAsync">
+                        @if (_apiKeySaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Saving…</span>
+                        }
+                        else
+                        {
+                            <span>Save API Key</span>
+                        }
                     </button>
                 </div>
             </div>
+            @if (!string.IsNullOrEmpty(_apiKeyFeedback))
+            {
+                <div class="alert alert-success py-2 px-3 mt-3 mb-0 small d-flex align-items-center gap-2">
+                    <span class="bi bi-check-circle-fill text-success" aria-hidden="true"></span>
+                    <span>@_apiKeyFeedback</span>
+                </div>
+            }
         </div>
     </div>
 
@@ -390,18 +405,31 @@ else
 
     private UserSettingsDto? _userSettings;
     private string? _inputXaiApiKey;
+    private bool _apiKeySaving;
+    private string? _apiKeyFeedback;
 
     private async Task SaveUserApiKeyAsync()
     {
         try
         {
             _busy = true;
+            _apiKeySaving = true;
+            _apiKeyFeedback = null;
             _userSettings = await Engine.UpdateUserSettingsAsync(_inputXaiApiKey);
             _inputXaiApiKey = null;
-            _message = "Your xAI API key has been encrypted and saved to your account!";
+            _apiKeyFeedback = "API key encrypted and attached to your account successfully!";
+            _message = _apiKeyFeedback;
+            await ActiveProject.RefreshReadinessAsync(Engine);
         }
-        catch (Exception ex) { _error = ex.Message; }
-        finally { _busy = false; }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            _apiKeySaving = false;
+        }
     }
 
     private async Task LoadAsync()
