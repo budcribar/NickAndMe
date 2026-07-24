@@ -2,6 +2,7 @@ using System.Security.Claims;
 using PageToMovie.Core.Auth;
 using PageToMovie.Core.Options;
 using PageToMovie.Engine.Abstractions;
+using PageToMovie.Engine;
 using Microsoft.Extensions.Options;
 
 namespace PageToMovie.Api.Auth;
@@ -82,23 +83,36 @@ public sealed class HttpUserContext : IUserContext
     }
 }
 
-public sealed class ConfigUserApiKeyProvider : IUserApiKeyProvider
+public sealed class DbUserApiKeyProvider : IUserApiKeyProvider
 {
+    private readonly UserDatabaseService _userDb;
     private readonly AuthOptions _auth;
 
-    public ConfigUserApiKeyProvider(IOptions<PageToMovieOptions> opts) =>
+    public DbUserApiKeyProvider(UserDatabaseService userDb, IOptions<PageToMovieOptions> opts)
+    {
+        _userDb = userDb;
         _auth = opts.Value.Auth ?? new AuthOptions();
+    }
 
     public string? GetKey(string? userId)
     {
-        // Map / env only. Callers apply X-Api-Key / ApiKeyScope themselves.
         if (!string.IsNullOrWhiteSpace(userId))
         {
+            // 1. Query user's decrypted per-account API key from SQLite database
+            try
+            {
+                var dbKey = _userDb.GetDecryptedXaiApiKeyAsync(userId).GetAwaiter().GetResult();
+                if (!string.IsNullOrWhiteSpace(dbKey))
+                    return dbKey.Trim();
+            }
+            catch { /* fallback */ }
+
+            // 2. Config options dictionary fallback
             if (_auth.UserApiKeys.TryGetValue(userId, out var mapped) &&
                 !string.IsNullOrWhiteSpace(mapped))
                 return mapped.Trim();
 
-            // USERKEY_u001 or USERKEY_U001
+            // 3. Environment variable fallback (USERKEY_u001)
             var envName = "USERKEY_" + userId.Trim().Replace('-', '_');
             var env = Environment.GetEnvironmentVariable(envName)
                       ?? Environment.GetEnvironmentVariable(envName.ToUpperInvariant());
@@ -106,6 +120,7 @@ public sealed class ConfigUserApiKeyProvider : IUserApiKeyProvider
                 return env.Trim();
         }
 
+        // 4. Server-wide process key fallback
         var process = Environment.GetEnvironmentVariable("XAI_API_KEY");
         return string.IsNullOrWhiteSpace(process) ? null : process.Trim();
     }

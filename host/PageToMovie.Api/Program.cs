@@ -100,9 +100,11 @@ builder.Services.AddSingleton<ReviewIndexService>();
 builder.Services.AddSingleton<ClipAutoReviewService>();
 builder.Services.AddSingleton<ProjectArtifactIndexService>();
 builder.Services.AddSingleton<YouTubeAuthService>();
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<UserDatabaseService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IUserContext, HttpUserContext>();
-builder.Services.AddSingleton<IUserApiKeyProvider, ConfigUserApiKeyProvider>();
+builder.Services.AddSingleton<IUserApiKeyProvider, DbUserApiKeyProvider>();
 builder.Services.AddSingleton<IAdminAuthService, AdminAuthService>();
 builder.Services.AddSingleton<FilmJobService>();
 builder.Services.AddSingleton<IJobProgressSink, SignalRJobProgressSink>();
@@ -2670,9 +2672,34 @@ app.MapGet("/api/projects/{id}/movie/wip/meta", (string id, ProjectStore store) 
             updatedAt = f.UpdatedAt,
             staleScenes = f.StaleScenes,
             url = f.Exists
-                ? $"/api/projects/{Uri.EscapeDataString(id)}/movie/wip"
-                : (string?)null,
         });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapGet("/api/user/settings", async (IUserContext userCtx, UserDatabaseService userDb, CancellationToken ct) =>
+{
+    try
+    {
+        var settings = await userDb.GetUserSettingsDtoAsync(userCtx.UserId, ct);
+        return Results.Ok(new { ok = true, settings });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { ok = false, error = ex.Message });
+    }
+});
+
+app.MapPost("/api/user/settings", async (UpdateUserSettingsRequest req, IUserContext userCtx, UserDatabaseService userDb, CancellationToken ct) =>
+{
+    try
+    {
+        await userDb.SaveXaiApiKeyAsync(userCtx.UserId, req.XaiApiKey, ct);
+        var updated = await userDb.GetUserSettingsDtoAsync(userCtx.UserId, ct);
+        return Results.Ok(new { ok = true, settings = updated, message = "API key updated successfully." });
     }
     catch (Exception ex)
     {

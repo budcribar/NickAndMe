@@ -13,6 +13,8 @@
   <ItemGroup>
     <PackageReference Include="Google.Apis.YouTube.v3" Version="1.75.0.4207" />
     <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0-preview.1.25080.5" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.0-preview.1.25080.5" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.10" />
