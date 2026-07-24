@@ -524,33 +524,38 @@ public sealed class FfmpegRemuxService : IFfmpegRemux
             return (r.Exit, r.Log);
         }
 
-        // Multi-input: synchronized hard-cut concat for video and audio streams
-        onProgress?.Invoke($"{label}: concat {inputs.Count} clip(s) with synchronized video/audio…");
-        var fc = BuildConcatFilterComplex(inputs.Count);
-        var inputArgs = string.Join(" ", inputs.Select(p => $"-i \"{p}\""));
-        var concatArgs =
-            $"-y {inputArgs} -filter_complex \"{fc}\" -map \"[v]\" -map \"[a]\" " +
-            $"-c:v libx264 -preset veryfast -crf 20 -c:a aac -b:a 160k -movflags +faststart \"{outPath}\"";
-        var concatRun = await RunFfmpegAsync(
-            concatArgs, projectDir, ct, onProgress, totalSec, label: $"{label} concat");
-        if (concatRun.Exit == 0 && File.Exists(outPath) && new FileInfo(outPath).Length >= 1024)
-            return (concatRun.Exit, concatRun.Log);
-
-        onProgress?.Invoke($"{label}: filter_complex concat failed — plain concat demuxer re-encode…");
-        var list2 = Path.Combine(workDir, $"_concat_{label.Replace(' ', '_')}.txt");
+        // Multi-input: Try fast stream copy concat demuxer first (instantaneous join for matching stream formats)
+        onProgress?.Invoke($"{label}: concat {inputs.Count} clip(s) via fast stream copy demuxer…");
+        var multiListFile = Path.Combine(workDir, $"_concat_{label.Replace(' ', '_')}.txt");
         var sb = new StringBuilder();
         foreach (var c in inputs)
         {
             var esc = c.Replace("\\", "/").Replace("'", "'\\''");
             sb.AppendLine($"file '{esc}'");
         }
-        await File.WriteAllTextAsync(list2, sb.ToString(), ct);
-        var plain =
-            $"-y -f concat -safe 0 -i \"{list2}\" -c:v libx264 -preset veryfast -crf 20 " +
-            $"-c:a aac -b:a 160k \"{outPath}\"";
-        var plainR = await RunFfmpegAsync(plain, projectDir, ct, onProgress, totalSec, label: $"{label} encode");
-        try { File.Delete(list2); } catch { /* ignore */ }
-        return (plainR.Exit, plainR.Log);
+        await File.WriteAllTextAsync(multiListFile, sb.ToString(), ct).ConfigureAwait(false);
+
+        var copyArgs = $"-y -f concat -safe 0 -i \"{multiListFile}\" -c copy -movflags +faststart \"{outPath}\"";
+        var copyRun = await RunFfmpegAsync(copyArgs, projectDir, ct, onProgress, totalSec, label: $"{label} copy").ConfigureAwait(false);
+
+        if (copyRun.Exit == 0 && File.Exists(outPath) && new FileInfo(outPath).Length >= 1024)
+        {
+            try { File.Delete(multiListFile); } catch { /* ignore */ }
+            return (copyRun.Exit, copyRun.Log);
+        }
+
+        // Fallback: synchronized hard-cut concat re-encode via filter_complex
+        onProgress?.Invoke($"{label}: stream copy unavailable — encoding {inputs.Count} clip(s) with filter_complex…");
+        var fc = BuildConcatFilterComplex(inputs.Count);
+        var inputArgs = string.Join(" ", inputs.Select(p => $"-i \"{p}\""));
+        var concatArgs =
+            $"-y {inputArgs} -filter_complex \"{fc}\" -map \"[v]\" -map \"[a]\" " +
+            $"-c:v libx264 -preset veryfast -crf 20 -c:a aac -b:a 160k -movflags +faststart \"{outPath}\"";
+        var concatRun = await RunFfmpegAsync(
+            concatArgs, projectDir, ct, onProgress, totalSec, label: $"{label} concat").ConfigureAwait(false);
+
+        try { File.Delete(multiListFile); } catch { /* ignore */ }
+        return (concatRun.Exit, concatRun.Log);
     }
 
     /// <summary>
