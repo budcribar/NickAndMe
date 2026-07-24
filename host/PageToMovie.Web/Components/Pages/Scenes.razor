@@ -279,35 +279,19 @@ else if (Session.IsAdmin && _job is not null &&
 
             <div class="batch-panel__body">
                 <div class="batch-panel__select">
-                    <span class="batch-panel__select-label">Select</span>
-                    <div class="batch-chip-group" role="group" aria-label="Selection shortcuts">
-                        <button type="button"
-                                class="batch-chip @(SelectionMode == "incomplete" ? "batch-chip--on" : "")"
-                                disabled="@(_busy || IncompleteCount == 0)"
-                                @onclick="SelectIncomplete"
-                                title="Scenes with missing clips">
-                            Incomplete
-                            @if (IncompleteCount > 0)
-                            {
+                    @if (IncompleteCount > 0)
+                    {
+                        <div class="batch-chip-group" role="group" aria-label="Selection shortcuts">
+                            <button type="button"
+                                    class="batch-chip @(SelectionMode == "incomplete" ? "batch-chip--on" : "")"
+                                    disabled="@(_busy || IncompleteCount == 0)"
+                                    @onclick="SelectIncomplete"
+                                    title="Scenes with missing clips">
+                                Incomplete
                                 <span class="batch-chip__count">@IncompleteCount</span>
-                            }
-                        </button>
-                        <button type="button"
-                                class="batch-chip @(SelectionMode == "all" ? "batch-chip--on" : "")"
-                                disabled="@(_busy || VisibleScenes.Count == 0)"
-                                @onclick="SelectAll"
-                                title="All scenes">
-                            All
-                            <span class="batch-chip__count">@VisibleScenes.Count</span>
-                        </button>
-                        <button type="button"
-                                class="batch-chip batch-chip--muted @(_selected.Count == 0 ? "batch-chip--disabled" : "")"
-                                disabled="@(_busy || _selected.Count == 0)"
-                                @onclick="ClearSelection"
-                                title="Clear selection">
-                            Clear
-                        </button>
-                    </div>
+                            </button>
+                        </div>
+                    }
                 </div>
 
                 <div class="batch-panel__actions">
@@ -325,14 +309,14 @@ else if (Session.IsAdmin && _job is not null &&
                                 @bind="_genResolution"
                                 @bind:after="RefreshCostEstimateAsync"
                                 disabled="@(_busy || ResolutionLocked)"
-                                title="@(ResolutionLocked ? $"Locked at {_resolutionLock} — this project already has clips at that resolution. Delete them first to change it." : null)">
+                                title="@(ResolutionLocked ? $"Resolution locked to {(_resolutionLock ?? _genResolution)} because clips already exist for this project." : null)">
                             <option value="480p">480p</option>
                             <option value="720p">720p</option>
                             <option value="1080p">1080p</option>
                         </select>
                         @if (ResolutionLocked)
                         {
-                            <span class="small text-muted" title="This project already has clips at @_resolutionLock — generating at a different resolution would mix them.">🔒</span>
+                            <span class="badge bg-secondary ms-1" style="font-size: 0.75rem;" title="Resolution locked because clips already exist for this project.">🔒 Locked</span>
                         }
                     </div>
 
@@ -359,7 +343,7 @@ else if (Session.IsAdmin && _job is not null &&
                         else if (_selected.Count == 0)
                         {
                             <span class="batch-go__play" aria-hidden="true">▶</span>
-                            <span>Select scenes to generate</span>
+                            <span>Batch generate</span>
                         }
                         else if (_onlyMissing && EstimateSelectedClips() == 0)
                         {
@@ -400,16 +384,20 @@ else if (Session.IsAdmin && _job is not null &&
                                    disabled="@(_busy || VisibleScenes.Count == 0)"
                                    @onchange="e => ToggleSelectAllShown((bool)(e.Value ?? false))" />
                         </th>
-                        <th style="width:4rem;">#</th>
+                        <th style="width:5rem; cursor:pointer; user-select:none;" @onclick='() => ToggleSort("number")' title="Click to sort by Scene Number">
+                            # @(_sortBy == "number" ? (_sortAscending ? "▲" : "▼") : "⇅")
+                        </th>
                         <th>Setting</th>
                         <th>Cast / location</th>
                         <th style="width:6rem;">Clips</th>
-                        <th style="width:7rem;" title="Actual media length (plan in muted)">Dur</th>
-                        <th style="width:5rem;"></th>
+                        <th style="width:7.5rem; cursor:pointer; user-select:none;" @onclick='() => ToggleSort("duration")' title="Click to sort by Duration">
+                            Dur @(_sortBy == "duration" ? (_sortAscending ? "▲" : "▼") : "⇅")
+                        </th>
+                        <th style="width:4rem;"></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var s in VisibleScenes)
+                    @foreach (var s in SortedVisibleScenes)
                     {
                         var sn = s.SceneNumber;
                         var isSel = _selected.Contains(sn);
@@ -479,19 +467,11 @@ else if (Session.IsAdmin && _job is not null &&
                             </td>
                             <td @onclick:stopPropagation="true">
                                 <div class="d-flex gap-1 justify-content-end">
-                                    <button class="btn btn-sm btn-success"
+                                    <button class="btn btn-sm btn-outline-primary"
                                             disabled="@(_busy || JobRunning || (s.ClipsOnDisk == 0 && !s.CompositeExists))"
-                                            title="@(s.CompositeExists ? "Play (auto-remux if stale)" : s.ClipsOnDisk > 0 ? "Remux then play" : "No clips")"
+                                            title="@(s.CompositeExists ? "Play scene composite" : s.ClipsOnDisk > 0 ? "Remux & play scene composite" : "No clips generated yet")"
                                             @onclick="() => PlaySceneCompositeAsync(sn)">
                                         ▶
-                                    </button>
-                                    <button class="btn btn-sm batch-row-gen"
-                                            data-testid="@($"scenes-gen-{sn}")"
-                                            data-scene="@sn"
-                                            disabled="@(_busy || JobRunning || !CastReady || s.LockedByOther)"
-                                            title="@(!CastReady ? CastBlockedTitle : s.LockedByOther ? $"Locked by {s.LockOwnerUserId}" : EstimateSceneCostUsd(sn) is double c ? $"Generate this scene (~${c:0.00})" : "Generate this scene")"
-                                            @onclick="() => GenOneSceneAsync(sn)">
-                                        Gen
                                     </button>
                                 </div>
                             </td>
@@ -1082,7 +1062,39 @@ else
     private string _genResolution = "720p";
     /// <summary>Resolution already used by this project's on-disk clips, if consistent — null when unset.</summary>
     private string? _resolutionLock;
-    private bool ResolutionLocked => !string.IsNullOrEmpty(_resolutionLock);
+    private bool ResolutionLocked => !string.IsNullOrWhiteSpace(_resolutionLock) || (_scenes is not null && _scenes.Sum(s => s.ClipsOnDisk) > 0);
+    private string _sortBy = "number"; // "number" or "duration"
+    private bool _sortAscending = true;
+
+    private void ToggleSort(string column)
+    {
+        if (_sortBy == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortBy = column;
+            _sortAscending = true;
+        }
+    }
+
+    private IEnumerable<SceneSummary> SortedVisibleScenes
+    {
+        get
+        {
+            var scenes = VisibleScenes;
+            return _sortBy switch
+            {
+                "duration" => _sortAscending
+                    ? scenes.OrderBy(s => s.ActualDurationSeconds ?? s.PlannedDurationSeconds ?? 0)
+                    : scenes.OrderByDescending(s => s.ActualDurationSeconds ?? s.PlannedDurationSeconds ?? 0),
+                _ => _sortAscending
+                    ? scenes.OrderBy(s => s.SceneNumber)
+                    : scenes.OrderByDescending(s => s.SceneNumber)
+            };
+        }
+    }
     /// <summary>Cost estimate at the current resolution, refreshed on load and resolution change.</summary>
     private CostReport? _costReport;
     /// <summary>Project-wide cast gate: every character voice + locked image before video spend.</summary>
