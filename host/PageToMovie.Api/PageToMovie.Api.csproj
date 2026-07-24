@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <!-- Microsoft.AspNetCore.OpenApi pulled vulnerable Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc).
