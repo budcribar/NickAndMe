@@ -647,8 +647,8 @@ else
                                        disabled="@(_busy || _detail is not { Clips.Count: > 0 })"
                                        @onchange="e => ToggleSelectAllClips((bool)(e.Value ?? false))" />
                             </th>
-                            <th>Clip</th>
-                            <th>Dur</th>
+                            <th style="width:6rem;">Clip</th>
+                            <th style="width:5rem;">Dur</th>
                             <th>Dialogue</th>
                             <th style="width:9rem;"></th>
                         </tr>
@@ -716,7 +716,7 @@ else
                                     }
                                     else
                                     {
-                                        <span class="text-decoration-underline" style="text-decoration-style:dotted;">@Trunc(c.Dialogue, 40)</span>
+                                        <span class="text-decoration-underline" style="text-decoration-style:dotted;">@Trunc(c.Dialogue, 90)</span>
                                     }
                                 </td>
                                 <td @onclick:stopPropagation="true">
@@ -924,7 +924,7 @@ else
                     <button type="button" class="btn-close" aria-label="Close" @onclick="CloseClipEditor"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2 mb-2">
+                    <div class="row g-2 mb-3">
                         <div class="col-4">
                             <label class="form-label small mb-0">Clip number</label>
                             <input type="number" class="form-control form-control-sm" min="1"
@@ -942,8 +942,8 @@ else
                         </div>
                     </div>
 
-                    <label class="form-label small mb-0">Characters on screen</label>
-                    <div class="d-flex flex-wrap gap-2 mb-2 p-2 border rounded">
+                    <h6 class="mb-1">Characters</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-3 p-2 border rounded">
                         @if (CharacterOptions.Count == 0)
                         {
                             <span class="small text-muted">No characters yet — add them on the Characters page.</span>
@@ -960,12 +960,14 @@ else
                         }
                     </div>
 
-                    <label class="form-label small mb-0">Visual prompt</label>
+                    <h6 class="mb-1">Visual</h6>
+                    <label class="form-label small mb-0">Prompt</label>
                     <textarea class="form-control form-control-sm mb-2" rows="5" @bind="ed.VisualPrompt"></textarea>
 
                     <label class="form-label small mb-0">Negative prompt</label>
-                    <textarea class="form-control form-control-sm mb-2" rows="2" @bind="ed.NegativePrompt"></textarea>
+                    <textarea class="form-control form-control-sm mb-3" rows="2" @bind="ed.NegativePrompt"></textarea>
 
+                    <h6 class="mb-1">Dialogue</h6>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label small mb-0">Speaker</label>
@@ -989,13 +991,12 @@ else
                             </datalist>
                         </div>
                     </div>
-
-                    <label class="form-label small mb-0">Dialogue</label>
-                    <textarea class="form-control form-control-sm mb-2" rows="3"
+                    <textarea class="form-control form-control-sm mb-3" rows="3"
                               data-testid="clip-editor-dialogue"
+                              placeholder="Dialogue / voiceover text…"
                               @bind="ed.Dialogue"></textarea>
 
-                    <h6 class="mt-2">Lighting &amp; color</h6>
+                    <h6 class="mb-1">Lighting &amp; color</h6>
                     <div class="row g-2">
                         <div class="col-6">
                             <label class="form-label small mb-0">Color palette</label>
