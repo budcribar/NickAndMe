@@ -20,6 +20,7 @@ public sealed class CharacterDesignService
     private readonly CastVisualLiteralizeService _literalize;
     private readonly PageToMovieOptions _opts;
     private readonly ILogger<CharacterDesignService> _log;
+    private readonly IUserContext? _user;
 
     public CharacterDesignService(
         ProjectStore projects,
@@ -28,7 +29,8 @@ public sealed class CharacterDesignService
         CostReportService costs,
         CastVisualLiteralizeService literalize,
         IOptions<PageToMovieOptions> opts,
-        ILogger<CharacterDesignService> log)
+        ILogger<CharacterDesignService> log,
+        IUserContext? user = null)
     {
         _projects = projects;
         _images = images;
@@ -37,7 +39,11 @@ public sealed class CharacterDesignService
         _literalize = literalize;
         _opts = opts.Value;
         _log = log;
+        _user = user;
     }
+
+    private string? CurrentUserId =>
+        string.IsNullOrWhiteSpace(_user?.UserId) ? null : _user!.UserId;
 
     /// <param name="n">Variant count. Pass 0 (default) for auto: 1 if locked, else 3.</param>
     /// <param name="seedOptions">Flexible seed policy (auto / preferred / book / explicit multi-select).</param>
@@ -344,7 +350,8 @@ public sealed class CharacterDesignService
                 try
                 {
                     await _costs.RecordImageGenerationAsync(
-                        projectId, 1, imageModel, quality: true, ct: ct);
+                        projectId, 1, imageModel, quality: true,
+                        character: charKey, userId: CurrentUserId, ct: ct);
                 }
                 catch (Exception costEx)
                 {
@@ -955,7 +962,9 @@ public sealed class CharacterDesignService
 
         try
         {
-            await _costs.RecordImageGenerationAsync(projectId, 1, imageModel, quality: true, ct: ct);
+            await _costs.RecordImageGenerationAsync(
+                projectId, 1, imageModel, quality: true,
+                character: wardrobeKey, userId: CurrentUserId, ct: ct);
         }
         catch (Exception costEx)
         {

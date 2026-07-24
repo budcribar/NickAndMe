@@ -18,6 +18,7 @@ public static class AppRoutes
         new("/review", "Review", "Clip pass/fail, edit log"),
         new("/cost", "Cost", "Cost ledger / estimates"),
         new("/admin", "Admin", "Live server state (admin JWT)", AdminOnly: true),
+        new("/admin/users", "Admin users", "Users, credits used / available", AdminOnly: true),
         new("/admin/config", "Admin config", "Hot capacity / fakes settings", AdminOnly: true),
         new("/admin/learning", "Admin Learning", "Learning from reviews", AdminOnly: true),
     };

@@ -21,47 +21,83 @@
   margin: 0;
 }
 
-.fe-main {
+/* Two-column layout: Edit | Preview (scene nav is a toolbar popover) */
+.fe-main,
+.fe-main.fe-main-two-col {
   display: grid;
-  grid-template-columns: 12.5rem minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.65rem;
   flex: 1;
   min-height: 28rem;
-  height: calc(100vh - 18rem);
-  transition: grid-template-columns 0.15s ease;
+  height: calc(100vh - 16rem);
 }
 
-/* Wider scenes column so full headings wrap instead of ellipsis */
-.fe-main.fe-scenes-expanded {
-  grid-template-columns: minmax(16rem, 32%) minmax(0, 1fr) minmax(0, 1fr);
-}
-
-@media (max-width: 1100px) {
-  .fe-main {
-    grid-template-columns: 11rem minmax(0, 1fr);
+@media (max-width: 900px) {
+  .fe-main,
+  .fe-main.fe-main-two-col {
+    grid-template-columns: 1fr;
     height: auto;
     min-height: 24rem;
   }
-  .fe-main.fe-scenes-expanded {
-    grid-template-columns: minmax(14rem, 40%) minmax(0, 1fr);
+  .fe-editor-col {
+    min-height: 22rem;
+    height: min(60vh, 32rem);
   }
   .fe-preview-col {
-    grid-column: 1 / -1;
     min-height: 16rem;
   }
 }
 
-@media (max-width: 700px) {
-  .fe-main,
-  .fe-main.fe-scenes-expanded {
-    grid-template-columns: 1fr;
-  }
-  .fe-scenes-col {
-    max-height: 10rem;
-  }
-  .fe-main.fe-scenes-expanded .fe-scenes-col {
-    max-height: 16rem;
-  }
+/* Jump-to-scene popover (replaces left scenes column) */
+.fe-scenes-pop,
+.fe-advanced-pop {
+  position: relative;
+  display: inline-block;
+}
+
+.fe-scenes-pop > summary,
+.fe-advanced-pop > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fe-scenes-pop > summary::-webkit-details-marker,
+.fe-advanced-pop > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fe-scenes-pop-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  width: min(22rem, 85vw);
+  max-height: min(22rem, 50vh);
+  overflow: auto;
+  padding: 0.35rem;
+  background: var(--fs-bg-card);
+  border: 1px solid var(--fs-border-color);
+  border-radius: 0.375rem;
+  box-shadow: var(--fs-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.25));
+}
+
+.fe-advanced-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  min-width: 12rem;
+  max-width: min(24rem, 90vw);
+  padding: 0.5rem;
+  background: var(--fs-bg-card);
+  border: 1px solid var(--fs-border-color);
+  border-radius: 0.375rem;
+  box-shadow: var(--fs-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.25));
+}
+
+.fe-status-line .badge {
+  font-weight: 600;
 }
 
 .fe-panel {
@@ -84,37 +120,14 @@
   border-bottom: 1px solid var(--fs-border-color);
   background: var(--fs-overlay-soft);
   flex-shrink: 0;
-}
-
-.fe-scenes-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
-.fe-scenes-expand-btn {
-  border: none;
-  background: transparent;
-  color: var(--fs-link);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 0.1rem 0.25rem;
-  cursor: pointer;
-  border-radius: 0.2rem;
-  flex-shrink: 0;
-}
-
-.fe-scenes-expand-btn:hover {
-  background: var(--fe-link-hover-bg);
-  text-decoration: underline;
-}
-
-.fe-scenes-col .fe-panel-body {
-  overflow: auto;
-  padding: 0.25rem;
+.fe-editor-col .fe-panel-header {
+  display: flex;
 }
 
 .fe-scenes-list {
@@ -153,8 +166,8 @@
   text-overflow: ellipsis;
 }
 
-/* Expanded: full heading text wraps */
-.fe-scenes-expanded .fe-scene-btn {
+/* Scene labels in jump popover: wrap so full headings are readable */
+.fe-scenes-pop-panel .fe-scene-btn {
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
@@ -305,14 +318,24 @@
   padding: 0.5rem;
 }
 
+.fe-editor-col {
+  min-height: 0;
+}
+
 .fe-editor-host {
   flex: 1;
   min-height: 0;
+  position: relative;
   overflow: hidden;
+  /* Constrain CodeMirror so long scripts scroll inside the pane */
+  height: 100%;
 }
 
 .fe-editor-host .CodeMirror {
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  height: 100% !important;
+  width: 100% !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.88rem;
   line-height: 1.45;
@@ -320,8 +343,17 @@
   color: var(--fe-editor-fg);
 }
 
+/* Always show a vertical scrollbar so long drafts are obviously scrollable */
 .fe-editor-host .CodeMirror-scroll {
   min-height: 100%;
+  max-height: 100%;
+  overflow-y: scroll !important;
+  overflow-x: auto !important;
+}
+
+.fe-editor-host .CodeMirror-vscrollbar {
+  display: block !important;
+  overflow-y: scroll !important;
 }
 
 .fe-editor-host .CodeMirror-gutters {

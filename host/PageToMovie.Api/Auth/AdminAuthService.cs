@@ -25,14 +25,20 @@ public sealed class AdminAuthService : IAdminAuthService
     private readonly AuthOptions _auth;
     private readonly IHostEnvironment _env;
     private readonly UserDatabaseService _userDb;
+    private readonly CreditService? _credits;
     private readonly PasswordHasher<object> _hasher = new();
     private readonly object _hashTarget = new();
 
-    public AdminAuthService(IOptions<PageToMovieOptions> opts, IHostEnvironment env, UserDatabaseService userDb)
+    public AdminAuthService(
+        IOptions<PageToMovieOptions> opts,
+        IHostEnvironment env,
+        UserDatabaseService userDb,
+        CreditService? credits = null)
     {
         _auth = opts.Value.Auth ?? new AuthOptions();
         _env = env;
         _userDb = userDb;
+        _credits = credits;
     }
 
     public LoginResponse Signup(string username, string password)
@@ -59,6 +65,9 @@ public sealed class AdminAuthService : IAdminAuthService
         };
 
         _userDb.InsertUserAsync(user).GetAwaiter().GetResult();
+
+        // Signup grant (list-rate credits). Failures are non-fatal.
+        _credits?.GrantSignupCreditsAsync(user.UserId).GetAwaiter().GetResult();
 
         var hours = Math.Clamp(_auth.JwtHours, 1, 168);
         var expires = DateTimeOffset.UtcNow.AddHours(hours);

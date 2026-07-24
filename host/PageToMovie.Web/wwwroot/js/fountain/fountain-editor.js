@@ -192,6 +192,9 @@
               inst._activeSceneLine = line;
               gotoLine(id, line);
               markActive(line);
+              // Close Jump-to-scene <details> popover after navigate
+              var pop = inst.scenesEl.closest("details");
+              if (pop) pop.open = false;
               // Jump only — book text is via the Book link (popup)
               if (inst.dotNet && inst.dotNet.invokeMethodAsync) {
                 try {

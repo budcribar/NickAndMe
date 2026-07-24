@@ -28,6 +28,7 @@
             @if (Session.IsAuthenticated)
             {
                 <span class="badge text-bg-secondary">@Session.UserId</span>
+                <a class="btn btn-sm btn-outline-primary" href="/admin/users">Users &amp; credits</a>
                 <a class="btn btn-sm btn-outline-primary" href="/admin/config">Config</a>
                 <a class="btn btn-sm btn-outline-primary" href="/admin/learning">Learning</a>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_busy">Refresh</button>

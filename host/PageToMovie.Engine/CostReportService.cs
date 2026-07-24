@@ -18,8 +18,13 @@ public sealed class CostReportService
         RegexOptions.Compiled);
 
     private readonly ProjectStore _projects;
+    private readonly CreditService? _credits;
 
-    public CostReportService(ProjectStore projects) => _projects = projects;
+    public CostReportService(ProjectStore projects, CreditService? credits = null)
+    {
+        _projects = projects;
+        _credits = credits;
+    }
 
     public async Task<CostReport> GetReportAsync(
         string projectId,
@@ -305,6 +310,7 @@ public sealed class CostReportService
         bool isExtend = false,
         string? requestId = null,
         double? requestedDurationSec = null,
+        string? userId = null,
         CancellationToken ct = default)
     {
         var cfg = await LoadConfigMapAsync(projectId, ct).ConfigureAwait(false);
@@ -335,6 +341,7 @@ public sealed class CostReportService
             ["extend_input_usd"] = priced.ExtendIn,
             ["usd"] = priced.Usd,
             ["currency"] = "USD",
+            ["user_id"] = userId ?? "",
         };
         if (requestedDurationSec is > 0 &&
             Math.Abs(requestedDurationSec.Value - priced.DurationSec) >= 0.05)
@@ -348,6 +355,17 @@ public sealed class CostReportService
         }
 
         await AppendCostEventAsync(projectId, evt, save: true, ct).ConfigureAwait(false);
+
+        if (_credits is not null && priced.Usd > 0)
+        {
+            await _credits.TryDebitUsageAsync(
+                userId,
+                priced.Usd,
+                projectId,
+                metaKind: "video",
+                note: $"S{scene:D2}C{clip} {model} {priced.DurationSec:F1}s",
+                ct: ct).ConfigureAwait(false);
+        }
     }
 
     public async Task<IReadOnlyList<CostEvent>> GetCostLedgerAsync(
@@ -367,6 +385,7 @@ public sealed class CostReportService
         string model,
         bool quality = true,
         string? character = null,
+        string? userId = null,
         CancellationToken ct = default)
     {
         var n = Math.Max(0, nImages);
@@ -386,7 +405,21 @@ public sealed class CostReportService
             ["currency"] = "USD",
             ["source"] = "list_rate",
             ["provider"] = entry.ProviderId,
+            ["user_id"] = userId ?? "",
         }, save: true, ct).ConfigureAwait(false);
+
+        if (_credits is not null && usd > 0)
+        {
+            await _credits.TryDebitUsageAsync(
+                userId,
+                usd,
+                projectId,
+                metaKind: "image",
+                note: string.IsNullOrWhiteSpace(character)
+                    ? $"{n}× {model}"
+                    : $"{n}× {model} ({character})",
+                ct: ct).ConfigureAwait(false);
+        }
     }
 
     // ---- internals ----

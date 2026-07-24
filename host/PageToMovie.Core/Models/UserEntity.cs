@@ -17,6 +17,15 @@ public class UserEntity
     public string Role { get; set; } = "User";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>Remaining list-rate credit balance (USD). 1 credit = $0.01.</summary>
+    public double CreditsBalanceUsd { get; set; }
+
+    /// <summary>Lifetime granted (signup + admin), USD.</summary>
+    public double CreditsLifetimeGrantedUsd { get; set; }
+
+    /// <summary>Lifetime spent on video/image list-rate, USD.</summary>
+    public double CreditsLifetimeUsedUsd { get; set; }
 }
 
 /// <summary>

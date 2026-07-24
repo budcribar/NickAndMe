@@ -9,67 +9,43 @@
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>Screenplay</span>
-            <div class="d-flex flex-wrap gap-1 align-items-center">
-                @if (_screenplayStatus?.Signed == true && _screenplayStatus.Dirty != true)
+            <div class="fe-status-line d-flex flex-wrap gap-1 align-items-center">
+                @if (IsApprovedClean)
                 {
-                    <span class="badge bg-success">approved</span>
+                    <span class="badge bg-success">Approved</span>
+                }
+                else if (NeedsReapprove)
+                {
+                    <span class="badge bg-warning text-dark">Edited since approval</span>
                 }
                 else if (_screenplayStatus?.DraftExists == true || !string.IsNullOrWhiteSpace(_text))
                 {
-                    <span class="badge bg-warning text-dark">draft</span>
+                    <span class="badge bg-warning text-dark">Draft</span>
                 }
-                @if (_dirtyLocal)
+                else
                 {
-                    <span class="badge bg-secondary">unsaved</span>
+                    <span class="badge text-bg-secondary">No draft</span>
                 }
-                else if (_lastSavedUtc is not null)
+
+                @if (!string.IsNullOrWhiteSpace(StatusTitle))
                 {
-                    <span class="small text-muted">saved</span>
+                    <span class="small fw-semibold">@StatusTitle</span>
                 }
                 @if (_sceneCount > 0)
                 {
                     <span class="badge text-bg-light border">@_sceneCount scenes</span>
                 }
+                @if (_dirtyLocal)
+                {
+                    <span class="small text-muted">· unsaved</span>
+                }
+                else if (_lastSavedUtc is not null)
+                {
+                    <span class="small text-muted">· saved</span>
+                }
             </div>
         </div>
         <div class="card-body">
-            <p class="small text-muted mb-2">
-                Edit the Fountain text on the left. The right side is a read-only page layout.
-                Approve when ready for the shot plan.
-            </p>
-
-            @if (_screenplayStatus is not null)
-            {
-                <ul class="list-unstyled small mb-2">
-                    <li>
-                        @if (_screenplayStatus.DraftExists || !string.IsNullOrWhiteSpace(_text))
-                        {
-                            <span>
-                                @(_screenplayStatus.Title is { Length: > 0 } t ? t : "Untitled")
-                                @if (_screenplayStatus.DraftBytes > 0)
-                                {
-                                    <span class="text-muted"> · @_screenplayStatus.DraftBytes.ToString("N0") characters</span>
-                                }
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">No draft yet</span>
-                        }
-                    </li>
-                    @if (Status?.Stage1.Present == true && Status.Stage1.SceneCount > 0)
-                    {
-                        <li class="text-muted">
-                            Approved build: @Status.Stage1.SceneCount scenes · @Status.Stage1.CharacterCount cast
-                            @if (_screenplayStatus.Dirty || _dirtyLocal)
-                            {
-                                <span class="text-warning"> · draft changed since last approval</span>
-                            }
-                        </li>
-                    }
-                </ul>
-            }
-
             @if (!_editorReady && string.IsNullOrEmpty(_text) && Status?.Book.BookTextExists == true)
             {
                 <div class="alert alert-light border small mb-2">
@@ -83,7 +59,7 @@
                 </div>
             }
 
-            @if (_signOffWarnings.Count > 0)
+            @if (_signOffWarnings.Count > 0 && !IsApprovedClean)
             {
                 <div class="alert alert-warning py-2 small fe-warnings">
                     <strong>Before approving:</strong>
@@ -98,68 +74,98 @@
 
             <div class="fe-wrap">
                 <div class="fe-toolbar">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nINT.  - DAY\n\n")'>
+                    <details class="fe-scenes-pop">
+                        <summary class="btn btn-outline-secondary btn-sm"
+                                 title="Jump to a scene heading in the editor">
+                            Jump to scene@(_sceneCount > 0 ? $" ({_sceneCount})" : "")
+                        </summary>
+                        <div class="fe-scenes-pop-panel" @ref="_scenesEl"></div>
+                    </details>
+
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            disabled="@(!CanEdit)"
+                            @onclick='() => InsertAsync("\n\nINT.  - DAY\n\n")'
+                            title="Insert a new scene heading">
                         New scene
                     </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCHARACTER\n")'>
-                        Character
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCUT TO:\n\n")'>
-                        Transition
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n> THE END <\n\n")'>
-                        Centered
-                    </button>
-                    <details class="d-inline-block">
-                        <summary class="small text-muted" style="cursor:pointer">More</summary>
-                        <div class="d-flex flex-wrap gap-1 mt-1">
+
+                    <details class="fe-advanced-pop">
+                        <summary class="btn btn-outline-secondary btn-sm"
+                                 title="Fountain formatting helpers for advanced edits">
+                            Advanced…
+                        </summary>
+                        <div class="fe-advanced-panel d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCHARACTER\n")'>Character</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\nCUT TO:\n\n")'>Transition</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n> THE END <\n\n")'>Centered</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n.FORCED HEADING\n\n")'>Force scene</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n\n@Name\n")'>Force character</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n!ACTION LINE\n")'>Force action</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(!CanEdit)" @onclick='() => InsertAsync("\n~Lyric line\n")'>Lyric</button>
                         </div>
                     </details>
+
                     <span class="flex-grow-1"></span>
-                    <button type="button" class="btn btn-outline-primary btn-sm"
+
+                    @* Autosave keeps drafts; quiet Save for dirty state / tests (stable DOM so scenes popover stays). *@
+                    <button type="button"
+                            class="@(_dirtyLocal ? "btn btn-link btn-sm text-muted px-1" : "visually-hidden")"
                             data-testid="screenplay-save"
                             disabled="@(Busy || JobRunning || !_dirtyLocal)"
-                            @onclick="() => SaveDraftAsync(manual: true)">
-                        Save draft
+                            @onclick="() => SaveDraftAsync(manual: true)"
+                            tabindex="@(_dirtyLocal ? 0 : -1)"
+                            aria-hidden="@(!_dirtyLocal)">
+                        Save now
                     </button>
-                    <button type="button" class="btn btn-success btn-sm"
-                            data-testid="screenplay-signoff"
-                            disabled="@(Busy || JobRunning || string.IsNullOrWhiteSpace(_text))"
-                            @onclick="SignOffAsync">
-                        @(Busy && !string.IsNullOrWhiteSpace(BusyMessage) ? BusyMessage : "Looks good — continue")
-                    </button>
+
+                    @if (IsApprovedClean)
+                    {
+                        <a class="btn btn-success btn-sm" href="characters" data-testid="screenplay-signoff-done">
+                            Characters →
+                        </a>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="btn btn-success btn-sm"
+                                data-testid="screenplay-signoff"
+                                disabled="@(Busy || JobRunning || string.IsNullOrWhiteSpace(_text))"
+                                @onclick="SignOffAsync">
+                            @if (Busy && !string.IsNullOrWhiteSpace(BusyMessage))
+                            {
+                                @BusyMessage
+                            }
+                            else if (NeedsReapprove)
+                            {
+                                <text>Re-approve &amp; continue</text>
+                            }
+                            else
+                            {
+                                <text>Looks good — continue</text>
+                            }
+                        </button>
+                    }
+
                     <div data-testid="screenplay-status"
-                         data-signed="@(_screenplayStatus?.Signed == true && _screenplayStatus.Dirty != true ? "true" : "false")"
+                         data-signed="@(IsApprovedClean ? "true" : "false")"
                          data-draft="@(!string.IsNullOrWhiteSpace(_text) ? "true" : "false")"
                          data-scenes="@_sceneCount"
                          class="visually-hidden"
                          aria-hidden="true"></div>
                 </div>
 
-                <div class="fe-main @(_scenesExpanded ? "fe-scenes-expanded" : "")">
-                    <div class="fe-panel fe-scenes-col">
-                        <div class="fe-panel-header fe-scenes-header">
-                            <span>Scenes</span>
-                            <button type="button"
-                                    class="fe-scenes-expand-btn"
-                                    title="@(_scenesExpanded ? "Show shorter scene list" : "Expand to show full scene headings")"
-                                    @onclick="ToggleScenesExpanded">
-                                @(_scenesExpanded ? "Collapse" : "Expand")
-                            </button>
-                        </div>
-                        <div class="fe-panel-body" @ref="_scenesEl"></div>
-                    </div>
+                <div class="fe-main fe-main-two-col">
                     <div class="fe-panel fe-editor-col">
-                        <div class="fe-panel-header">Edit</div>
+                        <div class="fe-panel-header">
+                            <span>Edit</span>
+                            <span class="fe-preview-hint">scroll to read</span>
+                        </div>
                         <div class="fe-editor-host" @ref="_editorHost"></div>
                     </div>
                     <div class="fe-panel fe-preview-col">
                         <div class="fe-panel-header">
-                            <span>Page layout</span>
+                            <span>Preview</span>
                             <span class="fe-preview-hint">read only</span>
                         </div>
                         <div class="fe-preview-body"
@@ -186,21 +192,14 @@
                     <button class="btn btn-outline-secondary btn-sm"
                             disabled="@(Busy || JobRunning)"
                             @onclick="RunOutlineAsync"
-                            title="Draft Fountain from book and approve for shot planning">
+                            title="Draft screenplay from book and approve for shot planning">
                         Draft &amp; approve from book
                     </button>
                 }
-                <a class="btn btn-outline-secondary btn-sm" href="adaptation/import">← Import</a>
-                @if (Status?.Screenplay.ReadyForShots == true ||
-                     (Status?.Stage1.Present == true && Status.Stage1.SceneCount > 0 && Status?.Screenplay.Dirty != true && !_dirtyLocal))
-                {
-                    <a class="btn btn-outline-success btn-sm" href="characters">Characters →</a>
-                    <a class="btn btn-outline-secondary btn-sm" href="adaptation/shots">Shot plan</a>
-                }
             </div>
             <p class="small text-muted mt-2 mb-0">
-                Changes save automatically. Click a scene to jump in the editor.
-                Use <strong>Book</strong> next to a scene to compare the source text.
+                Changes save automatically. <strong>Jump to scene</strong> navigates the editor;
+                <strong>Book</strong> next to a scene opens the source passage.
             </p>
         </div>
     </div>
@@ -312,9 +311,6 @@
     private bool _showBookModal;
     private ElementReference _bookWindowEl;
     private bool _bookWindowNeedsDragBind;
-    private bool _scenesExpanded;
-
-    private void ToggleScenesExpanded() => _scenesExpanded = !_scenesExpanded;
     private bool _bookLoading;
     private int _bookRequestGen;
 
@@ -323,6 +319,28 @@
     private ElementReference _scenesEl;
 
     private bool CanEdit => _editorReady && !Busy && !JobRunning;
+
+    /// <summary>Approved and not edited since sign-off.</summary>
+    private bool IsApprovedClean =>
+        _screenplayStatus?.Signed == true
+        && _screenplayStatus.Dirty != true
+        && !_dirtyLocal;
+
+    /// <summary>Had an approval but draft changed (or local unsaved edits after sign-off).</summary>
+    private bool NeedsReapprove =>
+        (_screenplayStatus?.Signed == true || Status?.Stage1.Present == true)
+        && (_screenplayStatus?.Dirty == true || _dirtyLocal)
+        && !string.IsNullOrWhiteSpace(_text);
+
+    private string StatusTitle
+    {
+        get
+        {
+            if (_screenplayStatus?.Title is { Length: > 0 } t)
+                return t;
+            return string.IsNullOrWhiteSpace(_text) ? "" : "Untitled";
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -627,10 +645,24 @@
         }
 
         Busy = true;
-        BusyMessage = "Approving…";
+        BusyMessage = "Saving…";
         Error = null;
         // Paint progress before the long sign-off call (includes cast build on the server)
         await InvokeAsync(StateHasChanged);
+
+        // Continue always persists first (merged Save + approve).
+        if (_dirtyLocal)
+        {
+            try { await SaveDraftAsync(manual: false); }
+            catch { /* sign-off still sends full text */ }
+            Busy = true;
+            BusyMessage = "Approving…";
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            BusyMessage = "Approving…";
+        }
 
         try
         {

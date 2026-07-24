@@ -1,0 +1,381 @@
+@page "/admin/users"
+@inject EngineApiClient Api
+@inject AdminSessionService Session
+@inject NavigationManager Nav
+
+<PageTitle>Users &amp; Credits — Film Studio</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-0">Users &amp; credits</h1>
+            <div class="text-muted small">
+                Track list-rate spend · 1 credit = $0.01 USD · same basis as project cost ledger
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            @if (Session.IsAuthenticated)
+            {
+                <span class="badge text-bg-secondary">@Session.UserId</span>
+                <a class="btn btn-sm btn-outline-secondary" href="/admin">← Dashboard</a>
+                <button class="btn btn-sm btn-outline-primary" @onclick="LoadAsync" disabled="@_busy">Refresh</button>
+            }
+        </div>
+    </div>
+
+    @if (!_started)
+    {
+        <p class="text-muted">Loading admin session…</p>
+    }
+    else if (!Session.IsAdmin)
+    {
+        <div class="alert alert-warning">
+            Admin session required. <a href="/admin/login">Sign in</a>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync">Retry</button>
+    }
+    else if (_overview is null)
+    {
+        <p class="text-muted">Loading…</p>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert alert-success py-2">@_message</div>
+        }
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Users</div>
+                        <div class="fs-3 fw-semibold">@_overview.UserCount</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Credits available</div>
+                        <div class="fs-3 fw-semibold">@_overview.TotalBalanceCredits.ToString("N0")</div>
+                        <div class="small text-muted">$@_overview.TotalBalanceUsd.ToString("F2") USD</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Credits used (lifetime)</div>
+                        <div class="fs-3 fw-semibold">@_overview.TotalUsedCredits.ToString("N0")</div>
+                        <div class="small text-muted">$@_overview.TotalUsedUsd.ToString("F2") USD</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Credits granted (lifetime)</div>
+                        <div class="fs-3 fw-semibold">@_overview.TotalGrantedCredits.ToString("N0")</div>
+                        <div class="small text-muted">$@_overview.TotalGrantedUsd.ToString("F2") USD</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-secondary small py-2">
+            @_overview.Notes
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Users</span>
+                <span class="small text-muted">@_overview.Users.Count account(s)</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th class="text-end">Balance</th>
+                            <th class="text-end">Used</th>
+                            <th class="text-end">Granted</th>
+                            <th>Key</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_overview.Users.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="8" class="text-muted text-center py-3">No users yet.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var u in _overview.Users)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@u.Username</div>
+                                        <div class="small text-muted font-monospace">@u.UserId</div>
+                                    </td>
+                                    <td><span class="badge text-bg-light">@u.Role</span></td>
+                                    <td class="text-end">
+                                        <span class="@(u.CreditsBalanceUsd < 0 ? "text-danger" : "")">
+                                            @u.CreditsBalance.ToString("N0")
+                                        </span>
+                                        <div class="small text-muted">$@u.CreditsBalanceUsd.ToString("F2")</div>
+                                    </td>
+                                    <td class="text-end">
+                                        @u.CreditsLifetimeUsed.ToString("N0")
+                                        <div class="small text-muted">$@u.CreditsLifetimeUsedUsd.ToString("F2")</div>
+                                    </td>
+                                    <td class="text-end">
+                                        @u.CreditsLifetimeGranted.ToString("N0")
+                                        <div class="small text-muted">$@u.CreditsLifetimeGrantedUsd.ToString("F2")</div>
+                                    </td>
+                                    <td>
+                                        @if (u.HasXaiApiKey)
+                                        {
+                                            <span class="badge text-bg-success">Grok key</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-secondary">no key</span>
+                                        }
+                                    </td>
+                                    <td class="small text-muted">@u.CreatedAt.ToLocalTime().ToString("g")</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                @onclick="() => OpenGrant(u)"
+                                                disabled="@_busy">
+                                            Grant…
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (_grantUser is not null)
+        {
+            <div class="card mb-4 border-primary">
+                <div class="card-header">Grant / adjust credits — @_grantUser.Username</div>
+                <div class="card-body">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Amount (USD)</label>
+                            <InputNumber class="form-control" @bind-Value="_grantUsd" step="0.01" />
+                            <div class="form-text">Positive adds, negative claws back. $1 = 100 credits.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Or credits</label>
+                            <InputNumber class="form-control" @bind-Value="_grantCredits" />
+                            <div class="form-text">Fills USD from credits (× $0.01).</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Note (optional)</label>
+                            <InputText class="form-control" @bind-Value="_grantNote" />
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-primary flex-grow-1" disabled="@_busy" @onclick="SubmitGrantAsync">
+                                @(_busy ? "…" : "Apply")
+                            </button>
+                            <button class="btn btn-outline-secondary" disabled="@_busy" @onclick="CloseGrant">Cancel</button>
+                        </div>
+                    </div>
+                    <div class="mt-2 d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => QuickGrant(1)">+$1 (100)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => QuickGrant(5)">+$5 (500)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => QuickGrant(10)">+$10 (1000)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => QuickGrant(25)">+$25 (2500)</button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header">Recent credit ledger</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>When (UTC)</th>
+                            <th>User</th>
+                            <th>Kind</th>
+                            <th class="text-end">Δ USD</th>
+                            <th class="text-end">Balance after</th>
+                            <th>Meta</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_overview.RecentLedger.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="7" class="text-muted text-center py-3">No ledger entries yet.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var e in _overview.RecentLedger)
+                            {
+                                <tr>
+                                    <td class="small text-muted font-monospace">@e.Ts.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    <td class="font-monospace small">@e.UserId</td>
+                                    <td><span class="badge text-bg-light">@e.Kind</span></td>
+                                    <td class="text-end @(e.AmountUsd < 0 ? "text-danger" : "text-success")">
+                                        @(e.AmountUsd >= 0 ? "+" : "")@e.AmountUsd.ToString("F4")
+                                    </td>
+                                    <td class="text-end">@e.BalanceAfterUsd.ToString("F4")</td>
+                                    <td class="small">
+                                        @(e.MetaKind ?? "—")
+                                        @if (!string.IsNullOrWhiteSpace(e.ProjectId))
+                                        {
+                                            <span class="text-muted"> · @e.ProjectId</span>
+                                        }
+                                    </td>
+                                    <td class="small text-muted">@(e.Note ?? "")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private AdminCreditsOverviewDto? _overview;
+    private string? _error;
+    private string? _message;
+    private bool _busy;
+    private bool _started;
+
+    private UserCreditSummaryDto? _grantUser;
+    private double _grantUsd;
+    private int _grantCredits;
+    private string? _grantNote;
+    private int _lastSyncedCredits;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _started) return;
+        _started = true;
+
+        await Session.EnsureHydratedAsync();
+        if (!Session.IsAdmin)
+        {
+            Nav.NavigateTo("/admin/login", forceLoad: true);
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Keep USD and credit fields in sync when the user types credits.
+        if (_grantCredits != _lastSyncedCredits)
+        {
+            _lastSyncedCredits = _grantCredits;
+            _grantUsd = Math.Round(_grantCredits * 0.01, 4);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _overview = await Api.GetAdminUsersCreditsAsync();
+            if (_overview is null)
+                _error = "Could not load users & credits (null response).";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _overview = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OpenGrant(UserCreditSummaryDto u)
+    {
+        _grantUser = u;
+        _grantUsd = 5;
+        _grantCredits = 500;
+        _lastSyncedCredits = 500;
+        _grantNote = null;
+        _message = null;
+    }
+
+    private void CloseGrant()
+    {
+        _grantUser = null;
+        _message = null;
+    }
+
+    private void QuickGrant(double usd)
+    {
+        _grantUsd = usd;
+        _grantCredits = (int)Math.Round(usd / 0.01);
+        _lastSyncedCredits = _grantCredits;
+    }
+
+    private async Task SubmitGrantAsync()
+    {
+        if (_grantUser is null) return;
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            // Prefer explicit USD; if user only set credits, OnParametersSet already mirrored.
+            var amount = _grantUsd;
+            if (Math.Abs(amount) < 0.0001 && _grantCredits != 0)
+                amount = _grantCredits * 0.01;
+
+            var updated = await Api.GrantAdminCreditsAsync(new AdminGrantCreditsRequest
+            {
+                UserId = _grantUser.UserId,
+                AmountUsd = amount,
+                Note = _grantNote,
+            });
+            if (updated is null)
+            {
+                _error = "Grant failed (user not found or request rejected).";
+            }
+            else
+            {
+                _message = $"Updated {_grantUser.Username}: balance {updated.CreditsBalance} credits (${updated.CreditsBalanceUsd:F2}).";
+                _grantUser = null;
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

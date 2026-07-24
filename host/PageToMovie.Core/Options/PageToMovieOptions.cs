@@ -243,6 +243,12 @@ public sealed class AuthOptions
     public bool RequireLogin { get; set; } = true;
 
     /// <summary>
+    /// USD list-rate credits granted on signup (same basis as cost_ledger).
+    /// 1 credit = $0.01, so 5.0 → 500 credits. Set 0 to disable signup grants.
+    /// </summary>
+    public double DefaultSignupCreditsUsd { get; set; } = 5.0;
+
+    /// <summary>
     /// Operator login override secret (or env <c>PageToMovie_LOGIN_OVERRIDE</c>).
     /// When set (min 12 chars), you can:
     /// <list type="bullet">

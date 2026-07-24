@@ -2975,6 +2975,7 @@ public sealed class FilmJobService
                     isExtend: prevVideoPath is not null,
                     requestId: requestId,
                     requestedDurationSec: duration,
+                    userId: Snapshot.UserId ?? _user.UserId,
                     ct: ct);
                 await AppendLogAsync(
                     $"  [Cost] tracked list-rate for S{scene:D2}C{clip} ({costDurationSec:F2}s)");

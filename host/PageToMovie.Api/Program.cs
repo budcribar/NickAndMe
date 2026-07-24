@@ -86,6 +86,7 @@ builder.Services.AddSingleton<IRuntimeConfigStore, RuntimeConfigStore>();
 builder.Services.AddSingleton<ApiWorkerPool>();
 builder.Services.AddSingleton<LocalWorkerPool>();
 builder.Services.AddSingleton<LoginRateLimiter>();
+builder.Services.AddSingleton<CreditService>();
 builder.Services.AddSingleton<CostReportService>();
 builder.Services.AddSingleton<CharacterDesignService>();
 builder.Services.AddSingleton<CharacterBookPlateService>();
@@ -165,7 +166,10 @@ builder.Services.AddHttpClient("PageToMovie.Api", (sp, client) =>
 builder.Services.AddScoped(sp =>
 {
     var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("PageToMovie.Api");
-    return new EngineApiClient(http, sp.GetRequiredService<AdminSessionService>());
+    return new EngineApiClient(
+        http,
+        sp.GetRequiredService<AdminSessionService>(),
+        sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EngineApiOptions>>());
 });
 
 builder.Services.AddScoped(sp =>
@@ -796,6 +800,38 @@ app.MapPost("/api/admin/learning/project-rules/{projectId}/reject", (
     {
         return Results.BadRequest(new { ok = false, error = ex.Message });
     }
+});
+
+// Users & credits overview (admin)
+app.MapGet("/api/admin/users", async (IUserContext user, CreditService credits) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+
+    var overview = await credits.GetAdminOverviewAsync(recentLedger: 50);
+    return Results.Ok(new { ok = true, overview });
+});
+
+app.MapPost("/api/admin/users/credits", async (
+    AdminGrantCreditsRequest body,
+    IUserContext user,
+    CreditService credits) =>
+{
+    if (!user.IsAdmin)
+        return Results.Json(new { ok = false, error = "admin role required" },
+            statusCode: StatusCodes.Status403Forbidden);
+
+    if (body is null || string.IsNullOrWhiteSpace(body.UserId))
+        return Results.BadRequest(new { ok = false, error = "userId is required" });
+    if (Math.Abs(body.AmountUsd) < 0.0001)
+        return Results.BadRequest(new { ok = false, error = "amountUsd must be non-zero" });
+
+    var summary = await credits.GrantAsync(body.UserId.Trim(), body.AmountUsd, body.Note);
+    if (summary is null)
+        return Results.NotFound(new { ok = false, error = "user not found" });
+
+    return Results.Ok(new { ok = true, user = summary });
 });
 
 app.MapGet("/api/admin/config", (IUserContext user, IRuntimeConfigStore config) =>

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
 using PageToMovie.Core.Auth;
 using PageToMovie.Core.Models;
 using PageToMovie.Core.Options;
@@ -20,11 +21,16 @@ public sealed class EngineApiClient
 
     private readonly HttpClient _http;
     private readonly AdminSessionService? _session;
+    private readonly EngineApiOptions _opts;
 
-    public EngineApiClient(HttpClient http, AdminSessionService? session = null)
+    public EngineApiClient(
+        HttpClient http,
+        AdminSessionService? session = null,
+        IOptions<EngineApiOptions>? opts = null)
     {
         _http = http;
         _session = session;
+        _opts = opts?.Value ?? new EngineApiOptions();
         SyncIdentityHeaders();
         if (_session is not null)
             _session.Changed += SyncIdentityHeaders;
@@ -173,6 +179,25 @@ public sealed class EngineApiClient
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/jobs/{Uri.EscapeDataString(jobId)}/cancel");
         await SendJsonAsync<object>(req, ct);
+    }
+
+    public async Task<AdminCreditsOverviewDto?> GetAdminUsersCreditsAsync(CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, "/api/admin/users");
+        var wrap = await SendJsonAsync<AdminUsersCreditsResponse>(req, ct);
+        return wrap?.Overview;
+    }
+
+    public async Task<UserCreditSummaryDto?> GrantAdminCreditsAsync(
+        AdminGrantCreditsRequest body,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/admin/users/credits")
+        {
+            Content = JsonContent.Create(body, options: JsonOpts),
+        };
+        var wrap = await SendJsonAsync<AdminGrantCreditsResponse>(req, ct);
+        return wrap?.User;
     }
 
     // ---- Admin Learning (P0–P4) ----
@@ -645,22 +670,17 @@ public sealed class EngineApiClient
             JsonOpts,
             ct);
 
-    public string ClipVideoUrl(string projectId, int sceneNumber, int clipNumber)
-    {
-        // Absolute API URL (same host as WIP) so <video src> never hits the Blazor port by mistake
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/clips/{clipNumber}/video";
-    }
+    public string ClipVideoUrl(string projectId, int sceneNumber, int clipNumber) =>
+        BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/clips/{clipNumber}/video");
 
-    public string CompositeVideoUrl(string projectId, int sceneNumber)
-    {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/composite";
-    }
+    public string CompositeVideoUrl(string projectId, int sceneNumber) =>
+        BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/scenes/{sceneNumber}/composite");
 
-    /// <summary>Absolute stream URL for the WIP full movie (range requests enabled).</summary>
-    public string WipMovieUrl(string projectId)
-    {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/movie/wip";
-    }
+    /// <summary>Stream URL for the WIP full movie (range requests enabled).</summary>
+    public string WipMovieUrl(string projectId) =>
+        BrowserMediaPath($"/api/projects/{Uri.EscapeDataString(projectId)}/movie/wip");
 
     public async Task<WipMovieMetaDto?> GetWipMovieMetaAsync(
         string projectId,
@@ -764,11 +784,9 @@ public sealed class EngineApiClient
         }
     }
 
-    /// <summary>Absolute stream URL for the most recently built multi-scene preview (range requests enabled).</summary>
-    public string PreviewMovieUrl(string projectId)
-    {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/movie/preview";
-    }
+    /// <summary>Stream URL for the most recently built multi-scene preview (range requests enabled).</summary>
+    public string PreviewMovieUrl(string projectId) =>
+        BrowserMediaPath($"/api/projects/{Uri.EscapeDataString(projectId)}/movie/preview");
 
     /// <summary>Stitch an explicit, ordered (possibly non-contiguous) scene selection into a temporary preview.</summary>
     public async Task StartPreviewAsync(
@@ -1377,11 +1395,32 @@ public sealed class EngineApiClient
         return dto;
     }
 
+    /// <summary>Server-side HttpClient origin (often loopback). Do not use for browser &lt;img&gt; src.</summary>
     public string ApiBaseUrl =>
         (_http.BaseAddress?.ToString() ?? "http://127.0.0.1:5088").TrimEnd('/');
 
     /// <summary>
-    /// Turn API root-relative media paths into absolute Engine API URLs for &lt;img src&gt;.
+    /// Origin (or empty for same-origin) that the browser should use for media.
+    /// Empty → root-relative paths so Railway/public host works; not 127.0.0.1.
+    /// </summary>
+    public string BrowserMediaOrigin
+    {
+        get
+        {
+            var configured = (_opts.BrowserMediaBaseUrl ?? "").Trim().TrimEnd('/');
+            if (!string.IsNullOrEmpty(configured))
+                return configured;
+            // Unified host (Docker/Railway): leave empty → /api/... hits the public page origin.
+            // Explicit non-loopback BaseUrl (unusual) can still prefix media.
+            if (!IsLoopbackOrigin(ApiBaseUrl))
+                return ApiBaseUrl;
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Turn API media paths into browser-safe URLs for &lt;img&gt;/&lt;video src&gt;.
+    /// Prefer root-relative on the unified host so images are not pointed at 127.0.0.1.
     /// </summary>
     public string? AbsolutizeMediaUrl(string? url)
     {
@@ -1389,27 +1428,78 @@ public sealed class EngineApiClient
         url = url.Trim();
         if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            url.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("blob:", StringComparison.OrdinalIgnoreCase))
+        {
+            // Rewrite accidental loopback absolutes from older server responses.
+            if (TryRewriteLoopbackToBrowser(url, out var fixedUrl))
+                return fixedUrl;
             return url;
-        if (url.StartsWith('/'))
-            return ApiBaseUrl + url;
-        return ApiBaseUrl + "/" + url.TrimStart('/');
+        }
+
+        var path = url.StartsWith('/') ? url : "/" + url.TrimStart('/');
+        return BrowserMediaPath(path);
     }
 
-    public string CharacterRefUrl(string projectId, string charKey)
+    /// <summary>Browser URL for a root-relative API media path.</summary>
+    public string BrowserMediaPath(string rootRelativePath)
     {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/ref";
+        if (string.IsNullOrWhiteSpace(rootRelativePath))
+            return BrowserMediaOrigin;
+        var path = rootRelativePath.StartsWith('/')
+            ? rootRelativePath
+            : "/" + rootRelativePath.TrimStart('/');
+        var origin = BrowserMediaOrigin;
+        return string.IsNullOrEmpty(origin) ? path : origin + path;
     }
 
-    public string CharacterVariantUrl(string projectId, string charKey, int index)
+    private static bool IsLoopbackOrigin(string? origin)
     {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/variants/{index}";
+        if (string.IsNullOrWhiteSpace(origin)) return true;
+        try
+        {
+            var u = new Uri(origin.Contains("://", StringComparison.Ordinal) ? origin : "http://" + origin);
+            return u.IsLoopback
+                   || string.Equals(u.Host, "localhost", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(u.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(u.Host, "::1", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return true;
+        }
     }
 
-    public string CharacterBookRefUrl(string projectId, string charKey, int index)
+    private bool TryRewriteLoopbackToBrowser(string absoluteUrl, out string fixedUrl)
     {
-        return $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/bookrefs/{index}";
+        fixedUrl = absoluteUrl;
+        try
+        {
+            var u = new Uri(absoluteUrl);
+            if (!u.IsLoopback &&
+                !string.Equals(u.Host, "localhost", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(u.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                return false;
+            fixedUrl = BrowserMediaPath(u.PathAndQuery);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
+
+    public string CharacterRefUrl(string projectId, string charKey) =>
+        BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/ref");
+
+    public string CharacterVariantUrl(string projectId, string charKey, int index) =>
+        BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/variants/{index}");
+
+    public string CharacterBookRefUrl(string projectId, string charKey, int index) =>
+        BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/bookrefs/{index}");
 
     public async Task UpdateCharacterVoiceAsync(
         string projectId,
@@ -1478,13 +1568,13 @@ public sealed class EngineApiClient
         return await resp.Content.ReadFromJsonAsync<VoicePreviewStatusDto>(JsonOpts, ct);
     }
 
-    /// <summary>Absolute URL for cached film voice MP3 (audio player only).</summary>
+    /// <summary>URL for cached film voice MP3 (audio player only).</summary>
     public string CharacterVoiceAudioUrl(string projectId, string charKey, long cacheBust = 0)
     {
-        var url =
-            $"{ApiBaseUrl}/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/voice/audio";
+        var url = BrowserMediaPath(
+            $"/api/projects/{Uri.EscapeDataString(projectId)}/characters/{Uri.EscapeDataString(charKey)}/voice/audio");
         if (cacheBust > 0)
-            url += "?t=" + cacheBust;
+            url += (url.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "t=" + cacheBust;
         return url;
     }
 
@@ -1912,6 +2002,18 @@ public sealed class AdminCallerDto
 {
     public string? UserId { get; set; }
     public List<string> Roles { get; set; } = new();
+}
+
+public sealed class AdminUsersCreditsResponse
+{
+    public bool Ok { get; set; }
+    public AdminCreditsOverviewDto? Overview { get; set; }
+}
+
+public sealed class AdminGrantCreditsResponse
+{
+    public bool Ok { get; set; }
+    public UserCreditSummaryDto? User { get; set; }
 }
 
 public sealed class JobsDto

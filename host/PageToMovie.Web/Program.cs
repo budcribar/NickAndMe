@@ -27,7 +27,10 @@ builder.Services.AddHttpClient("PageToMovie.Api", (sp, client) =>
 builder.Services.AddScoped(sp =>
 {
     var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("PageToMovie.Api");
-    return new EngineApiClient(http, sp.GetRequiredService<AdminSessionService>());
+    return new EngineApiClient(
+        http,
+        sp.GetRequiredService<AdminSessionService>(),
+        sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EngineApiOptions>>());
 });
 
 builder.Services.AddScoped(sp =>
