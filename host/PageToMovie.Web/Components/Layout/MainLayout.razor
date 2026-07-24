@@ -8,12 +8,12 @@
 
 <div class="page @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
     <div class="sidebar">
-        <div class="sidebar-header">
+        <div class="sidebar-header py-3 px-3">
             <a class="navbar-brand sidebar-brand d-flex align-items-center gap-2" href="/" title="PageToMovie">
-                <img src="/favicon.png" alt="Logo" width="28" height="28" class="rounded-2 flex-shrink-0" />
+                <img src="/favicon.png" alt="Logo" width="38" height="38" class="rounded-3 flex-shrink-0 shadow-sm" />
                 @if (!_sidebarCollapsed)
                 {
-                    <span>PageToMovie</span>
+                    <span class="fw-bold fs-5 mb-0">PageToMovie</span>
                 }
             </a>
             <button type="button"
