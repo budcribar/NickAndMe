@@ -14,7 +14,7 @@ COPY host/PageToMovie.Api/PageToMovie.Api.csproj host/PageToMovie.Api/
 RUN dotnet restore host/PageToMovie.Api/PageToMovie.Api.csproj
 
 # Force Railway Docker cache invalidation when asset packaging changes
-ARG CACHEBUSTER=20260724200000
+ARG CACHEBUSTER=20260724201500
 RUN echo "Invalidating build cache: ${CACHEBUSTER}"
 
 # Copy remaining source code
@@ -33,6 +33,8 @@ RUN dotnet publish host/PageToMovie.Api/PageToMovie.Api.csproj -c Release --no-r
         && ls -la /app/publish 2>/dev/null; ls -laR /app/publish/wwwroot 2>/dev/null; exit 1)
 
 # Stage 2: Runtime
+# mcr.microsoft.com/dotnet/aspnet:10.0 is Ubuntu 24.04 (noble), not Debian —
+# use Ubuntu package names (e.g. libjpeg-turbo8, not libjpeg62-turbo).
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
@@ -46,7 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1 \
     libfreetype6 \
     libpng16-16 \
-    libjpeg62-turbo \
+    libjpeg-turbo8 \
     libharfbuzz0b \
     libexpat1 \
     ca-certificates \
@@ -54,13 +56,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /app/publish .
 
-# Environment defaults
+# Environment defaults (set JWT / API secrets via Railway Variables — not baked into the image)
 ENV ASPNETCORE_URLS="http://0.0.0.0:5088"
 ENV ASPNETCORE_HTTP_PORTS=5088
 ENV PORT=5088
-ENV PageToMovie_JWT_KEY="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
-ENV PAGETOMOVIE_JWT_KEY="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
-ENV PageToMovie__Auth__JwtSigningKey="PageToMovie-Production-Docker-Secret-Key-64Chars-Long-1234567890!!"
 ENV PageToMovie__WorkspaceRoot="/data"
 
 # Persistent storage path for projects/DB/keys. On Railway, mount a Volume at /data
