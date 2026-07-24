@@ -427,7 +427,9 @@ public sealed class FilmJobService
 
         var apiKey = !string.IsNullOrWhiteSpace(_user.RequestApiKey)
             ? _user.RequestApiKey
-            : _keys.GetKey(userId);
+            : _keys.GetKey(userId, "grok");
+        var geminiKey = _keys.GetKey(userId, "gemini");
+        var anthropicKey = _keys.GetKey(userId, "anthropic");
 
         var queuedAt = DateTimeOffset.UtcNow;
         var cts = new CancellationTokenSource();
@@ -450,6 +452,8 @@ public sealed class FilmJobService
         {
             UserId = userId,
             ApiKey = apiKey,
+            GeminiApiKey = geminiKey,
+            AnthropicApiKey = anthropicKey,
             QueuedAt = queuedAt,
             UseLocalPool = useLocalPool,
             Cts = cts,
@@ -466,7 +470,7 @@ public sealed class FilmJobService
         _ = Task.Run(async () =>
         {
             CurrentRun.Value = run;
-            using (ApiKeyScope.Push(run.ApiKey))
+            using (ApiKeyScope.Push(run.ApiKey, run.GeminiApiKey, run.AnthropicApiKey))
             {
                 var startedAt = DateTimeOffset.UtcNow;
                 var success = false;
@@ -789,6 +793,8 @@ public sealed class FilmJobService
         public CancellationTokenSource Cts { get; set; } = new();
         public string UserId { get; set; } = "local";
         public string? ApiKey { get; set; }
+        public string? GeminiApiKey { get; set; }
+        public string? AnthropicApiKey { get; set; }
         public DateTimeOffset QueuedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? StartedAt { get; set; }
         public bool UseLocalPool { get; set; }
@@ -3594,9 +3600,15 @@ public sealed class FilmJobService
         var modelId = await ResolveVideoModelAsync(projectId, ct).ConfigureAwait(false);
         var entry = SupportedModelCatalog.ResolveOrDefault(modelId, ModelCapability.Video);
 
-        // Ambient multi-user key (Grok) counts as configured for Xai models.
-        if (entry.Provider == ModelProviderFamily.Xai &&
-            !string.IsNullOrWhiteSpace(ApiKeyScope.Current))
+        // Ambient per-user keys count as configured (personal BYOK or server env via scope).
+        var ambient = entry.Provider switch
+        {
+            ModelProviderFamily.Xai => ApiKeyScope.Current,
+            ModelProviderFamily.Google => ApiKeyScope.CurrentGemini,
+            ModelProviderFamily.Anthropic => ApiKeyScope.CurrentAnthropic,
+            _ => null,
+        };
+        if (!string.IsNullOrWhiteSpace(ambient))
             return;
 
         var missing = SupportedModelCatalog.MissingEnvKeys(entry);
@@ -3605,7 +3617,8 @@ public sealed class FilmJobService
 
         var keys = string.Join(" / ", missing);
         throw new InvalidOperationException(
-            $"{keys} is not set (required for video model '{entry.Id}' / {entry.ProviderId}).");
+            $"{keys} is not set (required for video model '{entry.Id}' / {entry.ProviderId}). " +
+            "Add a personal key in Configuration, or set the server environment variable.");
     }
 
     /// <summary>

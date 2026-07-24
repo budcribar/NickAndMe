@@ -288,7 +288,8 @@ public sealed class GeminiImageClient : IImageClient
     }
 
     private static string? ResolveApiKey() =>
-        Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
+        ApiKeyScope.CurrentGemini
+        ?? Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];
 }

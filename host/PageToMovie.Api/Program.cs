@@ -298,8 +298,14 @@ app.Use(async (context, next) =>
 {
     var keyProvider = context.RequestServices.GetService<IUserApiKeyProvider>();
     var user = context.RequestServices.GetService<IUserContext>();
-    var key = keyProvider?.GetKey(user?.UserId);
-    using (ApiKeyScope.Push(key))
+    var uid = user?.UserId;
+    // Request header override is treated as xAI/Grok (legacy X-Api-Key).
+    var xai = !string.IsNullOrWhiteSpace(user?.RequestApiKey)
+        ? user!.RequestApiKey
+        : keyProvider?.GetKey(uid, "grok");
+    var gemini = keyProvider?.GetKey(uid, "gemini");
+    var anthropic = keyProvider?.GetKey(uid, "anthropic");
+    using (ApiKeyScope.Push(xai, gemini, anthropic))
     {
         await next();
     }
@@ -2794,9 +2800,17 @@ app.MapPost("/api/user/settings", async (UpdateUserSettingsRequest req, IUserCon
 {
     try
     {
-        await userDb.SaveXaiApiKeyAsync(userCtx.UserId, req.XaiApiKey, ct);
+        // Null fields leave existing keys; empty string clears that provider's personal key.
+        await userDb.UpdateUserSettingsAsync(userCtx.UserId, req, ct);
         var updated = await userDb.GetUserSettingsDtoAsync(userCtx.UserId, ct);
-        return Results.Ok(new { ok = true, settings = updated, message = "API key updated successfully." });
+        var saved = new List<string>();
+        if (req.XaiApiKey is not null) saved.Add("xAI / Grok");
+        if (req.GeminiApiKey is not null) saved.Add("Gemini");
+        if (req.AnthropicApiKey is not null) saved.Add("Claude");
+        var msg = saved.Count > 0
+            ? $"Saved personal key(s): {string.Join(", ", saved)}."
+            : "No key fields provided.";
+        return Results.Ok(new { ok = true, settings = updated, message = msg });
     }
     catch (Exception ex)
     {

@@ -203,11 +203,20 @@ public sealed class EngineApiClient
         return env?.Settings;
     }
 
-    public async Task<UserSettingsDto?> UpdateUserSettingsAsync(string? xaiApiKey, CancellationToken ct = default)
+    public async Task<UserSettingsDto?> UpdateUserSettingsAsync(
+        string? xaiApiKey = null,
+        string? geminiApiKey = null,
+        string? anthropicApiKey = null,
+        CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, "/api/user/settings")
         {
-            Content = JsonContent.Create(new UpdateUserSettingsRequest { XaiApiKey = xaiApiKey }, options: JsonOpts),
+            Content = JsonContent.Create(new UpdateUserSettingsRequest
+            {
+                XaiApiKey = xaiApiKey,
+                GeminiApiKey = geminiApiKey,
+                AnthropicApiKey = anthropicApiKey,
+            }, options: JsonOpts),
         };
         var env = await SendJsonAsync<UserSettingsEnvelope>(req, ct);
         return env?.Settings;

@@ -38,8 +38,7 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
             _http.BaseAddress = new Uri(ApiBase + "/");
     }
 
-    public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv));
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task<string> CompleteAsync(
         string systemPrompt,
@@ -131,7 +130,7 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
         int promptChars,
         CancellationToken ct)
     {
-        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
+        var key = ResolveApiKey();
         var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var endpoint = $"models/{Uri.EscapeDataString(model)}:generateContent";
         var sw = Stopwatch.StartNew();
@@ -204,6 +203,10 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient
             throw;
         }
     }
+
+    private static string? ResolveApiKey() =>
+        Abstractions.ApiKeyScope.CurrentGemini
+        ?? Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
 
     /// <summary>Test helper for extracting model text from a generateContent response.</summary>
     public static string ExtractMessageTextForTests(JsonElement result) => ExtractMessageText(result);

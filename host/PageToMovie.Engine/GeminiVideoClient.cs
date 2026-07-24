@@ -340,7 +340,8 @@ public sealed class GeminiVideoClient : IVideoClient
     }
 
     private static string? ResolveApiKey() =>
-        Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
+        ApiKeyScope.CurrentGemini
+        ?? Environment.GetEnvironmentVariable(SupportedModelCatalog.GoogleApiKeyEnv);
 
     private static void ApplyApiKey(HttpRequestMessage req)
     {

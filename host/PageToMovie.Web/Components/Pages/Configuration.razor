@@ -55,44 +55,137 @@ else if (_cfg is null)
 else
 {
     <div class="card mb-3">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-            <span>🔑 Account & API Key Settings</span>
-            @if (_userSettings?.HasXaiApiKey == true)
-            {
-                <span class="badge bg-success">Key Active (@_userSettings.MaskedXaiApiKey)</span>
-            }
-            else
-            {
-                <span class="badge bg-warning text-dark">No Personal Key Attached</span>
-            }
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>🔑 Account &amp; API keys</span>
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var p in ProviderRows)
+                {
+                    @if (p.IsConfigured)
+                    {
+                        <span class="badge bg-success">@p.DisplayName: @(p.ActiveSource == "personal" ? "personal" : "server")</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@p.DisplayName: none</span>
+                    }
+                }
+            </div>
         </div>
         <div class="card-body">
-            <p class="small text-muted mb-2">
-                <strong>Bring Your Own Key:</strong> Attach your personal xAI / Grok API key here. Your key is encrypted at rest using AES-256 and used exclusively for your account's video generation requests.
+            <p class="small text-muted mb-3">
+                Personal keys are encrypted at rest (AES-256) and used only for your account.
+                Server keys (env vars) apply when you have not attached a personal key for that provider.
+                <strong>Claude does not generate video or images</strong> — use Grok or Gemini for those.
             </p>
-            <div class="row g-2 align-items-end">
-                <div class="col-md-6">
-                    <label class="form-label">xAI / Grok API Key</label>
-                    <input type="password" class="form-control" placeholder="xai-..." @bind="_inputXaiApiKey" disabled="@_busy" />
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_inputXaiApiKey))" @onclick="SaveUserApiKeyAsync">
-                        @if (_apiKeySaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                            <span>Saving…</span>
-                        }
-                        else
-                        {
-                            <span>Save API Key</span>
-                        }
-                    </button>
-                </div>
+
+            <div class="row g-3">
+                @foreach (var p in ProviderRows)
+                {
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <div class="fw-semibold">@p.DisplayName</div>
+                                    <div class="small text-muted">@p.CapabilitiesSummary</div>
+                                </div>
+                                @if (p.IsConfigured)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Not set</span>
+                                }
+                            </div>
+
+                            <div class="mb-2">
+                                @if (p.SupportsVideo)
+                                {
+                                    <span class="badge text-bg-primary me-1">Video</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-light border me-1 text-muted">No video</span>
+                                }
+                                @if (p.SupportsImage)
+                                {
+                                    <span class="badge text-bg-primary me-1">Image</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-light border me-1 text-muted">No image</span>
+                                }
+                                @if (p.SupportsChat)
+                                {
+                                    <span class="badge text-bg-primary me-1">Chat</span>
+                                }
+                                @if (p.SupportsVision)
+                                {
+                                    <span class="badge text-bg-primary">Vision</span>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(p.Notes))
+                            {
+                                <p class="small text-muted mb-2">@p.Notes</p>
+                            }
+
+                            <div class="small mb-2">
+                                @if (p.HasPersonalKey)
+                                {
+                                    <div><strong>Personal key:</strong> <code>@p.MaskedPersonalKey</code></div>
+                                }
+                                else
+                                {
+                                    <div class="text-muted">No personal key saved.</div>
+                                }
+                                @if (p.HasServerKey)
+                                {
+                                    <div class="text-muted">Server env key available as fallback.</div>
+                                }
+                            </div>
+
+                            <label class="form-label small mb-1">
+                                @(p.HasPersonalKey ? "Replace personal key" : "Add personal key")
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="password"
+                                       class="form-control"
+                                       placeholder="@ProviderPlaceholder(p.ProviderId)"
+                                       value="@GetKeyInput(p.ProviderId)"
+                                       @oninput="e => SetKeyInput(p.ProviderId, e.Value?.ToString())"
+                                       disabled="@(_busy || _apiKeySaving)" />
+                                <button class="btn btn-primary"
+                                        type="button"
+                                        disabled="@(_busy || _apiKeySaving || string.IsNullOrWhiteSpace(GetKeyInput(p.ProviderId)))"
+                                        @onclick="() => SaveProviderKeyAsync(p.ProviderId)">
+                                    @if (_apiKeySaving && string.Equals(_savingProviderId, p.ProviderId, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <span>Save</span>
+                                    }
+                                </button>
+                            </div>
+                            @if (p.HasPersonalKey)
+                            {
+                                <button class="btn btn-link btn-sm text-danger p-0"
+                                        type="button"
+                                        disabled="@(_busy || _apiKeySaving)"
+                                        @onclick="() => ClearProviderKeyAsync(p.ProviderId)">
+                                    Remove personal key
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
+
             @if (!string.IsNullOrEmpty(_apiKeyFeedback))
             {
                 <div class="alert alert-success py-2 px-3 mt-3 mb-0 small d-flex align-items-center gap-2">
-                    <span class="bi bi-check-circle-fill text-success" aria-hidden="true"></span>
                     <span>@_apiKeyFeedback</span>
                 </div>
             }
@@ -121,8 +214,9 @@ else
         <div class="card-body row g-2">
             <div class="col-12">
                 <p class="small text-muted mb-2">
-                    Pick a model only. The app maps it to the right API endpoint and which key is required
-                    (from the supported-model list). New backends = add to that list (or open a GitHub feature request first).
+                    Pick a model only. The app maps it to the right provider and key.
+                    Saving a <strong>Grok</strong> personal key defaults all model slots below to Grok (when a project is selected).
+                    Claude is chat/vision only — it cannot produce video or portraits.
                 </p>
             </div>
             <div class="col-md-4">
@@ -130,7 +224,7 @@ else
                 <select class="form-select" @bind="_modelName" disabled="@_busy">
                     @foreach (var m in _videoModels)
                     {
-                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                        <option value="@m.Id">@ModelOptionLabel(m)</option>
                     }
                     @if (_videoModels.All(m => !string.Equals(m.Id, _modelName, StringComparison.OrdinalIgnoreCase)))
                     {
@@ -147,7 +241,7 @@ else
                 <select class="form-select" @bind="_imageModel" disabled="@_busy">
                     @foreach (var m in _imageModels)
                     {
-                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                        <option value="@m.Id">@ModelOptionLabel(m)</option>
                     }
                     @if (_imageModels.All(m => !string.Equals(m.Id, _imageModel, StringComparison.OrdinalIgnoreCase)))
                     {
@@ -164,7 +258,7 @@ else
                 <select class="form-select" @bind="_planningModel" disabled="@_busy">
                     @foreach (var m in _chatModels)
                     {
-                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                        <option value="@m.Id">@ModelOptionLabel(m)</option>
                     }
                     @if (_chatModels.All(m => !string.Equals(m.Id, _planningModel, StringComparison.OrdinalIgnoreCase)))
                     {
@@ -182,7 +276,7 @@ else
                 <select class="form-select" @bind="_qualityModel" disabled="@_busy">
                     @foreach (var m in _chatModels)
                     {
-                        <option value="@m.Id">@m.DisplayName (@m.Id)</option>
+                        <option value="@m.Id">@ModelOptionLabel(m)</option>
                     }
                     @if (_chatModels.All(m => !string.Equals(m.Id, _qualityModel, StringComparison.OrdinalIgnoreCase)))
                     {
@@ -404,20 +498,138 @@ else
     }
 
     private UserSettingsDto? _userSettings;
-    private string? _inputXaiApiKey;
+    private readonly Dictionary<string, string?> _keyInputs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["grok"] = null,
+        ["gemini"] = null,
+        ["anthropic"] = null,
+    };
     private bool _apiKeySaving;
+    private string? _savingProviderId;
     private string? _apiKeyFeedback;
 
-    private async Task SaveUserApiKeyAsync()
+    private IReadOnlyList<ProviderKeyStatusDto> ProviderRows =>
+        _userSettings?.Providers is { Count: > 0 } list
+            ? list
+            : DefaultProviderRows;
+
+    private static readonly IReadOnlyList<ProviderKeyStatusDto> DefaultProviderRows =
+    [
+        new()
+        {
+            ProviderId = "grok", DisplayName = "xAI / Grok", Family = "Xai",
+            SupportsVideo = true, SupportsImage = true, SupportsChat = true, SupportsVision = true,
+            CapabilitiesSummary = "Video, Image, Chat, Vision",
+            Notes = "Full pipeline including video continue and cast plates.",
+            ActiveSource = "none",
+        },
+        new()
+        {
+            ProviderId = "gemini", DisplayName = "Google Gemini", Family = "Google",
+            SupportsVideo = true, SupportsImage = true, SupportsChat = true, SupportsVision = true,
+            CapabilitiesSummary = "Video, Image, Chat, Vision",
+            Notes = "Veo video is limited (no clip continue / multi-ref plates).",
+            ActiveSource = "none",
+        },
+        new()
+        {
+            ProviderId = "anthropic", DisplayName = "Anthropic Claude", Family = "Anthropic",
+            SupportsVideo = false, SupportsImage = false, SupportsChat = true, SupportsVision = true,
+            CapabilitiesSummary = "Chat, Vision",
+            Notes = "No video or image generation.",
+            ActiveSource = "none",
+        },
+    ];
+
+    private static string ProviderPlaceholder(string providerId) => providerId.ToLowerInvariant() switch
+    {
+        "grok" => "xai-...",
+        "gemini" => "AIza...",
+        "anthropic" => "sk-ant-...",
+        _ => "api key",
+    };
+
+    private string? GetKeyInput(string providerId) =>
+        _keyInputs.TryGetValue(providerId, out var v) ? v : null;
+
+    private void SetKeyInput(string providerId, string? value) =>
+        _keyInputs[providerId] = value;
+
+    private static string ModelOptionLabel(SupportedModelDto m)
+    {
+        var prov = string.IsNullOrWhiteSpace(m.ProviderId) ? m.Provider : m.ProviderId;
+        return $"{m.DisplayName} · {prov} ({m.Id})";
+    }
+
+    private async Task SaveProviderKeyAsync(string providerId)
+    {
+        var value = GetKeyInput(providerId);
+        if (string.IsNullOrWhiteSpace(value)) return;
+        await PersistProviderKeyAsync(providerId, value.Trim(), clearing: false);
+    }
+
+    private async Task ClearProviderKeyAsync(string providerId) =>
+        await PersistProviderKeyAsync(providerId, "", clearing: true);
+
+    private async Task PersistProviderKeyAsync(string providerId, string keyValue, bool clearing)
     {
         try
         {
             _busy = true;
             _apiKeySaving = true;
+            _savingProviderId = providerId;
             _apiKeyFeedback = null;
-            _userSettings = await Engine.UpdateUserSettingsAsync(_inputXaiApiKey);
-            _inputXaiApiKey = null;
-            _apiKeyFeedback = "API key encrypted and attached to your account successfully!";
+            _error = null;
+
+            string? xai = null, gemini = null, anthropic = null;
+            switch (providerId.ToLowerInvariant())
+            {
+                case "grok":
+                case "xai":
+                    xai = keyValue;
+                    break;
+                case "gemini":
+                case "google":
+                    gemini = keyValue;
+                    break;
+                case "anthropic":
+                case "claude":
+                    anthropic = keyValue;
+                    break;
+                default:
+                    _error = $"Unknown provider: {providerId}";
+                    return;
+            }
+
+            _userSettings = await Engine.UpdateUserSettingsAsync(
+                xaiApiKey: xai,
+                geminiApiKey: gemini,
+                anthropicApiKey: anthropic);
+
+            _keyInputs[providerId] = null;
+
+            var label = ProviderRows.FirstOrDefault(p =>
+                string.Equals(p.ProviderId, providerId, StringComparison.OrdinalIgnoreCase))?.DisplayName
+                ?? providerId;
+
+            if (clearing)
+            {
+                _apiKeyFeedback = $"{label}: personal key removed.";
+            }
+            else
+            {
+                _apiKeyFeedback = $"{label}: personal key encrypted and saved.";
+                // When attaching a Grok key, default this project's models to Grok if a project is open.
+                if ((providerId is "grok" or "xai") &&
+                    !string.IsNullOrWhiteSpace(_projectId) &&
+                    _cfg is not null)
+                {
+                    ApplyGrokModelDefaults();
+                    await PersistProjectConfigAsync();
+                    _apiKeyFeedback += " Project models defaulted to Grok (video, image, planning, quality).";
+                }
+            }
+
             _message = _apiKeyFeedback;
             await ActiveProject.RefreshReadinessAsync(Engine);
         }
@@ -429,7 +641,17 @@ else
         {
             _busy = false;
             _apiKeySaving = false;
+            _savingProviderId = null;
         }
+    }
+
+    /// <summary>Set all model slots to the standard Grok defaults after attaching an xAI key.</summary>
+    private void ApplyGrokModelDefaults()
+    {
+        _modelName = "grok-imagine-video";
+        _imageModel = "grok-imagine-image-quality";
+        _planningModel = "grok-4.5";
+        _qualityModel = "grok-4.5";
     }
 
     private async Task LoadAsync()
@@ -500,71 +722,7 @@ else
                 return;
             }
 
-            // Provider fields derived from model catalog (cost reports).
-            var videoProvider = SupportedModelCatalog.ProviderIdFor(_modelName, ModelCapability.Video);
-            var imageProvider = SupportedModelCatalog.ProviderIdFor(_imageModel, ModelCapability.Image);
-            var planningProvider = SupportedModelCatalog.ProviderIdFor(_planningModel, ModelCapability.Chat);
-            var qualityProvider = SupportedModelCatalog.ProviderIdFor(_qualityModel, ModelCapability.Chat);
-
-            var updates = new Dictionary<string, object?>
-            {
-                ["ui_theme"] = _uiTheme,
-                ["blueprint_file"] = _blueprintFile,
-                ["video_provider"] = videoProvider,
-                ["character_design_provider"] = imageProvider,
-                ["image_provider"] = imageProvider,
-                ["planning_provider"] = planningProvider,
-                ["quality_provider"] = qualityProvider,
-                ["model_name"] = _modelName,
-                ["image_model_name"] = _imageModel,
-                ["planning_model_name"] = _planningModel,
-                ["quality_model_name"] = _qualityModel,
-                ["aspect_ratio"] = _aspect,
-                ["resolution"] = _resolution,
-                ["duration_seconds"] = _durationSeconds,
-                ["use_duration_defaults"] = _useDurationDefaults,
-                ["smart_continuation"] = _smartContinuation,
-                ["merge_scene_after_each_clip"] = _mergeAfterClip,
-                ["qa_retry_on_fail"] = _qaRetry,
-                ["regenerate_silent_clips"] = _regenSilent,
-                ["rebuild_wip_movie_after_scene"] = _rebuildWip,
-                ["qa_max_retries"] = _qaMaxRetries,
-                ["qa_frame_count"] = _qaFrameCount,
-                ["composite_audio_gain_db"] = _audioGain,
-                ["wip_movie_path"] = _wipPath,
-                ["cost_estimates"] = new Dictionary<string, object?>
-                {
-                    ["currency"] = "USD",
-                    ["video_output_per_sec"] = new Dictionary<string, object?>
-                    {
-                        ["480p"] = _rate480,
-                        ["720p"] = _rate720,
-                        ["1080p"] = _rate1080,
-                    },
-                    ["notes"] = "Estimates only — not invoices.",
-                },
-            };
-            // Preserve nested cost fields if present
-            if (_cfg is not null &&
-                _cfg.TryGetValue("cost_estimates", out var oldCe) &&
-                oldCe.ValueKind == JsonValueKind.Object)
-            {
-                var ce = new Dictionary<string, object?>();
-                foreach (var p in oldCe.EnumerateObject())
-                {
-                    if (p.Name == "video_output_per_sec") continue;
-                    ce[p.Name] = p.Value.Deserialize<object>();
-                }
-                ce["video_output_per_sec"] = new Dictionary<string, object?>
-                {
-                    ["480p"] = _rate480,
-                    ["720p"] = _rate720,
-                    ["1080p"] = _rate1080,
-                };
-                updates["cost_estimates"] = ce;
-            }
-
-            await Engine.SaveConfigAsync(_projectId, updates);
+            await PersistProjectConfigAsync();
             _message = $"Settings saved for {_projectId}";
             await LoadAsync();
         }
@@ -573,6 +731,78 @@ else
             _error = ex.Message;
         }
         finally { _busy = false; }
+    }
+
+    /// <summary>Write current form fields to the project config (no busy flag / reload).</summary>
+    private async Task PersistProjectConfigAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_projectId))
+            throw new InvalidOperationException("Choose a project first.");
+
+        var videoProvider = SupportedModelCatalog.ProviderIdFor(_modelName, ModelCapability.Video);
+        var imageProvider = SupportedModelCatalog.ProviderIdFor(_imageModel, ModelCapability.Image);
+        var planningProvider = SupportedModelCatalog.ProviderIdFor(_planningModel, ModelCapability.Chat);
+        var qualityProvider = SupportedModelCatalog.ProviderIdFor(_qualityModel, ModelCapability.Chat);
+
+        var updates = new Dictionary<string, object?>
+        {
+            ["ui_theme"] = _uiTheme,
+            ["blueprint_file"] = _blueprintFile,
+            ["video_provider"] = videoProvider,
+            ["character_design_provider"] = imageProvider,
+            ["image_provider"] = imageProvider,
+            ["planning_provider"] = planningProvider,
+            ["quality_provider"] = qualityProvider,
+            ["model_name"] = _modelName,
+            ["image_model_name"] = _imageModel,
+            ["planning_model_name"] = _planningModel,
+            ["quality_model_name"] = _qualityModel,
+            ["aspect_ratio"] = _aspect,
+            ["resolution"] = _resolution,
+            ["duration_seconds"] = _durationSeconds,
+            ["use_duration_defaults"] = _useDurationDefaults,
+            ["smart_continuation"] = _smartContinuation,
+            ["merge_scene_after_each_clip"] = _mergeAfterClip,
+            ["qa_retry_on_fail"] = _qaRetry,
+            ["regenerate_silent_clips"] = _regenSilent,
+            ["rebuild_wip_movie_after_scene"] = _rebuildWip,
+            ["qa_max_retries"] = _qaMaxRetries,
+            ["qa_frame_count"] = _qaFrameCount,
+            ["composite_audio_gain_db"] = _audioGain,
+            ["wip_movie_path"] = _wipPath,
+            ["cost_estimates"] = new Dictionary<string, object?>
+            {
+                ["currency"] = "USD",
+                ["video_output_per_sec"] = new Dictionary<string, object?>
+                {
+                    ["480p"] = _rate480,
+                    ["720p"] = _rate720,
+                    ["1080p"] = _rate1080,
+                },
+                ["notes"] = "Estimates only — not invoices.",
+            },
+        };
+
+        if (_cfg is not null &&
+            _cfg.TryGetValue("cost_estimates", out var oldCe) &&
+            oldCe.ValueKind == JsonValueKind.Object)
+        {
+            var ce = new Dictionary<string, object?>();
+            foreach (var p in oldCe.EnumerateObject())
+            {
+                if (p.Name == "video_output_per_sec") continue;
+                ce[p.Name] = p.Value.Deserialize<object>();
+            }
+            ce["video_output_per_sec"] = new Dictionary<string, object?>
+            {
+                ["480p"] = _rate480,
+                ["720p"] = _rate720,
+                ["1080p"] = _rate1080,
+            };
+            updates["cost_estimates"] = ce;
+        }
+
+        await Engine.SaveConfigAsync(_projectId, updates);
     }
 
     /// <summary>Live-apply the theme pick to this browser tab so it's visible before Save.

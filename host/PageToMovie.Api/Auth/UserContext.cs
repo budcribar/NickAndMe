@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using PageToMovie.Core.Auth;
+using PageToMovie.Core.Models;
 using PageToMovie.Core.Options;
 using PageToMovie.Engine.Abstractions;
 using PageToMovie.Engine;
@@ -94,36 +95,59 @@ public sealed class DbUserApiKeyProvider : IUserApiKeyProvider
         _auth = opts.Value.Auth ?? new AuthOptions();
     }
 
-    public string? GetKey(string? userId)
+    public string? GetKey(string? userId) => GetKey(userId, "grok");
+
+    public string? GetKey(string? userId, string providerId)
     {
+        var provider = ApiKeyScope.NormalizeProvider(providerId);
+        if (string.IsNullOrEmpty(provider))
+            return null;
+
+        // Request header override is xAI-only (legacy X-Api-Key).
+        if (provider == "grok" && !string.IsNullOrWhiteSpace(userId))
+        {
+            // Fall through to DB / env below.
+        }
+
         if (!string.IsNullOrWhiteSpace(userId))
         {
-            // 1. Query user's decrypted per-account API key from SQLite database
             try
             {
-                var dbKey = _userDb.GetDecryptedXaiApiKeyAsync(userId).GetAwaiter().GetResult();
+                var dbKey = _userDb.GetDecryptedProviderApiKeyAsync(userId, provider).GetAwaiter().GetResult();
                 if (!string.IsNullOrWhiteSpace(dbKey))
                     return dbKey.Trim();
             }
             catch { /* fallback */ }
 
-            // 2. Config options dictionary fallback
-            if (_auth.UserApiKeys.TryGetValue(userId, out var mapped) &&
-                !string.IsNullOrWhiteSpace(mapped))
-                return mapped.Trim();
+            // Config map + USERKEY_* are xAI-only (historical).
+            if (provider == "grok")
+            {
+                if (_auth.UserApiKeys.TryGetValue(userId, out var mapped) &&
+                    !string.IsNullOrWhiteSpace(mapped))
+                    return mapped.Trim();
 
-            // 3. Environment variable fallback (USERKEY_u001)
-            var envName = "USERKEY_" + userId.Trim().Replace('-', '_');
-            var env = Environment.GetEnvironmentVariable(envName)
-                      ?? Environment.GetEnvironmentVariable(envName.ToUpperInvariant());
-            if (!string.IsNullOrWhiteSpace(env))
-                return env.Trim();
+                var envName = "USERKEY_" + userId.Trim().Replace('-', '_');
+                var env = Environment.GetEnvironmentVariable(envName)
+                          ?? Environment.GetEnvironmentVariable(envName.ToUpperInvariant());
+                if (!string.IsNullOrWhiteSpace(env))
+                    return env.Trim();
+            }
         }
 
-        // 4. Server-wide process key fallback
-        var process = Environment.GetEnvironmentVariable("XAI_API_KEY");
+        var processEnv = provider switch
+        {
+            "grok" => SupportedModelCatalog.XaiApiKeyEnv,
+            "gemini" => SupportedModelCatalog.GoogleApiKeyEnv,
+            "anthropic" => SupportedModelCatalog.AnthropicApiKeyEnv,
+            _ => null,
+        };
+        if (processEnv is null) return null;
+        var process = Environment.GetEnvironmentVariable(processEnv);
         return string.IsNullOrWhiteSpace(process) ? null : process.Trim();
     }
 
     public bool HasKey(string? userId) => !string.IsNullOrWhiteSpace(GetKey(userId));
+
+    public bool HasKey(string? userId, string providerId) =>
+        !string.IsNullOrWhiteSpace(GetKey(userId, providerId));
 }

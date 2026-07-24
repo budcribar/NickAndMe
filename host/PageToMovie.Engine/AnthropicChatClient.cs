@@ -41,8 +41,7 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
             _http.BaseAddress = new Uri(ApiBase + "/");
     }
 
-    public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv));
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task<string> CompleteAsync(
         string systemPrompt,
@@ -138,7 +137,7 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
         int promptChars,
         CancellationToken ct)
     {
-        var key = Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv);
+        var key = ResolveApiKey();
         var modeTag = string.IsNullOrWhiteSpace(mode) ? null : mode.Trim();
         var sw = Stopwatch.StartNew();
         try
@@ -221,6 +220,10 @@ public sealed class AnthropicChatClient : IChatClient, IVisionClient
     /// Anthropic Messages API response shape: <c>{ content: [{ type: "text", text: "..." }, ...] }</c>.
     /// Concatenates all text blocks (tool_use / other block types are skipped).
     /// </summary>
+    private static string? ResolveApiKey() =>
+        Abstractions.ApiKeyScope.CurrentAnthropic
+        ?? Environment.GetEnvironmentVariable(SupportedModelCatalog.AnthropicApiKeyEnv);
+
     private static string ExtractMessageText(JsonElement result)
     {
         if (result.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
