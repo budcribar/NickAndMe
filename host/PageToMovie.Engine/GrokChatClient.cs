@@ -18,16 +18,19 @@ public sealed class GrokChatClient : IChatClient
 
     private readonly HttpClient _http;
     private readonly ProjectTelemetryService _telemetry;
+    private readonly IUserApiKeyProvider? _keyProvider;
     private readonly ILogger<GrokChatClient> _log;
 
     public GrokChatClient(
         HttpClient http,
         IOptions<PageToMovieOptions> opts,
         ProjectTelemetryService telemetry,
-        ILogger<GrokChatClient> log)
+        ILogger<GrokChatClient> log,
+        IUserApiKeyProvider? keyProvider = null)
     {
         _http = http;
         _telemetry = telemetry;
+        _keyProvider = keyProvider;
         _log = log;
         if (_http.BaseAddress is null)
             _http.BaseAddress = new Uri(ApiBase + "/");
@@ -217,8 +220,10 @@ public sealed class GrokChatClient : IChatClient
         return raw.Length <= 2000 ? raw : raw[..2000];
     }
 
-    private static string? ResolveApiKey() =>
-        Abstractions.ApiKeyScope.Current ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
+    private string? ResolveApiKey() =>
+        ApiKeyScope.Current ??
+        _keyProvider?.GetKey(null) ??
+        Environment.GetEnvironmentVariable("XAI_API_KEY");
 
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n];
 }

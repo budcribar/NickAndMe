@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using PageToMovie.Core.Models;
 using PageToMovie.Core.Options;
+using PageToMovie.Engine.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace PageToMovie.Engine;
@@ -17,6 +18,7 @@ public sealed class ProjectStore
     private readonly MediaDurationProbe? _duration;
     private readonly SceneListCache? _sceneListCache;
     private readonly ProjectReadCache _readCache;
+    private readonly IUserApiKeyProvider? _keyProvider;
     private readonly string _workspaceRoot;
     private string _activeProjectId = "";
 
@@ -24,10 +26,12 @@ public sealed class ProjectStore
         IOptions<PageToMovieOptions> opts,
         MediaDurationProbe? duration = null,
         SceneListCache? sceneListCache = null,
-        ProjectReadCache? readCache = null)
+        ProjectReadCache? readCache = null,
+        IUserApiKeyProvider? keyProvider = null)
     {
         _opts = opts.Value;
         _duration = duration;
+        _keyProvider = keyProvider;
         // A/B: PageToMovie__EnableReadCaches=false disables scene-list + project/blueprint/dir caches
         _sceneListCache = _opts.EnableReadCaches ? sceneListCache : null;
         _readCache = readCache ?? new ProjectReadCache();
@@ -2294,7 +2298,9 @@ public sealed class ProjectStore
         // Fountain re-sign that changed Stage 1 makes an existing shot plan stale
         if (screenplay.DraftExists && screenplay.Dirty && stage2.Stage2Ready)
             stage2.Stage2Stale = true;
-        var xai = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"));
+        var xai = !string.IsNullOrWhiteSpace(ApiKeyScope.Current) ||
+                  (_keyProvider is not null && _keyProvider.HasKey(null)) ||
+                  !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY"));
 
         var cfg = GetConfigSync(projectId);
         var planningModel = cfg.TryGetValue("planning_model_name", out var pmEl) &&

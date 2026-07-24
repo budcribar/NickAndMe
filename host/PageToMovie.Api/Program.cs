@@ -292,9 +292,18 @@ app.UseCors();
 var jobs = app.Services.GetRequiredService<FilmJobService>();
 jobs.SetProgressSink(app.Services.GetRequiredService<IJobProgressSink>());
 
-app.UseCors();
 app.UseMiddleware<HttpRequestMetricsMiddleware>();
 app.UseMiddleware<JwtHeaderMiddleware>();
+app.Use(async (context, next) =>
+{
+    var keyProvider = context.RequestServices.GetService<IUserApiKeyProvider>();
+    var user = context.RequestServices.GetService<IUserContext>();
+    var key = keyProvider?.GetKey(user?.UserId);
+    using (ApiKeyScope.Push(key))
+    {
+        await next();
+    }
+});
 app.MapHub<JobHub>("/hubs/jobs");
 
 // ── Auth (Phase B + D rate limit) ───────────────────────────────────────────
@@ -864,7 +873,7 @@ app.MapPost("/api/jobs/{jobId}/cancel", async (string jobId, FilmJobService jobS
     return Results.Ok(new { ok = true, job = jobService.GetJob(jobId) });
 });
 
-app.MapGet("/health", (ProjectStore store, IOptions<PageToMovieOptions> opts, IUserContext user) =>
+app.MapGet("/health", (ProjectStore store, IOptions<PageToMovieOptions> opts, IUserContext user, IUserApiKeyProvider keyProvider) =>
     Results.Ok(new
     {
         ok = true,
@@ -874,11 +883,8 @@ app.MapGet("/health", (ProjectStore store, IOptions<PageToMovieOptions> opts, IU
         useFakes = opts.Value.UseFakes || useFakes,
         enableReadCaches = store.ReadCachesEnabled,
         capacity = opts.Value.Capacity,
-        // Specifically XAI, not "is any video provider configured" — video is now
-        // multi-provider (Grok/Gemini) via MultiProviderVideoClient, so IVideoClient.IsConfigured
-        // would be true whenever *either* is set. Match xaiKeyPresent's own env-var check.
-        xaiConfigured = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY")) || useFakes,
-        xaiKeyPresent = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY")),
+        xaiConfigured = keyProvider.HasKey(user.UserId) || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY")) || useFakes,
+        xaiKeyPresent = keyProvider.HasKey(user.UserId) || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XAI_API_KEY")),
         userId = user.UserId,
         isAdmin = user.IsAdmin,
     }));
