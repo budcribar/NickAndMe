@@ -541,7 +541,13 @@ public sealed class ClientVideoStitchService
             if (_media is not null)
                 await _media.SaveBytesAsync(projectId, $"assets/video/scene_{scene:D2}_clip_{clip:D2}.mp4", bytes)
                     .ConfigureAwait(false);
-            await _engine.UploadClipAsync(projectId, scene, clip, bytes, ct).ConfigureAwait(false);
+            // The server copy is what scene listing/OnDisk/stitching actually rely on — a failed
+            // upload here must NOT be reported as success (it silently was, before: this card would
+            // never show up on-disk or play in the assembled movie, with no visible error at all).
+            var (uploaded, uploadError) = await _engine.UploadClipWithResultAsync(projectId, scene, clip, bytes, ct)
+                .ConfigureAwait(false);
+            if (!uploaded)
+                return (false, $"Rendered the credits card but could not save it to the server: {uploadError}");
             return (true, null);
         }
         catch (Exception ex)

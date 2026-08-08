@@ -2570,7 +2570,21 @@ public async Task<ProjectsDto?> DeleteProjectAsync(
         byte[] videoBytes,
         CancellationToken ct = default)
     {
-        if (videoBytes is not { Length: > 0 }) return false;
+        var (ok, _) = await UploadClipWithResultAsync(projectId, scene, clip, videoBytes, ct).ConfigureAwait(false);
+        return ok;
+    }
+
+    /// <summary>Same upload, but surfaces WHY it failed (status code + response body) instead of
+    /// collapsing every failure to a bare false — a caller that treats "uploaded" as "safe to report
+    /// success" (e.g. the credits-card render) needs to know when that's not true.</summary>
+    public async Task<(bool Ok, string? Error)> UploadClipWithResultAsync(
+        string projectId,
+        int scene,
+        int clip,
+        byte[] videoBytes,
+        CancellationToken ct = default)
+    {
+        if (videoBytes is not { Length: > 0 }) return (false, "No video bytes to upload");
         try
         {
             using var form = new MultipartFormDataContent();
@@ -2580,11 +2594,13 @@ public async Task<ProjectsDto?> DeleteProjectAsync(
 
             var url = ClipUploadUrl(projectId, scene, clip);
             using var resp = await _http.PostAsync(url, form, ct);
-            return resp.IsSuccessStatusCode;
+            if (resp.IsSuccessStatusCode) return (true, null);
+            var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            return (false, $"HTTP {(int)resp.StatusCode}: {(string.IsNullOrWhiteSpace(body) ? resp.ReasonPhrase : body)}");
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return (false, ex.Message);
         }
     }
 
