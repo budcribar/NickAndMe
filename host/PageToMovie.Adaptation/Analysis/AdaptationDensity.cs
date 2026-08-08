@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using PageToMovie.Core.Utils;
+using PageToMovie.Adaptation.Conversion;
 
 namespace PageToMovie.Adaptation;
 
@@ -97,7 +98,7 @@ public static class AdaptationDensity
         {
             kind = bookKind.Trim();
             // Prefer analyzer word count when available without re-entering suggested-runtime.
-            words = TextMetrics.CountWords(NormalizeBookText(text));
+            words = TextMetrics.CountWords(BookToFountainConverter.NormalizeBookText(text));
             if (words <= 0)
                 words = TextMetrics.CountWords(text);
         }
@@ -209,14 +210,6 @@ public static class AdaptationDensity
             return null;
         var half = (int)Math.Round(natural.NaturalFilmMinutes * 0.5);
         return Math.Clamp(half, 20, natural.NaturalFilmMinutes - 5);
-    }
-
-
-    /// <summary>Gutenberg strip + newline normalize (same as former BookToFountainConverter.NormalizeBookText).</summary>
-    private static string NormalizeBookText(string bookText)
-    {
-        var cleaned = GutenbergCleaner.StripHeaderAndFooter(bookText ?? "");
-        return cleaned.Replace("\r\n", "\n").Replace('\r', '\n').Trim();
     }
 
     /// <summary>Rough prior: character mass inside ASCII/curly quotes over total letters.</summary>

@@ -339,7 +339,7 @@ public sealed class AdaptationService
             mode: mode,
             ct: ct).ConfigureAwait(false);
 
-        var cleaned = StripFences(raw);
+        var cleaned = BookToFountainConverter.StripFences(raw ?? "");
         if (string.IsNullOrWhiteSpace(cleaned))
             return new FountainEditResult(false, fountain, before, before, true,
                 $"The {operation} returned nothing; kept the original.");
@@ -389,7 +389,7 @@ public sealed class AdaptationService
         var raw = await chat.CompleteAsync(
             system, fountain, model ?? "", mode: "fountain_trim", ct: ct).ConfigureAwait(false);
 
-        var cleaned = StripFences(raw);
+        var cleaned = BookToFountainConverter.StripFences(raw ?? "");
         if (string.IsNullOrWhiteSpace(cleaned))
             return new FountainEditResult(false, fountain, before, before, true,
                 "The trim returned nothing; kept the original.");
@@ -414,20 +414,6 @@ public sealed class AdaptationService
     {
         try { return BookToFountainConverter.CountSceneHeadings(fountain); }
         catch { return 0; }
-    }
-
-    /// <summary>Strip an accidental leading/trailing ``` code fence (with optional language tag).</summary>
-    private static string StripFences(string? text)
-    {
-        var t = (text ?? "").Trim();
-        if (t.StartsWith("```", StringComparison.Ordinal))
-        {
-            var nl = t.IndexOf('\n');
-            if (nl >= 0) t = t[(nl + 1)..];
-            if (t.EndsWith("```", StringComparison.Ordinal))
-                t = t[..^3];
-        }
-        return t.Trim();
     }
 
     private static NaturalRuntimeEstimate ToNaturalRuntimeEstimate(
