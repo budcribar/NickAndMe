@@ -537,17 +537,47 @@ public sealed class ClientVideoStitchService
                 return (false, res?.Error ?? "Credits card render failed");
 
             var bytes = Convert.FromBase64String(res.Mp4Base64);
-            // Persist exactly like a generated clip: local media folder (if connected) + server slot.
+            var relPath = $"assets/video/scene_{scene:D2}_clip_{clip:D2}.mp4";
+
+            // Client storage is primary, same as every other clip type: save locally and register the
+            // hash with the server (writes a .client.json sidecar — see POST .../media/register) rather
+            // than treating the server upload as the main copy. Best-effort — a forkable/curated source
+            // project (project.json "keep_media_on_server") ignores the registration and needs the real
+            // file server-side instead, and the register endpoint doesn't tell the caller which case it
+            // is — so this alone is never sufficient on its own; see the always-upload fallback below.
             if (_media is not null)
-                await _media.SaveBytesAsync(projectId, $"assets/video/scene_{scene:D2}_clip_{clip:D2}.mp4", bytes)
-                    .ConfigureAwait(false);
-            // The server copy is what scene listing/OnDisk/stitching actually rely on — a failed
-            // upload here must NOT be reported as success (it silently was, before: this card would
-            // never show up on-disk or play in the assembled movie, with no visible error at all).
+            {
+                var (savedOk, _, sha256, sizeBytes, _) =
+                    await _media.SaveBytesAsync(projectId, relPath, bytes).ConfigureAwait(false);
+                if (savedOk && !string.IsNullOrWhiteSpace(sha256))
+                {
+                    try
+                    {
+                        await _engine.RegisterMediaAsync(projectId, new MediaRegisterRequest
+                        {
+                            RelativePath = relPath,
+                            Sha256 = sha256!,
+                            SizeBytes = sizeBytes,
+                            Kind = "credits",
+                            Scene = scene,
+                            Clip = clip,
+                        }, ct).ConfigureAwait(false);
+                    }
+                    catch { /* best effort — the upload below is the real safety net */ }
+                }
+            }
+
+            // Always also ensure the server has the real bytes. The credits card is a few seconds of
+            // simple canvas-rendered text — trivially small next to a real AI-generated clip — so
+            // uploading it unconditionally is cheap, and it's the only way to guarantee correctness for
+            // keep-media-on-server projects (whose forks depend on this clip being server-resolvable)
+            // without the client needing to know that flag. A failed upload must NOT be reported as
+            // success (it silently was, before: this card would never show up on-disk or play in the
+            // assembled movie, with no visible error at all).
             var (uploaded, uploadError) = await _engine.UploadClipWithResultAsync(projectId, scene, clip, bytes, ct)
                 .ConfigureAwait(false);
             if (!uploaded)
-                return (false, $"Rendered the credits card but could not save it to the server: {uploadError}");
+                return (false, $"Rendered the credits card but could not save it: {uploadError}");
             return (true, null);
         }
         catch (Exception ex)

@@ -1035,19 +1035,19 @@ public sealed class ClientMediaFolderService
     /// By default does <b>not</b> open a folder picker mid-flow — tries silent reconnect only.
     /// Pass <paramref name="promptToConnectFolder"/> only from an explicit "Connect folder" control.
     /// </summary>
-    public async Task<(bool Ok, string? RelativePath, string? Error)> SaveBytesAsync(
+    public async Task<(bool Ok, string? RelativePath, string? Sha256, long SizeBytes, string? Error)> SaveBytesAsync(
         string projectId, string relativePath, byte[] bytes, bool promptToConnectFolder = false)
     {
         if (bytes is null || bytes.Length == 0)
-            return (false, null, "Empty audio");
+            return (false, null, null, 0, "Empty audio");
         if (!IsConnected)
             await TryReconnectAsync();
         if (!IsConnected)
         {
             if (!promptToConnectFolder)
-                return (false, null, "Media folder not connected — sample still saved on the project");
+                return (false, null, null, 0, "Media folder not connected — sample still saved on the project");
             var ok = await ConnectFolderAsync();
-            if (!ok) return (false, null, LastStatus ?? "Connect a media folder first");
+            if (!ok) return (false, null, null, 0, LastStatus ?? "Connect a media folder first");
         }
         try
         {
@@ -1061,13 +1061,13 @@ public sealed class ClientMediaFolderService
             {
                 LastStatus = $"Saved {Path.GetFileName(clientPath)} to media folder";
                 Changed?.Invoke();
-                return (true, res.RelativePath ?? clientPath, null);
+                return (true, res.RelativePath ?? clientPath, res.Sha256, res.SizeBytes, null);
             }
-            return (false, null, res?.Error ?? "Could not write to media folder");
+            return (false, null, null, 0, res?.Error ?? "Could not write to media folder");
         }
         catch (Exception ex)
         {
-            return (false, null, ex.Message);
+            return (false, null, null, 0, ex.Message);
         }
     }
 
@@ -1121,6 +1121,7 @@ public sealed class ClientMediaFolderService
         public string? RelativePath { get; set; }
         public string? Error { get; set; }
         public long SizeBytes { get; set; }
+        public string? Sha256 { get; set; }
     }
 
     private sealed class JsListAudioResult
