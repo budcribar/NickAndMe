@@ -259,6 +259,26 @@ public static class AiRetryPolicy
         // above instead of reaching here.
         throw new InvalidOperationException("ExecuteWithTransientRetryAsync exhausted attempts unexpectedly.");
     }
+
+    /// <summary>
+    /// Shared chat-provider transient retry + error-log wiring used by Anthropic/Gemini (and
+    /// any future provider client). Stage string is the only per-provider difference.
+    /// </summary>
+    public static Task<string> ChatSendWithTransientRetryAsync(
+        Func<int, Task<string>> call,
+        GenerationErrorLogger? errorLogger,
+        string stage,
+        string model,
+        string? mode,
+        CancellationToken ct) =>
+        ExecuteWithTransientRetryAsync(
+            call,
+            isTransient: IsTransientChatFailure,
+            maxAttempts: DefaultTransientMaxAttempts,
+            backoffBaseMs: DefaultTransientBackoffMs,
+            onRetry: (attemptNum, ex) => errorLogger.LogRetryAttemptAsync(
+                stage, model, $"mode={mode}", attemptNum, ex, ct),
+            ct: ct);
 }
 
 /// <summary>

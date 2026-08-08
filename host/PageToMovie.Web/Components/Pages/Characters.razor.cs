@@ -676,6 +676,8 @@ public partial class Characters
             _savedLookVisualLock = _editVisualLock;
             _lookSaveHint = null;
             _lookSaveCts?.Cancel();
+            _lookSaveCts?.Dispose();
+            _lookSaveCts = null;
             _editVoiceLabel = _selected.VoiceLabel ?? "";
             _editVoiceProfile = _selected.VoiceProfile ?? "";
             _forceShowVoice = false;
@@ -1211,6 +1213,7 @@ public partial class Characters
     private void ScheduleAutoSaveLook()
     {
         _lookSaveCts?.Cancel();
+        _lookSaveCts?.Dispose();
         _lookSaveCts = new CancellationTokenSource();
         var token = _lookSaveCts.Token;
         _lookSaveHint = "Pending…";
@@ -1387,7 +1390,9 @@ public partial class Characters
     private void ScheduleAutoSaveVoice()
     {
         _voiceSaveCts?.Cancel();
+        _voiceSaveCts?.Dispose();
         _lookSaveCts?.Cancel();
+        _lookSaveCts?.Dispose();
         _voiceSaveCts = new CancellationTokenSource();
         var token = _voiceSaveCts.Token;
         _ = AutoSaveVoiceDebouncedAsync(token);
@@ -2011,7 +2016,10 @@ public partial class Characters
     {
         _voiceSaveCts?.Cancel();
         _voiceSaveCts?.Dispose();
-        // original continues
+        _voiceSaveCts = null;
+        _lookSaveCts?.Cancel();
+        _lookSaveCts?.Dispose();
+        _lookSaveCts = null;
         await DisposeAsyncCore();
     }
 
