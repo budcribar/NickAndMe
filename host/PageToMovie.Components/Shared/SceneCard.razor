@@ -1,0 +1,51 @@
+@namespace PageToMovie.Web.Components
+
+<div class="@CssClass"
+     data-testid="@(TestId ?? "scene-row")"
+     data-scene-number="@SceneNumber">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            @if (ShowCheckbox)
+            {
+                <input type="checkbox"
+                       class="form-check-input"
+                       checked="@Selected"
+                       @onchange="OnCheckboxChanged" />
+            }
+            <span class="fw-semibold">S@(SceneNumber.ToString("D2"))</span>
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <span class="text-muted small">@Title</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(StatusText))
+            {
+                <span class="badge text-bg-secondary">@StatusText</span>
+            }
+            @if (Actions is not null)
+            {
+                <div class="ms-auto d-flex flex-wrap gap-1">@Actions</div>
+            }
+        </div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public int SceneNumber { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback<bool> SelectedChanged { get; set; }
+    [Parameter] public bool ShowCheckbox { get; set; } = true;
+    [Parameter] public string? StatusText { get; set; }
+    [Parameter] public string CssClass { get; set; } = "card mb-2";
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    async Task OnCheckboxChanged(ChangeEventArgs e)
+    {
+        var v = e.Value is bool b && b
+                || string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        await SelectedChanged.InvokeAsync(v);
+    }
+}

@@ -1,0 +1,46 @@
+@namespace PageToMovie.Web.Components
+
+@if (HasContent)
+{
+    <div class="@CssClass" data-testid="@TestId" @attributes="AdditionalAttributes">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <div class="fw-semibold mb-1">@Title</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <div class="small">@Message</div>
+        }
+        @if (OnAction.HasDelegate)
+        {
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" @onclick="OnAction">
+                @(string.IsNullOrWhiteSpace(ActionLabel) ? "Continue" : ActionLabel)
+            </button>
+        }
+        else if (!string.IsNullOrWhiteSpace(ActionHref))
+        {
+            <a class="small d-inline-block mt-1" href="@ActionHref">@(ActionLabel ?? "Open →")</a>
+        }
+        @ChildContent
+    </div>
+}
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string CssClass { get; set; } = "text-muted py-3";
+    [Parameter] public string? ActionHref { get; set; }
+    [Parameter] public string? ActionLabel { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    bool HasContent =>
+        !string.IsNullOrWhiteSpace(Title)
+        || !string.IsNullOrWhiteSpace(Message)
+        || OnAction.HasDelegate
+        || !string.IsNullOrWhiteSpace(ActionHref)
+        || ChildContent is not null;
+}

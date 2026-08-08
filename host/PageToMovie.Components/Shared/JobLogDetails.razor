@@ -1,0 +1,18 @@
+@namespace PageToMovie.Web.Components
+@using System.Linq
+
+@if (Visible && Lines is { Count: > 0 })
+{
+    <details class="mt-2" data-testid="@TestId">
+        <summary class="small text-muted" style="cursor:pointer">@Summary</summary>
+        <pre class="small mb-0 mt-1" style="max-height: 160px; overflow: auto;">@string.Join("\n", Lines.TakeLast(MaxLines))</pre>
+    </details>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<string>? Lines { get; set; }
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public string Summary { get; set; } = "Details (admin)";
+    [Parameter] public int MaxLines { get; set; } = 24;
+    [Parameter] public string? TestId { get; set; }
+}

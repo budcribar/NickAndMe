@@ -1,0 +1,107 @@
+@namespace PageToMovie.Web.Components
+@using System.Linq
+
+@if (Visible)
+{
+    <div class="card mb-3 @BorderClass @CssClass"
+         data-testid="@TestId"
+         data-job-status="@Status"
+         data-job-kind="@Kind"
+         data-job-running="@(IsActive ? "true" : "false")">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+                <div class="small">
+                    <span class="visually-hidden" data-testid="@(TestId)-status">@Status</span>
+                    @if (!string.IsNullOrWhiteSpace(Message))
+                    {
+                        <span>@Message</span>
+                    }
+                    else if (Indeterminate)
+                    {
+                        <span>Working…</span>
+                    }
+                    @if (!Indeterminate && Total > 0 && string.Equals(Status, "running", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <span class="text-muted ms-1">@Index / @Total</span>
+                    }
+                </div>
+                @if (ShowCancel)
+                {
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            data-testid="@(TestId)-cancel"
+                            disabled="@CancelDisabled"
+                            @onclick="OnCancel">
+                        @CancelLabel
+                    </button>
+                }
+            </div>
+            @{
+                var pct = EffectivePercent();
+                var barHeight = Indeterminate ? "0.85rem" : "0.5rem";
+            }
+            <div class="progress mt-2" style="height: @barHeight;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated @(Indeterminate ? "bg-primary" : null)"
+                     role="progressbar"
+                     style="width: @(pct)%"
+                     aria-valuenow="@pct"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
+            </div>
+            @if (!string.IsNullOrEmpty(DetailMessage))
+            {
+                <div class="form-text mt-1">@DetailMessage</div>
+            }
+            @if (ShowLog && LogLines is { Count: > 0 })
+            {
+                <details class="mt-2">
+                    <summary class="small text-muted" style="cursor:pointer">@LogSummary</summary>
+                    <pre class="small mb-0 mt-1" style="max-height: 160px; overflow: auto;">@string.Join("\n", LogLines.TakeLast(LogMaxLines))</pre>
+                </details>
+            }
+            @ChildContent
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public string Status { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string? DetailMessage { get; set; }
+    [Parameter] public int Index { get; set; }
+    [Parameter] public int Total { get; set; }
+    [Parameter] public int? Percent { get; set; }
+    [Parameter] public bool Indeterminate { get; set; }
+    [Parameter] public bool ShowCancel { get; set; }
+    [Parameter] public bool CancelDisabled { get; set; }
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public IReadOnlyList<string>? LogLines { get; set; }
+    [Parameter] public bool ShowLog { get; set; }
+    [Parameter] public string LogSummary { get; set; } = "Details (admin)";
+    [Parameter] public int LogMaxLines { get; set; } = 24;
+    [Parameter] public string? Kind { get; set; }
+    [Parameter] public string TestId { get; set; } = "job-panel";
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    bool IsActive =>
+        string.Equals(Status, "running", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Status, "queued", StringComparison.OrdinalIgnoreCase);
+
+    string BorderClass =>
+        string.Equals(Status, "error", StringComparison.OrdinalIgnoreCase) ? "border-danger"
+        : IsActive ? "border-primary"
+        : "border-secondary";
+
+    int EffectivePercent()
+    {
+        if (Indeterminate) return 45;
+        if (Percent is int p) return Math.Clamp(p, 0, 100);
+        var st = Status?.Trim().ToLowerInvariant() ?? "";
+        if (st == "queued" || Total <= 0) return 8;
+        if (st == "running" && Index <= 0) return 0;
+        return (int)Math.Round(100.0 * Math.Clamp(Index, 0, Total) / Math.Max(1, Total));
+    }
+}

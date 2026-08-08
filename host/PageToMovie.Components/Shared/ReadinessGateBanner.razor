@@ -1,0 +1,26 @@
+@namespace PageToMovie.Web.Components
+
+@if (Visible)
+{
+    <p class="@CssClass" data-testid="@TestId" @attributes="AdditionalAttributes">
+        @(string.IsNullOrWhiteSpace(Reason) ? FallbackReason : Reason)
+        @if (!string.IsNullOrWhiteSpace(ActionHref))
+        {
+            <a href="@ActionHref">@ActionLabel</a>
+        }
+        @ChildContent
+    </p>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string? Reason { get; set; }
+    [Parameter] public string FallbackReason { get; set; } = "Complete the previous step first.";
+    [Parameter] public string? ActionHref { get; set; }
+    [Parameter] public string ActionLabel { get; set; } = "Open →";
+    [Parameter] public string CssClass { get; set; } = "text-muted mb-3";
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

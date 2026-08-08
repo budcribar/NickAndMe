@@ -1,0 +1,36 @@
+@namespace PageToMovie.Web.Components
+
+<div class="@CssClass" data-testid="@TestId">
+    @if (!string.IsNullOrWhiteSpace(Title) || ShowClose)
+    {
+        <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="fw-semibold">@Title</span>
+            @if (ShowClose)
+            {
+                <button type="button" class="btn-close" aria-label="Close" @onclick="OnClose"></button>
+            }
+        </div>
+    }
+    <div class="card-body">
+        @ChildContent
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="alert alert-danger py-1 px-2 small mb-0 mt-2">@Error</div>
+        }
+        @if (Footer is not null)
+        {
+            <div class="mt-2">@Footer</div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public string CssClass { get; set; } = "card mb-3 border-secondary";
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+}
