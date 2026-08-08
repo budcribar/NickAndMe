@@ -250,9 +250,13 @@ public sealed class GrokVideoClient : IVideoClient
             ["duration"] = durationSeconds,
             ["video"] = new Dictionary<string, object?> { ["url"] = videoUri },
             // Ask xAI to persist the result to the Files API so a later video-edit can reuse its
-            // file_id — see StorageExpiresAfterSeconds. Unknown/ignored by the API if this
-            // particular field name turns out stale; the url-based download path is unaffected.
-            ["storage_options"] = new Dictionary<string, object?> { ["expires_after"] = StorageExpiresAfterSeconds },
+            // file_id — see StorageExpiresAfterSeconds. "filename" is required by the API (a 422
+            // without it) — content doesn't matter to xAI, just needs to be a valid, unique name.
+            ["storage_options"] = new Dictionary<string, object?>
+            {
+                ["expires_after"] = StorageExpiresAfterSeconds,
+                ["filename"] = $"grok-video-{Guid.NewGuid():N}.mp4",
+            },
         };
         // resolution/aspect may be ignored on extensions; still send when API allows
         if (!string.IsNullOrWhiteSpace(resolution))
@@ -311,8 +315,13 @@ public sealed class GrokVideoClient : IVideoClient
             ["aspect_ratio"] = ResolveAspectRatio(model),
             ["resolution"] = resolution,
             // Ask xAI to persist the result to the Files API so a later video-edit can reuse its
-            // file_id — see StorageExpiresAfterSeconds.
-            ["storage_options"] = new Dictionary<string, object?> { ["expires_after"] = StorageExpiresAfterSeconds },
+            // file_id — see StorageExpiresAfterSeconds. "filename" is required by the API (a 422
+            // without it) — content doesn't matter to xAI, just needs to be a valid, unique name.
+            ["storage_options"] = new Dictionary<string, object?>
+            {
+                ["expires_after"] = StorageExpiresAfterSeconds,
+                ["filename"] = $"grok-video-{Guid.NewGuid():N}.mp4",
+            },
         };
 
         if (startUri is not null)
