@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using PageToMovie.Core.Models;
 using PageToMovie.Core.Utils;
 
@@ -83,26 +84,21 @@ public sealed class SceneListCache
         return list;
     }
 
-    private static SceneSummary CloneSummary(SceneSummary s) => new()
+    // JSON round-trip rather than a field-by-field copy: a manual copy silently drops any field the
+    // author forgets to list, and stays silent forever — SceneSummary.IsCredits, IsUserOverride,
+    // IsApproved, and HasBackgroundMusic were all missing here and got reset to their default
+    // (false) on every cache read, e.g. an end-credits scene reporting IsCredits=false and never
+    // being routed to client-side rendering. This can't drop a field again when SceneSummary grows
+    // new ones later.
+    private static SceneSummary CloneSummary(SceneSummary s)
     {
-        SceneNumber = s.SceneNumber,
-        Setting = s.Setting,
-        ClipCount = s.ClipCount,
-        ClipsOnDisk = s.ClipsOnDisk,
-        ClipsComplete = s.ClipsComplete,
-        PlannedDurationSeconds = s.PlannedDurationSeconds,
-        ActualDurationSeconds = s.ActualDurationSeconds,
-        DurationSeconds = s.DurationSeconds,
-        CompositeExists = s.CompositeExists,
-        CharactersOnScreen = s.CharactersOnScreen?.ToList() ?? new List<string>(),
-        LocationIds = s.LocationIds?.ToList() ?? new List<string>(),
-        PrimaryLocationId = s.PrimaryLocationId,
-        Status = s.Status,
-        // Locks applied per-request — leave empty in cache
-        LockOwnerUserId = null,
-        LockedByOther = false,
-        LockReason = null,
-    };
+        var clone = JsonSerializer.Deserialize<SceneSummary>(JsonSerializer.Serialize(s))!;
+        // Locks applied per-request — leave empty in cache regardless of what was serialized.
+        clone.LockOwnerUserId = null;
+        clone.LockedByOther = false;
+        clone.LockReason = null;
+        return clone;
+    }
 
     private sealed class CacheEntry
     {
