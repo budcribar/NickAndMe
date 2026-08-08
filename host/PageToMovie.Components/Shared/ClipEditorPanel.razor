@@ -1,0 +1,29 @@
+@namespace PageToMovie.Web.Components
+
+<div data-testid="@TestId">
+    <div class="fw-semibold mb-2">@Title</div>
+    <label class="form-label small">Prompt</label>
+    <textarea class="form-control form-control-sm"
+              rows="4"
+              disabled="@Busy"
+              value="@Prompt"
+              @oninput="OnPromptInput"></textarea>
+    @Fields
+    @if (Actions is not null)
+    {
+        <div class="d-flex justify-content-end gap-2 mt-3">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Edit clip";
+    [Parameter] public string Prompt { get; set; } = "";
+    [Parameter] public EventCallback<string> PromptChanged { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? Fields { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    Task OnPromptInput(ChangeEventArgs e) =>
+        PromptChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

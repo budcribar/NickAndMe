@@ -1,0 +1,32 @@
+@namespace PageToMovie.Web.Components
+
+<div class="@CssClass" data-testid="@TestId">
+    @if (ShowSearch)
+    {
+        <input class="form-control form-control-sm"
+               style="max-width: 14rem;"
+               placeholder="@SearchPlaceholder"
+               value="@Search"
+               @oninput="OnSearchInput" />
+    }
+    @ChildContent
+    @if (ShowClear)
+    {
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OnClear">Clear</button>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Search { get; set; }
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
+    [Parameter] public string SearchPlaceholder { get; set; } = "Search…";
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public bool ShowClear { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public string CssClass { get; set; } = "d-flex flex-wrap align-items-center gap-2 mb-3";
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    async Task OnSearchInput(ChangeEventArgs e) =>
+        await SearchChanged.InvokeAsync(e.Value?.ToString());
+}

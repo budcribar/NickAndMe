@@ -1,0 +1,54 @@
+@namespace PageToMovie.Web.Components
+
+<div class="character-voice-panel" data-testid="@TestId">
+    <div class="mb-2">
+        <label class="form-label small mb-1">Voice label</label>
+        <input class="form-control form-control-sm"
+               disabled="@Busy"
+               value="@VoiceLabel"
+               @oninput="OnLabelInput" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label small mb-1">Voice profile</label>
+        <textarea class="form-control form-control-sm"
+                  rows="3"
+                  disabled="@Busy"
+                  value="@VoiceProfile"
+                  @oninput="OnProfileInput"></textarea>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(PreviewUrl))
+    {
+        <audio class="w-100 mb-2" controls src="@PreviewUrl"></audio>
+    }
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="form-text">@Hint</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="alert alert-danger py-1 px-2 small mt-2 mb-0">@Error</div>
+    }
+    @if (Actions is not null)
+    {
+        <div class="d-flex flex-wrap gap-2 mt-2">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string VoiceLabel { get; set; } = "";
+    [Parameter] public EventCallback<string> VoiceLabelChanged { get; set; }
+    [Parameter] public string VoiceProfile { get; set; } = "";
+    [Parameter] public EventCallback<string> VoiceProfileChanged { get; set; }
+    [Parameter] public string? PreviewUrl { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    Task OnLabelInput(ChangeEventArgs e) =>
+        VoiceLabelChanged.InvokeAsync(e.Value?.ToString() ?? "");
+
+    Task OnProfileInput(ChangeEventArgs e) =>
+        VoiceProfileChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

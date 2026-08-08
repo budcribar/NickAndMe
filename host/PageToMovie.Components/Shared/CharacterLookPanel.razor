@@ -1,0 +1,45 @@
+@namespace PageToMovie.Web.Components
+
+<div class="character-look-panel" data-testid="@TestId">
+    <div class="mb-2">
+        <label class="form-label small mb-1">Description</label>
+        <textarea class="form-control form-control-sm"
+                  rows="3"
+                  disabled="@Busy"
+                  value="@Description"
+                  @oninput="OnDescriptionInput"></textarea>
+    </div>
+    <div class="mb-2">
+        <label class="form-label small mb-1">Visual lock</label>
+        <textarea class="form-control form-control-sm"
+                  rows="3"
+                  disabled="@Busy"
+                  value="@VisualLock"
+                  @oninput="OnVisualLockInput"></textarea>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="form-text">@Hint</div>
+    }
+    @if (Actions is not null)
+    {
+        <div class="d-flex flex-wrap gap-2 mt-2">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public EventCallback<string> DescriptionChanged { get; set; }
+    [Parameter] public string VisualLock { get; set; } = "";
+    [Parameter] public EventCallback<string> VisualLockChanged { get; set; }
+    [Parameter] public string? Hint { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    Task OnDescriptionInput(ChangeEventArgs e) =>
+        DescriptionChanged.InvokeAsync(e.Value?.ToString() ?? "");
+
+    Task OnVisualLockInput(ChangeEventArgs e) =>
+        VisualLockChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

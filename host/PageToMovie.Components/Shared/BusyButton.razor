@@ -1,0 +1,41 @@
+@namespace PageToMovie.Web.Components
+
+<button type="@Type"
+        class="@CssClass"
+        disabled="@(Busy || Disabled)"
+        title="@Title"
+        aria-busy="@Busy"
+        data-testid="@TestId"
+        @onclick="OnClick"
+        @attributes="AdditionalAttributes">
+    @if (Busy)
+    {
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span class="ms-1">@(string.IsNullOrEmpty(BusyLabel) ? Label : BusyLabel)</span>
+    }
+    else if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        @Label
+    }
+</button>
+
+@code {
+    [Parameter] public bool Busy { get; set; }
+    /// <summary>Idle label (required for accessibility).</summary>
+    [Parameter] public string Label { get; set; } = "";
+    /// <summary>Label while Busy. Default: same as Label.</summary>
+    [Parameter] public string? BusyLabel { get; set; }
+    [Parameter] public string CssClass { get; set; } = "btn btn-primary";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

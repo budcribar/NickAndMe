@@ -1,0 +1,59 @@
+@namespace PageToMovie.Web.Components
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+<button type="button"
+        class="@CssClass"
+        title="@Title"
+        data-testid="@TestId"
+        @onclick="CopyAsync">
+    @(_copied ? CopiedLabel : Label)
+</button>
+
+@code {
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "Copy";
+    [Parameter] public string CopiedLabel { get; set; } = "Copied";
+    [Parameter] public string CssClass { get; set; } = "btn btn-sm btn-outline-secondary";
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? TestId { get; set; }
+    [Parameter] public int ResetMs { get; set; } = 1500;
+
+    bool _copied;
+    CancellationTokenSource? _resetCts;
+
+    async Task CopyAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", Text);
+        }
+        catch
+        {
+            /* clipboard may be blocked — non-fatal */
+        }
+
+        _resetCts?.Cancel();
+        _resetCts?.Dispose();
+        _resetCts = new CancellationTokenSource();
+        var ct = _resetCts.Token;
+        _copied = true;
+        try
+        {
+            await Task.Delay(ResetMs, ct);
+            _copied = false;
+        }
+        catch (OperationCanceledException)
+        {
+            /* superseded by another copy */
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _resetCts?.Cancel();
+        _resetCts?.Dispose();
+        _resetCts = null;
+        await ValueTask.CompletedTask;
+    }
+}
