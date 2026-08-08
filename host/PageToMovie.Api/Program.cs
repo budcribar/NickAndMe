@@ -6455,6 +6455,14 @@ app.MapPost("/api/projects/{id}/scenes/{scene:int}/clips/{clip:int}/upload", asy
         await file.CopyToAsync(stream, ct).ConfigureAwait(false);
     }
 
+    // Every other clip-writing path (generation, remux, stage2) invalidates the scene-list/dir-index
+    // read cache after writing — this client-render upload path (credits card, extend-source) didn't,
+    // so a clip written here could sit invisible to OnDisk/listing checks for the rest of the cache's
+    // TTL. A generated clip's own multi-second API round trip usually outlasts that window; a fast
+    // client-side canvas render (the credits card) does not, so it reliably hit the stale window.
+    if (!string.Equals(kind, "extend-source", StringComparison.OrdinalIgnoreCase))
+        store.InvalidateSceneListCache(id);
+
     return Results.Ok(new { ok = true, projectId = id, scene, clip, path = destPath });
 });
 
