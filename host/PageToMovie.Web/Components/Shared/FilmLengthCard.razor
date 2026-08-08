@@ -123,6 +123,7 @@
     private void ScheduleAutosave()
     {
         _saveCts?.Cancel();
+        _saveCts?.Dispose();
         _saveCts = new CancellationTokenSource();
         var ct = _saveCts.Token;
         _ = Task.Run(async () =>
@@ -199,5 +200,10 @@
         await SaveAsync();
     }
 
-    public void Dispose() => _saveCts?.Cancel();
+    public void Dispose()
+    {
+        _saveCts?.Cancel();
+        _saveCts?.Dispose();
+        _saveCts = null;
+    }
 }

@@ -138,41 +138,14 @@ public sealed class GeminiChatClient : IChatClient, IVisionClient, IGeminiVideoA
             model, "clip_auto_review", ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Retries the whole <see cref="SendAsync"/> call (including its internal 404-model-fallback
-    /// and param-shape self-heal recursion, untouched) on 429/5xx or a network/timeout failure.
-    /// Logs each failed attempt via <see cref="GenerationErrorLogger"/> before backing off.
-    /// </summary>
-    private async Task<string> SendWithTransientRetryAsync(
+    private Task<string> SendWithTransientRetryAsync(
         Func<int, Task<string>> call,
         string model,
         string? mode,
-        CancellationToken ct)
-    {
-        return await AiRetryPolicy.ExecuteWithTransientRetryAsync(
-            call,
-            isTransient: AiRetryPolicy.IsTransientChatFailure,
-            maxAttempts: AiRetryPolicy.DefaultTransientMaxAttempts,
-            backoffBaseMs: AiRetryPolicy.DefaultTransientBackoffMs,
-            onRetry: async (attemptNum, ex) =>
-            {
-                if (_errorLogger is null) return;
-                var httpStatus = ex is ChatHttpStatusException hse2 ? hse2.StatusCode : (int?)null;
-                await _errorLogger.LogAsync(new GenerationErrorRecord
-                {
-                    Stage = "gemini_chat_completion",
-                    Provider = SupportedModelCatalog.CatalogProviderId(model, "chat"),
-                    Model = model,
-                    ErrorType = httpStatus is not null ? "http_error" : "exception",
-                    ErrorMessage = ex.Message,
-                    HttpStatus = httpStatus,
-                    Attempt = attemptNum,
-                    Resolved = false,
-                    RequestSummary = $"mode={mode}",
-                }, ct).ConfigureAwait(false);
-            },
-            ct: ct).ConfigureAwait(false);
-    }
+        CancellationToken ct) =>
+        AiRetryPolicy.ChatSendWithTransientRetryAsync(
+            call, _errorLogger, "gemini_chat_completion", model, mode, ct);
+
 
     /// <summary>
     /// Not implemented for Gemini — book-page OCR / cast classification stay on

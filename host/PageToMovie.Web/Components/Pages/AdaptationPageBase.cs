@@ -91,6 +91,8 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
         if (snap.Status is "done" or "error" or "cancelled")
         {
             _pollCts?.Cancel();
+            _pollCts?.Dispose();
+            _pollCts = null;
             if (snap.Status == "done" && ProgressTotal > 0)
                 ProgressIndex = ProgressTotal;
             _ = InvokeAsync(async () =>
@@ -475,6 +477,7 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
     protected void StartJobPolling()
     {
         _pollCts?.Cancel();
+        _pollCts?.Dispose();
         _pollCts = new CancellationTokenSource();
         var ct = _pollCts.Token;
         _ = Task.Run(async () =>
@@ -723,6 +726,8 @@ public abstract class AdaptationPageBase : ComponentBase, IAsyncDisposable
     public virtual async ValueTask DisposeAsync()
     {
         _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = null;
         Hub.JobUpdated -= OnJobUpdated;
         Hub.JobLog -= OnJobLog;
         await Task.CompletedTask;

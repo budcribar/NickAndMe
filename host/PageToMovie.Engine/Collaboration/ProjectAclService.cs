@@ -27,9 +27,6 @@ public sealed class ProjectAclService : IProjectAclService
         _email = email;
     }
 
-    // Back-compat ctor used by some DI registrations
-    public ProjectAclService(string projectsRoot) : this(projectsRoot, null, null) { }
-
     public async Task<ProjectAclDocument> GetOrCreateAclAsync(string projectId, string ownerUserId, CancellationToken ct = default)
     {
         var existing = await LoadAsync(projectId, ct);

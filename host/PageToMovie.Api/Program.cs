@@ -2650,6 +2650,33 @@ app.MapGet("/api/jobs/{jobId}", (string jobId, FilmJobService jobService, IUserC
 /// reason distinguishes "classifier was wrong" (a defect to tune) from "my creative choice"
 /// (the classifier was right and the user wants mixed media — not a defect).
 /// </summary>
+
+/// <summary>Shared body parse for lock-variant / lock-bookref (index + style override fields).</summary>
+static async Task<(int Index, bool OverrideStyle, string? Reason, string? Note)> ParseCharacterLockBodyAsync(
+    HttpRequest req, int defaultIndex, bool acceptVariantIndexAlias = false)
+{
+    var index = defaultIndex;
+    var overrideStyle = false;
+    string? overrideReason = null, overrideNote = null;
+    if (req.HasJsonContentType())
+    {
+        using var doc = await JsonDocument.ParseAsync(req.Body);
+        if (doc.RootElement.TryGetProperty("index", out var ix) && ix.TryGetInt32(out var n))
+            index = n;
+        else if (acceptVariantIndexAlias
+                 && doc.RootElement.TryGetProperty("variantIndex", out var vx)
+                 && vx.TryGetInt32(out var n2))
+            index = n2;
+        if (doc.RootElement.TryGetProperty("overrideStyle", out var os) && os.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            overrideStyle = os.GetBoolean();
+        if (doc.RootElement.TryGetProperty("overrideReason", out var orr) && orr.ValueKind == JsonValueKind.String)
+            overrideReason = orr.GetString();
+        if (doc.RootElement.TryGetProperty("overrideNote", out var onote) && onote.ValueKind == JsonValueKind.String)
+            overrideNote = onote.GetString();
+    }
+    return (index, overrideStyle, overrideReason, overrideNote);
+}
+
 static async Task LogStyleOverrideAsync(
     ProjectTelemetryService telemetry,
     IOptions<PageToMovieOptions> opts,
@@ -5014,23 +5041,8 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/lock-variant",
 {
     try
     {
-        var index = 1;
-        var overrideStyle = false;
-        string? overrideReason = null, overrideNote = null;
-        if (req.HasJsonContentType())
-        {
-            using var doc = await JsonDocument.ParseAsync(req.Body);
-            if (doc.RootElement.TryGetProperty("index", out var ix) && ix.TryGetInt32(out var n))
-                index = n;
-            else if (doc.RootElement.TryGetProperty("variantIndex", out var vx) && vx.TryGetInt32(out var n2))
-                index = n2;
-            if (doc.RootElement.TryGetProperty("overrideStyle", out var os) && os.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                overrideStyle = os.GetBoolean();
-            if (doc.RootElement.TryGetProperty("overrideReason", out var orr) && orr.ValueKind == JsonValueKind.String)
-                overrideReason = orr.GetString();
-            if (doc.RootElement.TryGetProperty("overrideNote", out var onote) && onote.ValueKind == JsonValueKind.String)
-                overrideNote = onote.GetString();
-        }
+        var (index, overrideStyle, overrideReason, overrideNote) =
+            await ParseCharacterLockBodyAsync(req, defaultIndex: 1, acceptVariantIndexAlias: true);
         var result = await jobService.RunCharacterDesignActionAsync(id, "lock-variant", charKey, index, allowStyleOverride: overrideStyle);
         if (overrideStyle)
             await LogStyleOverrideAsync(telemetry, opts, id, charKey, overrideReason, overrideNote);
@@ -5048,21 +5060,8 @@ app.MapPost("/api/projects/{id}/characters/{charKey}/lock-bookref",
 {
     try
     {
-        var index = 0;
-        var overrideStyle = false;
-        string? overrideReason = null, overrideNote = null;
-        if (req.HasJsonContentType())
-        {
-            using var doc = await JsonDocument.ParseAsync(req.Body);
-            if (doc.RootElement.TryGetProperty("index", out var ix) && ix.TryGetInt32(out var n))
-                index = n;
-            if (doc.RootElement.TryGetProperty("overrideStyle", out var os) && os.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                overrideStyle = os.GetBoolean();
-            if (doc.RootElement.TryGetProperty("overrideReason", out var orr) && orr.ValueKind == JsonValueKind.String)
-                overrideReason = orr.GetString();
-            if (doc.RootElement.TryGetProperty("overrideNote", out var onote) && onote.ValueKind == JsonValueKind.String)
-                overrideNote = onote.GetString();
-        }
+        var (index, overrideStyle, overrideReason, overrideNote) =
+            await ParseCharacterLockBodyAsync(req, defaultIndex: 0);
         // variantIndex slot reused as book-ref index for lock-bookref
         var result = await jobService.RunCharacterDesignActionAsync(
             id, "lock-bookref", charKey, variantIndex: index, allowStyleOverride: overrideStyle);

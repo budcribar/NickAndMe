@@ -296,6 +296,7 @@ public partial class AdaptationScreenplay
     private void ScheduleAutosave()
     {
         _saveCts?.Cancel();
+        _saveCts?.Dispose();
         _saveCts = new CancellationTokenSource();
         var ct = _saveCts.Token;
         _ = Task.Run(async () =>
@@ -529,6 +530,8 @@ public partial class AdaptationScreenplay
     public override async ValueTask DisposeAsync()
     {
         _saveCts?.Cancel();
+        _saveCts?.Dispose();
+        _saveCts = null;
         try
         {
             if (_jsInitStarted)

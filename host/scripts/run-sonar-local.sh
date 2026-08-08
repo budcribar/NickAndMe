@@ -20,7 +20,7 @@ HOST="${ROOT}/host"
 cd "${HOST}"
 
 if [[ -z "${SONAR_TOKEN:-}" ]]; then
-  echo "error: SONAR_TOKEN is required (create a token at https://sonarcloud.io and export it)."
+  echo "error: SONAR_TOKEN is required (create a token at https://sonarcloud.io and export it)." >&2
   exit 1
 fi
 
