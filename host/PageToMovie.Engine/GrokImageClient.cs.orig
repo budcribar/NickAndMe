@@ -62,7 +62,7 @@ public sealed class GrokImageClient : IImageClient
         var sw = Stopwatch.StartNew();
         try
         {
-            using var resp = await SendJsonAsync(HttpMethod.Post, "images/generations", payload, ct).ConfigureAwait(false);
+            using var resp = await SendJsonAsync(HttpMethod.Post, "images/generations", payload, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
             if (!resp.IsSuccessStatusCode)
             {

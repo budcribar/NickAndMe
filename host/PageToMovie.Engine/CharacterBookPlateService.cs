@@ -849,7 +849,7 @@ public sealed class CharacterBookPlateService
         }
     }
 
-    private static List<string> CopyPlates(
+    private List<string> CopyPlates(
         string projectDir,
         string charsDir,
         string key,

@@ -12,27 +12,27 @@ public static class BookContextService
 {
     private static readonly Regex PageMarker = new(
         @"^---\s*PAGE\s+(\d+)\s*---\s*$",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline, TimeSpan.FromSeconds(2));
 
     private static readonly Regex HeadingPage = new(
         @"\bPAGE\s+(\d+)\b",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
     private static readonly Regex SynopsisPage = new(
         @"(?im)^=\s*pages?\s+(\d+)(?:\s*[-–]\s*(\d+))?\s*$",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
     private static readonly Regex NotePage = new(
         @"\[\[\s*page\s+(\d+)\s*\]\]",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
     private static readonly Regex SceneStartRegex = new(
         @"^(INT\.?\/EXT\.?|INT\/EXT|I\.?\/E\.?|INT\.?|EXT\.?|EST\.?)(\s|\.|$)",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
     private static readonly Regex WordTokenRegex = new(
         @"[a-z]{3,}",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled, TimeSpan.FromSeconds(2));
 
     public sealed class BookPage
     {
